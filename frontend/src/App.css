@@ -1,42 +1,42 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+
+
+.page-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 100px 24px 60px 24px; /* top to clear fixed header, bottom for footer spacing */
+    min-height: calc(100vh - 140px);
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Full-width layout used when a fixed sidebar is present */
+.page-with-sidebar {
+    padding: 100px 24px 60px 24px; /* clear fixed header */
+    min-height: calc(100vh - 140px);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* Shared buttons */
+/* .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    background: #f9fafb;
+    color: #111827;
+    font-size: 14px;
+} */
+/* .btn-primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
+.btn-secondary {
+    background: #ffffff;
+    color: #111827;
+} */
+/* .btn-success {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+} */

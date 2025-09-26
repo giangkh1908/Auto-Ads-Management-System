@@ -1,0 +1,3 @@
+@import '../LoginForm/LoginForm.css';
+.captcha-placeholder { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; color: #6b7280; background: #fafafa; text-align: left; }
+

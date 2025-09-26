@@ -1,0 +1,13 @@
+.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.btn-fb { background: #1877f2; color: #fff; border: none; padding: 10px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; }
+.fb-icon { width: 22px; height: 22px; background: #fff; color: #1877f2; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+.form-sep { text-align: center; color: #6b7280; margin: 6px 0; }
+.input-group { display: flex; align-items: center; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; gap: 8px; background: #fff; }
+.input-group input { border: none; outline: none; flex: 1; font-size: 14px; }
+.input-icon { color: #6b7280; }
+.input-action { cursor: pointer; color: #6b7280; }
+.btn-primary { background: #34a853; color: #fff; border: 1px solid #2f9a4c; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+.btn-primary:disabled { opacity: .7; cursor: not-allowed; }
+.form-switch { text-align: center; color: #6b7280; font-size: 14px; }
+.form-switch .link { color: #2563eb; cursor: pointer; }
+

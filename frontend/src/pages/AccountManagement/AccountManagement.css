@@ -1,0 +1,109 @@
+/* Layout container - sidebar is now global */
+.account-management-layout {
+    display: block;
+}
+
+/* Content area */
+.account-management-content {
+    /* leave room for fixed sidebar, center the remaining content */
+    padding: 16px 20px;
+    margin-left: 240px; /* expanded width sync with sidebar */
+    transition: margin-left 0.25s ease;
+}
+.sidebar-collapsed .account-management-content { margin-left: 84px; }
+
+/* center content area within remaining space */
+.account-management-center {
+    max-width: 1500px;
+    margin: 0 auto;
+    background-color: #DDDDDD;
+}
+
+.account-management-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.account-management-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+}
+
+.account-management-header h3 {
+    font-size: 30px;
+}
+
+.account-management-header p {
+    font-size: 15px;
+    margin-top: -10px;
+}
+
+.search-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-find {
+    background-color: #337AB7;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    color: #ffffff;
+    font-size: 15px;
+}
+
+.search-input {
+    width: 340px;
+    padding: 10px 15px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 15px;
+}
+
+.btn-success {
+    background: #10b981;
+    border-color: #10b981;
+    margin-top: 120px;;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    color: #ffffff;
+    font-size: 15px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 15px 20px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.table thead {
+    background-color: #DDDDDD;
+}
+
+.status-active {
+    color: #10b981;
+}
+
+.text-right { text-align: right; }
