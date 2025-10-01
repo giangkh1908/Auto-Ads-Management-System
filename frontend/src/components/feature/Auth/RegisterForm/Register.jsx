@@ -33,7 +33,7 @@ function Register({ onSuccess, onSwitchLogin }) {
 
             {/* <div className="captcha-placeholder">Tôi không phải là người máy</div> */}
 
-            <button type="submit" className="btn-primary" disabled={loading}>
+            <button type="submit" className="btn-login-form" disabled={loading}>
                 {loading ? 'Đang xử lý...' : 'Đăng ký ngay'}
             </button>
 

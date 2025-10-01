@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import './AdsManagement.css'
 import CreateAdsWizard from '../../components/feature/CreateAdsWizard/CreateAdsWizard'
+import { handleSelectAll, handleSelectItem } from '../../utils/selectionUtils'
 
 function AdsManagement() {
     const [activeTab, setActiveTab] = useState('campaigns')
@@ -73,7 +74,8 @@ function AdsManagement() {
         setCheckAll(isChecked)
         setDatasets(prev => {
             const key = activeTab === 'campaigns' ? 'campaigns' : activeTab === 'adsets' ? 'adsets' : 'ads'
-            return { ...prev, [key]: prev[key].map(item => ({ ...item, isChecked })) }
+            const updatedItems = handleSelectAll(isChecked, prev[key])
+            return { ...prev, [key]: updatedItems }
         })
     }
 
@@ -81,10 +83,9 @@ function AdsManagement() {
     const handleCheckItem = (id) => {
         setDatasets(prev => {
             const key = activeTab === 'campaigns' ? 'campaigns' : activeTab === 'adsets' ? 'adsets' : 'ads'
-            const updated = prev[key].map(item => item.id === id ? { ...item, isChecked: !item.isChecked } : item)
-            const allChecked = updated.every(item => item.isChecked)
+            const { updatedItems, allChecked } = handleSelectItem(id, prev[key])
             setCheckAll(allChecked)
-            return { ...prev, [key]: updated }
+            return { ...prev, [key]: updatedItems }
         })
     }
     return (
@@ -105,10 +106,11 @@ function AdsManagement() {
                         
                         {/* Tạo trường dữ liệu thời gian để tìm kiếm chiến dịch và nhóm quảng cáo */}
                             <div className="filters">
+                                <span> Từ </span>
                                 <input type="date" />
-                                <span> - </span>
+                                <span> đến </span>
                                 <input type="date" />
-                                <button className="btn-filter">▾</button>
+                                <button className="btn-filter">Tìm</button>
                             </div>
 
                         </div>

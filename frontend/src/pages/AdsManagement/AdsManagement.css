@@ -49,7 +49,8 @@
 }
 
 .filters input { padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px; }
-.btn-filter { margin-left: 8px; padding: 8px 10px; }
+.filters span { margin-left: 5px; padding: 5px 6px; font-size: 14px; }
+.btn-filter { margin-left: 8px; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; background: #2563eb; color: #fff; }
 
 .ads-tabs { 
     display: flex; 

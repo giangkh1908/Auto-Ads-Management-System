@@ -57,9 +57,9 @@ function AuthModal({ visible, mode = 'login', onClose, onChangeMode }) {
             {/* Inline styles local to modal to avoid global CSS dependency */}
             <style>{`
                 .auth-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 1200; }
-                .auth-modal { width: 520px; max-width: 95vw; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 28px rgba(0,0,0,.25); }
+                .auth-modal { width: 550px; max-width: 95vw; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 28px rgba(0,0,0,.25); }
                 .auth-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #eee; }
-                .auth-title { font-weight: 700; font-size: 18px; color: #111827; }
+                .auth-title { font-weight: 700; font-size: 20px; color: #111827; }
                 .auth-close { border: none; background: transparent; font-size: 18px; cursor: pointer; color: #6b7280; }
                 .auth-body { padding: 20px; }
             `}</style>

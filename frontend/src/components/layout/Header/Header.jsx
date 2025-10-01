@@ -1,17 +1,36 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import './Header.css'
-import Avatar from '../../../assets/home.jpg'
 
 
 function Header({ onLoginClick}) {
+    const navigate = useNavigate()
+    const { pathname } = useLocation()
+    const [isScrolled, setIsScrolled] = useState(false)
+
+    useEffect(() => {
+        const isHome = pathname === '/'
+        if (!isHome) {
+            setIsScrolled(true)
+            return
+        }
+
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 10)
+        }
+        handleScroll()
+        window.addEventListener('scroll', handleScroll, { passive: true })
+        return () => window.removeEventListener('scroll', handleScroll)
+    }, [pathname])
+    
     return (
-        <header className="app-header">
+        <header className={`app-header ${isScrolled ? 'scrolled' : ''}`}>
             <div className="header-content">
-                <a href = "#home">
+                <button onClick={() => navigate('/')}>
                     <h1 className="app-title">
-                        <span className="app-name">🤖 FB Ads Manager</span>
+                        <span className="app-name">🤖 F-Auto</span>
                     </h1>
-                </a>
+                </button>
                 {/* <div className="app-nav">
                     <button className="nav-btn active">Overview</button>
                     <button className="nav-btn">Campaigns</button>

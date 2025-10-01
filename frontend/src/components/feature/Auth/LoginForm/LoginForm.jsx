@@ -43,7 +43,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
                 <div className="input-action" onClick={()=>setShowPwd(v=>!v)}>{showPwd ? '🙈' : '👁️'}</div>
             </div>
 
-            <button type="submit" className="btn-primary" disabled={loading}>
+            <button type="submit" className="btn-login-form" disabled={loading}>
                 {loading ? 'Đang xử lý...' : 'Đăng nhập'}
             </button>
 

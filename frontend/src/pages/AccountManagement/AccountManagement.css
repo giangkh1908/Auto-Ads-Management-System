@@ -36,6 +36,7 @@
 
 .account-management-header h3 {
     font-size: 30px;
+    margin-top: 10px;
 }
 
 .account-management-header p {
@@ -73,7 +74,7 @@
 .btn-success {
     background: #10b981;
     border-color: #10b981;
-    margin-top: 120px;;
+    margin-top: 99.5px;;
     display: inline-flex;
     align-items: center;
     justify-content: center;

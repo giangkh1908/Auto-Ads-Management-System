@@ -22,8 +22,8 @@ function ResetForm({ onSuccess, onSwitchLogin }) {
                 <div className="input-icon">✉️</div>
                 <input type="email" placeholder="Nhập email" value={email} onChange={(e)=>setEmail(e.target.value)} required />
             </div>
-            <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Đang xử lý...' : 'Gửi thông tin'}
+            <button type="submit" className="btn-login-form" disabled={loading}>
+                {loading ? 'Đang xử lý...' : 'Đặt lại mật khẩu'}
             </button>
             <div className="form-switch">
                 Bạn chưa có tài khoản? <span className="link" onClick={onSwitchLogin}>Đăng nhập ngay</span>

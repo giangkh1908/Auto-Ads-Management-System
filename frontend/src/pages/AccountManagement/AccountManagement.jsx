@@ -1,7 +1,10 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import './AccountManagement.css'
 
 function AccountManagement() {
+    const navigate = useNavigate()
+    
     // temporary fixed data
     const accounts = [
         { id: 1, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
@@ -34,7 +37,12 @@ function AccountManagement() {
                             </div>
                         </div>
                         <div>
-                            <button className="btn btn-success">+ Thêm tài khoản</button>
+                            <button 
+                                className="btn btn-success"
+                                onClick={() => navigate('/connect')}
+                            >
+                                + Thêm tài khoản
+                            </button>
                         </div>
                     </div>
                     <table className="table">
