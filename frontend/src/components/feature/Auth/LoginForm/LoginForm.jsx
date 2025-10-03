@@ -1,21 +1,46 @@
 import React, { useState } from 'react'
+import { useAuth } from '../../../../hooks/useAuth'
 import './LoginForm.css'
 
 function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPwd, setShowPwd] = useState(false)
-    const [loading, setLoading] = useState(false)
+    const [errors, setErrors] = useState({})
+    
+    const { login, loading } = useAuth()
+
+    const validateForm = () => {
+        const newErrors = {}
+        
+        if (!email.trim()) {
+            newErrors.email = 'Email là bắt buộc'
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            newErrors.email = 'Email không hợp lệ'
+        }
+        
+        if (!password.trim()) {
+            newErrors.password = 'Mật khẩu là bắt buộc'
+        } else if (password.length < 6) {
+            newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
+        }
+        
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (loading) return
-        setLoading(true)
-        // TODO: integrate API
-        setTimeout(() => {
-            setLoading(false)
+        
+        if (!validateForm()) return
+        
+        const result = await login({ email, password })
+        
+        if (result.success) {
+            // Close modal after successful login (navigation handled by AuthContext)
             if (onSuccess) onSuccess()
-        }, 600)
+        }
     }
 
     const startFacebookLogin = () => {
@@ -34,13 +59,35 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
 
             <div className="input-group">
                 <div className="input-icon">✉️</div>
-                <input type="email" placeholder="Nhập email" value={email} onChange={(e)=>setEmail(e.target.value)} required />
+                <input 
+                    type="email" 
+                    placeholder="Nhập email" 
+                    value={email} 
+                    onChange={(e) => {
+                        setEmail(e.target.value)
+                        if (errors.email) setErrors(prev => ({...prev, email: ''}))
+                    }}
+                    className={errors.email ? 'error' : ''}
+                />
+                {errors.email && <div className="error-message">{errors.email}</div>}
             </div>
 
             <div className="input-group">
                 <div className="input-icon">🔑</div>
-                <input type={showPwd ? 'text' : 'password'} placeholder="Nhập mật khẩu" value={password} onChange={(e)=>setPassword(e.target.value)} required />
-                <div className="input-action" onClick={()=>setShowPwd(v=>!v)}>{showPwd ? '🙈' : '👁️'}</div>
+                <input 
+                    type={showPwd ? 'text' : 'password'} 
+                    placeholder="Nhập mật khẩu" 
+                    value={password} 
+                    onChange={(e) => {
+                        setPassword(e.target.value)
+                        if (errors.password) setErrors(prev => ({...prev, password: ''}))
+                    }}
+                    className={errors.password ? 'error' : ''}
+                />
+                <div className="input-action" onClick={() => setShowPwd(v => !v)}>
+                    {showPwd ? '🙈' : '👁️'}
+                </div>
+                {errors.password && <div className="error-message">{errors.password}</div>}
             </div>
 
             <button type="submit" className="btn-login-form" disabled={loading}>

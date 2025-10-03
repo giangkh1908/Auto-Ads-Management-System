@@ -1,5 +1,5 @@
 .app-header {
-    background: #23A6F0;
+    background:linear-gradient(293deg, #055df2 0%, #002385 100%);
     transition: background-color 0.25s ease, box-shadow 0.25s ease;
     /* backdrop-filter: blur(10px); */
     /* border-bottom: 2px solid rgba(0, 0, 0, 0.1); */
@@ -7,7 +7,7 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: 65px;
+    height: 80px;
     z-index: 1000;
 }
 
@@ -23,6 +23,7 @@
     padding: 12px 20px;
     max-width: 1600px;
     margin: 0 auto;
+    height: 70%;
 }
 
 .app-title {
@@ -35,7 +36,7 @@
 }
 
 .app-header.scrolled .app-title {
-    color: #111111;
+    color: #337ab7;
 }
 
 /* Button styles for logo */
@@ -49,6 +50,45 @@ button {
 
 button:hover {
     transform: scale(1.05);
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-greeting {
+    color: #333;
+    font-size: 14px;
+}
+
+.user-greeting strong {
+    color: #667eea;
+}
+
+.btn-logout {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.btn-logout:hover {
+    background: #c82333;
+    transform: translateY(-1px);
 }
 
 .app-name {
@@ -89,29 +129,13 @@ a {
     border-radius: 30px;
     border: 1px solid #e5e7eb;
     cursor: pointer;
-    background: #ffffff00;
+    background: #0c6bbe;
     color: #ffffff;
     border-color: #f9f9f9;
-    width: 110px;
+    width: 130px;
     height: 40px;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 500;
-    background: transparent;
-}
-  
-.btn-register {
-    /* Thuộc tính riêng cho nút Register */
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-    cursor: pointer;
-    background: #09c04c;
-    color: white;
-    border-color: #09c04c;
-    margin-left: 5px;
-    width: 110px;
-    height: 40px;
-    font-size: 15px;
 }
   
 .btn-login:hover {
@@ -120,19 +144,14 @@ a {
 }
 
 .app-header.scrolled .btn-login {
-    border-color: #e5e7eb;
-    color: #111111;
-    border: 1px solid #212020;
+    border-color: #055df2;
+    color: #055df2;
+    background-color: #ffffff;
 }
 
 .app-header.scrolled .btn-login:hover {
-    background-color: #23A6F0;
+    background-color: #055df2;
     color: #ffffff;
-    border: none;
-}
-  
-.btn-register:hover {
-    background-color: #218838; /* Màu tối hơn khi hover */
 }
   
 .btn:active {

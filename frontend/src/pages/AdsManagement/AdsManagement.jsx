@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import './AdsManagement.css'
 import CreateAdsWizard from '../../components/feature/CreateAdsWizard/CreateAdsWizard'
 import { handleSelectAll, handleSelectItem } from '../../utils/selectionUtils'

@@ -2,7 +2,7 @@
 .landing-page {
     min-height: 100vh;
     /* background: linear-gradient(135deg, #0866ff 0%, #ededed 100%); */
-    background: #23A6F0;
+    background: linear-gradient(270deg, #055df2 0%, #002385 100%);
     position: relative;
     overflow-x: hidden;
     margin-top: 60px;
@@ -270,8 +270,8 @@
 .btn-secondary {
     animation-delay: 1.7s;
     background: transparent;
-    color: #141212;
-    border: 2px solid rgba(0, 0, 0, 0.2);
+    color: #ffffff;
+    border: 2px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
 }
 
@@ -654,7 +654,7 @@
 /* How it works */
 .how-section {
     padding: 80px 0;
-    background: linear-gradient(135deg, #23A6F0, #23A6F0);
+    background:linear-gradient(270deg, #055df2 0%, #002385 100%);
 }
 
 .how-grid {
@@ -721,12 +721,12 @@
 }
 
 .price-card {
-    background: linear-gradient(135deg, #ffffff, #30d6ff);
+    background:linear-gradient(270deg, #055df2 0%, #002385 100%);
     border: 1px solid #e5e7eb;
     border-radius: 16px;
     padding: 24px;
     width: 300px;
-    height: 220px;
+    height: 230px;
     margin: 0 auto;
 }
 
@@ -735,9 +735,9 @@
     box-shadow: 0 10px 25px rgba(35,166,240,0.15);
 } */
 
-.price-name { font-weight: 700; color: #0f172a; margin-bottom: 8px; }
-.price-value { font-size: 20px; font-weight: 800; color: #111827; margin-bottom: 12px; }
-.price-features { list-style: none; padding: 0; margin: 0; color: #000000; }
+.price-name { font-weight: 700; color: #ffffff; margin-bottom: 8px; }
+.price-value { font-size: 20px; font-weight: 800; color: #ffffff; margin-bottom: 12px; }
+.price-features { list-style: none; padding: 0; margin: 0; color: #ffffff; }
 .price-features li { margin: 10px 0; }
 
 .upgrade-btn {
@@ -757,7 +757,7 @@
 }
 
 .upgrade-btn:hover {
-    background: #0bcaca;
+    background: #055df2;
     color: #ffffff;
 }
 

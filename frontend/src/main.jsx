@@ -4,7 +4,8 @@ import './App.css'
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
+  // Tạm thời tắt StrictMode để tránh toast hiển thị 2 lần trong development
+  // <StrictMode>
     <App />
-  </StrictMode>,
+  // </StrictMode>,
 )

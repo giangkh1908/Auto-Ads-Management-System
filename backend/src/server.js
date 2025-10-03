@@ -1,0 +1,49 @@
+import express from "express";
+import dotenv from "dotenv";
+import { connectDB } from "./config/db.js";
+import cors from "cors";
+import path from "path";
+
+//Import Routes
+import userRoutes from './routes/userRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
+import userRoleRoutes from './routes/userRoleRoutes.js';
+import shopRoutes from './routes/shopRoutes.js';
+import shopUserRoutes from './routes/shopUserRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+
+//Load các biến môi trường
+dotenv.config();
+
+const PORT = process.env.PORT || 5001;
+const __dirname = path.resolve();
+
+const app = express();
+
+// Middleware để parse JSON
+app.use(express.json());
+
+// Bật CORS cho frontend
+app.use(cors({ 
+  origin: process.env.FRONTEND_URL || ["http://localhost:5173", "http://localhost:5174"] ,
+  credentials: true 
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+
+//Routes
+app.use("/api/users", userRoutes);
+app.use("/api/role", roleRoutes);
+app.use("/api/userRole", userRoleRoutes);
+app.use("/api/shop", shopRoutes);
+app.use("/api/shopUser", shopUserRoutes);
+app.use('/api/auth', authRoutes);
+
+
+// Connect database & start server
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server bắt đầu chạy trên cổng ${PORT}`);
+  });
+});

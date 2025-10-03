@@ -2,15 +2,18 @@ import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
 /**
- * Component tự động cuộn lên đầu khi route thay đổi
- * Đơn giản và hiệu quả
+ * Component tự động cuộn lên đầu trang khi route thay đổi
+ * Dùng với React Router
  */
 function ScrollToTop() {
   const { pathname } = useLocation()
 
   useEffect(() => {
-    // Cuộn lên đầu trang mỗi khi route thay đổi
-    window.scrollTo(0, 0)
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant' // Dùng instant cho route change để UX tốt hơn
+    })
   }, [pathname])
 
   return null

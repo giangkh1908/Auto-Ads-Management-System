@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../../../hooks/useAuth'
 import './Header.css'
 
 
@@ -7,6 +8,7 @@ function Header({ onLoginClick}) {
     const navigate = useNavigate()
     const { pathname } = useLocation()
     const [isScrolled, setIsScrolled] = useState(false)
+    const { isAuthenticated, user, logout } = useAuth()
 
     useEffect(() => {
         const isHome = pathname === '/'
@@ -37,9 +39,21 @@ function Header({ onLoginClick}) {
                     <button className="nav-btn">Ad Sets</button>
                     <button className="nav-btn">Ads</button>
                 </div> */}
-                <div>
-                    <button className = "btn-login" onClick={onLoginClick}>Đăng nhập</button>
-                    {/* <button className = "btn-register" onClick={onRegisterClick}>Đăng ký</button> */}
+                <div className="header-actions">
+                    {isAuthenticated ? (
+                        <div className="user-menu">
+                            <span className="user-greeting">
+                                Xin chào, <strong>{user?.name}</strong>
+                            </span>
+                            <button className="btn-logout" onClick={logout}>
+                                Đăng xuất
+                            </button>
+                        </div>
+                    ) : (
+                        <button className="btn-login" onClick={onLoginClick}>
+                            Đăng nhập
+                        </button>
+                    )}
                 </div>
             </div>
         </header>

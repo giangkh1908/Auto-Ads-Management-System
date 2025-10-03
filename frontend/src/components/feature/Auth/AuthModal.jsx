@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import LoginForm from './LoginForm/LoginForm'
 import Register from './RegisterForm/Register'
 import ResetForm from './ResetForm/ResetForm'
@@ -16,6 +16,16 @@ function AuthModal({ visible, mode = 'login', onClose, onChangeMode }) {
     const handleClose = useCallback(() => {
         if (onClose) onClose()
     }, [onClose])
+
+    // Lock background scroll while modal is visible (avoid conditional hook usage)
+    useEffect(() => {
+        if (!visible) return
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => {
+            document.body.style.overflow = previousOverflow
+        }
+    }, [visible])
 
     if (!visible) return null
 
@@ -41,7 +51,6 @@ function AuthModal({ visible, mode = 'login', onClose, onChangeMode }) {
                     )}
                     {mode === 'register' && (
                         <Register
-                            onSuccess={() => onChangeMode && onChangeMode('login')}
                             onSwitchLogin={() => onChangeMode && onChangeMode('login')}
                         />
                     )}

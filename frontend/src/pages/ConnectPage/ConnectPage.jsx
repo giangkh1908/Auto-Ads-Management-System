@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './ConnectPage.css'
 import avatar_1 from '../../assets/2lightInSide.jpg'
@@ -82,13 +82,11 @@ function ConnectPage() {
 
   //Xử lý kết nối các page đã chọn
   const handleConnectSelected = () => {
-    console.log('Connecting selected pages:', selectedPages)
     // Logic kết nối các page đã chọn
   }
 
   //Xử lý làm mới kết nối
   const handleRefresh = () => {
-    console.log('Refreshing connection')
     // Logic làm mới kết nối
   }
 

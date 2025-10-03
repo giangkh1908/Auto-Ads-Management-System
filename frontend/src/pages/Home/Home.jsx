@@ -1,14 +1,7 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import './Home.css'
 
-function Home({ onStart }) {
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-        }, 0)
-        return () => clearTimeout(timer)
-    }, [])
-
+function Home({ onLoginClick }) {
     return (
         <div className="landing-page">
             {/* Hero Section */}
@@ -40,7 +33,7 @@ function Home({ onStart }) {
                             </div>
                         </div>
                         <div className="hero-cta">
-                            <button className="btn-primary" onClick={onStart}>
+                            <button className="btn-primary" onClick={onLoginClick}>
                                 <span className="btn-text">Dùng thử miễn phí</span>
                                 <span className="btn-icon">→</span>
                             </button>
@@ -236,7 +229,7 @@ function Home({ onStart }) {
                             Tham gia cùng hàng trăm doanh nghiệp đã tin tưởng và thành công với nền tảng của chúng tôi
                         </p>
                         <div className="cta-buttons">
-                            <button className="btn-primary-large" onClick={onStart}>
+                            <button className="btn-primary-large" onClick={onLoginClick}>
                                 <span className="btn-text">Bắt đầu miễn phí ngay</span>
                                 <span className="btn-icon">🚀</span>
                             </button>

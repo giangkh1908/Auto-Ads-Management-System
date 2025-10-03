@@ -10,7 +10,7 @@
  * @param {string} checkedField - Field name for the checked state (default: 'isChecked')
  * @returns {Array} Updated items array with all items checked/unchecked
  */
-export const handleSelectAll = (isChecked, items, idField = 'id', checkedField = 'isChecked') => {
+export const handleSelectAll = (isChecked, items, checkedField = 'isChecked') => {
   return items.map(item => ({
     ...item,
     [checkedField]: isChecked

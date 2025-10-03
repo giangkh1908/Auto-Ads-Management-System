@@ -2,7 +2,32 @@
 .btn-fb { background: #1877f2; color: #fff; border: none; padding: 10px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 15px;}
 .fb-icon { width: 22px; height: 22px; background: #fff; color: #1877f2; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
 .form-sep { text-align: center; color: #6b7280; margin: 6px 0; }
-.input-group { display: flex; align-items: center; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; gap: 8px; background: #fff; }
+.input-group { 
+    position: relative;
+    display: flex; 
+    align-items: center; 
+    border: 1px solid #e5e7eb; 
+    border-radius: 8px; 
+    padding: 10px 12px; 
+    gap: 8px; 
+    background: #fff; 
+    margin-bottom: 15px;
+}
+
+.input-group.error,
+.input-group input.error {
+    border-color: #dc3545;
+}
+
+.error-message {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 2px;
+    padding-left: 12px;
+}
 .input-group input { border: none; outline: none; flex: 1; font-size: 14px; }
 .input-icon { color: #6b7280; }
 .input-action { cursor: pointer; color: #6b7280; }

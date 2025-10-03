@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import CampaignStep from './CampaignStep'
 import AdsetStep from './AdsetStep'
 import AdStep from './AdStep'
@@ -6,6 +6,7 @@ import './CreateAdsWizard.css'
 
 function CreateAdsWizard({ onClose }) {
     const [wizardStep, setWizardStep] = useState(0)
+    const contentRef = useRef(null)
 
     // Objectives data with descriptions and suitable tags
     const objectivesData = {
@@ -93,6 +94,25 @@ function CreateAdsWizard({ onClose }) {
         cta: 'Gửi tin nhắn',
     })
 
+    // Lock background scroll while wizard is open
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => {
+            document.body.style.overflow = previousOverflow
+        }
+    }, [])
+
+    // Scroll to top when wizard step changes
+    useEffect(() => {
+        if (contentRef.current) {
+            contentRef.current.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            })
+        }
+    }, [wizardStep])
+
     return (
         <div className="ads-modal-overlay" role="dialog" aria-modal="true">
             <div className="ads-modal">
@@ -155,7 +175,7 @@ function CreateAdsWizard({ onClose }) {
                         </div>
                     )}
 
-                    <div className="wizard-content">
+                    <div className="wizard-content" ref={contentRef}>
                         {wizardStep === 0 && (
                             <div className="panel objectives-panel">
                                 <div className="objectives-layout">
