@@ -36,6 +36,15 @@ export const authenticate = async (req, res, next) => {
             });
         }
         
+        // Check if email is verified
+        if (!user.emailVerified) {
+            return res.status(403).json({
+                success: false,
+                message: 'Vui lòng xác nhận email trước khi truy cập hệ thống',
+                code: 'EMAIL_NOT_VERIFIED'
+            });
+        }
+        
         req.user = user;
         next();
         

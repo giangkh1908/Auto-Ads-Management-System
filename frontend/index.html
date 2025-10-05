@@ -10,4 +10,62 @@
     <div id="root"></div>
     <script type="module" src="./src/main.jsx"></script>
   </body>
+    <!-- Facebook SDK -->
+  <script async defer crossorigin="anonymous"
+  src="https://connect.facebook.net/en_US/sdk.js"></script>
+
+  <script>
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId      : '1445692036729400',  // 🟢 thay bằng App ID thật từ Facebook Developer
+        cookie     : true,           // Cho phép backend đọc session
+        xfbml      : true,           // Tự động parse plugin Facebook (nếu có)
+        version    : 'v23.0'         // Phiên bản Graph API bạn đang dùng
+      });
+  
+      console.log("✅ Facebook SDK initialized");
+    };
+  </script>
+  
+  <script>
+  function loginWithFacebook() {
+    FB.login(function(response) {
+      if (response.authResponse) {
+        const accessToken = response.authResponse.accessToken;
+        FB.api('/me', { fields: 'id,name,email' }, function(profile) {
+          if (!profile || profile.error) {
+            console.error(profile?.error || 'FB api error'); return;
+          }
+          axios.post('http://localhost:5001/api/auth/facebook-login', {
+            facebookId: profile.id,
+            name: profile.name,
+            email: profile.email,
+            accessToken
+          })
+           .then(res => {
+             if (res.data && res.data.success && res.data.data) {
+               const { user, tokens } = res.data.data
+               if (tokens?.accessToken && tokens?.refreshToken) {
+                 localStorage.setItem('auth_token', tokens.accessToken)
+                 localStorage.setItem('refresh_token', tokens.refreshToken)
+               }
+               if (user) {
+                 localStorage.setItem('user_data', JSON.stringify(user))
+               }
+               // Điều hướng vào app sau khi đăng nhập thành công
+               window.location.href = '/dashboard'
+             } else {
+               console.error('Facebook login API failed:', res.data)
+               alert(res.data?.message || 'Đăng nhập Facebook thất bại')
+             }
+           })
+          .catch(err => console.error(err));
+        });
+      } else {
+        console.log('User cancelled login');
+      }
+    }, { scope: 'public_profile,email' });
+  }
+</script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </html>

@@ -7,7 +7,7 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: 80px;
+    height: 60px;
     z-index: 1000;
 }
 
@@ -23,7 +23,7 @@
     padding: 12px 20px;
     max-width: 1600px;
     margin: 0 auto;
-    height: 70%;
+    height: 60%;
 }
 
 .app-title {
@@ -32,7 +32,7 @@
     font-size: 24px;
     font-weight: 1000;
     color: #ffffff;
-    margin: 0 auto;
+    margin-top: 10px;
 }
 
 .app-header.scrolled .app-title {
@@ -65,30 +65,102 @@ button:hover {
     gap: 15px;
 }
 
-.user-greeting {
-    color: #333;
-    font-size: 14px;
+.user-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
 }
 
-.user-greeting strong {
-    color: #667eea;
-}
-
-.btn-logout {
-    background: #dc3545;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.3s ease;
 }
 
-.btn-logout:hover {
-    background: #c82333;
-    transform: translateY(-1px);
+.dropdown-name {
+    position: absolute;
+    top: 95%;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    list-style: none;
+    padding: 0.5rem 0;
+    margin: 0;
+    z-index: 10;
+    width: 200px;
+    height: 75px;
+    text-align: center;
+}
+
+.dropdown-name li {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+/* .dropdown-name li:hover {
+    background: #f0f0f0;
+} */
+
+.dropdown-name a {
+    border: 1px solid #bebcbc;
+    padding: 5px 20px;
+    border-radius: 8px;
+    background: #0c6bbe;
+    color: #ffffff;
+}
+
+.dropdown-name a:hover {
+    background:#055df2;
+    transform: translateY(-5px);     /* đẩy lên một chút */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* đổ bóng */
+}
+
+.dropdown-avatar {
+    position: absolute;
+    top: 95%;
+    right:0;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    list-style: none;
+    padding: 0.5rem 0;
+    margin: 0;
+    z-index: 10;
+    width: 280px;
+    height: 160px;
+    font-size: 16px;
+}
+
+.dropdown-infor-avatar {
+    padding: 5px 15px;
+    margin-bottom: 3px;
+    font-weight: 500;
+    gap: 15px;
+    display: flex;
+    flex-direction: column; /* xếp dọc */
+}
+
+.dropdown-infor-avatar b {
+    font-size: 17px;
+}
+
+.dropdown-option-avatar {
+    border-top: 1px solid #bebcbc;
+    font-size: 17px;
+    /* padding: 0.5rem 1rem; */
+}
+
+.dropdown-option-avatar li {
+    padding: 11.5px 15px;       /* dùng padding thay vì margin để tạo khoảng cách */
+    display: block;
+}
+
+.dropdown-option-avatar li:hover {
+    cursor: pointer;
+    color: #337ab7;
+    background: #eaeaea;
 }
 
 .app-name {
@@ -102,26 +174,34 @@ button:hover {
 a {
     text-decoration: none;
 }
-/* .app-nav {
+
+.app-nav {
     display: flex;
     gap: 8px;
-} */
+    position: relative; /* hoặc absolute */
+    left: -300px;        /* dịch sang trái 350px */
+}
 
-/* .nav-btn {
+.nav-btn {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 12px 20px;
-    border: none;
-    border-radius: 8px;
     background: transparent;
-    color: #718096;
-    font-size: 14px;
+    color: #ffffff;
+    font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
     position: relative;
-} */
+}
+
+.nav-btn:hover {
+    border-bottom: 2px solid #ffffff;
+}
+
+.nav-btn.active {
+    border-bottom: 2px solid #ffffff;
+}
 
 .btn-login {
     /* Thuộc tính riêng cho nút Login */
@@ -154,6 +234,19 @@ a {
     color: #ffffff;
 }
   
+.app-header.scrolled .nav-btn {
+    color: #5374a7; 
+}
+
+.app-header.scrolled .nav-btn:hover {
+    border-bottom: 2px solid #055df2;
+}
+
+.app-header.scrolled .nav-btn.active {
+    border-bottom: 2px solid #055df2;
+    color: #055df2;
+}
+
 .btn:active {
     /* Hiệu ứng khi click vào */
     transform: translateY(0);

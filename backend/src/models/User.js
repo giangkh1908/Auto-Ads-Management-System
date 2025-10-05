@@ -42,7 +42,13 @@ const userSchema = new mongoose.Schema(
             avatar: {type: String},
             address: {type: String}
         },
-
+        //Đăng ký bằng cái gì?
+        provider: {
+            type: String,
+            enum: ["local", "facebook"], //local = đăng ký thường
+            default: "local"
+        },
+        facebookId: {type: String},
         //Xác thực Email
         emailVerified: {type: Boolean, default: false},
         emailVerificationToken: {type: String, select: false},

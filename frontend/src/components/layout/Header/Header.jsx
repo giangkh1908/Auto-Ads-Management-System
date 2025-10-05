@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import './Header.css'
-
+import avatar from '../../../assets/home.jpg';
 
 function Header({ onLoginClick}) {
+
     const navigate = useNavigate()
     const { pathname } = useLocation()
     const [isScrolled, setIsScrolled] = useState(false)
     const { isAuthenticated, user, logout } = useAuth()
+    const [openMenu, setOpenMenu] = useState(null); //"avatar", "user" || null
 
     useEffect(() => {
         const isHome = pathname === '/'
@@ -24,31 +26,103 @@ function Header({ onLoginClick}) {
         window.addEventListener('scroll', handleScroll, { passive: true })
         return () => window.removeEventListener('scroll', handleScroll)
     }, [pathname])
+
+    // Đóng dropdown khi chuyển trang
+    useEffect(() => {
+        setOpenMenu(null)
+    }, [pathname])
+
+    // Đóng dropdown khi click ra ngoài
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (openMenu && !event.target.closest('.user-menu')) {
+                setOpenMenu(null)
+            }
+        }
+
+        if (openMenu) {
+            document.addEventListener('mousedown', handleClickOutside)
+            return () => document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [openMenu])
     
+    const toggleMenu = (menu) => {
+        setOpenMenu(openMenu === menu ? null : menu);
+    };
+
     return (
         <header className={`app-header ${isScrolled ? 'scrolled' : ''}`}>
             <div className="header-content">
                 <button onClick={() => navigate('/')}>
                     <h1 className="app-title">
-                        <span className="app-name">🤖 F-Auto</span>
+                        <span className="app-name">F-Auto</span>
                     </h1>
                 </button>
-                {/* <div className="app-nav">
-                    <button className="nav-btn active">Overview</button>
-                    <button className="nav-btn">Campaigns</button>
-                    <button className="nav-btn">Ad Sets</button>
-                    <button className="nav-btn">Ads</button>
-                </div> */}
+                {isAuthenticated && (
+                    <div className="app-nav">
+                        <button 
+                            className={`nav-btn ${pathname === '/dashboard' ? 'active' : ''}`}
+                            onClick={() => navigate('/dashboard')}
+                        >💠 Dashboard
+                        </button>
+
+                        <button 
+                            className={`nav-btn ${pathname === '/account-management' ? 'active' : ''}`}
+                            onClick={() => navigate('/account-management')}
+                        >📢 Facebook Ads
+                        </button>
+
+                        <button 
+                            className={`nav-btn ${pathname === '/settings' ? 'active' : ''}`}
+                            onClick={() => navigate('/settings')}
+                        >⚙️ Cài đặt
+                        </button>
+                    </div>
+                )}
+
                 <div className="header-actions">
                     {isAuthenticated ? (
                         <div className="user-menu">
-                            <span className="user-greeting">
-                                Xin chào, <strong>{user?.name}</strong>
-                            </span>
-                            <button className="btn-logout" onClick={logout}>
-                                Đăng xuất
-                            </button>
+                            {/* Tên + Dropdown menu */}
+                            <div className="user-greeting-wrapper">
+                                <span 
+                                    className="user-greeting"
+                                    onClick={() => toggleMenu("user")}
+                                    style={{ cursor: "pointer" }}
+                                >
+                                    Xin chào, <strong>{user?.name}</strong> ▼
+                                </span>
+                                {openMenu === "user" && (
+                                    <ul className="dropdown-name">
+                                        <li>{user?.name}</li>
+                                        <li><a>Quản lý shop</a></li>
+                                    </ul>
+                                )}
+                            </div>
+                            {/* Avatar + dropdown */}
+                            <div className="avatar-wrapper">
+                                <img
+                                    src={user?.avatar || avatar}
+                                    alt="avatar"
+                                    className="avatar"
+                                    onClick={() => toggleMenu("avatar")}
+                                />
+                                {openMenu === "avatar" && (
+                                    <div className="dropdown-avatar">
+                                        <div className = "dropdown-infor-avatar">
+                                            <b>{user?.name}</b>
+                                            <small>FB ID: <br/>
+                                            Email: {user?.email}</small>
+                                        </div>
+                                        <div className = "dropdown-option-avatar">
+                                            <li onClick={() => navigate('/profile')}>Hồ sơ</li>
+                                            <li onClick={logout}>Đăng xuất</li>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                        
                     ) : (
                         <button className="btn-login" onClick={onLoginClick}>
                             Đăng nhập

@@ -3,13 +3,14 @@ import { generateTokens } from '../utils/jwt.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
 import crypto from 'crypto';
 
+
 // Đăng ký
 export const register = async (req, res) => {
     try {
         const { name, email, password, phone } = req.body;
         
         // Kiểm tra xem có điền đầy đủ thông tin bắt buộc không
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !phone) {
             return res.status(400).json({
                 success: false,
                 message: 'Vui lòng điền đầy đủ thông tin bắt buộc'
@@ -21,7 +22,7 @@ export const register = async (req, res) => {
         if (existingUser) {
             return res.status(400).json({
                 success: false, 
-                message: 'Email này đã được đăng ký. Vui lòng sử dụng email khác'
+                message: 'Email này đã được đăng ký. Hãy tiến hành đăng nhập!'
             });
         }
         
@@ -30,7 +31,9 @@ export const register = async (req, res) => {
             name,
             email,
             password,
-            phone
+            provider: "local",
+            phone,
+            emailVerified: false,
         });
         
         // Tạo token xác nhận email
@@ -73,6 +76,168 @@ export const register = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Lỗi hệ thống, vui lòng thử lại sau'
+        });
+    }
+};
+
+
+// Facebook Login
+export const facebookLogin = async (req, res) => {
+    try {
+        console.log("🔵 Facebook Login - Start");
+
+        const { facebookId, name, email, accessToken } = req.body;
+
+        // Validate required fields
+        if (!facebookId || !accessToken) {
+            console.log("❌ Missing required fields:", { facebookId: !!facebookId, accessToken: !!accessToken });
+            return res.status(400).json({
+                success: false,
+                message: "Missing Facebook ID or access token"
+            });
+        }
+
+        // Verify Facebook token (timeout 10s)
+        console.log("🔵 Verifying Facebook token...");
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        let fbData;
+        try {
+            const fbResp = await fetch(
+                `https://graph.facebook.com/me?access_token=${accessToken}&fields=id,email,name`,
+                {
+                    signal: controller.signal,
+                    headers: { "User-Agent": "VibeStone-App/1.0" }
+                }
+            );
+            clearTimeout(timeoutId);
+
+            if (!fbResp.ok) {
+                console.log("❌ Facebook API response not OK:", fbResp.status);
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid Facebook token"
+                });
+            }
+
+            fbData = await fbResp.json();
+
+            if (fbData.error) {
+                console.log("❌ Facebook API error:", fbData.error);
+                return res.status(400).json({
+                    success: false,
+                    message: `Facebook error: ${fbData.error.message}`
+                });
+            }
+
+            if (fbData.id !== facebookId) {
+                console.log("❌ Facebook ID mismatch", { fbId: fbData.id, facebookId });
+                return res.status(400).json({
+                    success: false,
+                    message: "Facebook ID verification failed"
+                });
+            }
+        } catch (err) {
+            clearTimeout(timeoutId);
+            console.error("❌ Facebook verification failed:", err.message || err);
+            return res.status(400).json({
+                success: false,
+                message: "Failed to verify Facebook token"
+            });
+        }
+
+        console.log("✅ Facebook token verified");
+
+        // -------- Database: tìm hoặc tạo user --------
+        let user;
+        try {
+            // Dùng User đã import ở đầu file (không dynamic import)
+            user = await User.findOne({
+                $or: [
+                    { email: email || fbData.email },
+                    { facebookId: facebookId }
+                ]
+            });
+
+            if (user) {
+                console.log("🔵 User found");
+                // Nếu user tồn tại nhưng chưa có facebookId -> link account
+                if (!user.facebookId) {
+                    user.facebookId = facebookId;
+                }
+                // Đảm bảo emailVerified = true cho tài khoản FB
+                user.emailVerified = true;
+                // Nếu muốn kích hoạt luôn:
+                if (!user.status || user.status !== "active") user.status = "active";
+                await user.save();
+            } else {
+                console.log("🔵 Creating new user for Facebook login...");
+                user = new User({
+                    name: name || fbData.name || "Facebook User",
+                    email: email || fbData.email,
+                    provider: "facebook",
+                    facebookId: facebookId,
+                    // không set password nếu provider là facebook
+                    emailVerified: true,
+                    status: "active"
+                });
+                await user.save();
+                console.log("✅ New user created");
+            }
+        } catch (dbError) {
+            console.error("❌ Database error:", dbError);
+            return res.status(500).json({
+                success: false,
+                message: "Database connection failed"
+            });
+        }
+
+        // -------- Tạo access + refresh tokens (dùng generateTokens để đồng bộ) --------
+        try {
+            const { accessToken: accessTok, refreshToken: refreshTok } = generateTokens(user._id);
+
+            // Remove sensitive fields before returning
+            if (user.password) user.password = undefined;
+
+            // Build user response (theo format file)
+            const userResponse = {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                status: user.status,
+                emailVerified: user.emailVerified,
+                profile: user.profile
+            };
+
+            console.log("✅ Facebook login success - sending response");
+
+            return res.status(200).json({
+                success: true,
+                message: "Đăng nhập Facebook thành công",
+                data: {
+                    user: userResponse,
+                    tokens: {
+                        accessToken: accessTok,
+                        refreshToken: refreshTok
+                    },
+                    requiresEmailVerification: false
+                }
+            });
+        } catch (tokenErr) {
+            console.error("❌ Token creation error:", tokenErr);
+            return res.status(500).json({
+                success: false,
+                message: "Token creation failed"
+            });
+        }
+
+    } catch (error) {
+        console.error("❌ Facebook Login Fatal Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
         });
     }
 };
@@ -124,7 +289,46 @@ export const login = async (req, res) => {
             await user.resetLoginAttempts();
         }
         
-        // Tạo token
+        // Kiểm tra xem email đã được xác nhận chưa
+        if (!user.emailVerified) {
+            // Tạo token xác nhận email mới
+            const verificationToken = user.createEmailVerificationToken();
+            await user.save();
+            
+            // Gửi email xác nhận
+            try {
+                await sendVerificationEmail(user.email, user.name, verificationToken);
+            } catch (emailError) {
+                console.error('Gửi Email xác nhận thất bại:', emailError);
+                // Không return error để user vẫn có thể đăng nhập
+            }
+            
+            // Remove password from response
+            user.password = undefined;
+            
+            return res.status(200).json({
+                success: true,
+                message: `Chào mừng bạn trở lại, ${user.name}! Vui lòng kiểm tra email để xác nhận tài khoản.`,
+                data: {
+                    user: {
+                        id: user._id,
+                        name: user.name,
+                        email: user.email,
+                        phone: user.phone,
+                        status: user.status,
+                        emailVerified: user.emailVerified,
+                        profile: user.profile
+                    },
+                    tokens: {
+                        accessToken: null,
+                        refreshToken: null
+                    },
+                    requiresEmailVerification: true
+                }
+            });
+        }
+        
+        // Tạo token cho user đã verify email
         const { accessToken, refreshToken } = generateTokens(user._id);
         
         // Remove password from response
@@ -146,7 +350,8 @@ export const login = async (req, res) => {
                 tokens: {
                     accessToken,
                     refreshToken
-                }
+                },
+                requiresEmailVerification: false
             }
         });
         
@@ -540,3 +745,64 @@ export const getCurrentUser = async (req, res) => {
         });
     }
 };
+
+// Cập nhật thông tin profile
+export const updateProfile = async (req, res) => {
+    try {
+        const { name, phone, profile } = req.body;
+        const userId = req.user.id;
+        
+        // Tìm user và cập nhật thông tin
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy người dùng'
+            });
+        }
+        
+        // Cập nhật thông tin
+        if (name) user.name = name;
+        if (phone) user.phone = phone;
+        if (profile) user.profile = { ...user.profile, ...profile };
+        
+        await user.save();
+        
+        res.status(200).json({
+            success: true,
+            message: 'Cập nhật thông tin thành công',
+            data: {
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone,
+                    status: user.status,
+                    emailVerified: user.emailVerified,
+                    profile: user.profile,
+                    created_at: user.created_at,
+                    updated_at: user.updated_at
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Update profile error:', error);
+        
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: messages.join(', ')
+            });
+        }
+        
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi hệ thống, vui lòng thử lại sau'
+        });
+    }
+};
+
+

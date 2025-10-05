@@ -24,10 +24,10 @@ body {
     margin: 0px auto;
     background: #ffffff;
     font-family: 'Roboto', sans-serif;
-    font-size: 18px;
-    user-select: none;
+    font-size: 14px;
+    /* user-select: none; */
 }
 
-html {
-    scroll-behavior: smooth;
-}
+/* html {
+    scroll-behavior: smooth; // Giúp cuộn mượt hơn
+} */ /* Tắt smooth scroll để tránh animation */

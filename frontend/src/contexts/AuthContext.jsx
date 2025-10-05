@@ -1,20 +1,18 @@
-import { createContext, useState, useEffect, useCallback } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from '../hooks/useToast'
-import { STORAGE_KEYS, ROUTES } from '../constants/app.constants'
 import authService from '../services/authService'
-
-const AuthContext = createContext(null)
+import { STORAGE_KEYS, ROUTES } from '../constants/app.constants'
+import { AuthContext } from './AuthContext'
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const navigate = useNavigate()
-  const location = useLocation()
   const toast = useToast()
 
-  // Check authentication on mount
+  // Kiểm tra xác thực khi mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -22,23 +20,23 @@ export const AuthProvider = ({ children }) => {
         const userData = localStorage.getItem(STORAGE_KEYS.USER_DATA)
         
         if (token && userData) {
-          // Verify token is still valid by fetching current user
+          // Xác thực token vẫn hợp lệ bằng cách lấy user hiện tại
           try {
             const response = await authService.getCurrentUser()
             if (response.success) {
               setUser(response.data.user)
               setIsAuthenticated(true)
             } else {
-              logout(false) // Silent logout during token validation
+              logout(false) // Đăng xuất im lặng trong quá trình xác thực token
             }
           } catch (error) {
             console.error('Token validation failed:', error)
-            logout(false) // Silent logout during token validation
+            logout(false) // Đăng xuất im lặng trong quá trình xác thực token
           }
         }
       } catch (error) {
         console.error('Error checking auth:', error)
-        logout(false) // Silent logout during token validation
+        logout(false) // Đăng xuất im lặng trong quá trình xác thực token
       } finally {
         setLoading(false)
       }
@@ -48,16 +46,35 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
 
-  // Login
+  // Đăng nhập
   const login = async (credentials, redirectTo = null) => {
     try {
       setLoading(true)
       const response = await authService.login(credentials)
       
       if (response.success) {
-        const { user, tokens } = response.data
+        const { user, tokens, requiresEmailVerification } = response.data
         
-        // Store tokens and user data
+        // Kiểm tra xem có cần xác nhận email không
+        if (requiresEmailVerification || !user.emailVerified) {
+          // Lưu thông tin user nhưng không lưu tokens
+          localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user))
+          setUser(user)
+          setIsAuthenticated(false) // Không đăng nhập thực sự
+          
+          toast.warning(response.message || 'Vui lòng kiểm tra email để xác nhận tài khoản.', {
+            duration: 5000
+          })
+          
+          return { 
+            success: false, 
+            error: 'Email chưa được xác nhận',
+            requiresEmailVerification: true,
+            user 
+          }
+        }
+        
+        // Lưu tokens và user data chỉ khi email đã được verify
         localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.accessToken)
         localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken)
         localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user))
@@ -65,25 +82,14 @@ export const AuthProvider = ({ children }) => {
         setUser(user)
         setIsAuthenticated(true)
         
-        // Show success message from backend
-        if (user.status === 'pending' && !user.emailVerified) {
-          toast.warning(response.message + ' Vui lòng kiểm tra email để kích hoạt tài khoản.', {
-            duration: 5000
-          })
-        } else {
-          toast.success(response.message || 'Đăng nhập thành công!')
-        }
+        toast.success(response.message || 'Đăng nhập thành công!')
         
-        // Navigate after successful login
+        // Chuyển trang sau khi login thành công: mặc định về Dashboard
         setTimeout(() => {
           if (redirectTo) {
             navigate(redirectTo)
-          } else if (location.pathname === ROUTES.HOME) {
-            navigate(ROUTES.ACCOUNT_MANAGEMENT)
           } else {
-            // Stay on current page or go to intended page
-            const intendedPath = location.state?.from?.pathname || ROUTES.ACCOUNT_MANAGEMENT
-            navigate(intendedPath)
+            navigate(ROUTES.DASHBOARD)
           }
         }, 1000)
         
@@ -99,9 +105,74 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Đăng nhập với FB
+const loginWithFacebook = async (redirectTo = null) => {
+  try {
+    setLoading(true);
 
-  // Register
-  const register = async (userData, switchToLogin = null) => {
+    // Đảm bảo FB SDK đã sẵn sàng
+    if (typeof window.FB === 'undefined') {
+      toast.error('Facebook SDK chưa sẵn sàng. Hãy tải lại trang.');
+      return { success: false, error: 'fb_sdk_unavailable' };
+    }
+
+    // 1) Mở popup login
+    const fbResp = await new Promise((resolve) => {
+      window.FB.login((response) => resolve(response), { scope: 'public_profile,email' });
+    });
+    if (!fbResp?.authResponse) {
+      toast.error('Đăng nhập Facebook bị hủy');
+      return { success: false, error: 'cancelled' };
+    }
+
+    const accessToken = fbResp.authResponse.accessToken;
+
+    // 2) Lấy profile (id, name, email)
+    const profile = await new Promise((resolve, reject) => {
+      window.FB.api('/me', { fields: 'id,name,email' }, (resp) => {
+        if (!resp || resp.error) return reject(resp?.error || new Error('FB api error'));
+        resolve(resp);
+      });
+    });
+
+    // 3) Gửi về backend
+    const payload = {
+      facebookId: profile.id,
+      name: profile.name,
+      email: profile.email,
+      accessToken,
+    };
+    const response = await authService.loginWithFacebook(payload);
+
+    if (response.success) {
+      const { user, tokens } = response.data;
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.accessToken);
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+      setUser(user);
+      setIsAuthenticated(true);
+      toast.success(response.message || 'Đăng nhập Facebook thành công!');
+      setTimeout(() => {
+        if (redirectTo) navigate(redirectTo);
+        else navigate(ROUTES.DASHBOARD);
+      }, 800);
+      return { success: true, user };
+    }
+
+    toast.error(response.message || 'Đăng nhập Facebook thất bại');
+    return { success: false, error: response.message };
+  } catch (error) {
+    const msg = error.response?.data?.message || error.message || 'Đăng nhập Facebook thất bại';
+    toast.error(msg);
+    return { success: false, error: msg };
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  // Đăng ký
+  const register = async (userData) => {
     try {
       setLoading(true)
       const response = await authService.register(userData)
@@ -110,13 +181,6 @@ export const AuthProvider = ({ children }) => {
         toast.success(response.message || 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.', {
           duration: 5000
         })
-        
-        // Switch to login form after successful registration
-        if (switchToLogin) {
-          setTimeout(() => {
-            switchToLogin()
-          }, 2000)
-        }
         
         return { success: true, data: response.data }
       }
@@ -131,7 +195,7 @@ export const AuthProvider = ({ children }) => {
   }
 
 
-  // Logout
+  // Đăng xuất
   const logout = useCallback((showToast = true) => {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
@@ -143,21 +207,11 @@ export const AuthProvider = ({ children }) => {
       toast.success('Đăng xuất thành công!')
     }
     
-    // Navigate to home page after logout
+    // Chuyển trang về trang home sau khi đăng xuất
     navigate(ROUTES.HOME)
   }, [navigate, toast])
 
-    // Update user
-    const updateUser = (userData) => {
-      try {
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData))
-        setUser(userData)
-      } catch (error) {
-        console.error('Error updating user:', error)
-      }
-    }
-
-  // Forgot password
+  // Quên mật khẩu
   const forgotPassword = async (email) => {
     try {
       setLoading(true)
@@ -234,6 +288,11 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const updateUser = (newUserData) => {
+    setUser(newUserData)
+    localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(newUserData))
+  }
+
   const verifyEmail = async (token) => {
     try {
       setLoading(true)
@@ -256,9 +315,9 @@ export const AuthProvider = ({ children }) => {
           
         }
         
-        // Navigate to Account Management after successful verification
+        // Chuyển trang về trang Dashboard sau khi xác nhận email thành công
         setTimeout(() => {
-          navigate(ROUTES.ACCOUNT_MANAGEMENT)
+          navigate(ROUTES.DASHBOARD)
         }, 2000)
         
         return { success: true }
@@ -277,6 +336,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated,
     login,
+    loginWithFacebook,
     register,
     logout,
     updateUser,
@@ -289,5 +349,3 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
-
-export default AuthContext

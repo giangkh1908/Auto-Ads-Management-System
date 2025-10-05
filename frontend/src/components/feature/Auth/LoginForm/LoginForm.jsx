@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../../../hooks/useAuth'
+import EmailVerification from '../EmailVerification/EmailVerification'
 import './LoginForm.css'
 
 function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
@@ -7,8 +8,10 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     const [password, setPassword] = useState('')
     const [showPwd, setShowPwd] = useState(false)
     const [errors, setErrors] = useState({})
+    const [showVerificationForm, setShowVerificationForm] = useState(false)
+    const [userEmail, setUserEmail] = useState('')
     
-    const { login, loading } = useAuth()
+    const { login, loginWithFacebook, loading } = useAuth()
 
     const validateForm = () => {
         const newErrors = {}
@@ -40,12 +43,33 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
         if (result.success) {
             // Close modal after successful login (navigation handled by AuthContext)
             if (onSuccess) onSuccess()
+        } else if (result.requiresEmailVerification) {
+            // Hiển thị form xác thực email
+            setUserEmail(email)
+            setShowVerificationForm(true)
         }
     }
 
-    const startFacebookLogin = () => {
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-        window.location.href = `${API_BASE}/auth/facebook`
+    const handleBackToLogin = () => {
+        setShowVerificationForm(false)
+        setUserEmail('')
+    }
+
+    const startFacebookLogin = async () => {
+        if (loading) return
+        const result = await loginWithFacebook()
+        if (result.success && onSuccess) onSuccess()
+    }
+
+    // Nếu đang hiển thị form xác thực email
+    if (showVerificationForm) {
+        return (
+            <EmailVerification 
+                email={userEmail}
+                onBack={handleBackToLogin}
+                title="Xác nhận email của bạn"
+            />
+        )
     }
 
     return (

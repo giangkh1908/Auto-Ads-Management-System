@@ -34,7 +34,7 @@ function Home({ onLoginClick }) {
                         </div>
                         <div className="hero-cta">
                             <button className="btn-primary" onClick={onLoginClick}>
-                                <span className="btn-text">Dùng thử miễn phí</span>
+                                <span className="btn-text">Sử dụng ngay</span>
                                 <span className="btn-icon">→</span>
                             </button>
                             <button className="btn-secondary">

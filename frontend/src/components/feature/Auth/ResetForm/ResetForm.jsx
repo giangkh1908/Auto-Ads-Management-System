@@ -35,6 +35,14 @@ function ResetForm({ onSwitchLogin }) {
         }
     }
 
+    const handleResendEmail = async () => {
+        const result = await forgotPassword(email)
+        
+        if (result.success) {
+            setIsSubmitted(true)
+        }
+    }
+
     if (isSubmitted) {
         return (
             <div className="auth-form">
@@ -46,9 +54,10 @@ function ResetForm({ onSwitchLogin }) {
                     <button 
                         type="button" 
                         className="btn-login-form" 
-                        onClick={() => setIsSubmitted(false)}
+                        onClick={handleResendEmail}
+                        disabled={loading}
                     >
-                        Gửi lại email
+                        {loading ? 'Đang gửi...' : 'Gửi lại email'}
                     </button>
                 </div>
                 <div className="form-switch">

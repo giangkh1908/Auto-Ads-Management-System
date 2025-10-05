@@ -47,6 +47,21 @@ axiosInstance.interceptors.response.use(
       const { status } = error.response
       
       switch (status) {
+        case 403: {
+          // Forbidden - check if it's email verification issue
+          if (error.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+            // Clear auth data and redirect to email verification required page
+            localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+            
+            if (window.location.pathname !== "/email-verification-required") {
+              window.location.href = "/email-verification-required";
+            }
+            return Promise.reject(error);
+          }
+          break;
+        }
         case 401: {
           // Unauthorized - try to refresh token first
           if (!originalRequest._retry) {

@@ -9,17 +9,16 @@ import AuthModal from './components/feature/Auth/AuthModal.jsx'
 import Footer from './components/layout/Footer/Footer.jsx'
 import Sidebar from './components/layout/Sidebar/Sidebar.jsx'
 import Home from './pages/Home/Home.jsx'
+import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import NotFound from './pages/NotFound/NotFound.jsx'
 import AccountManagement from './pages/AccountManagement/AccountManagement.jsx'
 import AdsManagement from './pages/AdsManagement/AdsManagement.jsx'
 import ConnectPage from './pages/ConnectPage/ConnectPage.jsx'
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail.jsx'
 import ResetPassword from './pages/ResetPassword/ResetPassword.jsx'
+import Profile from './pages/Profile/Profile.jsx'
 import ScrollToTop from './utils/ScrollToTop.jsx'
 import { ROUTES, HEADER_ROUTES, AUTH_MODES } from './constants/app.constants'
-
-// Re-export useAuth for convenience
-export { useAuth } from './hooks/useAuth.js'
 
 // Layout cho trang Home (có Footer)
 function HomeLayout({ children }) {
@@ -30,6 +29,15 @@ function HomeLayout({ children }) {
       </main>
       <Footer />
     </>
+  )
+}
+
+// Layout không có Sidebar (Trang nào ko muốn dùng sidebar thì bọc nó vào)
+function NoSidebarLayout({ children }) {
+  return (
+    <main className="page-content">
+      {children}
+    </main>
   )
 }
 
@@ -75,8 +83,18 @@ function AppContent() {
           path={ROUTES.HOME}
           element={
             <HomeLayout>
-              <Home onStart={() => navigate(ROUTES.ACCOUNT_MANAGEMENT)} />
+              <Home onStart={() => navigate(ROUTES.DASHBOARD)} />
             </HomeLayout>
+          } 
+        />
+        <Route 
+          path={ROUTES.DASHBOARD}
+          element={
+            <ProtectedRoute>
+              <NoSidebarLayout>
+                <Dashboard />
+              </NoSidebarLayout>
+            </ProtectedRoute>
           } 
         />
         <Route 
@@ -126,6 +144,16 @@ function AppContent() {
           } 
         />
         <Route 
+          path={ROUTES.PROFILE}
+          element={
+            <ProtectedRoute>
+              <NoSidebarLayout>
+                <Profile />
+              </NoSidebarLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path={ROUTES.CONNECT}
           element={<ConnectPage />}
         />
@@ -147,7 +175,6 @@ function AppContent() {
             </AuthLayout>
           }
         />
-        
         <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
       </Routes>
 

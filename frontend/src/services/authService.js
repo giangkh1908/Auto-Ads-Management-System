@@ -19,6 +19,18 @@ class AuthService {
   }
 
   /**
+   * Login with Facebook
+   */
+  async loginWithFacebook(payload) {
+    try {
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.FACEBOOK_LOGIN, payload)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  /**
    * Register new user
    */
   async register(userData) {

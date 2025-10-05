@@ -23,10 +23,12 @@ export const TIMING = {
 // Route paths
 export const ROUTES = {
   HOME: '/',
+  DASHBOARD: '/dashboard',
   ACCOUNT_MANAGEMENT: '/account-management',
   ADS_MANAGEMENT: '/ads',
   REPORTS: '/reports',
   STATS: '/stats',
+  PROFILE: '/profile',
   CONNECT: '/connect',
   VERIFY_EMAIL: '/verify-email/:token',
   RESET_PASSWORD: '/reset-password/:token',
@@ -36,10 +38,12 @@ export const ROUTES = {
 // Valid routes for header display
 export const HEADER_ROUTES = [
   ROUTES.HOME,
+  ROUTES.DASHBOARD,
   ROUTES.ACCOUNT_MANAGEMENT,
   ROUTES.ADS_MANAGEMENT,
   ROUTES.REPORTS,
   ROUTES.STATS,
+  ROUTES.PROFILE,
 ]
 
 // Auth modes
