@@ -1,4 +1,4 @@
-import Shop from "../models/Shop.js";
+import Shop from "../models/shop.model.js";
 
 //  Tạo Shop
 export const createShop = async (req, res) => {

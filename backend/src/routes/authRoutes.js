@@ -1,40 +1,41 @@
-import express from 'express';
+import express from "express";
 import {
-    register,
-    login,
-    verifyEmail,
-    resendVerificationEmail,
-    forgotPassword,
-    resetPassword,
-    changePassword,
-    getCurrentUser,
-    updateProfile,
-    facebookLogin
-} from '../controllers/authControllers.js';
-import { authenticate } from '../middleware/auth.js';
-import { loginLimiter, registerLimiter, forgotPasswordLimiter, resendMailLimiter } from '../middleware/rateLimiter.js';
+  register,
+  login,
+  facebookLogin,
+  verifyEmail,
+  forgotPassword,
+  resetPassword,
+  refreshToken,
+  resendVerificationEmail,
+  getCurrentUser,
+  updateProfile,
+  logout,
+} from "../controllers/authControllers.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// Public routes
-router.post('/register', registerLimiter, register);
+// 🧾 Auth routes
+router.post("/register", register);
+router.post("/login", login);
+router.post("/facebook", facebookLogin);
+router.get("/verify/:token", verifyEmail);
 
-router.post('/login', loginLimiter, login);
+//Route xác nhận email
+router.get("/verify-email/:token", verifyEmail);
+router.post("/resend-verification", resendVerificationEmail);
 
-router.get('/verify-email/:token', verifyEmail);
+// 🔁 Token refresh + logout
+router.post("/refresh", refreshToken);
+router.post("/logout", authenticate, logout);
 
-router.post('/resend-verification', resendMailLimiter, resendVerificationEmail);
+// 🧠 Password management
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:token", resetPassword);
 
-router.post('/forgot-password', forgotPasswordLimiter, forgotPassword);
+// 👤 Profile
+router.get("/me", authenticate, getCurrentUser);
+router.put("/me", authenticate, updateProfile);
 
-router.post('/reset-password/:token', resendMailLimiter, resetPassword);
-router.post('/facebook-login', facebookLogin);
-
-// Protected routes
-router.use(authenticate); // Middleware này sẽ áp dụng cho tất cả routes bên dưới
-router.get('/me', getCurrentUser);
-
-router.put('/update-profile', updateProfile);
-
-router.post('/change-password', changePassword);
 export default router;

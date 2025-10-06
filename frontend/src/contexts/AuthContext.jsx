@@ -138,7 +138,7 @@ const loginWithFacebook = async (redirectTo = null) => {
     // 3) Gửi về backend
     const payload = {
       facebookId: profile.id,
-      name: profile.name,
+      full_name: profile.name,
       email: profile.email,
       accessToken,
     };
