@@ -1,6 +1,7 @@
 /* Layout container - sidebar is now global */
 .account-management-layout {
     display: block;
+    margin-top: -15px;
 }
 
 /* Content area */
@@ -31,12 +32,11 @@
     align-items: center;
     justify-content: space-between;
     padding: 6px 10px;
-    margin-bottom: 10px;
 }
 
 .account-management-header h3 {
-    font-size: 30px;
-    margin-top: 10px;
+    font-size: 25px;
+    margin-top: 1px;
 }
 
 .account-management-header p {
@@ -46,7 +46,7 @@
 
 .search-row {
     display: flex;
-    gap: 8px;
+    gap: 5px;
     align-items: center;
 }
 
@@ -60,7 +60,7 @@
     border: 1px solid #e5e7eb;
     cursor: pointer;
     color: #ffffff;
-    font-size: 15px;
+    font-size: 14px;
 }
 
 .search-input {
@@ -68,22 +68,22 @@
     padding: 10px 15px;
     border: 1px solid #e5e7eb;
     border-radius: 4px;
-    font-size: 15px;
+    font-size: 14px;
 }
 
-.btn-success {
+.add-account {
     background: #10b981;
     border-color: #10b981;
-    margin-top: 99.5px;;
+    margin-top: 80px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 15px;
+    padding: 10px 10px;
     border-radius: 4px;
     border: 1px solid #e5e7eb;
     cursor: pointer;
     color: #ffffff;
-    font-size: 15px;
+    font-size: 14px;
 }
 
 .table {
@@ -91,12 +91,20 @@
     border-collapse: collapse;
 }
 
-.table th, .table td {
+.table th {
     border-top: 1px solid #e5e7eb;
     border-bottom: 1px solid #e5e7eb;
     padding: 15px 20px;
     text-align: center;
-    font-size: 16px;
+    font-size: 15px;
+}
+
+.table td {
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 15px 20px;
+    text-align: center;
+    font-size: 13px;
 }
 
 .table thead {

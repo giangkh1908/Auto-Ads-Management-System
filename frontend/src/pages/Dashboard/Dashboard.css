@@ -28,7 +28,7 @@
 /* Content area */
 .dashboard-content {
     padding: 14px 0px;
-    margin-top: 60px;
+    margin-top: 55px;
 }
 
 /* Center content area */
@@ -52,23 +52,23 @@
     align-items: center;
 }
 
-.tab-button {
+.tab-button-dashboard {
     padding: 8px 20px;
     border: none;
     background: transparent;
     color: #6b7280;
-    font-size: 16px;
+    font-size: 14px;
     cursor: pointer;
     border-bottom: 2px solid transparent;
     /* transition: all 0.2s ease; */ /* Tắt animation */
     margin-left: 15px;
 }
 
-.tab-button:hover {
+.tab-button-dashboard:hover {
     color: #374151;
 }
 
-.tab-button.active {
+.tab-button-dashboard.active {
     color: #1f2937;
     border-bottom-color: #3b82f6;
     font-weight: 600;
@@ -80,17 +80,19 @@
     align-items: right;
     gap: 10px;
     margin-right: 10px;
+    margin-top: -7px;
 }
 
 .filter-dropdown {
-    padding: 8px 12px;
-    border: 1px solid #e5e7eb;
+    padding: 5px 10px;
+    border: 1px solid #bec0c5;
     border-radius: 4px;
     background: white;
     color: #374151;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
-    min-width: 120px;
+    height: 35px;
+    width: 140px;
 }
 
 .filter-dropdown:focus {
@@ -105,20 +107,20 @@
     align-items: center;
 }
 
-.search-input {
-    padding: 8px 36px 8px 12px;
-    border: 1px solid #e5e7eb;
+ .search-input-dashboard {
+    padding: 5px 10px 5px 10px;
     border-radius: 4px;
     font-size: 14px;
     width: 200px;
-    /* transition: all 0.2s ease; */ /* Tắt animation */
+    height: 23.5px;
+    border: 1px solid #bec0c5;
 }
-
-.search-input:focus {
+/*
+.search-input-dashboard:focus {
     outline: none;
     border-color: #3b82f6;
     width: 250px;
-}
+} */
 
 .search-button {
     position: absolute;
@@ -141,31 +143,31 @@
 .btn-refresh {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
+    gap: 5px;
+    padding: 5px 10px;
     background: #10b981;
     color: white;
     border: none;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     /* transition: background 0.2s ease; */ /* Tắt animation */
 }
 
 .btn-refresh:hover {
-    background: #059669;
+    background: #079d6e;
 }
 
 .btn-contribute {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
+    gap: 5px;
+    padding: 5px 10px;
     background: #3b82f6;
     color: white;
     border: none;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     /* transition: background 0.2s ease; */ /* Tắt animation */
 }
@@ -178,7 +180,12 @@
 .dashboard-content-body {
     padding: 0 10px;
     background-color: #e8e8e8;
-    height: 283%;
+    height: 100%;
+    position: relative;
+    min-height: 90vh;          /* ✅ Chiều cao bằng toàn màn hình */
+    width: 100%;                /* ✅ Chiếm hết chiều ngang */
+    padding: 10px;              /* có thể tùy chỉnh */
+    box-sizing: border-box;
 }
 
 .pages-grid {
@@ -192,7 +199,7 @@
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    padding: 15px;
+    padding: 10px;
     /* transition: all 0.2s ease; */ /* Tắt animation */
     cursor: pointer;
 }
@@ -233,7 +240,7 @@
 }
 
 .add-page-text {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
 }
 
@@ -242,11 +249,11 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    width: 260px;
+    width: 270px;
     height: 80px;
     margin-top: 20px;
-    padding: 15px;
-    background: #f8f9fa;
+    padding: 10px;
+    background: #ffffff;
     border-radius: 8px;
     border: 1px solid #e5e7eb;
 }
@@ -255,14 +262,14 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     width: 100%;
 }
 
 /* Avatar section with dark green background */
 .page-avatar-dashboard {
-    width: 65px;
-    height: 65px;
+    width: 60px;
+    height: 60px;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -271,9 +278,8 @@
 }
 
 .page-avatar-dashboard img {
-    width: 65px;
-    height: 65px;
-    
+    width: 60px;
+    height: 60px;
 }
 
 /* Text information section */
@@ -289,14 +295,14 @@
 .page-name-dashboard {
     margin: 0;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     color: #1f2937;
     line-height: 1.1;
 }
 
 .page-id-dashboard {
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
     color: #6b7280;
     font-weight: 300;
     display: flex;
@@ -311,7 +317,7 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    margin-top: 10px;
+    margin-top: 5px;
 }
 
 /* Left side: Facebook icon and follower count */

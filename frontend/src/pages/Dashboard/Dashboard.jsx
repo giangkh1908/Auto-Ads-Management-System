@@ -80,7 +80,7 @@ function Dashboard() {
                     <div className="dashboard-header">
                         <div className="dashboard-tabs">
                             <button 
-                                className={`tab-button ${activeTab === 'my-bots' ? 'active' : ''}`}
+                                className={`tab-button-dashboard ${activeTab === 'my-bots' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('my-bots')}
                             >
                             Page của tôi
@@ -113,7 +113,7 @@ function Dashboard() {
                             <div className="search-box">
                                 <input 
                                     type="text"
-                                    className="search-input"
+                                    className="search-input-dashboard"
                                     placeholder="Tìm kiếm"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}

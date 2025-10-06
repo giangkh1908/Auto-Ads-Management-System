@@ -58,6 +58,8 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
   REFRESH_TOKEN: 'refresh_token',
   USER_DATA: 'user_data',
+  FB_PAGES: 'fb_pages',
+  FB_AD_ACCOUNTS: 'fb_ad_accounts',
   THEME: 'theme',
 }
 

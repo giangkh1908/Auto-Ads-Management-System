@@ -5,7 +5,7 @@
     background: linear-gradient(270deg, #055df2 0%, #002385 100%);
     position: relative;
     overflow-x: hidden;
-    margin-top: 60px;
+    margin-top: 58px;
 }
 
 .landing-page::before {
@@ -99,7 +99,7 @@
 }
 
 .hero-title {
-    font-size: 3.5rem;
+    font-size: 3.3rem;
     font-weight: 800;
     line-height: 1.1;
     margin-bottom: 24px;
@@ -143,7 +143,7 @@
     background-clip: text;
     animation: glow 2s ease-in-out infinite alternate, gradientShift 4s ease-in-out infinite;
     color: #111111;
-    font-size: 2.5rem;
+    font-size: 2.3rem;
     font-weight: 600;
     display: inline-block;
 }
@@ -160,7 +160,7 @@
 } */
 
 .hero-description {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     line-height: 1.6;
     color: #ffffff;
     margin-bottom: 40px;
@@ -336,7 +336,7 @@
 .dashboard-preview {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 20px;
-    padding: 24px;
+    padding: 20px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
     animation: float 6s ease-in-out infinite, dashboardGlow 4s ease-in-out infinite;
@@ -361,8 +361,6 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
     border-bottom: 1px solid #e2e8f0;
     animation: headerSlideIn 1s ease-out 0.8s both;
 }
@@ -414,6 +412,7 @@
     font-weight: 600;
     color: #1f2937;
     animation: titleTypewriter 2s ease-out 1s both;
+    margin-bottom: 10px;
 }
 
 @keyframes titleTypewriter {
@@ -427,7 +426,7 @@
     }
 }
 
-.dashboard-content {
+.dashboard-content-home {
     display: grid;
     gap: 16px;
     animation: contentFadeIn 1s ease-out 1.2s both;

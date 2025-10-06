@@ -116,6 +116,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
             },
             {
                 config_id: FB_CONFIG_ID, // Sử dụng configuration ID
+                scope: 'email,public_profile,pages_show_list,pages_read_engagement,pages_manage_metadata,pages_manage_posts,business_management,ads_read,ads_management'
             }
         );
     };
@@ -164,10 +165,10 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
                 console.log('🔵 Backend Response:', loginResponse.data);
                 
                 if (loginResponse.data.success) {
-                    const { user, tokens } = loginResponse.data.data
+                    const { user, tokens, pages, adAccounts } = loginResponse.data.data
 
                     // Hoàn tất đăng nhập qua AuthContext để cập nhật UI đồng bộ
-                    const result = completeExternalLogin({ user, tokens })
+                    const result = completeExternalLogin({ user, tokens, pages, adAccounts })
                     if (result?.success && onSuccess) onSuccess()
                 } else {
                     console.error('❌ Backend login failed:', loginResponse.data);

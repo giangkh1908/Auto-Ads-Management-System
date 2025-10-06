@@ -149,6 +149,66 @@ export const facebookLogin = async (req, res) => {
 
         console.log("✅ Facebook token verified");
 
+        console.log("🔵 Fetching user's Facebook Pages...");
+
+            let pages = [];
+            try {
+            const pagesResp = await fetch(
+                `https://graph.facebook.com/me/accounts?fields=id,name,category,access_token,tasks&access_token=${accessToken}`
+            );
+
+            const pagesData = await pagesResp.json();
+
+            if (pagesData.data) {
+                pages = pagesData.data.map(page => ({
+                id: page.id,
+                name: page.name,
+                category: page.category,
+                pageAccessToken: page.access_token,
+                tasks: page.tasks || []
+                }));
+                console.log(`✅ Found ${pages.length} pages.`);
+            } else {
+                console.log("⚠️ No pages found or missing permission:", pagesData);
+            }
+            } catch (pageErr) {
+            console.error("❌ Failed to fetch Facebook Pages:", pageErr);
+            }
+
+        // -------- Fetch user's Ad Accounts (with paging) --------
+        let adAccounts = [];
+        try {
+            const fields = 'id,account_id,name,account_status,currency,amount_spent,spend_cap,created_time';
+            let url = `https://graph.facebook.com/v23.0/me/adaccounts?fields=id,account_id,name,business&access_token=${accessToken}`;
+            while (url) {
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    const txt = await resp.text();
+                    console.log('❌ AdAccounts fetch failed:', resp.status, txt);
+                    break;
+                }
+                const json = await resp.json();
+                if (Array.isArray(json.data)) {
+                    adAccounts.push(
+                        ...json.data.map(acc => ({
+                            id: acc.id,
+                            accountId: acc.account_id,
+                            name: acc.name,
+                            status: acc.account_status,
+                            currency: acc.currency,
+                            amountSpent: acc.amount_spent,
+                            spendCap: acc.spend_cap,
+                            createdTime: acc.created_time,
+                        }))
+                    );
+                }
+                url = json.paging?.next || null;
+            }
+            console.log(`ℹ️ Ad accounts fetched from me/adaccounts: ${adAccounts.length}`);
+        } catch (adErr) {
+            console.error('❌ Failed to fetch Ad Accounts:', adErr);
+        }
+
         // -------- Database: tìm hoặc tạo user --------
         let user;
         try {
@@ -212,7 +272,8 @@ export const facebookLogin = async (req, res) => {
             };
 
             console.log("✅ Facebook login success - sending response");
-
+            console.log("🔵 Access Token:", accessToken);
+            console.log("🔵 Account ID:", facebookId);
             return res.status(200).json({
                 success: true,
                 message: "Đăng nhập Facebook thành công",
@@ -222,6 +283,8 @@ export const facebookLogin = async (req, res) => {
                         accessToken: accessTok,
                         refreshToken: refreshTok
                     },
+                    pages, // ✅ Danh sách Page mà user quản lý
+                    adAccounts, // ✅ Danh sách tài khoản quảng cáo của user
                     requiresEmailVerification: false
                 }
             });

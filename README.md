@@ -22,9 +22,9 @@ A modern, full-stack application for managing Facebook advertising campaigns wit
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React 19** - Modern React with hooks
+- **React 18** - Modern React with hooks
 - **Vite** - Fast build tool and dev server
-- **CSS3** - Custom styling with modern features (Grid, Flexbox, Animations)
+- **CSS** - Custom styling with modern features (Grid, Flexbox, Animations)
 - **ES6+** - Modern JavaScript features
 
 ### Backend

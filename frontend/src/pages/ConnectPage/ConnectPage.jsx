@@ -1,42 +1,52 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './ConnectPage.css'
-import avatar_1 from '../../assets/2lightInSide.jpg'
-import avatar_2 from '../../assets/vibestone.png'
+import { useAuth } from '../../hooks/useAuth'
+import { useToast } from '../../hooks/useToast'
 // import { handleSelectAllWithFilter, handleSelectItemWithFilter } from '../../utils/selectionUtils'
 
 
 function ConnectPage() {
   const navigate = useNavigate()
+  const { fbPages } = useAuth()
+  const toast = useToast()
+  const [connectedPageIds, setConnectedPageIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem('fb_connected_pages')
+      const arr = raw ? JSON.parse(raw) : []
+      return Array.isArray(arr) ? arr.map(p => p.id) : []
+    } catch {
+      return []
+    }
+  })
   const [selectedPages, setSelectedPages] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('status')
   const [selectAll, setSelectAll] = useState(false)
   
-
-  //Cấu hình data tĩnh
-  const [pages] = useState([
-    {
-      id: 1,
-      name: '2Light in Side',
-      avatar: avatar_1,
-      link: 'https://www.facebook.com/profile.php?id=61558960906468#',
-      role: 'ADMIN',
-      status: 'Chưa kết nối',
-      connectedBy: null,
-      isSelected: false
-    },
-    {
-      id: 2,
-      name: 'Vibestone',
-      avatar: avatar_2,
-      link: 'https://www.facebook.com/profile.php?id=61576311766928#',
-      role: 'EDITOR',
-      status: 'Đã kết nối',
-      connectedBy: 'Nguyễn Thành Long',
-      isSelected: true
+  // Chuẩn hóa dữ liệu page từ AuthContext
+  const pages = useMemo(() => {
+    const deriveRole = (tasks = []) => {
+      const normalized = new Set((tasks || []).map(t => String(t).toUpperCase()))
+      // Priority from highest to lowest
+      if (normalized.has('ADMINISTER') || normalized.has('MANAGE')) return 'ADMIN'
+      if (normalized.has('CREATE_CONTENT')) return 'EDITOR'
+      if (normalized.has('MODERATE')) return 'MODERATOR'
+      if (normalized.has('ADVERTISE')) return 'ADVERTISER'
+      if (normalized.has('ANALYZE')) return 'ANALYST'
+      return 'PAGE'
     }
-  ])
+    return (fbPages || []).map(p => ({
+      id: p.id,
+      name: p.name,
+      avatar: `https://graph.facebook.com/${p.id}/picture?type=square`,
+      link: `https://www.facebook.com/${p.id}`,
+      role: deriveRole(p.tasks),
+      status: connectedPageIds.includes(p.id) ? 'Đã kết nối' : 'Chưa kết nối',
+      connectedBy: null,
+      isSelected: false,
+    }))
+  }, [fbPages, connectedPageIds])
 
   //Đếm số page đã kết nối và còn lại
   const connectedCount = pages.filter(page => page.status === 'Đã kết nối').length
@@ -82,7 +92,22 @@ function ConnectPage() {
 
   //Xử lý kết nối các page đã chọn
   const handleConnectSelected = () => {
-    // Logic kết nối các page đã chọn
+    const selected = pages.filter(p => selectedPages.includes(p.id))
+    if (selected.length === 0) return
+    try {
+      // Lưu tạm các page đã kết nối (có thể thay bằng API trong tương lai)
+      const existingRaw = localStorage.getItem('fb_connected_pages')
+      const existing = existingRaw ? JSON.parse(existingRaw) : []
+      const mergedMap = new Map()
+      ;[...existing, ...selected].forEach(p => mergedMap.set(p.id, p))
+      const merged = Array.from(mergedMap.values())
+      localStorage.setItem('fb_connected_pages', JSON.stringify(merged))
+      setConnectedPageIds(merged.map(p => p.id))
+      toast.success(`Đã kết nối ${selected.length} page`)
+      navigate('/account-management')
+    } catch {
+      toast.error('Không thể lưu kết nối, vui lòng thử lại')
+    }
   }
 
   //Xử lý làm mới kết nối
@@ -128,6 +153,12 @@ function ConnectPage() {
 
         {/* Page Management Section */}
         <div className="page-management-container">
+          {pages.length === 0 ? (
+            <div className="empty-state">
+              <p>Không có Page nào để hiển thị. Hãy đăng nhập Facebook và cấp quyền phù hợp.</p>
+            </div>
+          ) : (
+          <>
           {/* Search and Filter Bar */}
           <div className="search-filter-bar">
             <div className="search-section">
@@ -233,6 +264,8 @@ function ConnectPage() {
               Kết nối {selectedPages.length}
             </button>
           </div>
+          </>
+          )}
         </div>
             
         {/* Help Section */}

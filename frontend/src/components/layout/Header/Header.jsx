@@ -90,7 +90,7 @@ function Header({ onLoginClick}) {
                                     onClick={() => toggleMenu("user")}
                                     style={{ cursor: "pointer" }}
                                 >
-                                    Xin chào, <strong>{user?.name}</strong> ▼
+                                    <strong className="user-name-header">Xin chào, {user?.name} ▼</strong> 
                                 </span>
                                 {openMenu === "user" && (
                                     <ul className="dropdown-name">
