@@ -582,31 +582,17 @@ export const resetPassword = async (req, res) => {
                 message: 'Mật khẩu mới là bắt buộc'
             });
         }
-        
-        // Lấy user với password cũ
-        const user = await User.findById(req.user.id).select('+password');
-        
-        // Kiểm tra xem mật khẩu mới có trùng với mật khẩu cũ không
-        const isCurrentPasswordValid = await user.comparePassword(password);
-
-        if (!isCurrentPasswordValid) {
-            return res.status(400).json({
-                success: false,
-                message: 'Mật khẩu mới không được trùng với mật khẩu cũ'
-            });
-        }
-
         // Hash token
         const hashedToken = crypto
             .createHash('sha256')
             .update(token)
             .digest('hex');
         
-        // Tìm người dùng với token đặt lại mật khẩu hợp lệ
-        user = await User.findOne({
+        // Tìm người dùng với token đặt lại mật khẩu hợp lệ (cần mật khẩu để so sánh)
+        let user = await User.findOne({
             passwordResetToken: hashedToken,
             passwordResetExpires: { $gt: Date.now() }
-        });
+        }).select('+password');
                     
         if (!user) {
             // Kiểm tra xem token có tồn tại nhưng hết hạn chưa?
@@ -629,6 +615,15 @@ export const resetPassword = async (req, res) => {
             });
         }
         
+        // Kiểm tra xem mật khẩu mới có trùng với mật khẩu cũ không
+        const isSameAsOld = await user.comparePassword(password);
+        if (isSameAsOld) {
+            return res.status(400).json({
+                success: false,
+                message: 'Mật khẩu mới không được trùng với mật khẩu cũ'
+            });
+        }
+
         // Cập nhật mật khẩu mới
         user.password = password;
         user.passwordResetToken = undefined;

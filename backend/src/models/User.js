@@ -13,7 +13,9 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: [true, "Mật khẩu là bắt buộc"],
+            required: function() {
+                return this.provider === 'local';
+            },
             minlength: [6, "Mật khẩu phải có ít nhất 6 ký tự"],
             select: false //Không trả về password khi query
         },
@@ -84,8 +86,8 @@ userSchema.virtual('isLocked').get(function() {
 
 // Tạo hash_password trước khi lưu vào DB
 userSchema.pre('save', async function(next) {
-    // Chỉ hash password nếu nó được modify
-    if (!this.isModified('password')) return next();
+    // Chỉ hash password nếu nó được modify và tồn tại
+    if (!this.isModified('password') || !this.password) return next();
     
     try {
         // Hash password với cost 12

@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../../../hooks/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
+import axios from 'axios'
+import { toast } from 'sonner'
 import './LoginForm.css'
 
 function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
@@ -10,8 +12,13 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     const [errors, setErrors] = useState({})
     const [showVerificationForm, setShowVerificationForm] = useState(false)
     const [userEmail, setUserEmail] = useState('')
+    const [fbLoading, setFbLoading] = useState(false)
     
-    const { login, loginWithFacebook, loading } = useAuth()
+    const { login, loading, completeExternalLogin } = useAuth()
+    
+    // Facebook Business Login Configuration
+    const FB_CONFIG_ID = '812719094956340'
+    const API_BASE_URL = 'http://localhost:5001' // Backend URL
 
     const validateForm = () => {
         const newErrors = {}
@@ -55,11 +62,138 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
         setUserEmail('')
     }
 
-    const startFacebookLogin = async () => {
-        if (loading) return
-        const result = await loginWithFacebook()
-        if (result.success && onSuccess) onSuccess()
-    }
+    // Khởi tạo Facebook SDK
+    useEffect(() => {
+        const initFacebookSDK = () => {
+            if (window.FB) return; // Đã được tải rồi
+
+            window.fbAsyncInit = function() {
+                window.FB.init({
+                    appId: '1445692036729400', // App ID từ Facebook Developer
+                    cookie: true,
+                    xfbml: true,
+                    version: 'v23.0'
+                });
+                console.log('✅ Facebook SDK initialized');
+            };
+
+            // Load Facebook SDK script
+            (function(d, s, id) {
+                var js, fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
+                js = d.createElement(s); 
+                js.id = id;
+                js.src = "https://connect.facebook.net/en_US/sdk.js";
+                fjs.parentNode.insertBefore(js, fjs);
+            }(document, 'script', 'facebook-jssdk'));
+        };
+
+        initFacebookSDK();
+    }, []);
+
+    // Facebook Business Login Handler
+    const handleFacebookBusinessLogin = () => {
+        setFbLoading(true);
+        
+        if (!window.FB) {
+            toast.error('Facebook SDK chưa được tải');
+            setFbLoading(false);
+            return;
+        }
+
+        // Sử dụng FB.login với config_id cho Business Login
+        window.FB.login(
+            function(response) {
+                console.log('Facebook Business Login Response:', response);
+                
+                if (response.status === 'connected') {
+                    // Xử lý khi đăng nhập thành công
+                    handleFacebookLoginSuccess(response);
+                } else {
+                    console.log('User cancelled login or did not fully authorize.');
+                    setFbLoading(false);
+                }
+            },
+            {
+                config_id: FB_CONFIG_ID, // Sử dụng configuration ID
+            }
+        );
+    };
+
+    // Xử lý khi Facebook login thành công - thêm chi tiết logging
+    const handleFacebookLoginSuccess = async (response) => {
+        try {
+            const { authResponse } = response;
+            console.log("🔵 Facebook Auth Response:", authResponse);
+            
+            // Sử dụng fetch để tránh warning về access token
+            const fbResponse = await fetch(
+                `https://graph.facebook.com/me?access_token=${authResponse.accessToken}&fields=id,name,email`
+            );
+            const userInfo = await fbResponse.json();
+            
+            console.log('🔵 Facebook User Info:', userInfo);
+            
+            if (userInfo.error) {
+                console.error('❌ Facebook API Error:', userInfo.error);
+                toast.error('Không thể lấy thông tin từ Facebook');
+                setFbLoading(false);
+                return;
+            }
+            
+            try {
+                console.log('🔵 Calling backend API...');
+                
+                // Gọi API backend với timeout
+                const loginResponse = await axios.post(
+                    `${API_BASE_URL}/api/auth/facebook-login`, 
+                    {
+                        facebookId: userInfo.id,
+                        name: userInfo.name,
+                        email: userInfo.email,
+                        accessToken: authResponse.accessToken
+                    },
+                    {
+                        timeout: 15000, // 15 seconds timeout
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                
+                console.log('🔵 Backend Response:', loginResponse.data);
+                
+                if (loginResponse.data.success) {
+                    const { user, tokens } = loginResponse.data.data
+
+                    // Hoàn tất đăng nhập qua AuthContext để cập nhật UI đồng bộ
+                    const result = completeExternalLogin({ user, tokens })
+                    if (result?.success && onSuccess) onSuccess()
+                } else {
+                    console.error('❌ Backend login failed:', loginResponse.data);
+                    toast.error(loginResponse.data.message || 'Đăng nhập thất bại');
+                }
+            } catch (error) {
+                console.error('❌ Backend login error:', error);
+                
+                if (error.code === 'ECONNABORTED') {
+                    toast.error('Kết nối tới server quá lâu, vui lòng thử lại');
+                } else if (error.response?.status === 500) {
+                    toast.error('Lỗi server, vui lòng thử lại sau');
+                } else {
+                    console.error('❌ Error response:', error.response?.data);
+                    toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi đăng nhập');
+                }
+            }
+            
+        } catch (error) {
+            console.error('❌ Facebook login error:', error);
+            toast.error('Có lỗi xảy ra khi đăng nhập Facebook');
+        } finally {
+            setFbLoading(false);
+        }
+    };
+
 
     // Nếu đang hiển thị form xác thực email
     if (showVerificationForm) {
@@ -71,12 +205,12 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
             />
         )
     }
-
+    
     return (
         <form className="auth-form" onSubmit={handleSubmit}>
-            <button type="button" className="btn-fb" onClick={startFacebookLogin}>
+            <button type="button" className="btn-fb" onClick={handleFacebookBusinessLogin} disabled={fbLoading}>
                 <span className="fb-icon">f</span>
-                Đăng nhập với Facebook
+                {fbLoading ? 'Đang xử lý...' : 'Đăng nhập với Facebook'}
             </button>
 
             <div className="form-sep">Hoặc</div>
