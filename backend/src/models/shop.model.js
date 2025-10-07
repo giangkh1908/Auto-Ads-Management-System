@@ -19,19 +19,25 @@ const shopSchema = new mongoose.Schema(
       enum: ["active", "inactive", "pending", "banned"],
       default: "active",
     },
-    connected_status: {
-      type: String,
-      enum: ["connected", "disconnected", "error"],
-      default: "connected",
-    },
-    facebook_page_id: { type: String, sparse: true, trim: true },
-    facebook_page_token: { type: String, select: false },
-    page_info: {
-      name: String,
-      category: String,
-      link: String,
-      picture_url: String,
-    },
+    facebook_pages: [
+      {
+        page_id: { type: String, trim: true, required: true },
+        page_token: { type: String, select: false },
+        page_info: {
+          name: String,
+          category: String,
+          link: String,
+          picture_url: String,
+        },
+        connected_status: {
+          type: String,
+          enum: ["connected", "disconnected", "error"],
+          default: "connected",
+        },
+        connected_at: { type: Date, default: Date.now },
+        last_synced_at: { type: Date, default: null },
+      },
+    ],
     platform: {
       type: String,
       enum: ["facebook", "tiktok", "google"],
