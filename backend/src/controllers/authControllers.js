@@ -6,6 +6,7 @@ import { generateTokens, verifyRefreshToken } from "../utils/jwt.js";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../services/emailService.js";
 
 // 🔹 Đăng ký tài khoản
+// 🔹 Đăng ký tài khoản
 export const register = async (req, res) => {
   try {
     const { full_name, email, password, phone } = req.body;
@@ -84,6 +85,7 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
+// 🔹 Đăng nhập
 // 🔹 Đăng nhập
 export const login = async (req, res) => {
   try {
@@ -170,6 +172,7 @@ export const refreshToken = async (req, res) => {
 };
 
 // 🔹 Quên mật khẩu
+// 🔹 Quên mật khẩu
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -189,6 +192,7 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
+// 🔹 Đặt lại mật khẩu
 // 🔹 Đặt lại mật khẩu
 export const resetPassword = async (req, res) => {
   try {
@@ -219,6 +223,7 @@ export const getCurrentUser = async (req, res) => {
   res.status(200).json({ success: true, data: { user } });
 };
 
+// 🔹 Cập nhật profile
 // 🔹 Cập nhật profile
 export const updateProfile = async (req, res) => {
   try {

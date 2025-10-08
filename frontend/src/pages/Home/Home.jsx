@@ -53,7 +53,7 @@ function Home({ onLoginClick }) {
                                 </div>
                                 <div className="dashboard-title">Facebook Ads Dashboard</div>
                             </div>
-                            <div className="dashboard-content">
+                            <div className="dashboard-content-home">
                                 <div className="metric-card">
                                     <div className="metric-value">10.000.000 VNĐ</div>
                                     <div className="metric-label">Doanh thu hôm nay</div>

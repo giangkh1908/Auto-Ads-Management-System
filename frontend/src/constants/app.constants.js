@@ -29,6 +29,7 @@ export const ROUTES = {
   REPORTS: '/reports',
   STATS: '/stats',
   PROFILE: '/profile',
+  SETTINGS: '/settings',
   CONNECT: '/connect',
   VERIFY_EMAIL: '/verify-email/:token',
   RESET_PASSWORD: '/reset-password/:token',
@@ -44,6 +45,7 @@ export const HEADER_ROUTES = [
   ROUTES.REPORTS,
   ROUTES.STATS,
   ROUTES.PROFILE,
+  ROUTES.SETTINGS,
 ]
 
 // Auth modes
@@ -58,6 +60,8 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
   REFRESH_TOKEN: 'refresh_token',
   USER_DATA: 'user_data',
+  FB_PAGES: 'fb_pages',
+  FB_AD_ACCOUNTS: 'fb_ad_accounts',
   THEME: 'theme',
 }
 

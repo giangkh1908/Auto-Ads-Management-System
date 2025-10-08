@@ -20,10 +20,10 @@ function Register({ onSwitchLogin }) {
     const validateForm = () => {
         const newErrors = {}
         
-        if (!formData.full_name.trim()) {
-            newErrors.full_name = 'Họ và tên là bắt buộc'
-        } else if (formData.full_name .length < 2) {
-            newErrors.full_name = 'Họ và tên phải có ít nhất 2 ký tự'
+        if (!formData.name.trim()) {
+            newErrors.name = 'Họ và tên là bắt buộc'
+        } else if (formData.name.length < 2) {
+            newErrors.name = 'Họ và tên phải có ít nhất 2 ký tự'
         }
         
         if (!formData.email.trim()) {
@@ -93,11 +93,11 @@ function Register({ onSwitchLogin }) {
                     <div className="input-icon">👤</div>
                     <input 
                         placeholder="Họ và tên" 
-                        value={formData.full_name} 
-                        onChange={(e) => handleInputChange('full_name', e.target.value)}
-                        className={errors.full_name ? 'error' : ''}
+                        value={formData.name} 
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        className={errors.name ? 'error' : ''}
                     />
-                    {errors.full_name && <div className="error-message">{errors.full_name}</div>}
+                    {errors.name && <div className="error-message">{errors.name}</div>}
                 </div>
                 
                 <div className="input-group">

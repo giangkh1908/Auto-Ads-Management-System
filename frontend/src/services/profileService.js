@@ -2,9 +2,30 @@ import axiosInstance from '../utils/axios'
 
 const PROFILE_ENDPOINTS = {
   GET_PROFILE: '/api/auth/me',
-  UPDATE_PROFILE: '/api/auth/update-profile',
-  CHANGE_PASSWORD: '/api/auth/change-password',
-  UPLOAD_AVATAR: '/api/auth/upload-avatar'
+  UPDATE_PROFILE: '/api/auth/me',
+}
+
+// Xử lý lỗi chuẩn cho service
+function handleError(error) {
+  return error
+}
+
+// Chuẩn hóa payload gửi lên backend theo schema của API
+function buildUpdatePayload(input) {
+  const payload = {}
+  if (input?.full_name) payload.full_name = input.full_name
+  if (input?.phone) payload.phone = input.phone
+
+  // country là field cấp cao nhất trong user.model.js
+  if (typeof input?.country === 'string') payload.country = input.country
+
+  // profile: address, bio
+  const profile = {}
+  // if (typeof input?.profile?.address === 'string') profile.address = input.profile.address
+  // if (typeof input?.profile?.bio === 'string') profile.bio = input.profile.bio
+  if (Object.keys(profile).length > 0) payload.profile = profile
+
+  return payload
 }
 
 export const profileService = {
@@ -14,46 +35,20 @@ export const profileService = {
       const response = await axiosInstance.get(PROFILE_ENDPOINTS.GET_PROFILE)
       return response.data
     } catch (error) {
-      throw this.handleError(error)
+      throw handleError(error)
     }
   },
 
   // Cập nhật thông tin profile
   updateProfile: async (profileData) => {
     try {
-      const response = await axiosInstance.put(PROFILE_ENDPOINTS.UPDATE_PROFILE, profileData)
+      const payload = buildUpdatePayload(profileData)
+      const response = await axiosInstance.put(PROFILE_ENDPOINTS.UPDATE_PROFILE, payload)
       return response.data
     } catch (error) {
-      throw this.handleError(error)
+      throw handleError(error)
     }
   },
-
-  // Đổi mật khẩu
-  changePassword: async (passwordData) => {
-    try {
-      const response = await axiosInstance.post(PROFILE_ENDPOINTS.CHANGE_PASSWORD, passwordData)
-      return response.data
-    } catch (error) {
-      throw this.handleError(error)
-    }
-  },
-
-  // Upload avatar
-  uploadAvatar: async (avatarFile) => {
-    try {
-      const formData = new FormData()
-      formData.append('avatar', avatarFile)
-      
-      const response = await axiosInstance.post(PROFILE_ENDPOINTS.UPLOAD_AVATAR, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-      return response.data
-    } catch (error) {
-      throw this.handleError(error)
-    }
-  }
 }
 
 export default profileService

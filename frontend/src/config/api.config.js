@@ -10,19 +10,19 @@ const API_CONFIG = {
 
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: `${API_CONFIG.BASE_URL}/api/auth/login`,
-    REGISTER: `${API_CONFIG.BASE_URL}/api/auth/register`,
-    LOGOUT: `${API_CONFIG.BASE_URL}/api/auth/logout`,
-    FACEBOOK_LOGIN: `${API_CONFIG.BASE_URL}/api/auth/facebook-login`,
-    VERIFY_EMAIL: (token) => `${API_CONFIG.BASE_URL}/api/auth/verify-email/${token}`,
-    RESEND_VERIFICATION: `${API_CONFIG.BASE_URL}/api/auth/resend-verification`,
-    FORGOT_PASSWORD: `${API_CONFIG.BASE_URL}/api/auth/forgot-password`,
-    RESET_PASSWORD: (token) => `${API_CONFIG.BASE_URL}/api/auth/reset-password/${token}`,
-    REFRESH_TOKEN: `${API_CONFIG.BASE_URL}/api/auth/refresh-token`,
-    ME: `${API_CONFIG.BASE_URL}/api/auth/me`,
-    CHANGE_PASSWORD: `${API_CONFIG.BASE_URL}/api/auth/change-password`, // có thể thêm nếu backend hỗ trợ
+    LOGIN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/login`,
+    REGISTER: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/register`,
+    LOGOUT: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/logout`,
+    FACEBOOK_LOGIN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/facebook`,
+    VERIFY_EMAIL: (token) => `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/verify-email/${token}`,
+    RESEND_VERIFICATION: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/resend-verification`,
+    FORGOT_PASSWORD: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/forgot-password`,
+    RESET_PASSWORD: (token) => `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/reset-password/${token}`,
+    ME: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/me`,
+    REFRESH_TOKEN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/refresh`,
+    CHANGE_PASSWORD: `${API_CONFIG.BASE_URL}/api/auth/change-password`, // Cái này chưa có backend
   },
-
+  
   USERS: {
     LIST: `${API_CONFIG.BASE_URL}/api/users`,
     DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}`,
@@ -57,6 +57,13 @@ export const API_ENDPOINTS = {
     DELETE: (id) => `${API_CONFIG.BASE_URL}/api/shops/${id}`,
   },
 
+  SHOP_FACEBOOK: {
+    PAGES: `${API_CONFIG.BASE_URL}/api/shops/facebook/pages`,
+    CONNECT: `${API_CONFIG.BASE_URL}/api/shops/facebook/connect`,
+    DISCONNECT: `${API_CONFIG.BASE_URL}/api/shops/facebook/disconnect`,
+    REFRESH_TOKEN: `${API_CONFIG.BASE_URL}/api/shops/facebook/refresh-token`,
+  },
+
   SHOP_USERS: {
     LIST: `${API_CONFIG.BASE_URL}/api/shop-users`,
     DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/shop-users/${id}`,
@@ -64,6 +71,30 @@ export const API_ENDPOINTS = {
     UPDATE: (id) => `${API_CONFIG.BASE_URL}/api/shop-users/${id}`,
     DELETE: (id) => `${API_CONFIG.BASE_URL}/api/shop-users/${id}`,
   },
+
+
+
+  // API AD chưa có
+  // Campaign endpoints
+  // CAMPAIGNS: {
+  //   CREATE: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/create-campaign`,
+  //   LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns`,
+  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
+  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
+  // },
+  
+  // // AdSet endpoints
+  // ADSETS: {
+  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
+  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
+  // },
+  
+  // // Ad endpoints
+  // ADS: {
+  //   STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/status`,
+  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
+  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
+  // },
 }
 
 export default API_CONFIG

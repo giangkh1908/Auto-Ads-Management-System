@@ -3,32 +3,37 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../hooks/useToast'
 import profileService from '../../services/profileService'
 import './Profile.css'  
-import avatar from '../../assets/home.jpg';
+import { getNames } from "country-list";
 
+import no_avatar from '../../assets/home.jpg';
 
 function Profile() {
   const { user, updateUser } = useAuth()
   const toast = useToast()
+  const countries = getNames();
   
   const [activeTab, setActiveTab] = useState('update')
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     _id: '',
-    name: '',
+    full_name: '',
     email: '',
     phone: '',
+    username: '',
+    country: '',
     profile: {
-      country: '',
-      gender: ''
+      address: '',
+      bio: ''
     }
   })
 
+  //Hiển thị pass
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   })
-
+  //Ẩn pass
   const [showPassword, setShowPassword] = useState({
     currentPassword: false,
     newPassword: false,
@@ -40,21 +45,25 @@ function Profile() {
     if (user) {
       setFormData({
         _id: user._id || '',
-        name: user.name || '',
+        full_name: user.full_name || '',
         email: user.email || '',
         phone: user.phone || '',
+        username: user.username || '',
+        country: user.country || '',
         profile: {
-          country: user.profile?.country || '',
-          gender: user.profile?.gender || ''
+          avatar: user.avatar || '',
+          address: user.profile?.address || '',
+          bio: user.profile?.bio || ''
         }
       })
     }
   }, [user])
 
+  //Xử lý thay đổi data trong form
   const handleInputChange = (e) => {
     const { name, value } = e.target
     
-    if (name === 'country' || name === 'gender') {
+    if (name === 'address' || name === 'bio') {
       setFormData(prev => ({
         ...prev,
         profile: {
@@ -62,14 +71,15 @@ function Profile() {
           [name]: value
         }
       }))
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }))
+      return
     }
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
   }
 
+  // Xử lý đổi mật khẩu
   const handlePasswordChange = (e) => {
     const { name, value } = e.target
     setPasswordData(prev => ({
@@ -78,6 +88,7 @@ function Profile() {
     }))
   }
 
+  //Ẩn/hiện mật khẩu
   const togglePasswordVisibility = (field) => {
     setShowPassword(prev => ({
       ...prev,
@@ -172,7 +183,7 @@ function Profile() {
             <div className="avatar-section">
               <div className="avatar-circle">
                 <img 
-                  src= {avatar}
+                  src= {user?.avatar || no_avatar}
                   alt="Profile Avatar"
                 />
               </div>
@@ -181,12 +192,12 @@ function Profile() {
             {/* Profile Form */}
             <form className="profile-form" onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="name">Họ tên của bạn</label>
+                <label htmlFor="full_name">Họ tên của bạn</label>
                 <input
                   type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
+                  id="full_name"
+                  name="full_name"
+                  value={formData.full_name}
                   onChange={handleInputChange}
                   className="form-input"
                 />
@@ -199,7 +210,7 @@ function Profile() {
                     type="text"
                     id="username"
                     name="username"
-                    value={formData._id}
+                    value={formData.username}
                     onChange={handleInputChange}
                     className="form-input"
                     readOnly
@@ -242,38 +253,36 @@ function Profile() {
                   onChange={handleInputChange}
                   className="form-select"
                 >
-                  <option value="Việt Nam">Việt Nam</option>
-                  <option value="USA">USA</option>
-                  <option value="Japan">Japan</option>
-                  <option value="Korea">Korea</option>
+                  <option value="">-- Chọn quốc gia --</option>
+                  {countries.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Giới tính</label>
-                <div className="radio-group">
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="gender"
-                      value="male"
-                      checked={formData.gender === 'male'}
-                      onChange={handleInputChange}
-                    />
-                    <span>Anh</span>
-                  </label>
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="gender"
-                      value="female"
-                      checked={formData.gender === 'female'}
-                      onChange={handleInputChange}
-                    />
-                    <span>Chị</span>
-                  </label>
-                </div>
-              </div>
+              {/* <div className="form-group">
+                <label htmlFor="address">Địa chỉ</label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={formData.profile?.address}
+                  onChange={handleInputChange}
+                  className="form-input"
+                />
+              </div> */}
+
+              {/* <div className="form-group">
+                <label htmlFor="bio">Giới thiệu</label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  value={formData.profile?.bio}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  rows={3}
+                />
+              </div> */}
 
               <button type="submit" className="submit-button" disabled={loading}>
                 {loading ? 'Đang lưu...' : 'Lưu'}
@@ -283,7 +292,7 @@ function Profile() {
         )}
 
   {/* Đổi mật khẩu */}
-        {activeTab === 'password' && (
+  {activeTab === 'password' && (
           <div className="profile-content">
             <form className="profile-form password-form" onSubmit={handlePasswordSubmit}>
               <div className="form-group">
@@ -360,7 +369,7 @@ function Profile() {
         )}
       </div>
     </div>
-    </div>
+  </div>
   )
 }
 

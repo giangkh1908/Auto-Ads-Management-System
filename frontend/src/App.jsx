@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary.jsx'
 import ProtectedRoute from './components/common/ProtectedRoute/ProtectedRoute.jsx'
@@ -17,55 +17,14 @@ import ConnectPage from './pages/ConnectPage/ConnectPage.jsx'
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail.jsx'
 import ResetPassword from './pages/ResetPassword/ResetPassword.jsx'
 import Profile from './pages/Profile/Profile.jsx'
+import Settings from './pages/Settings/Settings.jsx'
 import ScrollToTop from './utils/ScrollToTop.jsx'
 import { ROUTES, HEADER_ROUTES, AUTH_MODES } from './constants/app.constants'
-
-// Layout cho trang Home (có Footer)
-function HomeLayout({ children }) {
-  return (
-    <>
-      <main className="page-content">
-        {children}
-      </main>
-      <Footer />
-    </>
-  )
-}
-
-// Layout không có Sidebar (Trang nào ko muốn dùng sidebar thì bọc nó vào)
-function NoSidebarLayout({ children }) {
-  return (
-    <main className="page-content">
-      {children}
-    </main>
-  )
-}
-
-// Layout cho các trang khác (có Sidebar)
-function DashboardLayout({ children }) {
-  return (
-    <>
-      <main className="page-with-sidebar">
-        {children}
-      </main>
-      <Sidebar />
-    </>
-  )
-}
-
-// Layout cho các trang auth (không có Header/Footer)
-function AuthLayout({ children }) {
-  return (
-    <main className="auth-page">
-      {children}
-    </main>
-  )
-}
 
 function AppContent() {
   const [authVisible, setAuthVisible] = useState(false)
   const [authMode, setAuthMode] = useState(AUTH_MODES.LOGIN)
-  const navigate = useNavigate()
+  // const navigate = useNavigate()
   const location = useLocation()
 
   const handleLoginClick = () => {
@@ -79,80 +38,125 @@ function AppContent() {
     <>
       {shouldShowHeader && <Header onLoginClick={handleLoginClick} />}
       <Routes>
+
+      {/* Route cho Home */}
         <Route 
           path={ROUTES.HOME}
           element={
-            <HomeLayout>
-              <Home onStart={() => navigate(ROUTES.DASHBOARD)} />
-            </HomeLayout>
+            <>
+              <main className="page-content">
+                <Home />
+              </main>
+              <Footer />
+            </>
           } 
         />
+
+        {/* Route cho Dashboard */}
         <Route 
           path={ROUTES.DASHBOARD}
           element={
             <ProtectedRoute>
-              <NoSidebarLayout>
+              <main className="page-content">
                 <Dashboard />
-              </NoSidebarLayout>
+              </main>
             </ProtectedRoute>
           } 
         />
+
+        {/* Route cho Account Management */}
         <Route 
           path={ROUTES.ACCOUNT_MANAGEMENT}
           element={
             <ProtectedRoute>
-              <DashboardLayout>
-                <AccountManagement />
-              </DashboardLayout>
+              <>
+                <main className="page-with-sidebar">
+                  <AccountManagement />
+                </main>
+                <Sidebar />
+              </>
             </ProtectedRoute>
           } 
         />
+
+        {/* Route cho Ads Management */}
         <Route 
           path={ROUTES.ADS_MANAGEMENT}
           element={
             <ProtectedRoute>
-              <DashboardLayout>
-                <AdsManagement />
-              </DashboardLayout>
+              <>
+                <main className="page-with-sidebar">
+                  <AdsManagement />
+                </main>
+                <Sidebar />
+              </>
             </ProtectedRoute>
           } 
         />
+
+        {/* Route cho Report */}
         <Route 
           path={ROUTES.REPORTS}
           element={
             <ProtectedRoute>
-              <DashboardLayout>
-                <div className="page-placeholder">
-                  <h2>Báo cáo</h2>
-                  <p>Chức năng đang được phát triển...</p>
-                </div>
-              </DashboardLayout>
+              <>
+                <main className="page-with-sidebar">
+                  <div className="page-placeholder">
+                    <h2>Báo cáo</h2>
+                    <p>Chức năng đang được phát triển...</p>
+                  </div>
+                </main>
+                <Sidebar />
+              </>
             </ProtectedRoute>
           } 
         />
+
+        {/* Route cho Stats */}
         <Route 
           path={ROUTES.STATS}
           element={
             <ProtectedRoute>
-              <DashboardLayout>
-                <div className="page-placeholder">
-                  <h2>Thống kê</h2>
-                  <p>Chức năng đang được phát triển...</p>
-                </div>
-              </DashboardLayout>
+              <>
+                <main className="page-with-sidebar">
+                  <div className="page-placeholder">
+                    <h2>Thống kê</h2>
+                    <p>Chức năng đang được phát triển...</p>
+                  </div>
+                </main>
+                <Sidebar />
+              </>
             </ProtectedRoute>
           } 
         />
+
+        {/* Route cho Profile */}
         <Route 
           path={ROUTES.PROFILE}
           element={
             <ProtectedRoute>
-              <NoSidebarLayout>
+              <main className="page-content">
                 <Profile />
-              </NoSidebarLayout>
+              </main>
             </ProtectedRoute>
           } 
         />
+
+        {/* Route cho Settings */}
+        <Route 
+          path={ROUTES.SETTINGS}
+          element={
+            <ProtectedRoute>
+              <>
+                <main className="page-content">
+                  <Settings />
+                </main>
+              </>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Route cho Add Page Ads */}
         <Route 
           path={ROUTES.CONNECT}
           element={<ConnectPage />}
@@ -162,20 +166,25 @@ function AppContent() {
         <Route 
           path={ROUTES.VERIFY_EMAIL}
           element={
-            <AuthLayout>
+            <main className="auth-page">
               <VerifyEmail />
-            </AuthLayout>
+            </main>
           }
         />
+
+        {/* Route cho Reset Password */}
         <Route 
           path={ROUTES.RESET_PASSWORD}
           element={
-            <AuthLayout>
+            <main className="auth-page">
               <ResetPassword />
-            </AuthLayout>
+            </main>
           }
         />
+
+        {/* Route cho NotFound */}
         <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
+
       </Routes>
 
       {authVisible && (
@@ -203,7 +212,7 @@ function App() {
             expand={true}
             duration={4000}
             closeButton={true}
-            limit={3}
+            limit={2}
             offset="20px"
           />
         </AuthProvider>

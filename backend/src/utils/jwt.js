@@ -3,6 +3,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Resolve secrets with sensible fallbacks
+const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+
 /**
  * 🧩 Hàm tạo JWT token
  * @param {Object} payload - Dữ liệu lưu trong token
@@ -22,13 +26,13 @@ export const generateTokens = (userId) => {
 
   const accessToken = generateToken(
     payload,
-    process.env.JWT_SECRET,
-    process.env.JWT_ACCESS_EXPIRES || '15m'
+    ACCESS_SECRET,
+    process.env.JWT_ACCESS_EXPIRES || '1h'
   );
 
   const refreshToken = generateToken(
     payload,
-    process.env.JWT_SECRET,
+    REFRESH_SECRET,
     process.env.JWT_REFRESH_EXPIRES || '7d'
   );
 
@@ -39,12 +43,12 @@ export const generateTokens = (userId) => {
  * 🔐 Verify Access Token
  */
 export const verifyAccessToken = (token) => {
-  return jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+  return jwt.verify(token, ACCESS_SECRET);
 };
 
 /**
  * 🔁 Verify Refresh Token
  */
 export const verifyRefreshToken = (token) => {
-  return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  return jwt.verify(token, REFRESH_SECRET);
 };

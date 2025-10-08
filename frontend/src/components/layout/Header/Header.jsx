@@ -90,11 +90,11 @@ function Header({ onLoginClick}) {
                                     onClick={() => toggleMenu("user")}
                                     style={{ cursor: "pointer" }}
                                 >
-                                    Xin chào, <strong>{user?.name}</strong> ▼
+                                    <strong className="user-name-header">Xin chào, {user?.full_name} ▼</strong> 
                                 </span>
                                 {openMenu === "user" && (
                                     <ul className="dropdown-name">
-                                        <li>{user?.name}</li>
+                                        <li>{user?.full_name}</li>
                                         <li><a>Quản lý shop</a></li>
                                     </ul>
                                 )}
@@ -110,8 +110,8 @@ function Header({ onLoginClick}) {
                                 {openMenu === "avatar" && (
                                     <div className="dropdown-avatar">
                                         <div className = "dropdown-infor-avatar">
-                                            <b>{user?.name}</b>
-                                            <small>FB ID: <br/>
+                                            <b>{user?.full_name}</b>
+                                            <small>FB ID: {user?.facebookId}<br/>
                                             Email: {user?.email}</small>
                                         </div>
                                         <div className = "dropdown-option-avatar">

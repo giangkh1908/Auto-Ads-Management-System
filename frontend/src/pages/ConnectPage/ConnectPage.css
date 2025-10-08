@@ -98,7 +98,7 @@
 }
 
 .status-filter {
-  padding: 10px 16px;
+  padding: 10px 10px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
@@ -110,6 +110,7 @@
   font-size: 14px;
   color: #6b7280;
   font-weight: 500;
+  margin-right: 30px;
 }
 
 .connect-section {
@@ -160,16 +161,15 @@
 .table-row {
   display: grid;
   grid-template-columns: 2fr 1fr 2fr 1fr;
-  padding: 16px 20px;
+  padding: 0px 20px;
   border-bottom: 1px solid #f3f4f6;
   align-items: center;
   transition: background-color 0.2s;
-  height: 80px;
 }
 
 
 .table-row:hover {
-  background: #f9fafb;
+  background: #d9dadd;
 }
 
 .table-row:last-child {
@@ -201,23 +201,12 @@
 }
 
 .page-name {
-  font-weight: 600;
+  font-weight: 500;
   color: #1f2937;
-  font-size: 14px;
+  font-size: 15px;
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.external-link {
-  color: #6b7280;
-  font-size: 12px;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.external-link:hover {
-  color: #2563eb;
 }
 
 .col-role {
@@ -450,4 +439,19 @@
   .col-select {
     justify-content: flex-end;
   }
+}
+
+.empty-state {
+  text-align: center;
+}
+
+.external-link {
+  color: #6b7280;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.external-link:hover {
+  color: #2563eb;
 }

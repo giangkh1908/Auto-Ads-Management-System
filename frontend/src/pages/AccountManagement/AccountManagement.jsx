@@ -1,25 +1,31 @@
 import { useNavigate } from 'react-router-dom'
+import { useMemo } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import './AccountManagement.css'
 
 function AccountManagement() {
     const navigate = useNavigate()
+    const { fbAdAccounts } = useAuth()
+    const hasConnectedPages = useMemo(() => {
+        try {
+            const raw = localStorage.getItem('fb_connected_pages')
+            const arr = raw ? JSON.parse(raw) : []
+            return Array.isArray(arr) && arr.length > 0
+        } catch {
+            return false
+        }
+    }, [])
     
-    // temporary fixed data
-    const accounts = [
-        { id: 1, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 2, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 3, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 4, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 5, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 6, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 7, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 8, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 9, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 10, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 11, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-        { id: 12, name: 'Salemall.Fchat -5', number: '2733322083474120', budget: 25000, status: 'Hoạt động', updatedAt: '13/06/2025 10:52' },
-
-    ]
+    const accounts = useMemo(() => {
+        return (fbAdAccounts || []).map((acc, idx) => ({
+            id: acc.id || idx,
+            name: acc.name || 'Facebook Ad Account',
+            number: acc.accountId,
+            budget: Number(acc.amountSpent || 0),
+            status: acc.status === 1 ? 'Hoạt động' : 'Không hoạt động',
+            updatedAt: new Date(acc.createdTime || Date.now()).toLocaleString('vi-VN')
+        }))
+    }, [fbAdAccounts])
 
     return (
         <div className="account-management-layout">
@@ -37,7 +43,7 @@ function AccountManagement() {
                         </div>
                         <div>
                             <button 
-                                className="btn btn-success"
+                                className="add-account"
                                 onClick={() => navigate('/connect')}
                             >
                                 + Thêm tài khoản
@@ -57,7 +63,20 @@ function AccountManagement() {
                             </tr>
                         </thead>
                         <tbody>
-                            {accounts.map((acc, idx) => (
+                            {!hasConnectedPages ? (
+                                <tr>
+                                    <td colSpan="7" style={{ textAlign: 'center', color: '#6b7280' }}>
+                                        Vui lòng kết nối Fanpage trước khi hiển thị tài khoản quảng cáo.
+                                    </td>
+                                </tr>
+                            ) : accounts.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" style={{ textAlign: 'center', color: '#6b7280' }}>
+                                        Không tìm thấy tài khoản quảng cáo nào.
+                                    </td>
+                                </tr>
+                            ) : (
+                            accounts.map((acc, idx) => (
                                 <tr key={acc.id}>
                                     <td>{idx + 1}</td>
                                     <td>
@@ -70,7 +89,8 @@ function AccountManagement() {
                                     <td className="status-active">{acc.status}</td>
                                     <td>{acc.updatedAt}</td>
                                 </tr>
-                            ))}
+                            ))
+                            )}
                         </tbody>
                     </table>
                 </div>

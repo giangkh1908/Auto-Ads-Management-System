@@ -1,6 +1,7 @@
 /* Layout container - sidebar is now global */
 .ads-management-layout {
     display: block;
+    margin-top: -15px;
 }
 
 /* Content area */
@@ -74,8 +75,8 @@
 
 .ads-table-wrapper { padding: 0 10px 10px;}
 .ads-table { width: 100%; border-collapse: collapse;}
-.ads-table td { border-bottom: 1px solid #eee; padding: 10px; }
-.ads-table th { border-bottom: 1px solid #eee; padding: 10px; background: #D3D3D3;}
+.ads-table td { border-bottom: 1px solid #eee; padding: 10px; font-size: 13px;}
+.ads-table th { border-bottom: 1px solid #eee; padding: 10px; background: #D3D3D3; font-size: 15px;}
 /* Alignments: first two data cols (2-3) left, middle two (4-5) center, last two (6-7) right */
 .ads-table th:nth-child(1), .ads-table td:nth-child(1) { text-align: left; }
 .ads-table th:nth-child(2), .ads-table td:nth-child(2),

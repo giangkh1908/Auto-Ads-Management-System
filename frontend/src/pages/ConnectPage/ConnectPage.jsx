@@ -1,42 +1,67 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './ConnectPage.css'
-import avatar_1 from '../../assets/2lightInSide.jpg'
-import avatar_2 from '../../assets/vibestone.png'
+import { useToast } from '../../hooks/useToast'
+import profileService from '../../services/profileService'
+import shopService from '../../services/shopService'
 // import { handleSelectAllWithFilter, handleSelectItemWithFilter } from '../../utils/selectionUtils'
-
 
 function ConnectPage() {
   const navigate = useNavigate()
+  const toast = useToast()
+  const [shopId, setShopId] = useState(null)
+  const [connectedPageIds, setConnectedPageIds] = useState([])
+  const [fbPages, setFbPages] = useState([])
   const [selectedPages, setSelectedPages] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('status')
   const [selectAll, setSelectAll] = useState(false)
   
+  // Tải dữ liệu thật từ BE
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const me = await profileService.getCurrentProfile()
+        const shop = me?.data?.shop || me?.shop
+        setShopId(shop?._id || null)
+        const connected = Array.isArray(shop?.facebook_pages) ? shop.facebook_pages.filter(p => p.connected_status === 'connected').map(p => p.page_id) : []
+        setConnectedPageIds(connected)
 
-  //Cấu hình data tĩnh
-  const [pages] = useState([
-    {
-      id: 1,
-      name: '2Light in Side',
-      avatar: avatar_1,
-      link: 'https://www.facebook.com/profile.php?id=61558960906468#',
-      role: 'ADMIN',
-      status: 'Chưa kết nối',
-      connectedBy: null,
-      isSelected: false
-    },
-    {
-      id: 2,
-      name: 'Vibestone',
-      avatar: avatar_2,
-      link: 'https://www.facebook.com/profile.php?id=61576311766928#',
-      role: 'EDITOR',
-      status: 'Đã kết nối',
-      connectedBy: 'Nguyễn Thành Long',
-      isSelected: true
+        const pagesRes = await shopService.fetchFacebookPages()
+        const realPages = pagesRes?.data?.pages || []
+        setFbPages(realPages)
+      } catch (e) {
+        console.error('Load facebook pages error:', e)
+        toast.error('Không tải được danh sách page từ Facebook')
+      }
     }
-  ])
+    load()
+  }, [])
+
+  // Chuẩn hóa dữ liệu page từ API
+  const pages = useMemo(() => {
+    const deriveRole = (tasks = []) => {
+      const normalized = new Set((tasks || []).map(t => String(t).toUpperCase()))
+      // Priority from highest to lowest
+      if (normalized.has('ADMINISTER') || normalized.has('MANAGE')) return 'ADMIN'
+      if (normalized.has('CREATE_CONTENT')) return 'EDITOR'
+      if (normalized.has('MODERATE')) return 'MODERATOR'
+      if (normalized.has('ADVERTISE')) return 'ADVERTISER'
+      if (normalized.has('ANALYZE')) return 'ANALYST'
+      return 'PAGE'
+    }
+    return (fbPages || []).map(p => ({
+      id: p.id,
+      name: p.name,
+      avatar: p.picture || `https://graph.facebook.com/${p.id}/picture?type=square`,
+      link: `https://www.facebook.com/${p.id}`,
+      role: deriveRole(p.tasks),
+      status: connectedPageIds.includes(p.id) ? 'Đã kết nối' : 'Chưa kết nối',
+      connectedBy: null,
+      isSelected: false,
+      pageAccessToken: p.pageAccessToken,
+    }))
+  }, [fbPages, connectedPageIds])
 
   //Đếm số page đã kết nối và còn lại
   const connectedCount = pages.filter(page => page.status === 'Đã kết nối').length
@@ -81,18 +106,53 @@ function ConnectPage() {
   }
 
   //Xử lý kết nối các page đã chọn
-  const handleConnectSelected = () => {
-    // Logic kết nối các page đã chọn
+  const handleConnectSelected = async () => {
+    const selected = pages.filter(p => selectedPages.includes(p.id))
+    if (selected.length === 0) return
+    if (!shopId) {
+      toast.error('Không xác định được shop hiện tại')
+      return
+    }
+    try {
+      // Kết nối lần lượt nhiều page
+      for (const page of selected) {
+        await shopService.connectFacebookPage({
+          shopId,
+          pageId: page.id,
+          pageAccessToken: page.pageAccessToken,
+        })
+      }
+      setConnectedPageIds(prev => Array.from(new Set([...prev, ...selected.map(p => p.id)])))
+      toast.success(`Đã kết nối ${selected.length} page`)
+      navigate('/dashboard')
+    } catch (e) {
+      console.error('Connect page error:', e)
+      toast.error('Kết nối thất bại, vui lòng thử lại')
+    }
   }
 
   //Xử lý làm mới kết nối
-  const handleRefresh = () => {
-    // Logic làm mới kết nối
-  }
+  const handleRefresh = async () => {
+    try {
+      const response = await shopService.refreshFacebookToken();
+      if (response.success) {
+        toast.success('Làm mới thành công!');
+        // Reload pages after successful token refresh
+        const pagesRes = await shopService.fetchFacebookPages();
+        const realPages = pagesRes?.data?.pages || [];
+        setFbPages(realPages);
+      } else {
+        toast.error(response.message || 'Không thể làm mới.');
+      }
+    } catch (error) {
+      console.log('Refresh token error:', error);
+      toast.error('Lỗi khi làm mới: ' + (error.message || 'Unknown error'));
+    }
+  };
 
   //Xử lý quay lại danh sách tài khoản Quảng cáo
   const handleBackToList = () => {
-    navigate('/account-management')
+    navigate(-1)
   }
 
   //Lọc danh sách page theo tên và trạng thái
@@ -128,6 +188,12 @@ function ConnectPage() {
 
         {/* Page Management Section */}
         <div className="page-management-container">
+          {pages.length === 0 ? (
+            <div className="empty-state">
+              <p>Không có Page nào để hiển thị. Hãy đăng nhập Facebook và cấp quyền phù hợp.</p>
+            </div>
+          ) : (
+          <>
           {/* Search and Filter Bar */}
           <div className="search-filter-bar">
             <div className="search-section">
@@ -233,6 +299,8 @@ function ConnectPage() {
               Kết nối {selectedPages.length}
             </button>
           </div>
+          </>
+          )}
         </div>
             
         {/* Help Section */}
@@ -261,7 +329,7 @@ function ConnectPage() {
         <div className="back-section">
           <button className="back-btn" onClick={handleBackToList}>
             <span className="back-icon">←</span>
-            Về danh sách tài khoản Quảng cáo
+            Về trang trước
           </button>
         </div>
       </div>
