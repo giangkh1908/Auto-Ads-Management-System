@@ -209,17 +209,6 @@
   gap: 8px;
 }
 
-.external-link {
-  color: #6b7280;
-  font-size: 12px;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.external-link:hover {
-  color: #2563eb;
-}
-
 .col-role {
   display: flex;
   align-items: center;
@@ -454,4 +443,15 @@
 
 .empty-state {
   text-align: center;
+}
+
+.external-link {
+  color: #6b7280;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.external-link:hover {
+  color: #2563eb;
 }

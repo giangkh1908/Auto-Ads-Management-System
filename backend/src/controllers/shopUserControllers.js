@@ -1,4 +1,4 @@
-import ShopUser from "../models/ShopUser.js";
+import ShopUser from "../models/shopUser.model.js";
 
 // Thêm User vào Shop
 export const createShopUser = async (req, res) => {

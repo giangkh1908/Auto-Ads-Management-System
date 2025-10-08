@@ -29,6 +29,7 @@ export const ROUTES = {
   REPORTS: '/reports',
   STATS: '/stats',
   PROFILE: '/profile',
+  SETTINGS: '/settings',
   CONNECT: '/connect',
   VERIFY_EMAIL: '/verify-email/:token',
   RESET_PASSWORD: '/reset-password/:token',
@@ -44,6 +45,7 @@ export const HEADER_ROUTES = [
   ROUTES.REPORTS,
   ROUTES.STATS,
   ROUTES.PROFILE,
+  ROUTES.SETTINGS,
 ]
 
 // Auth modes

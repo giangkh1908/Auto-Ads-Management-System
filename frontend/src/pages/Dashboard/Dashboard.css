@@ -1,7 +1,8 @@
 /* Layout container - Override animations từ các trang khác */
 .dashboard-layout {
     display: block;
-    width: 100%;
+    overflow: hidden;
+    height: 100vh;
 }
 
 /* Override Header animations trong Dashboard */
@@ -190,8 +191,8 @@
 
 .pages-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px 0px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px 0px;
 }
 
 /* Page card base styles */
@@ -202,6 +203,7 @@
     padding: 10px;
     /* transition: all 0.2s ease; */ /* Tắt animation */
     cursor: pointer;
+    overflow: visible; /* đảm bảo dropdown không bị cắt */
 }
 
 .page-card:hover {
@@ -310,6 +312,16 @@
     gap: 8px;
 }
 
+.page-id-dashboard a {
+    color: #6b7280;
+    font-size: 11px;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.page-id-dashboard a:hover {
+    color: #2563eb;
+}
 
 /* Bottom stats row */
 .page-stats {
@@ -385,6 +397,7 @@
 .page-menu-container {
     position: relative;
     display: inline-block;
+    z-index: 1; /* tạo stacking context cho dropdown */
 }
 
 /* Dropdown menu */
@@ -395,10 +408,12 @@
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
+    z-index: 9999; /* nổi lên trên các phần khác */
     min-width: 200px;
     padding: 8px 0;
     margin-top: 4px;
+    pointer-events: auto; /* đảm bảo nhận click */
+    will-change: transform; /* hint tối ưu */
 }
 
 /* Dropdown menu items */
@@ -415,6 +430,7 @@
     font-size: 14px;
     color: #374151;
     /* transition: background-color 0.2s ease; */ /* Tắt animation */
+    user-select: none; /* tránh bôi đen gây mất focus */
 }
 
 .dropdown-menu-item:hover {

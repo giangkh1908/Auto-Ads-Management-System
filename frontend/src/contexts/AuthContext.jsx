@@ -8,14 +8,21 @@ import { AuthContext } from './AuthContext'
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const navigate = useNavigate()
+  const toast = useToast()
   const [fbPages, setFbPages] = useState(() => {
+
     try {
+      //Lưu Page vào local
       const raw = localStorage.getItem(STORAGE_KEYS.FB_PAGES)
       return raw ? JSON.parse(raw) : []
     } catch {
       return []
     }
   })
+
+  //Lưu data Ad Account lấy được từ API FB vào local 
   const [fbAdAccounts, setFbAdAccounts] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.FB_AD_ACCOUNTS)
@@ -24,9 +31,6 @@ export const AuthProvider = ({ children }) => {
       return []
     }
   })
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const navigate = useNavigate()
-  const toast = useToast()
 
   // Kiểm tra xác thực khi mount
   useEffect(() => {
@@ -50,15 +54,18 @@ export const AuthProvider = ({ children }) => {
                 if (rawAdAccs) setFbAdAccounts(JSON.parse(rawAdAccs))
               } catch { /* ignore invalid stored pages */ }
             } else {
+              toast.warning(response.message || 'Có lỗi xảy ra khi truy xuất thông tin Trang', {
+                duration: 4000
+              })
               logout(false) // Đăng xuất im lặng trong quá trình xác thực token
             }
           } catch (error) {
-            console.error('Token validation failed:', error)
+            console.log('Token validation failed:', error)
             logout(false) // Đăng xuất im lặng trong quá trình xác thực token
           }
         }
       } catch (error) {
-        console.error('Error checking auth:', error)
+        console.log('Error checking auth:', error)
         logout(false) // Đăng xuất im lặng trong quá trình xác thực token
       } finally {
         setLoading(false)
@@ -101,6 +108,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.accessToken)
         localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken)
         localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user))
+
         // Xóa danh sách page FB cũ nếu có (login thường)
         localStorage.removeItem(STORAGE_KEYS.FB_PAGES)
         setFbPages([])
@@ -130,8 +138,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false)
     }
   }
-
-
 
 
   // Đăng ký
@@ -187,14 +193,14 @@ export const AuthProvider = ({ children }) => {
       } else {
         navigate(ROUTES.DASHBOARD)
       }
-    }, 800)
+    }, 1000)
 
     return { success: true, user: loggedInUser }
   }
 
 
   // Đăng xuất
-  const logout = useCallback((showToast = true, redirectTo = null) => {
+  const logout = useCallback((showToast = true) => {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.USER_DATA)
@@ -208,9 +214,7 @@ export const AuthProvider = ({ children }) => {
     }
     // Chuyển trang về trang home sau khi đăng xuất
     setTimeout(() => {
-      if (redirectTo) {
-        navigate(redirectTo)
-      } else {
+      {
         navigate(ROUTES.HOME)
       }
     }, 2000)
@@ -259,19 +263,20 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Chưa có backend
   const changePassword = async (currentPassword, newPassword) => {
-    try {
+    try{
       setLoading(true)
       const response = await authService.changePassword(currentPassword, newPassword)
-      
-      if (response.success) {
-        toast.success(response.message || 'Đổi mật khẩu thành công!')
-        return { success: true }
+
+      if (response.success){
+        toast.success(response.message || 'Đổi mật khẩu thành công')
+        return {success: true}
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Đổi mật khẩu thất bại'
       toast.error(errorMessage)
-      return { success: false, error: errorMessage }
+      return {success: false, error: errorMessage}
     } finally {
       setLoading(false)
     }
@@ -346,7 +351,6 @@ export const AuthProvider = ({ children }) => {
     fbAdAccounts,
     login,
     completeExternalLogin,
-    // loginWithFacebook,
     register,
     logout,
     updateUser,

@@ -34,12 +34,11 @@ app.use(express.urlencoded({ extended: true }));
 
 //Routes
 app.use("/api/users", userRoutes);
-app.use("/api/role", roleRoutes);
-app.use("/api/userRole", userRoleRoutes);
-app.use("/api/shop", shopRoutes);
-app.use("/api/shopUser", shopUserRoutes);
-app.use('/api/auth', authRoutes);
-
+app.use("/api/roles", roleRoutes);
+app.use("/api/user-roles", userRoleRoutes);
+app.use("/api/shops", shopRoutes);
+app.use("/api/shop-users", shopUserRoutes);
+app.use("/api/auth", authRoutes);
 
 // Connect database & start server
 connectDB().then(() => {

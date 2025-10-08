@@ -16,36 +16,88 @@ export const API_ENDPOINTS = {
     LOGIN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/login`,
     REGISTER: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/register`,
     LOGOUT: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/logout`,
-    FACEBOOK_LOGIN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/facebook-login`,
+    FACEBOOK_LOGIN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/facebook`,
     VERIFY_EMAIL: (token) => `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/verify-email/${token}`,
     RESEND_VERIFICATION: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/resend-verification`,
     FORGOT_PASSWORD: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/forgot-password`,
     RESET_PASSWORD: (token) => `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/reset-password/${token}`,
-    CHANGE_PASSWORD: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/change-password`,
     ME: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/me`,
-    REFRESH_TOKEN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/refresh-token`,
+    REFRESH_TOKEN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/refresh`,
+    CHANGE_PASSWORD: `${API_CONFIG.BASE_URL}/api/auth/change-password`, // Cái này chưa có backend
   },
   
+  USERS: {
+    LIST: `${API_CONFIG.BASE_URL}/api/users`,
+    DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}`,
+    CREATE: `${API_CONFIG.BASE_URL}/api/users`,
+    UPDATE: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}`,
+    DELETE: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}`,
+  },
+
+  ROLES: {
+    LIST: `${API_CONFIG.BASE_URL}/api/roles`,
+    DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/roles/${id}`,
+    CREATE: `${API_CONFIG.BASE_URL}/api/roles`,
+    UPDATE: (id) => `${API_CONFIG.BASE_URL}/api/roles/${id}`,
+    DELETE: (id) => `${API_CONFIG.BASE_URL}/api/roles/${id}`,
+    PERMISSIONS: (id) => `${API_CONFIG.BASE_URL}/api/roles/${id}/permissions`,
+  },
+
+  USER_ROLES: {
+    LIST: `${API_CONFIG.BASE_URL}/api/user-roles`,
+    ASSIGN: `${API_CONFIG.BASE_URL}/api/user-roles`,
+    DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/user-roles/${id}`,
+    UPDATE: (id) => `${API_CONFIG.BASE_URL}/api/user-roles/${id}`,
+    DELETE: (id) => `${API_CONFIG.BASE_URL}/api/user-roles/${id}`,
+    BY_USER: (userId) => `${API_CONFIG.BASE_URL}/api/user-roles/user/${userId}`,
+  },
+
+  SHOPS: {
+    LIST: `${API_CONFIG.BASE_URL}/api/shops`,
+    DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/shops/${id}`,
+    CREATE: `${API_CONFIG.BASE_URL}/api/shops`,
+    UPDATE: (id) => `${API_CONFIG.BASE_URL}/api/shops/${id}`,
+    DELETE: (id) => `${API_CONFIG.BASE_URL}/api/shops/${id}`,
+  },
+
+  SHOP_FACEBOOK: {
+    PAGES: `${API_CONFIG.BASE_URL}/api/shops/facebook/pages`,
+    CONNECT: `${API_CONFIG.BASE_URL}/api/shops/facebook/connect`,
+    DISCONNECT: `${API_CONFIG.BASE_URL}/api/shops/facebook/disconnect`,
+    REFRESH_TOKEN: `${API_CONFIG.BASE_URL}/api/shops/facebook/refresh-token`,
+  },
+
+  SHOP_USERS: {
+    LIST: `${API_CONFIG.BASE_URL}/api/shop-users`,
+    DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/shop-users/${id}`,
+    CREATE: `${API_CONFIG.BASE_URL}/api/shop-users`,
+    UPDATE: (id) => `${API_CONFIG.BASE_URL}/api/shop-users/${id}`,
+    DELETE: (id) => `${API_CONFIG.BASE_URL}/api/shop-users/${id}`,
+  },
+
+
+
+  // API AD chưa có
   // Campaign endpoints
-  CAMPAIGNS: {
-    CREATE: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/create-campaign`,
-    LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns`,
-    UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
-    DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
-  },
+  // CAMPAIGNS: {
+  //   CREATE: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/create-campaign`,
+  //   LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns`,
+  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
+  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
+  // },
   
-  // AdSet endpoints
-  ADSETS: {
-    UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
-    DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
-  },
+  // // AdSet endpoints
+  // ADSETS: {
+  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
+  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
+  // },
   
-  // Ad endpoints
-  ADS: {
-    STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/status`,
-    UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
-    DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
-  },
+  // // Ad endpoints
+  // ADS: {
+  //   STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/status`,
+  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
+  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
+  // },
 }
 
 export default API_CONFIG 

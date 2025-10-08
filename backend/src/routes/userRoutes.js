@@ -1,14 +1,23 @@
 import express from "express";
-import { getUsers, createUser, updateUser, deleteUser } from "../controllers/userControllers.js";
+import {
+  getUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+} from "../controllers/userControllers.js";
+import { authenticate, authorize } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/", getUsers);
+// 🛡️ Yêu cầu xác thực + quyền quản lý user
+router.use(authenticate);
 
-router.post("/", createUser);
-
-router.put("/:id", updateUser);
-
-router.delete("/:id", deleteUser);
+// 📋 CRUD user
+router.get("/", authorize("user", "view"), getUsers);
+router.get("/:id", authorize("user", "view"), getUserById);
+router.post("/", authorize("user", "create"), createUser);
+router.put("/:id", authorize("user", "update"), updateUser);
+router.delete("/:id", authorize("user", "delete"), deleteUser);
 
 export default router;

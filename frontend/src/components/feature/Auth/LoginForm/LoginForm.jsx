@@ -125,75 +125,57 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     const handleFacebookLoginSuccess = async (response) => {
         try {
             const { authResponse } = response;
-            console.log("🔵 Facebook Auth Response:", authResponse);
-            
-            // Sử dụng fetch để tránh warning về access token
-            const fbResponse = await fetch(
-                `https://graph.facebook.com/me?access_token=${authResponse.accessToken}&fields=id,name,email`
-            );
-            const userInfo = await fbResponse.json();
-            
-            console.log('🔵 Facebook User Info:', userInfo);
-            
-            if (userInfo.error) {
-                console.error('❌ Facebook API Error:', userInfo.error);
-                toast.error('Không thể lấy thông tin từ Facebook');
-                setFbLoading(false);
+            if (!authResponse?.accessToken){
+                toast.error("Không lấy được access token từ Facebook");
                 return;
             }
+            console.log("🔵 Facebook Auth Response:", authResponse);
             
-            try {
-                console.log('🔵 Calling backend API...');
-                
-                // Gọi API backend với timeout
-                const loginResponse = await axios.post(
-                    `${API_BASE_URL}/api/auth/facebook-login`, 
-                    {
-                        facebookId: userInfo.id,
-                        name: userInfo.name,
-                        email: userInfo.email,
-                        accessToken: authResponse.accessToken
-                    },
-                    {
-                        timeout: 15000, // 15 seconds timeout
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
-                
-                console.log('🔵 Backend Response:', loginResponse.data);
-                
-                if (loginResponse.data.success) {
-                    const { user, tokens, pages, adAccounts } = loginResponse.data.data
-
-                    // Hoàn tất đăng nhập qua AuthContext để cập nhật UI đồng bộ
-                    const result = completeExternalLogin({ user, tokens, pages, adAccounts })
-                    if (result?.success && onSuccess) onSuccess()
-                } else {
-                    console.error('❌ Backend login failed:', loginResponse.data);
-                    toast.error(loginResponse.data.message || 'Đăng nhập thất bại');
+            // 🔹 Gọi trực tiếp backend để BE xử lý tất cả (xác thực + lấy user info + pages)
+            console.log("🔵 Calling backend API...");
+            
+            const loginResponse = await axios.post(
+                `${API_BASE_URL}/api/auth/facebook`,
+                {
+                  facebookId: authResponse.userID,
+                  accessToken: authResponse.accessToken,
+                },
+                {
+                  timeout: 15000,
+                  headers: { "Content-Type": "application/json" },
                 }
+              );
+          
+              console.log("🔵 Backend Response:", loginResponse.data);
+          
+              // 🔹 Xử lý kết quả trả về
+              if (loginResponse.data.success) {
+                const { user, tokens, pages} = loginResponse.data.data;
+          
+                console.log("✅ Facebook Login Success!");
+          
+                // 🔹 Cập nhật AuthContext để đồng bộ UI
+                const result = completeExternalLogin({ user, tokens, pages});
+                if (result?.success && onSuccess) onSuccess();
+              } else {
+                console.error("❌ Backend login failed:", loginResponse.data);
+                toast.error(loginResponse.data.message || "Đăng nhập thất bại");
+              }
             } catch (error) {
-                console.error('❌ Backend login error:', error);
-                
-                if (error.code === 'ECONNABORTED') {
-                    toast.error('Kết nối tới server quá lâu, vui lòng thử lại');
-                } else if (error.response?.status === 500) {
-                    toast.error('Lỗi server, vui lòng thử lại sau');
-                } else {
-                    console.error('❌ Error response:', error.response?.data);
-                    toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi đăng nhập');
-                }
+              console.error("❌ Backend login error:", error);
+          
+              if (error.code === "ECONNABORTED") {
+                toast.error("Kết nối tới server quá lâu, vui lòng thử lại");
+              } else if (error.response?.status === 500) {
+                toast.error("Lỗi server, vui lòng thử lại sau");
+              } else {
+                console.error("❌ Error response:", error.response?.data);
+                toast.error(error.response?.data?.message || "Có lỗi xảy ra khi đăng nhập");
+              }
+            } finally {
+              setFbLoading(false);
             }
-            
-        } catch (error) {
-            console.error('❌ Facebook login error:', error);
-            toast.error('Có lỗi xảy ra khi đăng nhập Facebook');
-        } finally {
-            setFbLoading(false);
-        }
-    };
+        };
 
 
     // Nếu đang hiển thị form xác thực email
