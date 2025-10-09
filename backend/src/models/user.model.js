@@ -5,6 +5,11 @@ import crypto from "crypto";
 const userSchema = new mongoose.Schema(
   {
     // 🧩 Thông tin cơ bản
+    avatar: {
+      type: String,
+      default: null // hoặc có thể để rỗng ''
+    },
+
     full_name: {
       type: String,
       required: [true, "Họ và tên là bắt buộc"],
@@ -51,7 +56,7 @@ const userSchema = new mongoose.Schema(
     },
 
     // 🌍 Localization
-    country: { type: String, default: "VN" },
+    country: { type: String, default: "Viet Nam" },
     language: { type: String, default: "vi" },
     timezone: { type: String, default: "Asia/Ho_Chi_Minh" },
 

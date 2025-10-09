@@ -1,14 +1,17 @@
 /**
  * API Configuration
+ * Centralized API configuration for the application
  */
 
 const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:5001',
   API_PREFIX: '/api',
-  TIMEOUT: 10000,
+  AUTH_PREFIX: '/api/auth',
+  TIMEOUT: 10000, // 10 seconds
 }
 
 export const API_ENDPOINTS = {
+  // Auth endpoints
   AUTH: {
     LOGIN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/login`,
     REGISTER: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/register`,
@@ -97,4 +100,4 @@ export const API_ENDPOINTS = {
   // },
 }
 
-export default API_CONFIG
+export default API_CONFIG 

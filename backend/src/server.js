@@ -40,7 +40,6 @@ app.use("/api/shops", shopRoutes);
 app.use("/api/shop-users", shopUserRoutes);
 app.use("/api/auth", authRoutes);
 
-
 // Connect database & start server
 connectDB().then(() => {
   app.listen(PORT, () => {

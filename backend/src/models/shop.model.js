@@ -2,7 +2,11 @@ import mongoose from "mongoose";
 
 const shopSchema = new mongoose.Schema(
   {
-    shop_name: { type: String, required: true, trim: true },
+    shop_name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     owner_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -13,7 +17,11 @@ const shopSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
-    industry: { type: String, trim: true, default: null },
+    industry: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     status: {
       type: String,
       enum: ["active", "inactive", "pending", "banned"],
@@ -68,7 +76,7 @@ const shopSchema = new mongoose.Schema(
 shopSchema.index({ shop_name: 1 });
 shopSchema.index({ owner_id: 1 });
 shopSchema.index({ salesman_id: 1 });
-shopSchema.index({ facebook_page_id: 1 });
+shopSchema.index({ 'facebook_pages.page_id': 1 });
 shopSchema.index({ status: 1 });
 
 // Virtuals
@@ -86,8 +94,10 @@ shopSchema.virtual("shop_users", {
 
 // Auto name
 shopSchema.pre("save", function (next) {
-  if (!this.shop_name && this.page_info?.name)
-    this.shop_name = this.page_info.name;
+  if (!this.shop_name) {
+    const first = Array.isArray(this.facebook_pages) && this.facebook_pages[0];
+    if (first?.page_info?.name) this.shop_name = first.page_info.name;
+  }
   next();
 });
 
