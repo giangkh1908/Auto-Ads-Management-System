@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
         const userData = localStorage.getItem(STORAGE_KEYS.USER_DATA)
-        
+
         if (token && userData) {
           // Xác thực token vẫn hợp lệ bằng cách lấy user hiện tại
           try {
@@ -81,29 +81,29 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       const response = await authService.login(credentials)
-      
+
       if (response.success) {
         const { user, tokens, requiresEmailVerification } = response.data
-        
+
         // Kiểm tra xem có cần xác nhận email không
         if (requiresEmailVerification || !user.emailVerified) {
           // Lưu thông tin user nhưng không lưu tokens
           localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user))
           setUser(user)
           setIsAuthenticated(false) // Không đăng nhập thực sự
-          
+
           toast.warning(response.message || 'Vui lòng kiểm tra email để xác nhận tài khoản.', {
             duration: 5000
           })
-          
-          return { 
-            success: false, 
+
+          return {
+            success: false,
             error: 'Email chưa được xác nhận',
             requiresEmailVerification: true,
-            user 
+            user
           }
         }
-        
+
         // Lưu tokens và user data chỉ khi email đã được verify
         localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.accessToken)
         localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken)
@@ -112,12 +112,12 @@ export const AuthProvider = ({ children }) => {
         // Xóa danh sách page FB cũ nếu có (login thường)
         localStorage.removeItem(STORAGE_KEYS.FB_PAGES)
         setFbPages([])
-        
+
         setUser(user)
         setIsAuthenticated(true)
-        
+
         toast.success(response.message || 'Đăng nhập thành công!')
-        
+
         // Chuyển trang sau khi login thành công: mặc định về Dashboard
         setTimeout(() => {
           if (redirectTo) {
@@ -126,7 +126,7 @@ export const AuthProvider = ({ children }) => {
             navigate(ROUTES.DASHBOARD)
           }
         }, 1000)
-        
+
         return { success: true, user }
       }
     } catch (error) {
@@ -145,12 +145,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       const response = await authService.register(userData)
-        
+
       if (response.success) {
         toast.success(response.message || 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản.', {
           duration: 5000
         })
-        
+
         return { success: true, data: response.data }
       }
     } catch (error) {
@@ -226,12 +226,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       const response = await authService.forgotPassword(email)
-      
+
       if (response.success) {
         toast.success(response.message || 'Email đặt lại mật khẩu đã được gửi!')
         return { success: true }
       }
-      } catch (error) {
+    } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Gửi email đặt lại mật khẩu thất bại'
       toast.error(errorMessage)
       return { success: false, error: errorMessage }
@@ -240,12 +240,12 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-//Đặt lại mật khẩu
+  //Đặt lại mật khẩu
   const resetPassword = async (token, password) => {
     try {
       setLoading(true)
       const response = await authService.resetPassword(token, password)
-      
+
       if (response.success) {
         toast.success(response.message || 'Đặt lại mật khẩu thành công!')
         return { success: true }
@@ -265,18 +265,18 @@ export const AuthProvider = ({ children }) => {
 
   // Chưa có backend
   const changePassword = async (currentPassword, newPassword) => {
-    try{
+    try {
       setLoading(true)
       const response = await authService.changePassword(currentPassword, newPassword)
 
-      if (response.success){
+      if (response.success) {
         toast.success(response.message || 'Đổi mật khẩu thành công')
-        return {success: true}
+        return { success: true }
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Đổi mật khẩu thất bại'
       toast.error(errorMessage)
-      return {success: false, error: errorMessage}
+      return { success: false, error: errorMessage }
     } finally {
       setLoading(false)
     }
@@ -286,7 +286,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       const response = await authService.resendVerificationEmail(email)
-      
+
       if (response.success) {
         toast.success(response.message || 'Email xác nhận đã được gửi lại!')
         return { success: true }
@@ -302,36 +302,40 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = (newUserData) => {
     setUser(newUserData)
-    localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(newUserData))
+    if (newUserData) {
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(newUserData))
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.USER_DATA) // Xoá hẳn khi null
+    }
   }
 
   const verifyEmail = async (token) => {
     try {
       setLoading(true)
       const response = await authService.verifyEmail(token)
-      
+
       if (response.success) {
         toast.success(response.message || 'Xác nhận email thành công!')
-        
+
         // Auto-login user after successful email verification
         if (response.data && response.data.user && response.data.tokens) {
           const { user, tokens } = response.data
-          
+
           // Store tokens and user data (same as login)
           localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.accessToken)
           localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken)
           localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user))
-          
+
           setUser(user)
           setIsAuthenticated(true)
-          
+
         }
-        
+
         // Chuyển trang về trang Dashboard sau khi xác nhận email thành công
         setTimeout(() => {
           navigate(ROUTES.DASHBOARD)
         }, 2000)
-        
+
         return { success: true }
       }
     } catch (error) {

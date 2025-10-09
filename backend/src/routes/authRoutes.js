@@ -11,6 +11,7 @@ import {
   getCurrentUser,
   updateProfile,
   logout,
+  changePassword,
 } from "../controllers/authControllers.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 
@@ -37,5 +38,8 @@ router.post("/reset-password/:token", resetPassword);
 // 👤 Profile
 router.get("/me", authenticate, getCurrentUser);
 router.put("/me", authenticate, updateProfile);
+
+// 🔑 Change Password
+router.post("/change-password", authenticate, changePassword);
 
 export default router;
