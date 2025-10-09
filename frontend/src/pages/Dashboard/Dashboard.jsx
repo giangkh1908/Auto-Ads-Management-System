@@ -109,13 +109,25 @@ function Dashboard() {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setOpenMenuId(null);
       }
-    };
+    };  
 
     document.addEventListener("click", handleClickOutside);
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
   }, []);
+
+  // Thêm biến filteredPages
+  const filteredPages = connectedPages.filter((page) => {
+    // Lọc theo trạng thái
+    if (filterValue === "active") return page.status === "active";
+    if (filterValue === "inactive") return page.status !== "active";
+    return true; // "all"
+  }).filter((page) => {
+    // Lọc theo từ khóa tìm kiếm
+    if (!searchQuery) return true;
+    return page.name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="dashboard-layout">
@@ -194,8 +206,8 @@ function Dashboard() {
                 </div>
               </div>
 
-              {/* Connected pages */}
-              {connectedPages.map((page) => (
+              {/* Sửa chỗ này: dùng filteredPages thay vì connectedPages */}
+              {filteredPages.map((page) => (
                 <div key={page.id} className="page-card connected-page-card">
                   <div className="page-card-header">
                     <div className="page-avatar-dashboard">

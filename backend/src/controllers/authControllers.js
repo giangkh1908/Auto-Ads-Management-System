@@ -404,10 +404,10 @@ export const updateProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Cập nhật thông tin thành công!",
-      data: { user },
+      data: { user: user.toJSON() },
     });
   } catch (error) {
-    console.log("❌ Update profile error:", error);
+    console.log("Update profile error:", error);
     res.status(500).json({ success: false, message: "Lỗi hệ thống." });
   }
 };
