@@ -1,5 +1,6 @@
-import fetch from 'node-fetch';
+import axios from 'axios';
 import Shop from '../models/shop.model.js';
+import Log from '../models/log.model.js';
 
 // Controller to map CreateAdsWizard payload into Facebook Ads payloads
 // and optionally post them to Facebook if ad_account_id and pageAccessToken are provided.
@@ -136,29 +137,56 @@ export const createFromWizard = async (req, res) => {
       const adAccountPath = `https://graph.facebook.com/v17.0/act_${ad_account_id}`;
 
       // 1) Create Campaign
-      const campResp = await fetch(`${adAccountPath}/campaigns?access_token=${resolvedPageToken}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const campResp = await axios.post(
+        `${adAccountPath}/campaigns`,
+        {
           name: campaignPayload.name,
           objective: campaignPayload.objective,
           status: campaignPayload.status,
           special_ad_categories: campaignPayload.special_ad_categories,
-        }),
-      });
-      const campData = await campResp.json();
+        },
+        {
+          params: { access_token: resolvedPageToken },
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      // Dữ liệu phản hồi
+      console.log(campResp.data);
+
+      const campData = campResp.data;
       response.post = response.post || {};
       response.post.campaign = campData;
+
+      // Log campaign creation (non-blocking)
+      try {
+        const ip = req.headers['x-forwarded-for'] || req.ip || req.connection?.remoteAddress || null;
+        await Log.create({
+          user_id: req.user?._id || null,
+          shop_id: shopId || null,
+          action: 'Tạo chiến dịch từ wizard',
+          target_type: 'facebook_campaign',
+          target_id: campData?.id || null,
+          request: { body: req.body },
+          response: campData,
+          success: true,
+          error_message: null,
+          source: 'manual',
+          ip_address: ip,
+          meta: { locale: 'vi' },
+        });
+      } catch (logErr) {
+        console.error('Lỗi khi lưu log chiến dịch (create campaign):', logErr);
+      }
 
       // Use returned id if available
       const createdCampaignId = campData.id;
       if (createdCampaignId) adsetPayload.campaign_id = createdCampaignId;
 
       // 2) Create AdSet
-      const adsetResp = await fetch(`${adAccountPath}/adsets?access_token=${resolvedPageToken}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const adsetResp = await axios.post(
+        `${adAccountPath}/adsets`,
+        {
           name: adsetPayload.name,
           campaign_id: adsetPayload.campaign_id,
           optimization_goal: adsetPayload.optimization_goal,
@@ -168,47 +196,114 @@ export const createFromWizard = async (req, res) => {
           targeting: JSON.stringify(adsetPayload.targeting),
           status: adsetPayload.status,
           start_time: adsetPayload.start_time,
-        }),
-      });
-      const adsetData = await adsetResp.json();
+        },
+        { params: { access_token: resolvedPageToken }, headers: { 'Content-Type': 'application/json' } }
+      );
+
+      const adsetData = adsetResp.data;
       response.post.adset = adsetData;
+
+      // Log adset creation (non-blocking)
+      try {
+        const ip = req.headers['x-forwarded-for'] || req.ip || req.connection?.remoteAddress || null;
+        await Log.create({
+          user_id: req.user?._id || null,
+          shop_id: shopId || null,
+          action: 'Tạo adset từ wizard',
+          target_type: 'facebook_adset',
+          target_id: adsetData?.id || null,
+          request: { body: req.body },
+          response: adsetData,
+          success: true,
+          error_message: null,
+          source: 'manual',
+          ip_address: ip,
+          meta: { locale: 'vi' },
+        });
+      } catch (logErr) {
+        console.error('Lỗi khi lưu log adset (create adset):', logErr);
+      }
 
       const createdAdsetId = adsetData.id;
       if (createdAdsetId) adPayload.adset_id = createdAdsetId;
 
       // 3) Create Creative using page token (Creative endpoint is under /act_<AD_ACCOUNT_ID>/adcreatives)
-      const creativeResp = await fetch(`${adAccountPath}/adcreatives?access_token=${resolvedPageToken}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const creativeResp = await axios.post(
+        `${adAccountPath}/adcreatives`,
+        {
           name: creativePayload.name,
           object_story_spec: creativePayload.object_story_spec,
-        }),
-      });
-      const creativeData = await creativeResp.json();
+        },
+        { params: { access_token: resolvedPageToken }, headers: { 'Content-Type': 'application/json' } }
+      );
+      const creativeData = creativeResp.data;
       response.post.creative = creativeData;
 
       const createdCreativeId = creativeData.id;
       if (createdCreativeId) adPayload.creative = { creative_id: createdCreativeId };
 
       // 4) Create Ad
-      const adResp = await fetch(`${adAccountPath}/ads?access_token=${resolvedPageToken}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const adResp = await axios.post(
+        `${adAccountPath}/ads`,
+        {
           name: adPayload.name,
           adset_id: adPayload.adset_id,
           creative: adPayload.creative,
           status: adPayload.status,
-        }),
-      });
-      const adData = await adResp.json();
+        },
+        { params: { access_token: resolvedPageToken }, headers: { 'Content-Type': 'application/json' } }
+      );
+      const adData = adResp.data;
       response.post.ad = adData;
+    }
+
+    // Save a Vietnamese log entry (non-blocking: catch logging errors)
+    try {
+      const ip = req.headers['x-forwarded-for'] || req.ip || req.connection?.remoteAddress || null;
+      const targetId = response.post?.ad?.id || response.post?.creative?.id || response.post?.adset?.id || response.post?.campaign?.id || ad_account_id || null;
+      const logEntry = {
+        user_id: req.user?._id || null,
+        shop_id: shopId || null,
+        action: 'Tạo quảng cáo từ wizard',
+        target_type: 'facebook_ads_wizard',
+        target_id: targetId,
+        request: { body: req.body },
+        response,
+        success: true,
+        error_message: null,
+        source: 'manual',
+        ip_address: ip,
+        meta: { locale: 'vi' },
+      };
+      await Log.create(logEntry);
+    } catch (logErr) {
+      console.error('Lỗi khi lưu log (createFromWizard):', logErr);
     }
 
     return res.status(200).json(response);
   } catch (error) {
     console.error('createFromWizard error:', error);
+    // Save error log in Vietnamese
+    try {
+      const ip = req.headers['x-forwarded-for'] || req.ip || req.connection?.remoteAddress || null;
+      await Log.create({
+        user_id: req.user?._id || null,
+        shop_id: req.body?.shopId || null,
+        action: 'Lỗi khi tạo quảng cáo từ wizard',
+        target_type: 'facebook_ads_wizard',
+        target_id: req.body?.ad_account_id || null,
+        request: { body: req.body },
+        response: error.response?.data || null,
+        success: false,
+        error_message: error.message,
+        source: 'system',
+        ip_address: ip,
+        meta: { locale: 'vi' },
+      });
+    } catch (logErr) {
+      console.error('Lỗi khi lưu log lỗi (createFromWizard):', logErr);
+    }
+
     return res.status(500).json({ success: false, message: 'Lỗi khi tạo ads từ wizard', detail: error.message });
   }
 };
