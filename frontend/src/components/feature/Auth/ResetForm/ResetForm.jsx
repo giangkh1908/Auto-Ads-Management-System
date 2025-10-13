@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Mail, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../../../hooks/useAuth';
 import './ResetForm.css';
 
@@ -22,6 +23,7 @@ function ResetForm({ onSwitchLogin }) {
         return Object.keys(newErrors).length === 0
     }
 
+    //Gửi email reset
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (loading) return
@@ -35,6 +37,7 @@ function ResetForm({ onSwitchLogin }) {
         }
     }
 
+    //Gửi lại email reset
     const handleResendEmail = async () => {
         const result = await forgotPassword(email)
         
@@ -45,9 +48,10 @@ function ResetForm({ onSwitchLogin }) {
 
     if (isSubmitted) {
         return (
+            //Form reset lại account
             <div className="auth-form">
                 <div className="success-message">
-                    <div className="success-icon">✅</div>
+                    <div className="success-icon"><CheckCircle size={20} /></div>
                     <h3>Email đã được gửi!</h3>
                     <p>Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu đến email <strong>{email}</strong></p>
                     <p>Vui lòng kiểm tra hộp thư (kể cả thư mục spam) và làm theo hướng dẫn.</p>
@@ -74,8 +78,8 @@ function ResetForm({ onSwitchLogin }) {
                 <p>Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu</p>
             </div>
             
-            <div className="input-group">
-                <div className="input-icon">✉️</div>
+            <div className="input-group-auth">
+                <div className="input-icon-auth"><Mail size={16} /></div>
                 <input 
                     type="email" 
                     placeholder="Nhập email" 

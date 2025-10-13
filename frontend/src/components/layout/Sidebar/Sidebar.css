@@ -1,9 +1,9 @@
 /* Fixed, modern sidebar with hover animation */
 .app-sidebar {
     position: fixed;
-    top: 61px; /* under fixed header */
+    top: 60px; /* under fixed header */
     left: 0;
-    height: calc(100vh - 80px);
+    height: calc(100vh - 60px);
     width: 70px; /* Default collapsed width */
     background: #ffffff;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -23,7 +23,7 @@
 
 /* Collapsed state (default) */
 .app-sidebar.collapsed {
-    width: 75px;
+    width: 90px;
 }
 
 /* Removed sidebar-toggle styles - no longer needed */
@@ -43,7 +43,7 @@
 .sidebar-item {
     display: flex;
     align-items: center;
-    gap: 15px;
+    /* gap: 15px; */
     padding: 15px 15px;
     border-radius: 8px;
     color: #000000;
@@ -51,7 +51,7 @@
     transition: all 0.3s ease;
     border: none;
     border-bottom: 3px solid #0b0b0b14;
-    margin: 6px 4px;
+    margin: 6px 0px;
     white-space: nowrap;
     overflow: hidden;
     background-color: #fffefe;
@@ -105,11 +105,12 @@
 .sidebar-label { 
     white-space: nowrap; 
     opacity: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 500px;
     transition: opacity 0.3s ease, transform 0.3s ease;
     transform: translateX(-10px);
     margin-right: 5px;
+    margin-top: 3px;
 }
 
 /* Show labels when sidebar is expanded */

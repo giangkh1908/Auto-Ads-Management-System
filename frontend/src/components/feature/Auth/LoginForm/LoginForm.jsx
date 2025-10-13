@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Mail, Lock, Eye, EyeOff, Facebook } from 'lucide-react'
 import { useAuth } from '../../../../hooks/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
 import axios from 'axios'
@@ -192,14 +193,14 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     return (
         <form className="auth-form" onSubmit={handleSubmit}>
             <button type="button" className="btn-fb" onClick={handleFacebookBusinessLogin} disabled={fbLoading}>
-                <span className="fb-icon">f</span>
+                <span className="fb-icon" aria-hidden="true"><Facebook size={16} /></span>
                 {fbLoading ? 'Đang xử lý...' : 'Đăng nhập với Facebook'}
             </button>
 
             <div className="form-sep">Hoặc</div>
 
-            <div className="input-group">
-                <div className="input-icon">✉️</div>
+            <div className="input-group-auth">
+                <div className="input-icon-auth"><Mail size={16} /></div>
                 <input 
                     type="email" 
                     placeholder="Nhập email" 
@@ -213,8 +214,8 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
                 {errors.email && <div className="error-message">{errors.email}</div>}
             </div>
 
-            <div className="input-group">
-                <div className="input-icon">🔑</div>
+            <div className="input-group-auth">
+                <div className="input-icon-auth" aria-hidden="true"><Lock size={16} /></div>
                 <input 
                     type={showPwd ? 'text' : 'password'} 
                     placeholder="Nhập mật khẩu" 
@@ -226,7 +227,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
                     className={errors.password ? 'error' : ''}
                 />
                 <div className="input-action" onClick={() => setShowPwd(v => !v)}>
-                    {showPwd ? '🙈' : '👁️'}
+                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                 </div>
                 {errors.password && <div className="error-message">{errors.password}</div>}
             </div>

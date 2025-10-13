@@ -32,11 +32,11 @@
   color: white;
 }
 
-/* .logo-icon {
+.logo-img {
   position: relative;
-  width: 32px;
-  height: 32px;
-} */
+  height: 40px;
+  width: 114.14px;
+}
 
 .logo-text {
   font-size: 18px;
@@ -90,12 +90,12 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-.filter-section {
+.filter-section-connect-page {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-right: 400px;
-}
+  margin-right: 500px;
+} 
 
 .status-filter {
   padding: 10px 10px;

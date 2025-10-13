@@ -18,9 +18,9 @@ import ConnectAdAccount from './pages/ConnectAdAccount/ConnectAdAccount.jsx'
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail.jsx'
 import ResetPassword from './pages/ResetPassword/ResetPassword.jsx'
 import Profile from './pages/Profile/Profile.jsx'
-// import MyShop from './pages/Shop/MyShop.jsx'
-// import Employee from './pages/Shop/Employee.jsx'
-// import History from './pages/Shop/History.jsx'
+import MyShop from './pages/Shop/MyShop.jsx'
+import Employee from './pages/Shop/Employee.jsx'
+import History from './pages/Shop/History.jsx'
 import ScrollToTop from './utils/ScrollToTop.jsx'
 import { ROUTES, HEADER_ROUTES, AUTH_MODES } from './constants/app.constants'
 
@@ -145,13 +145,33 @@ function AppContent() {
           } 
         />
 
-        {/* Routes cho Shop
+        {/* Routes cho Shop */}
         <Route 
           path={ROUTES.SHOP}
           element={
             <ProtectedRoute>
               <main className="page-content">
                 <MyShop />
+              </main>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path={ROUTES.SHOP_EMPLOYEE}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <Employee />
+              </main>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path={ROUTES.SHOP_HISTORY}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <History />
               </main>
             </ProtectedRoute>
           } 

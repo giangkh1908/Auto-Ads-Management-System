@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import facebook_icon from "../../assets/facebook.png";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
+import { Edit3, Pause, PlugZap, RefreshCcw, Repeat, Bell, Users, MessageCircle, Bot, Play, Calendar, Key, Store, Search as SearchIcon, Plus, Link2} from "lucide-react";
 import profileService from "../../services/profileService";
 import shopService from "../../services/shopService";
 import { toast } from "sonner";
@@ -59,19 +60,19 @@ function Dashboard() {
 
   // Menu items data
   const menuItems = [
-    { id: "rename", icon: "✏️", text: "Đổi tên page" },
-    { id: "pause", icon: "⏸️", text: "Tạm dừng" },
-    { id: "disconnect", icon: "🔌", text: "Ngắt kết nối" },
-    { id: "refresh", icon: "🔄", text: "Làm mới kết nối" },
-    { id: "switch", icon: "↔️", text: "Chuyển shop" },
-    { id: "notifications", icon: "🔔", text: "Thông báo" },
-    { id: "customers", icon: "👥", text: "Khách hàng" },
-    { id: "livechat", icon: "💬", text: "Livechat" },
-    { id: "chatbot", icon: "🤖", text: "Chatbot" },
-    { id: "campaigns", icon: "▶️", text: "Chiến dịch" },
-    { id: "sequence", icon: "📅", text: "Sequence" },
-    { id: "keywords", icon: "🔑", text: "Từ khóa" },
-    { id: "settings", icon: "⚙️", text: "Cài đặt page" },
+    { id: "rename", icon: <Edit3 size={16} />, text: "Đổi tên page" },
+    { id: "pause", icon: <Pause size={16} />, text: "Tạm dừng" },
+    { id: "disconnect", icon: <PlugZap size={16} />, text: "Ngắt kết nối" },
+    { id: "refresh", icon: <RefreshCcw size={16} />, text: "Làm mới kết nối" },
+    { id: "switch", icon: <Repeat size={16} />, text: "Chuyển shop" },
+    { id: "notifications", icon: <Bell size={16} />, text: "Thông báo" },
+    { id: "customers", icon: <Users size={16} />, text: "Khách hàng" },
+    { id: "livechat", icon: <MessageCircle size={16} />, text: "Livechat" },
+    { id: "chatbot", icon: <Bot size={16} />, text: "Chatbot" },
+    { id: "campaigns", icon: <Play size={16} />, text: "Chiến dịch" },
+    { id: "sequence", icon: <Calendar size={16} />, text: "Sequence" },
+    { id: "keywords", icon: <Key size={16} />, text: "Từ khóa" },
+    { id: "shop", icon: <Store size={16} />, text: "Shop" },
   ];
 
   const handlePageMenu = (pageId) => {
@@ -80,6 +81,10 @@ function Dashboard() {
 
   const handleMenuItemClick = async (pageId, itemId) => {
     setOpenMenuId(null);
+    if (itemId === "shop") {
+      navigate(ROUTES.SHOP);
+      return;
+    }
     if (itemId === "disconnect") {
       try {
         const me = await profileService.getCurrentProfile();
@@ -177,15 +182,19 @@ function Dashboard() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <button className="search-button">🔎</button>
+                <button className="search-button" aria-label="Search">
+                  <SearchIcon size={16} />
+                </button>
               </div>
 
               <button className="btn-refresh" onClick={handleRefresh}>
-                ⟳ Refresh
+                <RefreshCcw size={16} />
+                &nbsp;Refresh
               </button>
 
               <button className="btn-contribute" onClick={handleContribute}>
-                🔗 Gộp Page
+                <Link2 size={16} />
+                &nbsp;Gộp Page
               </button>
             </div>
           </div>
@@ -199,7 +208,7 @@ function Dashboard() {
                 onClick={handleAddNewPage}
               >
                 <div className="add-page-content">
-                  <div className="add-icon">➕</div>
+                  <div className="add-icon"><Plus size={30} /></div>
                   <div className="add-page-text">
                     Kết nối page mới ({connectedPages.length}/10)
                   </div>

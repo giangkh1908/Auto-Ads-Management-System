@@ -33,6 +33,7 @@ function AccountManagement() {
 
         const res = await axiosInstance.get("/api/ads-accounts", { params });
         // API trả: { items, total, page, limit, pages }
+        console.log("📦 Dữ liệu API trả về:", res.data);
         setItems(res.data?.items || []);
         setTotal(res.data?.total || 0);
       } catch (err) {
@@ -189,6 +190,7 @@ function AccountManagement() {
       <div className="account-management-content">
         <div className="account-management-center">
           <div className="account-management-card">
+            {/* Header */}
             <div className="account-management-header">
               <div>
                 <h3>Tài khoản quảng cáo</h3>
@@ -209,15 +211,14 @@ function AccountManagement() {
                     onClick={onSearch}
                     disabled={loading || syncing}
                   >
-                    {loading ? "Đang tìm..." : "Tìm"}
+                    {loading ? "Tìm..." : "Tìm"}
                   </button>
                   <button
                     className="btn-find"
                     onClick={handleSync}
                     disabled={loading || syncing}
-                    style={{ marginLeft: 8 }}
                   >
-                    {syncing ? "Đang đồng bộ..." : "Đồng bộ dữ liệu"}
+                    {syncing ? "Refresh..." : "Refresh"}
                   </button>
                 </div>
               </div>
@@ -236,6 +237,7 @@ function AccountManagement() {
               <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>
             )}
 
+            {/* Table */}
             <table className="table">
               <thead>
                 <tr>

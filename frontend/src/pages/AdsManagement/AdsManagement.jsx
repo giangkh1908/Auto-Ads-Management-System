@@ -93,6 +93,8 @@ function AdsManagement() {
         console.error('❌ Fetch campaigns error:', err)
       }
     }
+    return [];
+  };
 
     fetchCampaigns()
   }, [selectedAccount])
