@@ -1,8 +1,6 @@
 /* Layout container - Override animations từ các trang khác */
 .dashboard-layout {
     display: block;
-    overflow: hidden;
-    height: 100vh;
 }
 
 /* Override Header animations trong Dashboard */
@@ -200,7 +198,7 @@
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    padding: 10px;
+    padding: 5px;
     /* transition: all 0.2s ease; */ /* Tắt animation */
     cursor: pointer;
     overflow: visible; /* đảm bảo dropdown không bị cắt */
@@ -227,15 +225,13 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 12px;
     color: white;
 }
 
 .add-icon {
-    width: 45px;
-    height: 45px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;

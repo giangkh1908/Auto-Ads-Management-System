@@ -87,9 +87,7 @@ export const verifyEmail = async (req, res) => {
       emailVerificationExpires: { $gt: Date.now() },
     });
     if (!user)
-      return res
-        .status(400)
-        .json({
+      return res.status(400).json({
           success: false,
           message: "Token xác nhận không hợp lệ hoặc đã hết hạn.",
         });
@@ -422,6 +420,66 @@ export const updateProfile = async (req, res) => {
   } catch (error) {
     console.log("❌ Update profile error:", error);
     res.status(500).json({ success: false, message: "Lỗi hệ thống." });
+  }
+};
+
+// 🔹 Đổi mật khẩu
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user._id; // Lấy user từ middleware xác thực JWT
+    const { currentPassword, newPassword } = req.body;
+
+    // Kiểm tra đầu vào
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.",
+      });
+    }
+
+    // Lấy user có chứa trường password
+    const user = await User.findById(userId).select("+password");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy người dùng." });
+    }
+
+    // Kiểm tra mật khẩu cũ
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Mật khẩu hiện tại không chính xác.",
+        });
+    }
+
+    // Kiểm tra mật khẩu mới khác mật khẩu cũ
+    if (await bcrypt.compare(newPassword, user.password)) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới không được trùng với mật khẩu hiện tại.",
+      });
+    }
+
+    // Hash và lưu mật khẩu mới
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Đổi mật khẩu thành công!",
+      requireLogout: true,
+    });
+  } catch (error) {
+    console.error("❌ Change password error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống.",
+    });
   }
 };
 

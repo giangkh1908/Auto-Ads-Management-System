@@ -2,7 +2,7 @@
 .btn-fb { background: #1877f2; color: #fff; border: none; padding: 10px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 15px;}
 .fb-icon { width: 22px; height: 22px; background: #fff; color: #1877f2; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
 .form-sep { text-align: center; color: #6b7280; margin: 6px 0; }
-.input-group { 
+.input-group-auth { 
     position: relative;
     display: flex; 
     align-items: center; 
@@ -14,11 +14,13 @@
     margin-bottom: 15px;
 }
 
-.input-group.error,
-.input-group input.error {
+.input-group-auth.error,
+.input-group-auth input.error {
     border-color: #dc3545;
+    padding: 8px 12px 8px 32px;
 }
 
+.input-group-auth input { border: none; outline: none; flex: 1; font-size: 14px; }
 .error-message {
     position: absolute;
     top: 100%;
@@ -28,8 +30,15 @@
     margin-top: 2px;
     padding-left: 12px;
 }
-.input-group input { border: none; outline: none; flex: 1; font-size: 14px; }
-.input-icon { color: #6b7280; }
+
+.input-icon { 
+    position: absolute;
+  top: 50%;
+  left: 10px;
+  transform: translateY(-50%);
+  color: #666;
+  pointer-events: none; 
+}
 .input-action { cursor: pointer; color: #6b7280; }
 
 .btn-login-form { 
