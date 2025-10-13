@@ -1,6 +1,6 @@
 import { Circle, Image, ChevronDown, Facebook, FileText, Type, MousePointer } from 'lucide-react';
 
-function AdStep({ ad, setAd, mode = "create" }) {
+function AdStep({ ad, setAd, campaign }) {
     return (
         <div className="ad-step">
             <div className="config-scroll-container">
@@ -28,8 +28,16 @@ function AdStep({ ad, setAd, mode = "create" }) {
                     <div className="identity-field">
                         <label className="field-label">*Trang Facebook</label>
                         <div className="facebook-page-display">
-                            <div className="page-logo-small">F</div>
-                            <div className="page-name-small">Fchat.vn</div>
+                            {campaign?.facebookPageAvatar ? (
+                                <img 
+                                    src={campaign.facebookPageAvatar} 
+                                    alt={campaign.facebookPage}
+                                    className="page-logo-small"
+                                />
+                            ) : (
+                                <div className="page-logo-small">F</div>
+                            )}
+                            <div className="page-name-small">{campaign?.facebookPage || 'Chưa chọn'}</div>
                         </div>
                     </div>
                 </div>

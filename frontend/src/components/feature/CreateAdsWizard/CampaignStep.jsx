@@ -1,7 +1,9 @@
 
+import { useState } from 'react';
 import { Circle, DollarSign, Settings, Facebook, Edit2 } from 'lucide-react';
 
-function CampaignStep({ campaign, setCampaign, mode = "create" }) {
+function CampaignStep({ campaign, setCampaign, facebookPages = [] }) {
+    const [showPageSelect, setShowPageSelect] = useState(false)
     return (
         <div className="campaign-step">
             <div className="step-content">
@@ -73,21 +75,94 @@ function CampaignStep({ campaign, setCampaign, mode = "create" }) {
                                 </div>
                             </div>
                         </label>
-                        {/* Facebook Page Section */}
+                {/* Facebook Page Section */}
                 <div className="config-section">
-                    <div className="section-header-ads">
-                        <Facebook size={16} color="#2563eb" />
-                        <h3 className="section-title-ads">Trang Facebook</h3>
-                    </div>
-                    <div className="facebook-page-selector">
-                        <div className="page-logo">F</div>
-                        <div className="page-info">
-                            <div className="page-type">Trang Facebook</div>
-                            <div className="page-name">Fchat.vn</div>
-                        </div>
-                        <Edit2 size={18} color="#6b7280" className="page-edit" />
-                    </div>
-                </div>
+  <div className="section-header-ads">
+    <Facebook size={16} color="#2563eb" />
+    <h3 className="section-title-ads">Trang Facebook</h3>
+  </div>
+
+  <div 
+    className="facebook-page-selector" 
+    style={{ cursor: 'pointer', position: 'relative' }}
+    onClick={() => setShowPageSelect(prev => !prev)}
+  >
+    {/* Nội dung hiển thị chính */}
+    {facebookPages.length > 0 ? (
+      (() => {
+        const current = facebookPages.find(p => p.id === campaign.facebookPageId)
+        return (
+          <>
+            <img
+              src={current?.avatar}
+              alt={current?.name || 'Facebook Page'}
+              className="page-logo"
+            />
+            <div className="page-info">
+              <div className="page-type">Trang Facebook</div>
+              <div className="page-name">
+                {current?.name || "Chưa chọn Page"}
+              </div>
+            </div>
+          </>
+        )
+      })()
+    ) : (
+      <div className="page-info">
+        <div className="page-type">Trang Facebook</div>
+        <div className="page-name">Chưa có Page nào</div>
+      </div>
+    )}
+
+    {/* Dropdown list khi click */}
+    {showPageSelect && facebookPages.length > 0 && (
+      <div 
+        className="dropdown-list" 
+        style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          background: 'white',
+          border: '1px solid #d1d5db',
+          borderRadius: 6,
+          marginTop: 4,
+          zIndex: 20
+        }}
+        onClick={(ev) => ev.stopPropagation()}
+      >
+        {facebookPages.map((p) => (
+          <div
+            key={p.id}
+            className="dropdown-item-campaign"
+            onClick={() => {
+              setCampaign(prev => ({
+                ...prev,
+                facebookPage: p.name,
+                facebookPageId: p.id,
+                facebookPageAvatar: p.avatar,
+              }))
+              setShowPageSelect(false)
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 10px',
+              cursor: 'pointer',
+              background: campaign.facebookPageId === p.id ? '#f3f4f6' : 'white',
+              zIndex: 9999,
+            }}
+          >
+            <img src={p.avatar} alt={p.name} style={{ width: 28, height: 28, borderRadius: '50%' }} />
+            <span>{p.name}</span>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</div>
+
                     </div>
                 </div>
             </div>

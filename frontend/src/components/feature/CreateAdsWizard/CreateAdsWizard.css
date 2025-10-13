@@ -622,7 +622,7 @@ body {
     font-weight: 500; 
     color: #111827;
 }
-.page-edit { 
+.page-edit-campaign { 
     color: #6b7280; 
     cursor: pointer;
 }
@@ -1380,3 +1380,10 @@ body {
   }
 }
 
+.dropdown-item-campaign {
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  background: #fff;
+}

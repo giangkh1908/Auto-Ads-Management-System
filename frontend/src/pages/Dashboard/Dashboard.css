@@ -111,7 +111,7 @@
     border-radius: 4px;
     font-size: 14px;
     width: 200px;
-    height: 23.5px;
+    height: 35px;
     border: 1px solid #bec0c5;
 }
 /*
@@ -198,7 +198,7 @@
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    padding: 5px;
+    padding: 10px;
     /* transition: all 0.2s ease; */ /* Tắt animation */
     cursor: pointer;
     overflow: visible; /* đảm bảo dropdown không bị cắt */

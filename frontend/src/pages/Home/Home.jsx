@@ -360,8 +360,8 @@ function Home({ onLoginClick }) {
                 required
               />
             </div>
-            <button type="submit" className="submit-button">
-              NGƯỜI CHO TÔI
+            <button type="submit" className="submit-button-home">
+              LIÊN HỆ CHO TÔI
             </button>
           </form>
         </div>

@@ -16,6 +16,7 @@ import AdsetStep from "./AdsetStep";
 import AdStep from "./AdStep";
 import Creative from "./Creative";
 import "./CreateAdsWizard.css";
+import shopService from "../../../services/shopService";
 
 function CreateAdsWizard({ 
   onClose, 
@@ -28,6 +29,7 @@ function CreateAdsWizard({
 }) {
   const [wizardStep, setWizardStep] = useState(0);
   const contentRef = useRef(null);
+  const [facebookPages, setFacebookPages] = useState([]);
 
   // Objectives data with descriptions and suitable tags
   const objectivesData = {
@@ -259,6 +261,27 @@ function CreateAdsWizard({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
+  }, []);
+
+  // Load connected Facebook pages for selection
+  useEffect(() => {
+    const loadPages = async () => {
+      try {
+        const res = await shopService.fetchFacebookPages();
+        const pages = res?.data?.pages || [];
+        setFacebookPages(
+          pages.map((p) => ({
+            id: p.id,
+            name: p.name,
+            avatar: p.picture || `https://graph.facebook.com/${p.id}/picture?type=square`,
+          }))
+        );
+      } catch (e) {
+        // silent fail; selection will just be empty
+        console.error("Failed to load facebook pages", e);
+      }
+    };
+    loadPages();
   }, []);
 
   // Set initial wizard step based on editingItem
@@ -507,7 +530,11 @@ function CreateAdsWizard({
 
             {/* Campaign Details Panel */}
             {wizardStep === 1 && (
-              <CampaignStep campaign={campaign} setCampaign={setCampaign} mode={mode} />
+              <CampaignStep
+                campaign={campaign}
+                setCampaign={setCampaign}
+                facebookPages={facebookPages}
+              />
             )}
 
             {/* Adset Details Panel */}
@@ -516,7 +543,9 @@ function CreateAdsWizard({
             )}
 
             {/* Ad Details Panel */}
-            {wizardStep === 3 && <AdStep ad={ad} setAd={setAd} mode={mode} />}
+            {wizardStep === 3 && (
+              <AdStep ad={ad} setAd={setAd} mode={mode} campaign={campaign} />
+            )}
 
             {/* Creative Preview Panel */}
             {wizardStep === 4 && <Creative ad={ad} campaign={campaign} adset={adset} />}
