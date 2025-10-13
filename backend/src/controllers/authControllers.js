@@ -88,9 +88,9 @@ export const verifyEmail = async (req, res) => {
     });
     if (!user)
       return res.status(400).json({
-          success: false,
-          message: "Token xác nhận không hợp lệ hoặc đã hết hạn.",
-        });
+        success: false,
+        message: "Token xác nhận không hợp lệ hoặc đã hết hạn.",
+      });
 
     user.emailVerified = true;
     user.status = "active";
@@ -125,21 +125,17 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email }).select("+password");
     if (!user)
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: "Email hoặc mật khẩu không chính xác.",
-        });
+      return res.status(401).json({
+        success: false,
+        message: "Email hoặc mật khẩu không chính xác.",
+      });
 
     const match = await bcrypt.compare(password, user.password);
     if (!match)
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: "Email hoặc mật khẩu không chính xác.",
-        });
+      return res.status(401).json({
+        success: false,
+        message: "Email hoặc mật khẩu không chính xác.",
+      });
 
     if (user.status !== "active")
       return res
@@ -170,12 +166,10 @@ export const facebookLogin = async (req, res) => {
 
     const { facebookId, name, email, accessToken } = req.body;
     if (!facebookId || !accessToken) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Thiếu Facebook ID hoặc access token.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu Facebook ID hoặc access token.",
+      });
     }
 
     console.log("🔵 Đang xác thực ...");
@@ -204,7 +198,10 @@ export const facebookLogin = async (req, res) => {
         console.log("✅ Đã đổi thành long-lived token");
       }
     } catch (tokenError) {
-      console.log("⚠️ Không thể đổi token, sử dụng token gốc:", tokenError.message);
+      console.log(
+        "⚠️ Không thể đổi token, sử dụng token gốc:",
+        tokenError.message
+      );
     }
 
     let user = await User.findOne({
@@ -300,12 +297,10 @@ export const refreshToken = async (req, res) => {
       data: { tokens },
     });
   } catch {
-    res
-      .status(401)
-      .json({
-        success: false,
-        message: "Refresh token hết hạn hoặc không hợp lệ.",
-      });
+    res.status(401).json({
+      success: false,
+      message: "Refresh token hết hạn hoặc không hợp lệ.",
+    });
   }
 };
 
@@ -315,12 +310,10 @@ export const forgotPassword = async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user)
-      return res
-        .status(200)
-        .json({
-          success: true,
-          message: "Nếu email tồn tại, hướng dẫn đã được gửi.",
-        });
+      return res.status(200).json({
+        success: true,
+        message: "Nếu email tồn tại, hướng dẫn đã được gửi.",
+      });
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     user.passwordResetToken = crypto
@@ -351,12 +344,10 @@ export const resetPassword = async (req, res) => {
       passwordResetExpires: { $gt: Date.now() },
     });
     if (!user)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Token không hợp lệ hoặc đã hết hạn.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Token không hợp lệ hoặc đã hết hạn.",
+      });
 
     user.password = await bcrypt.hash(password, 10);
     user.passwordResetToken = undefined;
@@ -410,15 +401,13 @@ export const updateProfile = async (req, res) => {
     if (profile) user.profile = { ...user.profile, ...profile };
 
     await user.save();
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Cập nhật thông tin thành công!",
-        data: { user },
-      });
+    res.status(200).json({
+      success: true,
+      message: "Cập nhật thông tin thành công!",
+      data: { user: user.toJSON() },
+    });
   } catch (error) {
-    console.log("❌ Update profile error:", error);
+    console.log("Update profile error:", error);
     res.status(500).json({ success: false, message: "Lỗi hệ thống." });
   }
 };

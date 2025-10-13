@@ -3,8 +3,23 @@ import { API_ENDPOINTS } from '../config/api.config'
 
 /**
  * Ad Service
- * Handles all ad-related API calls using axios
+ * Handles ad-related API calls
  */
+
+// Publish Ads Wizard - tạo cùng lúc campaign, adset, creative và ad
+export const publishAdsWizard = async (wizardData) => {
+  try {
+    const response = await axiosInstance.post('/api/ads/wizard/publish', wizardData)
+    return response.data
+  } catch (error) {
+    console.error('Error publishing ads wizard:', error)
+    throw error.response?.data || { 
+      success: false, 
+      message: "Có lỗi xảy ra khi tạo quảng cáo", 
+      detail: error.message 
+    }
+  }
+}
 
 // Create Campaign
 export const createAd = async (formData) => {

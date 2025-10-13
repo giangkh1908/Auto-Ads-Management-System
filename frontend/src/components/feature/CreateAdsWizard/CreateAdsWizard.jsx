@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import AdsDropdown from "../../common/AdsDropdown/AdsDropdown";
+import AdsDropdown from "../../common/AdsDropdown/AdsDropdown.jsx";
 import {
   Megaphone,
   ArrowRight,

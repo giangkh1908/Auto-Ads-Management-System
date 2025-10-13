@@ -176,6 +176,26 @@ function AppContent() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path={ROUTES.SHOP_EMPLOYEE}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <Employee />
+              </main>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path={ROUTES.SHOP_HISTORY}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <History />
+              </main>
+            </ProtectedRoute>
+          } 
+        /> */}
 
         {/* Route cho Connect Page */}
         <Route 
