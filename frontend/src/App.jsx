@@ -14,10 +14,13 @@ import NotFound from './pages/NotFound/NotFound.jsx'
 import AccountManagement from './pages/AccountManagement/AccountManagement.jsx'
 import AdsManagement from './pages/AdsManagement/AdsManagement.jsx'
 import ConnectPage from './pages/ConnectPage/ConnectPage.jsx'
+import ConnectAdAccount from './pages/ConnectAdAccount/ConnectAdAccount.jsx'
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail.jsx'
 import ResetPassword from './pages/ResetPassword/ResetPassword.jsx'
 import Profile from './pages/Profile/Profile.jsx'
-import Settings from './pages/Settings/Settings.jsx'
+// import MyShop from './pages/Shop/MyShop.jsx'
+// import Employee from './pages/Shop/Employee.jsx'
+// import History from './pages/Shop/History.jsx'
 import ScrollToTop from './utils/ScrollToTop.jsx'
 import { ROUTES, HEADER_ROUTES, AUTH_MODES } from './constants/app.constants'
 
@@ -45,7 +48,7 @@ function AppContent() {
           element={
             <>
               <main className="page-content">
-                <Home />
+                <Home onLoginClick={handleLoginClick} />
               </main>
               <Footer />
             </>
@@ -142,24 +145,48 @@ function AppContent() {
           } 
         />
 
-        {/* Route cho Settings */}
+        {/* Routes cho Shop
         <Route 
-          path={ROUTES.SETTINGS}
+          path={ROUTES.SHOP}
           element={
             <ProtectedRoute>
-              <>
-                <main className="page-content">
-                  <Settings />
-                </main>
-              </>
+              <main className="page-content">
+                <MyShop />
+              </main>
             </ProtectedRoute>
           } 
         />
-
-        {/* Route cho Add Page Ads */}
         <Route 
-          path={ROUTES.CONNECT}
+          path={ROUTES.SHOP_EMPLOYEE}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <Employee />
+              </main>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path={ROUTES.SHOP_HISTORY}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <History />
+              </main>
+            </ProtectedRoute>
+          } 
+        /> */}
+
+        {/* Route cho Connect Page */}
+        <Route 
+          path={ROUTES.CONNECT_PAGE}
           element={<ConnectPage />}
+        />
+
+        {/* Route cho Connect Ad Account */}
+        <Route 
+          path={ROUTES.CONNECT_AD_ACCOUNT}
+          element={<ConnectAdAccount />}
         />
         
         {/* Auth routes */}
@@ -202,21 +229,21 @@ function AppContent() {
 function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
-        <AuthProvider>
-          <ScrollToTop />
-          <AppContent />
-          <Toaster 
-            richColors 
-            position="top-right" 
-            expand={true}
-            duration={4000}
-            closeButton={true}
-            limit={2}
-            offset="20px"
-          />
-        </AuthProvider>
-      </BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider>
+            <ScrollToTop />
+            <AppContent />
+            <Toaster 
+              richColors 
+              position="top-right" 
+              expand={true}
+              duration={4000}
+              closeButton={true}
+              limit={2}
+              offset="20px"
+            />
+          </AuthProvider>
+        </BrowserRouter>
     </ErrorBoundary>
   )
 }

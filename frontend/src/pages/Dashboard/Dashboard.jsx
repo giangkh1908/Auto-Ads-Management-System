@@ -54,7 +54,7 @@ function Dashboard() {
   };
 
   const handleAddNewPage = () => {
-    navigate(ROUTES.CONNECT);
+    navigate(ROUTES.CONNECT_PAGE);
   };
 
   // Menu items data

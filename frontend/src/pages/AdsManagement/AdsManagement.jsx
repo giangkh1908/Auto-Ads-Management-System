@@ -1,187 +1,332 @@
-import { useMemo, useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import './AdsManagement.css'
 import CreateAdsWizard from '../../components/feature/CreateAdsWizard/CreateAdsWizard'
 import { handleSelectAll, handleSelectItem } from '../../utils/selectionUtils'
 
 function AdsManagement() {
-    const [activeTab, setActiveTab] = useState('campaigns')
-    const [showWizard, setShowWizard] = useState(false)
+  const [activeTab, setActiveTab] = useState('campaigns')
+  const [showWizard, setShowWizard] = useState(false)
 
-    //Setdata tĩnh ngẫu nhiên
-    const makeData = useMemo(() => {
-        const base = (count, mapRow) => Array.from({ length: count }).map((_, i) => mapRow(i))
-        return {
-            campaigns: base(12, (i) => ({
-                id: i + 1,
-                name: `Chiến dịch Lượt tương tác #${i + 1}`,
-                status: i < 3 ? 'Hoạt động' : 'Đang tắt',
-                budget: `${(100_000_000 - i * 123_456).toLocaleString('vi-VN')}đ`,
-                impressions: (1_000_001 + i * 1234).toLocaleString('vi-VN'),
-                reach: (1000 + i * 27).toLocaleString('vi-VN'),
-                enabled: i < 3,
-                isChecked: false,
-            })),
-            adsets: base(12, (i) => ({
-                id: i + 1,
-                name: `Nhóm quảng cáo Tương tác #${i + 1}`,
-                status: i % 2 === 0 ? 'Hoạt động' : 'Đang tắt',
-                budget: `${(50_000_000 - i * 77_777).toLocaleString('vi-VN')}đ`,
-                impressions: (555_000 + i * 2222).toLocaleString('vi-VN'),
-                reach: (700 + i * 15).toLocaleString('vi-VN'),
-                enabled: i % 2 === 0,
-                isChecked: false,
-            })),
-            ads: base(12, (i) => ({
-                id: i + 1,
-                name: `Quảng cáo Bài viết #${i + 1}`,
-                status: i % 3 === 0 ? 'Hoạt động' : 'Đang tắt',
-                budget: `${(5_000_000 + i * 33_333).toLocaleString('vi-VN')}đ`,
-                impressions: (120_000 + i * 999).toLocaleString('vi-VN'),
-                reach: (320 + i * 9).toLocaleString('vi-VN'),
-                enabled: i % 3 === 0,
-                isChecked: false,
-            })),
+  const [adAccounts, setAdAccounts] = useState([])
+  const [selectedAccount, setSelectedAccount] = useState('')
+
+  const [campaigns, setCampaigns] = useState([])
+  const [adsets, setAdsets] = useState([])
+  const [ads, setAds] = useState([])
+
+  const [checkAll, setCheckAll] = useState(false)
+
+  // Bộ lọc thời gian
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  const API_BASE = 'http://localhost:5001/api'
+
+  // 🔹 Chuẩn hoá 1 campaign để hiển thị bảng
+  const normalizeCampaign = (c) => ({
+    _id: c._id,
+    name: c.name,
+    statusText: c.status === 'ACTIVE' ? 'Hoạt động' : 'Đang tắt',
+    status: c.status || 'PAUSED',
+    daily_budget: c.daily_budget || 0,
+    impressions: c.impressions || 0,
+    reach: c.reach || 0,
+    enabled: c.status === 'ACTIVE',
+    isChecked: false,
+  })
+
+  // 🔹 Lấy danh sách AdsAccount khi vào trang
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const token =
+          localStorage.getItem('accessToken') ||
+          localStorage.getItem('auth_token') ||
+          localStorage.getItem('token')
+
+        if (!token) {
+          console.warn('⚠️ Không tìm thấy token trong localStorage')
+          return
         }
-    }, [])
 
-    //Lấy data từ hàm makeData
-    const [datasets, setDatasets] = useState(makeData)
+        const headers = { Authorization: `Bearer ${token}` }
+        const accRes = await fetch(`${API_BASE}/ads-accounts`, { headers })
+        const accJson = await accRes.json()
+        setAdAccounts(accJson?.items || [])
+      } catch (err) {
+        console.error('❌ Fetch error (ads-accounts):', err)
+      }
+    }
 
-    //Tạo và gắn false cho checkbox
-    const [checkAll, setCheckAll] = useState(false)
+    fetchAccounts()
+  }, [])
 
-    // Set dữ liệu để hiển thị tùy thuộc vào tab
-    const rows = datasets[activeTab === 'campaigns' ? 'campaigns' : activeTab === 'adsets' ? 'adsets' : 'ads']
+  // 🔹 Đồng bộ Campaign khi chọn tài khoản quảng cáo
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      if (!selectedAccount) return
+      try {
+        const token =
+          localStorage.getItem('accessToken') ||
+          localStorage.getItem('auth_token') ||
+          localStorage.getItem('token')
+        if (!token) return
 
-    //Function on/off trạng thái
-    const toggleRow = (id) => {
-        setDatasets(prev => {
-            const key = activeTab === 'campaigns' ? 'campaigns' : activeTab === 'adsets' ? 'adsets' : 'ads'
-            return {
-                ...prev,
-                [key]: prev[key].map(r => {
-                    if (r.id !== id) return r
-                    const nextEnabled = !r.enabled
-                    return { ...r, enabled: nextEnabled, status: nextEnabled ? 'Hoạt động' : 'Đang tắt' }
-                })
+        const headers = { Authorization: `Bearer ${token}` }
+
+        console.log(`🔄 Đồng bộ campaign cho account: ${selectedAccount}`)
+        const res = await fetch(
+          `${API_BASE}/ads-campaigns/sync?ad_account_id=${selectedAccount}`,
+          { headers }
+        )
+        const json = await res.json()
+
+        if (!json.success) {
+          console.warn('⚠️ Sync campaign thất bại:', json.message)
+          return
+        }
+
+        const list = (json.data || []).map(normalizeCampaign)
+        setCampaigns(list)
+        console.log(`✅ Đã đồng bộ ${list.length} campaign.`)
+      } catch (err) {
+        console.error('❌ Fetch campaigns error:', err)
+      }
+    }
+
+    fetchCampaigns()
+  }, [selectedAccount])
+
+  // 🔹 Lọc campaign theo khoảng thời gian
+  const handleFilterByDate = async () => {
+    if (!selectedAccount || !startDate || !endDate) return
+
+    try {
+      const token =
+        localStorage.getItem('accessToken') ||
+        localStorage.getItem('auth_token') ||
+        localStorage.getItem('token')
+
+      const headers = { Authorization: `Bearer ${token}` }
+
+      console.log(`🔍 Lọc campaign từ ${startDate} đến ${endDate}`)
+      const res = await fetch(
+        `${API_BASE}/ads-campaigns?account_id=${selectedAccount}&start_date=${startDate}&end_date=${endDate}`,
+        { headers }
+      )
+
+      const json = await res.json()
+      const list = (json.items || json.data || []).map(normalizeCampaign)
+      setCampaigns(list)
+      console.log(`✅ Lọc được ${list.length} campaign.`)
+    } catch (err) {
+      console.error('❌ Filter campaigns error:', err)
+    }
+  }
+
+  // 🔹 Lấy danh sách hiển thị theo tab
+  const rows = useMemo(() => {
+    if (activeTab === 'campaigns') return campaigns
+    if (activeTab === 'adsets') return adsets
+    return ads
+  }, [activeTab, campaigns, adsets, ads])
+
+  // 🔹 Cập nhật danh sách theo tab
+  const updateRows = (updater) => {
+    if (activeTab === 'campaigns') setCampaigns((prev) => updater(prev))
+    else if (activeTab === 'adsets') setAdsets((prev) => updater(prev))
+    else setAds((prev) => updater(prev))
+  }
+
+  // 🔹 Toggle bật/tắt
+  const toggleRow = (id) => {
+    updateRows((prev) =>
+      prev.map((r) =>
+        (r._id || r.id) === id
+          ? {
+              ...r,
+              enabled: !r.enabled,
+              status: r.enabled ? 'PAUSED' : 'ACTIVE',
+              statusText: r.enabled ? 'Đang tắt' : 'Hoạt động',
             }
-        })
-    }
-
-    // Hàm xử lý chọn tất cả
-    const handleCheckAll = (event) => {
-        const isChecked = event.target.checked
-        setCheckAll(isChecked)
-        setDatasets(prev => {
-            const key = activeTab === 'campaigns' ? 'campaigns' : activeTab === 'adsets' ? 'adsets' : 'ads'
-            const updatedItems = handleSelectAll(isChecked, prev[key])
-            return { ...prev, [key]: updatedItems }
-        })
-    }
-
-    //Hàm xử lý chọn đơn lẻ
-    const handleCheckItem = (id) => {
-        setDatasets(prev => {
-            const key = activeTab === 'campaigns' ? 'campaigns' : activeTab === 'adsets' ? 'adsets' : 'ads'
-            const { updatedItems, allChecked } = handleSelectItem(id, prev[key])
-            setCheckAll(allChecked)
-            return { ...prev, [key]: updatedItems }
-        })
-    }
-    return (
-        <div className="ads-management-layout">
-            <div className="ads-management-content">
-                <div className="ads-management-center">
-                    <div className="ads-card">
-                        <div className="ads-toolbar">
-                            <div className="account-select">
-                                <select>
-                                    <option>Salemall.Fchat - 5 (2733322083474120)</option>
-                                    <option>Salemall.Fchat - 4 (2733322083474234)</option>
-                                    <option>Salemall.Fchat - 3 (2733322083474587)</option>
-                                </select>
-                                {/* Show Wizard tạo chiến dịch */}
-                                <button className="btn-create" onClick={() => { setShowWizard(true) }}>+ Tạo chiến dịch</button>
-                            </div>
-                        
-                        {/* Tạo trường dữ liệu thời gian để tìm kiếm chiến dịch và nhóm quảng cáo */}
-                            <div className="filters">
-                                <span> Từ </span>
-                                <input type="date" />
-                                <span> đến </span>
-                                <input type="date" />
-                                <button className="btn-filter">Tìm</button>
-                            </div>
-
-                        </div>
-
-                        <div className="ads-tabs">
-                            <button className={`tab ${activeTab === 'campaigns' ? 'active' : ''}`} onClick={() => { setActiveTab('campaigns'); setCheckAll(false); }}>
-                                <span className="tab-icon">▦</span>
-                                Chiến dịch
-                            </button>
-                            <button className={`tab ${activeTab === 'adsets' ? 'active' : ''}`} onClick={() => { setActiveTab('adsets'); setCheckAll(false); }}>
-                                <span className="tab-icon">▣</span>
-                                Nhóm quảng cáo
-                            </button>
-                            <button className={`tab ${activeTab === 'ads' ? 'active' : ''}`} onClick={() => { setActiveTab('ads'); setCheckAll(false); }}>
-                                <span className="tab-icon">▥</span>
-                                Quảng cáo
-                            </button>
-                        </div>
-
-                        {/* Content chính */}
-                        <div className="ads-table-wrapper">
-                            <table className="ads-table">
-                                <thead>
-                                    <tr>
-                                        <th><input type="checkbox" 
-                                                   checked={checkAll}
-                                                   onChange={handleCheckAll}/> 
-                                        </th>
-                                        <th>Tắt/Bật</th>
-                                        <th>Chiến dịch</th>
-                                        <th>Trạng thái</th>
-                                        <th>Ngân sách</th>
-                                        <th>Lượt hiển thị</th>
-                                        <th>Người tiếp cận</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                     {rows.map((row) => (
-                                        <tr key={row.id}>
-                                            <td>
-                                                <input type="checkbox"
-                                                   checked={row.isChecked}
-                                                   onChange={() => handleCheckItem(row.id)} />
-                                            </td>
-                                             <td className="cell-name">
-                                                 <button
-                                                    type="button"
-                                                    className={`switch ${row.enabled ? 'on' : 'off'}`}
-                                                    aria-pressed={row.enabled}
-                                                    onClick={() => toggleRow(row.id)}
-                                                 />          
-                                            </td>
-                                            <td>{row.name}</td>
-                                            <td className={row.status === 'Hoạt động' ? 'status-active' : 'status-inactive'}>{row.status}</td>
-                                            <td className="text-center">{row.budget}</td>
-                                            <td className="text-right">{row.impressions}</td>
-                                            <td className="text-right">{row.reach}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {/* Đóng Wizard tạo chiến dịch */}
-            {showWizard && (<CreateAdsWizard onClose={() => setShowWizard(false)} />)}
-        </div>
+          : r
+      )
     )
+  }
+
+  // 🔹 Chọn tất cả
+  const handleCheckAll = (e) => {
+    const isChecked = e.target.checked
+    setCheckAll(isChecked)
+    updateRows((prev) => handleSelectAll(isChecked, prev))
+  }
+
+  // 🔹 Chọn đơn lẻ
+  const handleCheckItem = (id) => {
+    updateRows((prev) => {
+      const { updatedItems, allChecked } = handleSelectItem(id, prev.map((x) => ({ ...x })))
+      setCheckAll(allChecked)
+      return updatedItems
+    })
+  }
+
+  return (
+    <div className="ads-management-layout">
+      <div className="ads-management-content">
+        <div className="ads-management-center">
+          <div className="ads-card">
+            {/* Toolbar */}
+            <div className="ads-toolbar">
+              <div className="account-select">
+                <div className="selectors">
+                  {/* Ad Account selector */}
+                  <select
+                    value={selectedAccount}
+                    onChange={(e) => setSelectedAccount(e.target.value)}
+                  >
+                    <option value="">-- Chọn tài khoản quảng cáo --</option>
+                    {adAccounts.map((a) => (
+                      <option key={a.external_id} value={a.external_id}>
+                        {a.name} ({a.external_id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Create button */}
+              <button
+                className="btn-create"
+                disabled={!selectedAccount}
+                onClick={() => setShowWizard(true)}
+              >
+                + Tạo chiến dịch
+              </button>
+
+              {/* Bộ lọc thời gian */}
+              <div className="filters">
+                <span>Từ</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+                <span>đến</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+                <button
+                  className="btn-filter"
+                  onClick={handleFilterByDate}
+                  disabled={!startDate || !endDate || !selectedAccount}
+                >
+                  Tìm
+                </button>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="ads-tabs">
+              {['campaigns', 'adsets', 'ads'].map((tab) => (
+                <button
+                  key={tab}
+                  className={`tab ${activeTab === tab ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab(tab)
+                    setCheckAll(false)
+                  }}
+                >
+                  <span className="tab-icon">
+                    {tab === 'campaigns' ? '▦' : tab === 'adsets' ? '▣' : '▥'}
+                  </span>
+                  {tab === 'campaigns'
+                    ? 'Chiến dịch'
+                    : tab === 'adsets'
+                    ? 'Nhóm quảng cáo'
+                    : 'Quảng cáo'}
+                </button>
+              ))}
+            </div>
+
+            {/* Table */}
+            <div className="ads-table-wrapper">
+              <table className="ads-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <input type="checkbox" checked={checkAll} onChange={handleCheckAll} />
+                    </th>
+                    <th>Tắt/Bật</th>
+                    <th>Tên</th>
+                    <th>Trạng thái</th>
+                    <th>Ngân sách</th>
+                    <th>Lượt hiển thị</th>
+                    <th>Người tiếp cận</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', color: '#888' }}>
+                        Không có dữ liệu
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((row) => {
+                      const id = row._id || row.id
+                      return (
+                        <tr key={id}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={row.isChecked || false}
+                              onChange={() => handleCheckItem(id)}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              className={`switch ${row.enabled ? 'on' : 'off'}`}
+                              onClick={() => toggleRow(id)}
+                            />
+                          </td>
+                          <td>{row.name}</td>
+                          <td className={row.enabled ? 'status-active' : 'status-inactive'}>
+                            {row.statusText}
+                          </td>
+                          <td className="text-center">
+                            {(row.daily_budget || 0).toLocaleString('vi-VN')}đ
+                          </td>
+                          <td className="text-right">
+                            {(row.impressions || 0).toLocaleString('vi-VN')}
+                          </td>
+                          <td className="text-right">
+                            {(row.reach || 0).toLocaleString('vi-VN')}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Create Wizard */}
+      {showWizard && (
+        <CreateAdsWizard
+          onClose={() => setShowWizard(false)}
+          selectedAccount={selectedAccount}
+          onCreated={(newCampaign) =>
+            setCampaigns((prev) => [normalizeCampaign(newCampaign), ...prev])
+          }
+        />
+      )}
+    </div>
+  )
 }
 
 export default AdsManagement
-
-

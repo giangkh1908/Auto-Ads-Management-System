@@ -1,7 +1,7 @@
-// src/pages/AccountManagement/AccountManagement.jsx
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axios";
+import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import "./AccountManagement.css";
 
 function AccountManagement() {
@@ -18,6 +18,9 @@ function AccountManagement() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
+
+  // state thống kê
+  const [accountStats, setAccountStats] = useState({});
 
   /** Gọi API list ads accounts */
   const fetchAccounts = useCallback(
@@ -55,8 +58,42 @@ function AccountManagement() {
   const handleSync = async () => {
     try {
       setSyncing(true);
-      await axiosInstance.get("/api/ads-accounts/sync"); // backend lấy token từ req.user
+
+      // 1️⃣ Đồng bộ danh sách tài khoản quảng cáo
+      await axiosInstance.get("/api/ads-accounts/sync");
+
+      // 2️⃣ Tải lại danh sách tài khoản
       await fetchAccounts({ q: searchText.trim(), page, limit });
+
+      // 3️⃣ Lấy danh sách account_id từ items (sau khi load lại)
+      const accountIds = items.map((acc) => acc.external_id).filter(Boolean);
+
+      if (accountIds.length > 0) {
+        for (const accountId of accountIds) {
+          const formattedId = accountId.startsWith("act_")
+            ? accountId
+            : `act_${accountId}`;
+
+          try {
+            // 🌀 Đồng bộ Campaigns
+            await axiosInstance.get(`/api/campaigns/sync?account_id=${formattedId}`);
+            console.log(`✅ Đã đồng bộ campaigns cho: ${formattedId}`);
+
+            // 🌀 Đồng bộ AdSets
+            await axiosInstance.get(`/api/adsets/sync?account_id=${formattedId}`);
+            console.log(`✅ Đã đồng bộ adsets cho: ${formattedId}`);
+
+            // 🌀 Đồng bộ Ads
+            await axiosInstance.get(`/api/ads/sync?account_id=${formattedId}`);
+            console.log(`✅ Đã đồng bộ ads cho: ${formattedId}`);
+          } catch (error) {
+            console.error(`❌ Lỗi đồng bộ cho ${formattedId}:`, error);
+          }
+        }
+
+        // 4️⃣ Cập nhật thống kê sau khi đồng bộ
+        await fetchAccountStats(accountIds);
+      }
     } catch (e) {
       console.error(e);
       alert("Đồng bộ thất bại");
@@ -65,10 +102,51 @@ function AccountManagement() {
     }
   };
 
-  /** Map dữ liệu sang UI */
+  /** Lấy thống kê cho các tài khoản */
+  const fetchAccountStats = useCallback(async (accountIds) => {
+    if (!accountIds?.length) return;
+
+    const stats = {};
+    const timestamp = new Date().getTime();
+
+    try {
+      await Promise.all(
+        accountIds.map(async (accountId) => {
+          try {
+            const response = await axiosInstance.get(
+              `/api/ads-accounts/stats?account_id=${accountId}&_t=${timestamp}`,
+              { headers: { "Cache-Control": "no-cache" } }
+            );
+
+            if (response.data && response.data.stats) {
+              stats[accountId] = response.data.stats;
+            } else {
+              stats[accountId] = { campaigns: 0, adsets: 0, ads: 0 };
+            }
+          } catch (error) {
+            console.error(`Lỗi lấy thống kê cho ${accountId}:`, error);
+            stats[accountId] = { campaigns: 0, adsets: 0, ads: 0 };
+          }
+        })
+      );
+      setAccountStats(stats);
+    } catch (error) {
+      console.error("Lỗi lấy thống kê tài khoản:", error);
+    }
+  }, []);
+
+  /** Gọi lại thống kê khi danh sách tài khoản thay đổi */
+  useEffect(() => {
+    if (items?.length > 0) {
+      const accountIds = items.map((acc) => acc.external_id).filter(Boolean);
+      if (accountIds.length > 0) fetchAccountStats(accountIds);
+    }
+  }, [items, fetchAccountStats]);
+
+  /** Chuẩn hóa dữ liệu hiển thị */
   const accounts = useMemo(() => {
     return (items || []).map((acc, idx) => {
-      const fbAccountStatus = Number(acc?.account_status); // enum số của FB
+      const fbAccountStatus = Number(acc?.account_status);
       const fbStatusLabel =
         fbAccountStatus === 1
           ? "Hoạt động"
@@ -78,21 +156,27 @@ function AccountManagement() {
           ? "Chưa xác minh"
           : "Không hoạt động";
 
+      const accountId = acc.external_id;
+      const stats = accountStats[accountId] || {
+        campaigns: 0,
+        adsets: 0,
+        ads: 0,
+      };
+
       return {
-        id: acc._id || acc.id || idx,
+        id: acc._id || idx,
         name: acc.name || "Facebook Ad Account",
-        number: acc.external_id || "-", // act_123...
-        // 3 cột này chưa có từ API => để 0 (sau có API count thì thay)
-        campaignCount: 0,
-        adsetCount: 0,
-        adCount: 0,
-        status: fbStatusLabel, // hoặc dùng acc.status (nội bộ) nếu muốn
+        number: accountId || "-",
+        campaignCount: stats.campaigns,
+        adsetCount: stats.adsets,
+        adCount: stats.ads,
+        status: fbStatusLabel,
         updatedAt: new Date(
           acc.last_updated_at || acc.updated_at || acc.created_at || Date.now()
         ).toLocaleString("vi-VN"),
       };
     });
-  }, [items]);
+  }, [items, accountStats]);
 
   /** Tìm kiếm */
   const onSearch = () => {
@@ -105,7 +189,6 @@ function AccountManagement() {
       <div className="account-management-content">
         <div className="account-management-center">
           <div className="account-management-card">
-            {/* Header */}
             <div className="account-management-header">
               <div>
                 <h3>Tài khoản quảng cáo</h3>
@@ -134,7 +217,7 @@ function AccountManagement() {
                     disabled={loading || syncing}
                     style={{ marginLeft: 8 }}
                   >
-                    {syncing ? "Đang đồng bộ..." : "Refresh"}
+                    {syncing ? "Đang đồng bộ..." : "Đồng bộ dữ liệu"}
                   </button>
                 </div>
               </div>
@@ -142,19 +225,17 @@ function AccountManagement() {
               <div>
                 <button
                   className="add-account"
-                  onClick={() => navigate("/connect")}
+                  onClick={() => navigate(ROUTES.CONNECT_AD_ACCOUNT)}
                 >
                   + Thêm tài khoản
                 </button>
               </div>
             </div>
 
-            {/* Error */}
             {error && (
               <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>
             )}
 
-            {/* Table */}
             <table className="table">
               <thead>
                 <tr>
@@ -170,19 +251,13 @@ function AccountManagement() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan="7"
-                      style={{ textAlign: "center", color: "#6b7280" }}
-                    >
+                    <td colSpan="7" style={{ textAlign: "center", color: "#6b7280" }}>
                       Đang tải dữ liệu...
                     </td>
                   </tr>
                 ) : accounts.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan="7"
-                      style={{ textAlign: "center", color: "#6b7280" }}
-                    >
+                    <td colSpan="7" style={{ textAlign: "center", color: "#6b7280" }}>
                       Không tìm thấy tài khoản quảng cáo nào.
                     </td>
                   </tr>
@@ -196,15 +271,9 @@ function AccountManagement() {
                           {acc.number}
                         </div>
                       </td>
-                      <td className="text-right">
-                        {acc.campaignCount.toLocaleString("vi-VN")}
-                      </td>
-                      <td className="text-right">
-                        {acc.adsetCount.toLocaleString("vi-VN")}
-                      </td>
-                      <td className="text-right">
-                        {acc.adCount.toLocaleString("vi-VN")}
-                      </td>
+                      <td className="text-right">{acc.campaignCount}</td>
+                      <td className="text-right">{acc.adsetCount}</td>
+                      <td className="text-right">{acc.adCount}</td>
                       <td className="status-active">{acc.status}</td>
                       <td>{acc.updatedAt}</td>
                     </tr>
@@ -213,7 +282,6 @@ function AccountManagement() {
               </tbody>
             </table>
 
-            {/* Pagination */}
             {total > limit && (
               <div
                 style={{
