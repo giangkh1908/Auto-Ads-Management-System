@@ -11,6 +11,7 @@ import userRoleRoutes from './routes/userRoleRoutes.js';
 import shopRoutes from './routes/shopRoutes.js';
 import shopUserRoutes from './routes/shopUserRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import adsAccountRoutes from "./routes/ads/adsAccountRoutes.js";
 import adsRoutes from './routes/adsRoutes.js';
 
 //Load các biến môi trường
@@ -40,6 +41,7 @@ app.use("/api/user-roles", userRoleRoutes);
 app.use("/api/shops", shopRoutes);
 app.use("/api/shop-users", shopUserRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/ads-accounts", adsAccountRoutes);
 app.use("/api/ads", adsRoutes);
 
 // Connect database & start server
