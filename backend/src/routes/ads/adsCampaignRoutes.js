@@ -2,7 +2,8 @@ import express from "express";
 import {
   listCampaignsCtrl,
   getCampaignCtrl,
-  syncCampaignsCtrl
+  syncCampaignsCtrl,
+  deleteCampaignCascadeCtrl
 } from "../../controllers/ads/adsCampaign.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
@@ -22,5 +23,6 @@ router.get("/", listCampaignsCtrl);
 
 // Route với tham số động phải đặt SAU CÙNG
 router.get("/:id", getCampaignCtrl);
+router.delete("/:id", deleteCampaignCascadeCtrl);
 
 export default router;

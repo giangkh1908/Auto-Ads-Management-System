@@ -1,6 +1,6 @@
 // src/routes/ads/adsRoutes.js
 import express from "express";
-import { listAdsCtrl, syncAdsCtrl } from "../../controllers/ads/ads.controller.js";
+import { listAdsCtrl, syncAdsCtrl, deleteAdCtrl } from "../../controllers/ads/ads.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -17,5 +17,6 @@ router.get("/sync", syncAdsCtrl);
 
 // List ads
 router.get("/", listAdsCtrl);
+router.delete("/:id", deleteAdCtrl);
 
 export default router;

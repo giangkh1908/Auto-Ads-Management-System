@@ -1,6 +1,6 @@
 // src/routes/ads/adsSetRoutes.js
 import express from "express";
-import { listAdSetsCtrl, syncAdSetsCtrl } from "../../controllers/ads/adsSet.controller.js";
+import { listAdSetsCtrl, syncAdSetsCtrl, deleteAdsetCascadeCtrl  } from "../../controllers/ads/adsSet.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -17,5 +17,7 @@ router.get("/sync", syncAdSetsCtrl);
 
 // List adsets
 router.get("/", listAdSetsCtrl);
+router.delete("/:id", deleteAdsetCascadeCtrl);
+
 
 export default router;

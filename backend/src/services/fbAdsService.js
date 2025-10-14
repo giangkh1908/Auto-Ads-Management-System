@@ -68,13 +68,45 @@ export async function createAd(adAccountId, accessToken, body) {
   return data.id;
 }
 
+/**
+ * Xoá entity (campaign, adset, ad, creative...) khỏi Facebook
+ * @param {string} entityId - ID thật của entity trên Facebook
+ * @param {string} accessToken - Facebook access_token hợp lệ
+ * @returns {boolean} true nếu xoá thành công, false nếu lỗi
+ */
 export async function deleteEntity(entityId, accessToken) {
-  await axios
-    .delete(`${FB_API}/${entityId}`, {
+  if (!entityId || !accessToken) {
+    console.warn("⚠️ deleteEntity() thiếu entityId hoặc accessToken");
+    return false;
+  }
+
+  try {
+    const url = `${FB_API}/${entityId}`;
+    const { data } = await axios.delete(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    .catch(() => {});
+    });
+
+    // Facebook trả về { success: true } nếu xoá thành công
+    if (data?.success) {
+      console.log(`✅ Đã xoá thành công entity ${entityId} trên Facebook`);
+      return true;
+    } else {
+      console.warn(`⚠️ Facebook không xoá entity ${entityId}:`, data);
+      return false;
+    }
+  } catch (err) {
+    const fbErr = err.response?.data?.error;
+    if (fbErr?.code === 190) {
+      console.error("🚨 Token Facebook hết hạn hoặc không hợp lệ:", fbErr);
+    } else if (fbErr?.code === 10) {
+      console.error("🚨 Không có quyền xoá entity:", fbErr);
+    } else {
+      console.error(`❌ Lỗi xoá entity ${entityId}:`, fbErr || err.message);
+    }
+    return false;
+  }
 }
+
 
 /* =========================
  *  FETCH HELPERS (giữ nguyên fields)
