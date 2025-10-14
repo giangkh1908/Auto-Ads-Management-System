@@ -58,26 +58,23 @@ function Creative({ ad, campaign, adset: _adset }) { // eslint-disable-line no-u
             </div>
           </div>
 
+
+
           {/* Media Section */}
           <div className="post-media">
             <div className="media-container">
-              {getMediaIcon(ad.media)}
-              <div className="media-overlay">
-                {ad.media === 'video' && (
-                  <div className="play-button">
-                    <Play size={24} />
-                  </div>
-                )}
-                {ad.media === 'carousel' && (
-                  <div className="carousel-indicators">
-                    <span className="indicator active"></span>
-                    <span className="indicator"></span>
-                    <span className="indicator"></span>
-                  </div>
-                )}
-              </div>
+              {ad.mediaUrl ? (
+                ad.media === "video" ? (
+                  <video src={ad.mediaUrl} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <img src={ad.mediaUrl} alt="Ad Creative" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                )
+              ) : (
+                getMediaIcon(ad.media)
+              )}
             </div>
           </div>
+
 
           {/* Ad Link Preview */}
           <div className="link-preview">
@@ -95,7 +92,7 @@ function Creative({ ad, campaign, adset: _adset }) { // eslint-disable-line no-u
                 <div className="link-domain">fchat.vn</div>
               </div>
             </div>
-            <div 
+            <div
               className="cta-button"
               style={{ backgroundColor: getCTAColor(ad.cta) }}
             >

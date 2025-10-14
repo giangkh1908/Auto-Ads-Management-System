@@ -1,332 +1,690 @@
-import { useState, useEffect, useMemo } from 'react'
-import './AdsManagement.css'
-import CreateAdsWizard from '../../components/feature/CreateAdsWizard/CreateAdsWizard'
-import { handleSelectAll, handleSelectItem } from '../../utils/selectionUtils'
+import { useState, useEffect } from "react";
+import { Edit, Archive, Trash } from "lucide-react";
+import "./AdsManagement.css";
+import CreateAdsWizard from "../../components/feature/CreateAdsWizard/CreateAdsWizard";
+import { handleSelectAll, handleSelectItem } from "../../utils/selectionUtils";
+import axiosInstance from "../../utils/axios";
 
 function AdsManagement() {
-  const [activeTab, setActiveTab] = useState('campaigns')
-  const [showWizard, setShowWizard] = useState(false)
+  const [activeTab, setActiveTab] = useState("campaigns");
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardMode, setWizardMode] = useState("create"); // "create" | "edit"
+  const [editingItem, setEditingItem] = useState(null); // { type: "campaign" | "adset" | "ad", id: number }
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [selectedAdset, setSelectedAdset] = useState(null);
 
-  const [adAccounts, setAdAccounts] = useState([])
-  const [selectedAccount, setSelectedAccount] = useState('')
+  // Thêm state mới cho tài khoản quảng cáo
+  const [adAccounts, setAdAccounts] = useState([]);
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  const [campaigns, setCampaigns] = useState([])
-  const [adsets, setAdsets] = useState([])
-  const [ads, setAds] = useState([])
+  //Lấy data từ hàm makeData
+  const [datasets, setDatasets] = useState({
+    campaigns: [],
+    adsets: [],
+    ads: []
+  });
 
-  const [checkAll, setCheckAll] = useState(false)
+  //Tạo và gắn false cho checkbox
+  const [checkAll, setCheckAll] = useState(false);
 
-  // Bộ lọc thời gian
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  // State để theo dõi có item nào được chọn không
+  const [hasSelectedItems, setHasSelectedItems] = useState(false);
 
-  const API_BASE = 'http://localhost:5001/api'
+  // Set dữ liệu để hiển thị tùy thuộc vào tab và filter theo campaign/adset được chọn
+  const getFilteredRows = () => {
+    if (activeTab === "campaigns") {
+      return datasets.campaigns;
+    } else if (activeTab === "adsets") {
+      // Nếu đang trong chế độ drill-down (từ breadcrumb), lọc theo campaign
+      if (selectedCampaign && datasets.adsets.some(a => a.campaignId === selectedCampaign.id)) {
+        return datasets.adsets.filter(adset => adset.campaignId === selectedCampaign.id);
+      }
+      // Nếu không, hiển thị tất cả adsets
+      return datasets.adsets;
+    } else if (activeTab === "ads") {
+      // Nếu đang trong chế độ drill-down từ adset, lọc theo adset
+      if (selectedAdset && datasets.ads.some(a => a.adsetId === selectedAdset.id)) {
+        return datasets.ads.filter(ad => ad.adsetId === selectedAdset.id);
+      }
+      // Nếu đang trong chế độ drill-down từ campaign, lọc theo campaign
+      else if (selectedCampaign && datasets.ads.some(a => a.campaignId === selectedCampaign.id)) {
+        return datasets.ads.filter(ad => ad.campaignId === selectedCampaign.id);
+      }
+      // Nếu không, hiển thị tất cả ads
+      return datasets.ads;
+    }
+    return [];
+  };
 
-  // 🔹 Chuẩn hoá 1 campaign để hiển thị bảng
-  const normalizeCampaign = (c) => ({
-    _id: c._id,
-    name: c.name,
-    statusText: c.status === 'ACTIVE' ? 'Hoạt động' : 'Đang tắt',
-    status: c.status || 'PAUSED',
-    daily_budget: c.daily_budget || 0,
-    impressions: c.impressions || 0,
-    reach: c.reach || 0,
-    enabled: c.status === 'ACTIVE',
-    isChecked: false,
-  })
+  const rows = getFilteredRows();
 
-  // 🔹 Lấy danh sách AdsAccount khi vào trang
-  useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        const token =
-          localStorage.getItem('accessToken') ||
-          localStorage.getItem('auth_token') ||
-          localStorage.getItem('token')
+  //Function on/off trạng thái
+  const toggleRow = (id) => {
+    setDatasets((prev) => {
+      const key =
+        activeTab === "campaigns"
+          ? "campaigns"
+          : activeTab === "adsets"
+            ? "adsets"
+            : "ads";
+      return {
+        ...prev,
+        [key]: prev[key].map((r) => {
+          if (r.id !== id) return r;
+          const nextEnabled = !r.enabled;
+          return {
+            ...r,
+            enabled: nextEnabled,
+            status: nextEnabled ? "Hoạt động" : "Đang tắt",
+          };
+        }),
+      };
+    });
+  };
 
-        if (!token) {
-          console.warn('⚠️ Không tìm thấy token trong localStorage')
-          return
-        }
+  // Hàm xử lý chọn tất cả
+  const handleCheckAll = (event) => {
+    const isChecked = event.target.checked;
+    setCheckAll(isChecked);
+    setHasSelectedItems(isChecked);
+    setDatasets((prev) => {
+      const key =
+        activeTab === "campaigns"
+          ? "campaigns"
+          : activeTab === "adsets"
+            ? "adsets"
+            : "ads";
+      const updatedItems = handleSelectAll(isChecked, prev[key]);
+      return { ...prev, [key]: updatedItems };
+    });
+  };
 
-        const headers = { Authorization: `Bearer ${token}` }
-        const accRes = await fetch(`${API_BASE}/ads-accounts`, { headers })
-        const accJson = await accRes.json()
-        setAdAccounts(accJson?.items || [])
-      } catch (err) {
-        console.error('❌ Fetch error (ads-accounts):', err)
+  //Hàm xử lý chọn đơn lẻ
+  const handleCheckItem = (id) => {
+    setDatasets((prev) => {
+      const key =
+        activeTab === "campaigns"
+          ? "campaigns"
+          : activeTab === "adsets"
+            ? "adsets"
+            : "ads";
+      const { updatedItems, allChecked } = handleSelectItem(id, prev[key]);
+      setCheckAll(allChecked);
+
+      // Kiểm tra có item nào được chọn không
+      const hasSelected = updatedItems.some(item => item.isChecked);
+      setHasSelectedItems(hasSelected);
+
+      return { ...prev, [key]: updatedItems };
+    });
+  };
+
+  // Hàm xử lý cập nhật
+  const handleUpdate = (id) => {
+    const item = rows.find(row => row.id === id);
+    if (item) {
+      setEditingItem({ type: activeTab.slice(0, -1), id: id }); // Remove 's' from end
+      setWizardMode("edit");
+      setShowWizard(true);
+
+      // Set selected items for context
+      if (activeTab === "adsets") {
+        const campaign = datasets.campaigns.find(c => c.id === item.campaignId);
+        setSelectedCampaign(campaign);
+      } else if (activeTab === "ads") {
+        const adset = datasets.adsets.find(a => a.id === item.adsetId);
+        const campaign = datasets.campaigns.find(c => c.id === item.campaignId);
+        setSelectedAdset(adset);
+        setSelectedCampaign(campaign);
       }
     }
+  };
 
-    fetchAccounts()
-  }, [])
+  // Hàm xử lý lưu trữ
+  const handleArchive = (id) => {
+    console.log(`Lưu trữ ${activeTab} với ID:`, id);
+    // TODO: Implement archive logic
+  };
 
-  // 🔹 Đồng bộ Campaign khi chọn tài khoản quảng cáo
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      if (!selectedAccount) return
-      try {
-        const token =
-          localStorage.getItem('accessToken') ||
-          localStorage.getItem('auth_token') ||
-          localStorage.getItem('token')
-        if (!token) return
+  // Hàm xử lý xóa
+  const handleDelete = (id) => {
+    console.log(`Xóa ${activeTab} với ID:`, id);
+    // TODO: Implement delete logic
+  };
 
-        const headers = { Authorization: `Bearer ${token}` }
 
-        console.log(`🔄 Đồng bộ campaign cho account: ${selectedAccount}`)
-        const res = await fetch(
-          `${API_BASE}/ads-campaigns/sync?ad_account_id=${selectedAccount}`,
-          { headers }
-        )
-        const json = await res.json()
+  // Hàm xử lý click vào campaign để xem adsets
+  const handleCampaignClick = (campaign) => {
+    setSelectedCampaign(campaign);
+    setSelectedAdset(null);
+    setActiveTab("adsets");
+    // Gọi API để lấy adsets cho campaign này
+    fetchAdsetsForCampaign(campaign.id || campaign._id || campaign.external_id, selectedAccountId);
+  };
 
-        if (!json.success) {
-          console.warn('⚠️ Sync campaign thất bại:', json.message)
-          return
-        }
+  // Hàm xử lý click vào adset để xem ads
+  const handleAdsetClick = (adset) => {
+    setSelectedAdset(adset);
+    setActiveTab("ads");
+    // Gọi API để lấy ads cho adset này
+    fetchAdsForAdset(adset.id || adset._id || adset.external_id);
+  };
 
-        const list = (json.data || []).map(normalizeCampaign)
-        setCampaigns(list)
-        console.log(`✅ Đã đồng bộ ${list.length} campaign.`)
-      } catch (err) {
-        console.error('❌ Fetch campaigns error:', err)
-      }
-    }
+  // Hàm reset selection
+  const resetSelection = () => {
+    setSelectedCampaign(null);
+    setSelectedAdset(null);
+    setCheckAll(false);
+    setHasSelectedItems(false);
+  };
 
-    fetchCampaigns()
-  }, [selectedAccount])
-
-  // 🔹 Lọc campaign theo khoảng thời gian
-  const handleFilterByDate = async () => {
-    if (!selectedAccount || !startDate || !endDate) return
+  // Hàm fetch campaigns cho tài khoản đã chọn
+  const fetchCampaignsForAccount = async (accountId) => {
+    if (!accountId) return;
 
     try {
-      const token =
-        localStorage.getItem('accessToken') ||
-        localStorage.getItem('auth_token') ||
-        localStorage.getItem('token')
+      // Đồng bộ dữ liệu từ Facebook trước (tùy chọn)
+      await axiosInstance.get(`/api/campaigns/sync?account_id=${accountId}`);
 
-      const headers = { Authorization: `Bearer ${token}` }
+      // Fetch campaigns từ database
+      const response = await axiosInstance.get(`/api/campaigns?account_id=${accountId}`);
 
-      console.log(`🔍 Lọc campaign từ ${startDate} đến ${endDate}`)
-      const res = await fetch(
-        `${API_BASE}/ads-campaigns?account_id=${selectedAccount}&start_date=${startDate}&end_date=${endDate}`,
-        { headers }
-      )
-
-      const json = await res.json()
-      const list = (json.items || json.data || []).map(normalizeCampaign)
-      setCampaigns(list)
-      console.log(`✅ Lọc được ${list.length} campaign.`)
-    } catch (err) {
-      console.error('❌ Filter campaigns error:', err)
+      if (response.data && response.data.items) {
+        // Cập nhật dữ liệu campaigns trong state, đảm bảo mỗi item có id
+        setDatasets(prev => ({
+          ...prev,
+          campaigns: response.data.items.map(campaign => ({
+            ...campaign,
+            // Đảm bảo luôn có id cho mỗi campaign
+            id: campaign._id || campaign.id || campaign.external_id,
+            isChecked: false,
+            enabled: campaign.status === 'ACTIVE' || campaign.effective_status === 'ACTIVE'
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching campaigns for account ${accountId}:`, error);
     }
-  }
+  };
 
-  // 🔹 Lấy danh sách hiển thị theo tab
-  const rows = useMemo(() => {
-    if (activeTab === 'campaigns') return campaigns
-    if (activeTab === 'adsets') return adsets
-    return ads
-  }, [activeTab, campaigns, adsets, ads])
+  // Thêm các hàm fetch adsets và ads từ API
 
-  // 🔹 Cập nhật danh sách theo tab
-  const updateRows = (updater) => {
-    if (activeTab === 'campaigns') setCampaigns((prev) => updater(prev))
-    else if (activeTab === 'adsets') setAdsets((prev) => updater(prev))
-    else setAds((prev) => updater(prev))
-  }
+  // Fetch adsets cho một campaign cụ thể
+  const fetchAdsetsForCampaign = async (campaignId, accountId) => {
+    if (!campaignId || !accountId) return;
 
-  // 🔹 Toggle bật/tắt
-  const toggleRow = (id) => {
-    updateRows((prev) =>
-      prev.map((r) =>
-        (r._id || r.id) === id
-          ? {
-              ...r,
-              enabled: !r.enabled,
-              status: r.enabled ? 'PAUSED' : 'ACTIVE',
-              statusText: r.enabled ? 'Đang tắt' : 'Hoạt động',
-            }
-          : r
-      )
-    )
-  }
+    try {
+      // Đồng bộ adsets từ Facebook (tùy chọn)
+      await axiosInstance.get(`/api/adsets/sync?account_id=${accountId}`);
 
-  // 🔹 Chọn tất cả
-  const handleCheckAll = (e) => {
-    const isChecked = e.target.checked
-    setCheckAll(isChecked)
-    updateRows((prev) => handleSelectAll(isChecked, prev))
-  }
+      // Fetch adsets từ database
+      const response = await axiosInstance.get(`/api/adsets?campaign_id=${campaignId}`);
 
-  // 🔹 Chọn đơn lẻ
-  const handleCheckItem = (id) => {
-    updateRows((prev) => {
-      const { updatedItems, allChecked } = handleSelectItem(id, prev.map((x) => ({ ...x })))
-      setCheckAll(allChecked)
-      return updatedItems
-    })
-  }
+      if (response.data && response.data.items) {
+        setDatasets(prev => ({
+          ...prev,
+          adsets: response.data.items.map(adset => ({
+            ...adset,
+            id: adset._id || adset.id || adset.external_id,
+            campaignId: campaignId,
+            isChecked: false,
+            enabled: adset.status === 'ACTIVE' || adset.effective_status === 'ACTIVE'
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching adsets for campaign ${campaignId}:`, error);
+    }
+  };
+
+  // Fetch ads cho một adset cụ thể
+  const fetchAdsForAdset = async (adsetId) => {
+    if (!adsetId) return;
+
+    try {
+      // Đồng bộ ads từ Facebook (tùy chọn)
+      await axiosInstance.get(`/api/ads/sync?account_id=${selectedAccountId}`);
+
+      // Fetch ads từ database
+      const response = await axiosInstance.get(`/api/ads?adset_id=${adsetId}`);
+
+      if (response.data && response.data.items) {
+        setDatasets(prev => ({
+          ...prev,
+          ads: response.data.items.map(ad => ({
+            ...ad,
+            id: ad._id || ad.id || ad.external_id,
+            adsetId: adsetId,
+            isChecked: false,
+            enabled: ad.status === 'ACTIVE' || ad.effective_status === 'ACTIVE'
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching ads for adset ${adsetId}:`, error);
+    }
+  };
+
+  // Fetch ads cho một campaign cụ thể (khi cần hiển thị tất cả ads của một campaign)
+  // const fetchAdsForCampaign = async (campaignId) => {
+  //   if (!campaignId) return;
+
+  //   try {
+  //     // Fetch ads từ database
+  //     const response = await axiosInstance.get(`/api/ads?campaign_id=${campaignId}`);
+
+  //     if (response.data && response.data.items) {
+  //       setDatasets(prev => ({
+  //         ...prev,
+  //         ads: response.data.items.map(ad => ({
+  //           ...ad,
+  //           id: ad._id || ad.id || ad.external_id,
+  //           campaignId: campaignId,
+  //           isChecked: false,
+  //           enabled: ad.status === 'ACTIVE' || ad.effective_status === 'ACTIVE'
+  //         }))
+  //       }));
+  //     }
+  //   } catch (error) {
+  //     console.error(`Error fetching ads for campaign ${campaignId}:`, error);
+  //   }
+  // };
+
+  // Fetch tất cả adsets của một tài khoản
+  const fetchAllAdsetsForAccount = async (accountId) => {
+    if (!accountId) return;
+
+    try {
+      // Đồng bộ dữ liệu từ Facebook (tùy chọn)
+      await axiosInstance.get(`/api/adsets/sync?account_id=${accountId}`);
+
+      // Fetch adsets từ database
+      const response = await axiosInstance.get(`/api/adsets?account_id=${accountId}`);
+
+      if (response.data && response.data.items) {
+        setDatasets(prev => ({
+          ...prev,
+          adsets: response.data.items.map(adset => ({
+            ...adset,
+            id: adset._id || adset.id || adset.external_id,
+            campaignId: adset.campaign_id,
+            isChecked: false,
+            enabled: adset.status === 'ACTIVE' || adset.effective_status === 'ACTIVE'
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching all adsets for account ${accountId}:`, error);
+    }
+  };
+
+  // Fetch tất cả ads của một tài khoản
+  const fetchAllAdsForAccount = async (accountId) => {
+    if (!accountId) return;
+
+    try {
+      // Đồng bộ dữ liệu từ Facebook (tùy chọn)
+      await axiosInstance.get(`/api/ads/sync?account_id=${accountId}`);
+
+      // Fetch ads từ database
+      const response = await axiosInstance.get(`/api/ads?account_id=${accountId}`);
+
+      if (response.data && response.data.items) {
+        setDatasets(prev => ({
+          ...prev,
+          ads: response.data.items.map(ad => ({
+            ...ad,
+            id: ad._id || ad.id || ad.external_id,
+            adsetId: ad.adset_id || ad.set_id,
+            campaignId: ad.campaign_id,
+            isChecked: false,
+            enabled: ad.status === 'ACTIVE' || ad.effective_status === 'ACTIVE'
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching all ads for account ${accountId}:`, error);
+    }
+  };
+
+  // Gọi API khi component mount - chỉ chạy một lần
+  useEffect(() => {
+    // Định nghĩa fetchAdAccounts bên trong useEffect để tránh spam API
+    const fetchAdAccounts = async () => {
+      setLoadingAccounts(true);
+      try {
+        const response = await axiosInstance.get('/api/ads-accounts');
+        if (response.data && response.data.items) {
+          setAdAccounts(response.data.items);
+
+          // Tự động chọn tài khoản đầu tiên nếu có
+          if (response.data.items.length > 0) {
+            setSelectedAccountId(response.data.items[0].external_id);
+          }
+          setInitialized(true); // Đánh dấu đã khởi tạo
+        }
+      } catch (error) {
+        console.error('Error fetching ad accounts:', error);
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+
+    if (!initialized) {
+      fetchAdAccounts();
+    }
+  }, [initialized]); // Thêm initialized vào dependency array
+
+  // Thêm useEffect mới để fetch dữ liệu khi có selectedAccountId
+  useEffect(() => {
+    if (selectedAccountId && initialized) {
+      fetchCampaignsForAccount(selectedAccountId);
+      fetchAllAdsetsForAccount(selectedAccountId);
+      fetchAllAdsForAccount(selectedAccountId);
+    }
+  }, [selectedAccountId, initialized]); // Thêm initialized vào dependency array
+
+  // Xử lý khi thay đổi tài khoản
+  const handleAccountChange = (e) => {
+    const accountId = e.target.value;
+    setSelectedAccountId(accountId);
+    localStorage.setItem("selectedAdAccount", accountId);
+    resetSelection();
+
+    // Luôn bắt đầu với tab campaigns
+    setActiveTab("campaigns");
+
+    // Fetch dữ liệu cho tài khoản mới
+    fetchCampaignsForAccount(accountId);
+
+    // Fetch luôn adsets và ads để sẵn sàng khi user chuyển tab
+    fetchAllAdsetsForAccount(accountId);
+    fetchAllAdsForAccount(accountId);
+  };
 
   return (
     <div className="ads-management-layout">
       <div className="ads-management-content">
         <div className="ads-management-center">
           <div className="ads-card">
-            {/* Toolbar */}
             <div className="ads-toolbar">
               <div className="account-select">
-                <div className="selectors">
-                  {/* Ad Account selector */}
-                  <select
-                    value={selectedAccount}
-                    onChange={(e) => setSelectedAccount(e.target.value)}
-                  >
-                    <option value="">-- Chọn tài khoản quảng cáo --</option>
-                    {adAccounts.map((a) => (
-                      <option key={a.external_id} value={a.external_id}>
-                        {a.name} ({a.external_id})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Create button */}
-              <button
-                className="btn-create"
-                disabled={!selectedAccount}
-                onClick={() => setShowWizard(true)}
-              >
-                + Tạo chiến dịch
-              </button>
-
-              {/* Bộ lọc thời gian */}
-              <div className="filters">
-                <span>Từ</span>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-                <span>đến</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-                <button
-                  className="btn-filter"
-                  onClick={handleFilterByDate}
-                  disabled={!startDate || !endDate || !selectedAccount}
+                <select
+                  value={selectedAccountId}
+                  onChange={handleAccountChange}
+                  disabled={loadingAccounts}
                 >
-                  Tìm
-                </button>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="ads-tabs">
-              {['campaigns', 'adsets', 'ads'].map((tab) => (
+                  {loadingAccounts ? (
+                    <option>Đang tải tài khoản...</option>
+                  ) : adAccounts.length === 0 ? (
+                    <option value="">Không có tài khoản nào</option>
+                  ) : (
+                    adAccounts.map(account => (
+                      <option key={account._id} value={account.external_id}>
+                        {account.name || 'Tài khoản'} ({account.external_id})
+                      </option>
+                    ))
+                  )}
+                </select>
+                {/* Show Wizard tạo chiến dịch */}
                 <button
-                  key={tab}
-                  className={`tab ${activeTab === tab ? 'active' : ''}`}
+                  className="btn-create"
                   onClick={() => {
-                    setActiveTab(tab)
-                    setCheckAll(false)
+                    setWizardMode("create");
+                    setEditingItem(null);
+                    resetSelection();
+                    setShowWizard(true);
                   }}
                 >
-                  <span className="tab-icon">
-                    {tab === 'campaigns' ? '▦' : tab === 'adsets' ? '▣' : '▥'}
-                  </span>
-                  {tab === 'campaigns'
-                    ? 'Chiến dịch'
-                    : tab === 'adsets'
-                    ? 'Nhóm quảng cáo'
-                    : 'Quảng cáo'}
+                  + Tạo chiến dịch
                 </button>
-              ))}
+              </div>
+
+              {/* Tạo trường dữ liệu thời gian để tìm kiếm chiến dịch và nhóm quảng cáo */}
+              <div className="filters">
+                <span> Từ </span>
+                <input type="date" />
+                <span> đến </span>
+                <input type="date" />
+                <button className="btn-filter">Tìm</button>
+              </div>
             </div>
 
-            {/* Table */}
+            {/* Breadcrumb Navigation */}
+            {(selectedCampaign || selectedAdset) && (
+              <div className="breadcrumb-nav">
+                <button
+                  className="breadcrumb-item"
+                  onClick={() => {
+                    resetSelection();
+                    setActiveTab("campaigns");
+                  }}
+                >
+                  Tất cả chiến dịch
+                </button>
+                {selectedCampaign && (
+                  <>
+                    <span className="breadcrumb-separator">›</span>
+                    <button
+                      className="breadcrumb-item"
+                      onClick={() => {
+                        setSelectedAdset(null);
+                        setActiveTab("adsets");
+                      }}
+                    >
+                      {selectedCampaign.name}
+                    </button>
+                  </>
+                )}
+                {selectedAdset && (
+                  <>
+                    <span className="breadcrumb-separator">›</span>
+                    <button
+                      className="breadcrumb-item active"
+                      onClick={() => setActiveTab("ads")}
+                    >
+                      {selectedAdset.name}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="ads-tabs">
+              <button
+                className={`tab ${activeTab === "campaigns" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("campaigns");
+                  resetSelection();
+                  // Không cần fetch vì đã có dữ liệu campaigns
+                }}
+              >
+                <span className="tab-icon">▦</span>
+                Chiến dịch
+              </button>
+              <button
+                className={`tab ${activeTab === "adsets" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("adsets");
+
+                  // Fetch tất cả adsets của tài khoản, không phụ thuộc campaign
+                  if (selectedAccountId) {
+                    fetchAllAdsetsForAccount(selectedAccountId);
+                  }
+
+                  // Vẫn giữ selection để breadcrumb hoạt động
+                  // nhưng không filter dữ liệu hiển thị theo selection
+                }}
+              >
+                <span className="tab-icon">▣</span>
+                Nhóm quảng cáo
+              </button>
+              <button
+                className={`tab ${activeTab === "ads" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("ads");
+
+                  // Fetch tất cả ads của tài khoản, không phụ thuộc campaign/adset
+                  if (selectedAccountId) {
+                    fetchAllAdsForAccount(selectedAccountId);
+                  }
+
+                  // Vẫn giữ selection để breadcrumb hoạt động
+                  // nhưng không filter dữ liệu hiển thị theo selection
+                }}
+              >
+                <span className="tab-icon">▥</span>
+                Quảng cáo
+              </button>
+              {hasSelectedItems && (
+                <div className="icon-beside-tab">
+                  <button
+                    className="ads-action-btn ads-archive-btn"
+                    onClick={() => handleArchive()}
+                    title="Lưu trữ"
+                  >
+                    <Archive size={15} />
+                  </button>
+                  <button
+                    className="ads-action-btn ads-delete-btn"
+                    onClick={() => handleDelete()}
+                    title="Xóa"
+                  >
+                    <Trash size={15} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Content chính */}
             <div className="ads-table-wrapper">
               <table className="ads-table">
                 <thead>
                   <tr>
                     <th>
-                      <input type="checkbox" checked={checkAll} onChange={handleCheckAll} />
+                      <input
+                        type="checkbox"
+                        checked={checkAll}
+                        onChange={handleCheckAll}
+                      />
                     </th>
                     <th>Tắt/Bật</th>
-                    <th>Tên</th>
+                    <th>Chiến dịch</th>
                     <th>Trạng thái</th>
                     <th>Ngân sách</th>
-                    <th>Lượt hiển thị</th>
-                    <th>Người tiếp cận</th>
+                    <th>Số tiền đã tiêu</th>
+                    <th>Số lần hiển thị</th>
+                    <th>Lượt tiếp cận</th>
+                    <th>Kết quả</th>
+                    <th>Chất lượng</th>
+                    <th>Cập nhật lần cuối</th>
+                    <th>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', color: '#888' }}>
-                        Không có dữ liệu
+                  {rows.map((row) => (
+                    <tr key={row.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={row.isChecked}
+                          onChange={() => handleCheckItem(row.id)}
+                        />
+                      </td>
+                      <td className="cell-name">
+                        <button
+                          type="button"
+                          className={`switch ${row.enabled ? "on" : "off"}`}
+                          aria-pressed={row.enabled}
+                          onClick={() => toggleRow(row.id)}
+                        />
+                      </td>
+                      <td>
+                        <div className="name-cell">
+                          <span
+                            className="name-text clickable"
+                            onClick={() => {
+                              if (activeTab === "campaigns") {
+                                handleCampaignClick(row);
+                              } else if (activeTab === "adsets") {
+                                handleAdsetClick(row);
+                              }
+                            }}
+                          >
+                            {row.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td
+                        className={
+                          row.status === "Hoạt động"
+                            ? "status-active"
+                            : "status-inactive"
+                        }
+                      >
+                        {row.status}
+                      </td>
+                      <td className="text-center">{row.budget}</td>
+                      <td className="text-right">{row.impressions}</td>
+                      <td className="text-right">{row.reach}</td>
+                      <td className="text-right">{row.reach}</td>
+                      <td className="text-right">{row.reach}</td>
+                      <td className="text-right">{row.reach}</td>
+                      <td className="text-right">{row.time}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button
+                            className="ads-action-btn ads-update-btn"
+                            onClick={() => handleUpdate(row.id)}
+                            title="Cập nhật"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            className="ads-action-btn ads-archive-btn"
+                            onClick={() => handleArchive(row.id)}
+                            title="Lưu trữ"
+                          >
+                            <Archive size={14} />
+                          </button>
+                          <button
+                            className="ads-action-btn ads-delete-btn"
+                            onClick={() => handleDelete(row.id)}
+                            title="Xóa"
+                          >
+                            <Trash size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ) : (
-                    rows.map((row) => {
-                      const id = row._id || row.id
-                      return (
-                        <tr key={id}>
-                          <td>
-                            <input
-                              type="checkbox"
-                              checked={row.isChecked || false}
-                              onChange={() => handleCheckItem(id)}
-                            />
-                          </td>
-                          <td>
-                            <button
-                              className={`switch ${row.enabled ? 'on' : 'off'}`}
-                              onClick={() => toggleRow(id)}
-                            />
-                          </td>
-                          <td>{row.name}</td>
-                          <td className={row.enabled ? 'status-active' : 'status-inactive'}>
-                            {row.statusText}
-                          </td>
-                          <td className="text-center">
-                            {(row.daily_budget || 0).toLocaleString('vi-VN')}đ
-                          </td>
-                          <td className="text-right">
-                            {(row.impressions || 0).toLocaleString('vi-VN')}
-                          </td>
-                          <td className="text-right">
-                            {(row.reach || 0).toLocaleString('vi-VN')}
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Create Wizard */}
+      {/* Đóng Wizard tạo chiến dịch */}
       {showWizard && (
         <CreateAdsWizard
-          onClose={() => setShowWizard(false)}
-          selectedAccount={selectedAccount}
-          onCreated={(newCampaign) =>
-            setCampaigns((prev) => [normalizeCampaign(newCampaign), ...prev])
-          }
+          onClose={() => {
+            setShowWizard(false);
+            setEditingItem(null);
+            setWizardMode("create");
+          }}
+          mode={wizardMode}
+          editingItem={editingItem}
+          selectedCampaign={selectedCampaign}
+          selectedAdset={selectedAdset}
+          datasets={datasets}
+          setDatasets={setDatasets}
+          selectedAccountId={selectedAccountId}
         />
       )}
     </div>
-  )
+  );
 }
 
-export default AdsManagement
+export default AdsManagement;

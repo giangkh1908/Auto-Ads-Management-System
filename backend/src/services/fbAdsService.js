@@ -33,9 +33,13 @@ async function findAdsAccountByExternalId(accountId) {
  *  CREATE HELPERS (giữ nguyên)
  * ========================= */
 export async function createCampaign(adAccountId, accessToken, body) {
-  const { data } = await axios.post(`${FB_API}/${adAccountId}/campaigns`, body, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const { data } = await axios.post(
+    `${FB_API}/${adAccountId}/campaigns`,
+    body,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
   return data.id;
 }
 
@@ -47,9 +51,13 @@ export async function createAdSet(adAccountId, accessToken, body) {
 }
 
 export async function createCreative(adAccountId, accessToken, body) {
-  const { data } = await axios.post(`${FB_API}/${adAccountId}/adcreatives`, body, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const { data } = await axios.post(
+    `${FB_API}/${adAccountId}/adcreatives`,
+    body,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
   return data.id;
 }
 
@@ -148,7 +156,10 @@ export async function fetchAdsFromFacebook(accessToken, adAccountId) {
  */
 export async function syncCampaignsFromFacebook(accessToken, adAccountId) {
   try {
-    const campaigns = await fetchCampaignsFromFacebook(accessToken, adAccountId);
+    const campaigns = await fetchCampaignsFromFacebook(
+      accessToken,
+      adAccountId
+    );
     console.log(
       `Fetched ${campaigns.length} campaigns from Facebook for account ${adAccountId}`
     );
@@ -168,7 +179,7 @@ export async function syncCampaignsFromFacebook(accessToken, adAccountId) {
       try {
         const data = {
           shop_id: adsAccount.shop_id, // required by schema
-          account_id: adsAccount._id,  // required by schema
+          account_id: adsAccount._id, // required by schema
           name: c.name,
           status: c.status,
           objective: c.objective,
@@ -222,7 +233,9 @@ export async function syncAdSetsFromFacebook(accessToken, adAccountId) {
     for (const s of adsets) {
       try {
         // Map campaign external_id -> _id
-        const campaignDoc = await AdsCampaign.findOne({ external_id: s.campaign_id });
+        const campaignDoc = await AdsCampaign.findOne({
+          external_id: s.campaign_id,
+        });
         if (!campaignDoc) {
           console.warn(
             `⚠️ Bỏ qua adset ${s.id} vì chưa tìm thấy campaign external_id=${s.campaign_id} trong DB.`
@@ -259,7 +272,10 @@ export async function syncAdSetsFromFacebook(accessToken, adAccountId) {
 
     return results;
   } catch (err) {
-    console.error(`Error syncing adsets for account ${adAccountId}:`, err.message);
+    console.error(
+      `Error syncing adsets for account ${adAccountId}:`,
+      err.message
+    );
     throw err;
   }
 }
@@ -316,5 +332,30 @@ export async function syncAdsFromFacebook(accessToken, adAccountId) {
   } catch (err) {
     console.error(`Error syncing ads for account ${adAccountId}:`, err.message);
     throw err;
+  }
+}
+
+export async function fetchAdInsights(accessToken, adIds = []) {
+  if (!adIds.length) return [];
+
+  try {
+    const url = `${FB_API}/?ids=${adIds.join(",")}`;
+    const fields =
+      "insights{impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
+    const { data } = await axios.get(url, {
+      params: { fields, access_token: accessToken },
+    });
+
+    // Flatten lại dữ liệu cho dễ xử lý
+    return Object.keys(data).map((id) => ({
+      id,
+      insights: data[id].insights?.data?.[0] || {},
+    }));
+  } catch (err) {
+    console.error(
+      "Error fetching insights:",
+      err.response?.data || err.message
+    );
+    return [];
   }
 }
