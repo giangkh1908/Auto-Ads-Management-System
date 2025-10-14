@@ -2,13 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import {
   Megaphone,
   ArrowRight,
-  MessageCircle,
-  Search,
-  Users,
-  ShoppingBag,
-  Folder,
-  Grid,
-  FileText,
 } from "lucide-react";
 import CampaignStep from "./CampaignStep";
 import AdsetStep from "./AdsetStep";
@@ -16,12 +9,15 @@ import AdStep from "./AdStep";
 import Creative from "./Creative";
 import "./CreateAdsWizard.css";
 import shopService from "../../../services/shopService";
-import { publishAdsWizard } from "../../../services/adsWizardService";
+import {
+  publishAdsWizard,
+  updateAdsWizard,
+} from "../../../services/adsWizardService";
 
 function CreateAdsWizard({
   onClose,
   mode = "create",
-  editingItem = null,
+  editingItem = null, // { type, data }
   selectedCampaign: _selectedCampaign = null,
   selectedAdset: _selectedAdset = null,
   datasets = null,
@@ -67,6 +63,16 @@ function CreateAdsWizard({
   const [adset, setAdset] = useState(initialData.adset);
   const [ad, setAd] = useState(initialData.ad);
 
+  // ========== Prefill khi edit ==========
+  useEffect(() => {
+    if (mode === "edit" && editingItem?.data) {
+      const data = editingItem.data;
+      if (editingItem.type === "campaign") setCampaign((prev) => ({ ...prev, ...data }));
+      if (editingItem.type === "adset") setAdset((prev) => ({ ...prev, ...data }));
+      if (editingItem.type === "ad") setAd((prev) => ({ ...prev, ...data }));
+    }
+  }, [mode, editingItem]);
+
   // ========== Load FB Pages ==========
   useEffect(() => {
     const loadPages = async () => {
@@ -97,7 +103,7 @@ function CreateAdsWizard({
 
   // ========== Xây payload gửi API ==========
   const buildPayload = () => {
-
+    const access_token = localStorage.getItem("fb_access_token") || null;
     const fbObjectiveMap = {
       AWARENESS: "OUTCOME_AWARENESS",
       TRAFFIC: "OUTCOME_TRAFFIC",
@@ -130,7 +136,8 @@ function CreateAdsWizard({
       },
     };
 
-    const fbObjective = fbObjectiveMap[campaign.objective] || "OUTCOME_ENGAGEMENT";
+    const fbObjective =
+      fbObjectiveMap[campaign.objective] || "OUTCOME_ENGAGEMENT";
 
     const adsetDefaults = fbAdsetDefaultsByObjective[fbObjective] || {
       optimization_goal: "REACH",
@@ -166,61 +173,93 @@ function CreateAdsWizard({
 
     return {
       ad_account_id: selectedAccountId || localStorage.getItem("selectedAdAccount") || "act_1234567890",
+
+      // ✅ Kèm ID để update đúng bản ghi trong DB và Facebook
       campaign: {
+        draftId: editingItem?.data?._id || null,
+        external_id: editingItem?.data?.external_id || null,
         name: campaign.name,
         objective: fbObjective,
         status: "PAUSED",
         special_ad_categories: ["NONE"],
       },
+
       adset: {
+        draftId:
+          _selectedAdset?._id ||
+          editingItem?.data?.adset?._id ||
+          datasets?.adsets?.find(a => a.campaignId === editingItem?.data?._id)?._id ||
+          null,
+        external_id:
+          _selectedAdset?.external_id ||
+          editingItem?.data?.adset?.external_id ||
+          datasets?.adsets?.find(a => a.campaignId === editingItem?.data?._id)?.external_id ||
+          null,
         name: adset.name,
         daily_budget: adset.budgetAmount || 2000000,
         status: "PAUSED",
         ...adsetDefaults,
+        bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+        bid_amount: null,
         targeting: {
           age_min: adset.targeting.ageMin || 18,
           age_max: adset.targeting.ageMax || 45,
           geo_locations: { countries: ["VN"] },
           targeting_automation: {
-            advantage_audience: 0, // 0 = tắt Advantage Audience, 1 = bật
+            advantage_audience: 0, // ✅ BẮT BUỘC - disable Advantage Audience
           },
         },
-        promoted_object:
-          ["OUTCOME_ENGAGEMENT", "OUTCOME_LEADS", "OUTCOME_SALES"].includes(fbObjective)
-            ? { page_id: campaign.facebookPageId || "fb_page_id_placeholder" }
-            : undefined,
-        bid_strategy: fbBidStrategyByObjective[fbObjective] || "LOWEST_COST_WITHOUT_CAP",
-        bid_amount: null,
-        start_time: adset.startDate || new Date().toISOString(),
-        end_time: adset.endDate || null,
       },
 
-      creative,
+      creative: {
+        draftId: editingItem?.data?.creative?._id || null,
+        external_id: editingItem?.data?.creative?.external_id || null,
+        ...creative,
+      },
+
       ad: {
+        draftId:
+          editingItem?.data?.ad?._id ||
+          datasets?.ads?.find(a => a.adsetId === _selectedAdset?._id)?._id ||
+          null,
+        external_id:
+          editingItem?.data?.ad?.external_id ||
+          datasets?.ads?.find(a => a.adsetId === _selectedAdset?._id)?.external_id ||
+          null,
         name: ad.name,
         status: "PAUSED",
       },
     };
+
   };
 
-  // ========== Gọi API tạo quảng cáo ==========
+  // ========== Gọi API tạo / cập nhật quảng cáo ==========
   const handlePublish = async () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
     try {
       const payload = buildPayload();
-      const result = await publishAdsWizard(payload);
-      console.log("✅ Tạo quảng cáo thành công:", result);
+
+      let result;
+      if (mode === "edit") {
+        console.log("🛠 Gửi yêu cầu cập nhật Wizard:", payload);
+        result = await updateAdsWizard(payload);
+      } else {
+        console.log("🚀 Gửi yêu cầu tạo mới Wizard:", payload);
+        result = await publishAdsWizard(payload);
+      }
+
+      console.log("✅ Thành công:", result);
       setSuccess(true);
       setTimeout(() => {
         setLoading(false);
         onClose?.();
       }, 1200);
     } catch (err) {
-      console.error("❌ Lỗi tạo quảng cáo:", err);
+      console.error("❌ Lỗi khi xử lý quảng cáo:", err);
       setLoading(false);
-      setError(err.message || "Không thể tạo quảng cáo");
+      setError(err.message || "Không thể xử lý quảng cáo");
     }
   };
 
@@ -328,18 +367,22 @@ function CreateAdsWizard({
                 disabled={loading}
               >
                 {loading
-                  ? "Đang đăng..."
+                  ? mode === "edit"
+                    ? "Đang cập nhật..."
+                    : "Đang đăng..."
                   : success
-                    ? "Đã đăng thành công!"
-                    : "Đăng quảng cáo"}
+                    ? mode === "edit"
+                      ? "Đã cập nhật thành công!"
+                      : "Đã đăng thành công!"
+                    : mode === "edit"
+                      ? "Cập nhật quảng cáo"
+                      : "Đăng quảng cáo"}
               </button>
             </>
           )}
         </div>
 
-        {error && (
-          <div className="publish-error text-center">{error}</div>
-        )}
+        {error && <div className="publish-error text-center">{error}</div>}
       </div>
     </div>
   );

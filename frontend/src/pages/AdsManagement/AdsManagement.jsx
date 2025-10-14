@@ -62,18 +62,18 @@ function AdsManagement() {
         activeTab === "campaigns"
           ? "campaigns"
           : activeTab === "adsets"
-          ? "adsets"
-          : "ads";
+            ? "adsets"
+            : "ads";
       return {
         ...prev,
         [key]: prev[key].map((r) =>
           r.id !== id
             ? r
             : {
-                ...r,
-                enabled: !r.enabled,
-                status: !r.enabled ? "Hoạt động" : "Đang tắt",
-              }
+              ...r,
+              enabled: !r.enabled,
+              status: !r.enabled ? "Hoạt động" : "Đang tắt",
+            }
         ),
       };
     });
@@ -89,8 +89,8 @@ function AdsManagement() {
         activeTab === "campaigns"
           ? "campaigns"
           : activeTab === "adsets"
-          ? "adsets"
-          : "ads";
+            ? "adsets"
+            : "ads";
       const updatedItems = handleSelectAll(isChecked, prev[key]);
       return { ...prev, [key]: updatedItems };
     });
@@ -103,8 +103,8 @@ function AdsManagement() {
         activeTab === "campaigns"
           ? "campaigns"
           : activeTab === "adsets"
-          ? "adsets"
-          : "ads";
+            ? "adsets"
+            : "ads";
       const { updatedItems, allChecked } = handleSelectItem(id, prev[key]);
       setCheckAll(allChecked);
       setHasSelectedItems(updatedItems.some((item) => item.isChecked));
@@ -114,27 +114,46 @@ function AdsManagement() {
 
   // 🔹 Edit item
   const handleUpdate = (id) => {
+    // 1️⃣ Lấy item được click
     const item = rows.find((row) => row.id === id);
     if (!item) return;
 
-    setEditingItem({ type: activeTab.slice(0, -1), id });
+    // 2️⃣ Xác định loại (campaign / adset / ad)
+    const type =
+      activeTab === "campaigns"
+        ? "campaign"
+        : activeTab === "adsets"
+          ? "adset"
+          : "ad";
+
+    // 3️⃣ Lấy campaign / adset tương ứng (để truyền vào Wizard)
+    let campaign = null;
+    let adset = null;
+
+    if (type === "campaign") {
+      campaign = item;
+    } else if (type === "adset") {
+      adset = item;
+      campaign = datasets.campaigns.find((c) => c.id === item.campaignId) || null;
+    } else if (type === "ad") {
+      adset = datasets.adsets.find((a) => a.id === item.adsetId) || null;
+      campaign =
+        datasets.campaigns.find((c) => c.id === item.campaignId) || null;
+    }
+
+    // 4️⃣ Lưu state để mở Wizard
+    setEditingItem({
+      type,
+      data: { ...item, external_id: item.external_id },
+    });
     setWizardMode("edit");
     setShowWizard(true);
 
-    if (activeTab === "adsets") {
-      const campaign = datasets.campaigns.find(
-        (c) => c.id === item.campaignId
-      );
-      setSelectedCampaign(campaign);
-    } else if (activeTab === "ads") {
-      const adset = datasets.adsets.find((a) => a.id === item.adsetId);
-      const campaign = datasets.campaigns.find(
-        (c) => c.id === item.campaignId
-      );
-      setSelectedAdset(adset);
-      setSelectedCampaign(campaign);
-    }
+    // 5️⃣ Cập nhật selection để Wizard hiểu context
+    if (campaign) setSelectedCampaign(campaign);
+    if (adset) setSelectedAdset(adset);
   };
+
 
   // 🔹 Archive (placeholder)
   const handleArchive = (id) => {
@@ -148,8 +167,8 @@ function AdsManagement() {
         activeTab === "campaigns"
           ? "campaigns"
           : activeTab === "adsets"
-          ? "adsets"
-          : "ads";
+            ? "adsets"
+            : "ads";
 
       const idsToDelete = id
         ? [id]
@@ -162,10 +181,9 @@ function AdsManagement() {
 
       if (
         !window.confirm(
-          `Bạn có chắc muốn xóa ${idsToDelete.length} ${
-            key === "campaigns"
-              ? "chiến dịch"
-              : key === "adsets"
+          `Bạn có chắc muốn xóa ${idsToDelete.length} ${key === "campaigns"
+            ? "chiến dịch"
+            : key === "adsets"
               ? "nhóm quảng cáo"
               : "quảng cáo"
           }?`
@@ -192,10 +210,9 @@ function AdsManagement() {
       setHasSelectedItems(false);
 
       alert(
-        `✅ Đã xóa ${idsToDelete.length} ${
-          key === "campaigns"
-            ? "chiến dịch"
-            : key === "adsets"
+        `✅ Đã xóa ${idsToDelete.length} ${key === "campaigns"
+          ? "chiến dịch"
+          : key === "adsets"
             ? "nhóm quảng cáo"
             : "quảng cáo"
         } thành công!`
@@ -245,6 +262,7 @@ function AdsManagement() {
           campaigns: response.data.items.map((campaign) => ({
             ...campaign,
             id: campaign._id || campaign.id || campaign.external_id,
+            external_id: campaign.external_id,
             isChecked: false,
             enabled:
               campaign.status === "ACTIVE" ||
@@ -271,6 +289,7 @@ function AdsManagement() {
           adsets: response.data.items.map((adset) => ({
             ...adset,
             id: adset._id || adset.id || adset.external_id,
+            external_id: adset.external_id,
             campaignId,
             isChecked: false,
             enabled:
@@ -323,6 +342,7 @@ function AdsManagement() {
           adsets: response.data.items.map((adset) => ({
             ...adset,
             id: adset._id || adset.id || adset.external_id,
+            external_id: adset.external_id,
             campaignId: adset.campaign_id,
             isChecked: false,
             enabled:
@@ -349,6 +369,7 @@ function AdsManagement() {
           ads: response.data.items.map((ad) => ({
             ...ad,
             id: ad._id || ad.id || ad.external_id,
+            external_id: ad.external_id,
             adsetId: ad.adset_id || ad.set_id,
             campaignId: ad.campaign_id,
             isChecked: false,
