@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Plus, FileText, BarChart3, ChartLine } from 'lucide-react'
 import './Sidebar.css'
 
 function Sidebar() {
@@ -40,7 +41,7 @@ function Sidebar() {
                             className={`sidebar-item ${currentRoute === 'account-management' ? 'active' : ''}`} 
                             onClick={() => navigate('/account-management')}
                         >
-                            <span className="sidebar-icon">🧾</span>
+                            <span className="sidebar-icon"><FileText size={16} /></span>
                             <span className="sidebar-label">Tài khoản</span>
                         </button>
                     </li>
@@ -49,7 +50,7 @@ function Sidebar() {
                             className={`sidebar-item ${currentRoute === 'ads' ? 'active' : ''}`} 
                             onClick={() => navigate('/ads')}
                         >
-                            <span className="sidebar-icon">➕</span>
+                            <span className="sidebar-icon"><Plus size={16} /></span>
                             <span className="sidebar-label">Quản lý quảng cáo</span>
                         </button>
                     </li>
@@ -58,7 +59,7 @@ function Sidebar() {
                             className={`sidebar-item ${currentRoute === 'reports' ? 'active' : ''}`} 
                             onClick={() => navigate('/reports')}
                         >
-                            <span className="sidebar-icon">📊</span>
+                            <span className="sidebar-icon"><BarChart3 size={16} /></span>
                             <span className="sidebar-label">Báo cáo</span>
                         </button>
                     </li>
@@ -67,7 +68,7 @@ function Sidebar() {
                             className={`sidebar-item ${currentRoute === 'stats' ? 'active' : ''}`} 
                             onClick={() => navigate('/stats')}
                         >
-                            <span className="sidebar-icon">📈</span>
+                            <span className="sidebar-icon"><ChartLine size={16} /></span>
                             <span className="sidebar-label">Thống kê</span>
                         </button>
                     </li>

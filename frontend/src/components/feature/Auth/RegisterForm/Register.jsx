@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../../../hooks/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
 import './Register.css'
@@ -89,19 +90,19 @@ function Register({ onSwitchLogin }) {
     }   
         return (
             <form className="auth-form" onSubmit={handleSubmit}>
-                <div className="input-group">
-                    <div className="input-icon">👤</div>
+                <div className="input-group-auth">
+                    <div className="input-icon-auth"><User size={16} /></div>
                     <input 
                         placeholder="Họ và tên" 
                         value={formData.name} 
                         onChange={(e) => handleInputChange('full_name', e.target.value)}
                         className={errors.full_name ? 'error' : ''}
                     />
-                    {errors.name && <div className="error-message">{errors.full_name}</div>}
+                    {errors.full_name && <div className="error-message">{errors.full_name}</div>}
                 </div>
                 
-                <div className="input-group">
-                    <div className="input-icon">✉️</div>
+                <div className="input-group-auth">
+                    <div className="input-icon-auth"><Mail size={16} /></div>
                     <input 
                         type="email" 
                         placeholder="Email" 
@@ -112,8 +113,8 @@ function Register({ onSwitchLogin }) {
                     {errors.email && <div className="error-message">{errors.email}</div>}
                 </div>
                 
-                <div className="input-group">
-                    <div className="input-icon">📞</div>
+                <div className="input-group-auth">
+                    <div className="input-icon-auth"><Phone size={16} /></div>
                     <input 
                         placeholder="Số điện thoại" 
                         value={formData.phone} 
@@ -123,8 +124,8 @@ function Register({ onSwitchLogin }) {
                     {errors.phone && <div className="error-message">{errors.phone}</div>}
                 </div>
                 
-                <div className="input-group">
-                    <div className="input-icon">🔑</div>
+                <div className="input-group-auth">
+                    <div className="input-icon-auth" aria-hidden="true"><Lock size={16} /></div>
                     <input 
                         type={showPwd ? 'text' : 'password'} 
                         placeholder="Mật khẩu" 
@@ -133,7 +134,7 @@ function Register({ onSwitchLogin }) {
                         className={errors.password ? 'error' : ''}
                     />
                     <div className="input-action" onClick={() => setShowPwd(v => !v)}>
-                        {showPwd ? '🙈' : '👁️'}
+                        {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                     </div>
                     {errors.password && <div className="error-message">{errors.password}</div>}
                 </div>
