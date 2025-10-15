@@ -90,8 +90,8 @@ function ConnectPage() {
   //Xử lý chọn page
   const handlePageSelect = (pageId) => {
     const page = pages.find((p) => p.id === pageId);
-    // Không cho phép chọn page đã kết nối
-    if (page && page.status === "Đã kết nối") {
+    // Không cho phép chọn page đã kết nối hoặc không có quyền ADMIN
+    if (page && (page.status === "Đã kết nối" || page.role !== "ADMIN")) {
       return;
     }
     //Thêm page vào selectedPages
@@ -105,7 +105,7 @@ function ConnectPage() {
   //Xử lý chọn tất cả
   const handleSelectAll = () => {
     const selectablePages = filteredPages.filter(
-      (page) => page.status !== "Đã kết nối"
+      (page) => page.status !== "Đã kết nối" && page.role === "ADMIN"
     );
 
     if (selectAll) {
@@ -184,7 +184,7 @@ function ConnectPage() {
   // Cập nhật trạng thái selectAll khi selectedPages thay đổi
   useEffect(() => {
     const selectablePages = filteredPages.filter(
-      (page) => page.status !== "Đã kết nối"
+      (page) => page.status !== "Đã kết nối" && page.role === "ADMIN"
     );
     setSelectAll(
       selectablePages.length > 0 &&
@@ -259,6 +259,12 @@ function ConnectPage() {
                       checked={selectAll}
                       onChange={handleSelectAll}
                       className="select-all-checkbox"
+                      disabled={
+                        // Disable khi không còn checkbox nào có thể chọn (không connected và phải là ADMIN)
+                        filteredPages.filter(
+                          (page) => page.status !== "Đã kết nối" && page.role === "ADMIN"
+                        ).length === 0
+                      }
                     />
                     {/* <span className="select-all-label">Chọn tất cả</span> */}
                   </div>
@@ -306,7 +312,7 @@ function ConnectPage() {
                         checked={selectedPages.includes(page.id)}
                         onChange={() => handlePageSelect(page.id)}
                         className="page-checkbox"
-                        disabled={page.status === "Đã kết nối"}
+                        disabled={page.status === "Đã kết nối" || page.role !== "ADMIN"}
                       />
                     </div>
                   </div>

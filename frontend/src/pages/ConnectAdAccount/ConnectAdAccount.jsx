@@ -234,6 +234,10 @@ function ConnectAdAccount() {
                   checked={selectAll}
                   onChange={handleSelectAll}
                   className="select-all-checkbox"
+                  disabled={
+                    // Disable khi không còn tài khoản nào có thể chọn (chưa kết nối)
+                    filteredAccounts.filter(account => !account.isConnected).length === 0
+                  }
                 />
                 {/* <span className="select-all-label">Chọn tất cả</span> */}
               </div>

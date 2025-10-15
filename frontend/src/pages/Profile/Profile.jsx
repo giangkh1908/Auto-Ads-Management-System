@@ -4,7 +4,8 @@ import { useToast } from '../../hooks/useToast'
 import profileService from '../../services/profileService'
 import './Profile.css'
 import { getNames } from "country-list";
-
+import {User, AtSign, Mail, Phone, Lock, Eye, EyeOff } from "lucide-react";
+import { validateRequired, validatePassword, validateEmail, validatePhone } from '../../utils/validation'
 import no_avatar from '../../assets/home.jpg';
 
 function Profile() {
@@ -100,6 +101,31 @@ function Profile() {
     e.preventDefault()
     if (loading) return
 
+    // Client-side validation (shared utils)
+    const name = (formData.full_name || '').trim()
+    const email = (formData.email || '').trim()
+    const phone = (formData.phone || '').trim()
+
+    if (!validateRequired(name)) {
+      toast.error('Vui lòng nhập họ tên')
+      return
+    }
+
+    if (!validateRequired(email)) {
+      toast.error('Vui lòng nhập email')
+      return
+    }
+
+    if (!validateEmail(email)) {
+      toast.error('Email không hợp lệ')
+      return
+    }
+
+    if (phone && !validatePhone(phone)) {
+      toast.error('Số điện thoại không hợp lệ (9-11 chữ số)')
+      return
+    }
+
     try {
       setLoading(true)
       const response = await profileService.updateProfile(formData)
@@ -121,14 +147,29 @@ function Profile() {
     e.preventDefault()
     if (loading) return
 
-    // Validation
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('Mật khẩu xác nhận không khớp')
+    // Validation (shared utils)
+    if (!validateRequired(passwordData.currentPassword)) {
+      toast.error('Vui lòng nhập mật khẩu hiện tại')
       return
     }
-
-    if (passwordData.newPassword.length < 6) {
+    if (!validateRequired(passwordData.newPassword)) {
+      toast.error('Vui lòng nhập mật khẩu mới')
+      return
+    }
+    if (!validateRequired(passwordData.confirmPassword)) {
+      toast.error('Vui lòng nhập lại mật khẩu mới')
+      return
+    }
+    if (!validatePassword(passwordData.newPassword, { minLength: 6 })) {
       toast.error('Mật khẩu mới phải có ít nhất 6 ký tự')
+      return
+    }
+    if (passwordData.newPassword === passwordData.currentPassword) {
+      toast.error('Mật khẩu mới không được trùng với mật khẩu hiện tại')
+      return
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('Mật khẩu xác nhận không khớp')
       return
     }
 
@@ -200,19 +241,23 @@ function Profile() {
               <form className="profile-form" onSubmit={handleSubmit}>
                 <div className="form-group">
                   <label htmlFor="full_name">Họ tên của bạn</label>
-                  <input
-                    type="text"
-                    id="full_name"
-                    name="full_name"
-                    value={formData.full_name}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
+                  <div className="input-with-icon">
+                    <User className="input-icon" size={18} />
+                    <input
+                      type="text"
+                      id="full_name"
+                      name="full_name"
+                      value={formData.full_name}
+                      onChange={handleInputChange}
+                      className="form-input"
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="username">Username</label>
                   <div className="input-with-icon">
+                    <AtSign className="input-icon" size={18} />
                     <input
                       type="text"
                       id="username"
@@ -229,26 +274,32 @@ function Profile() {
 
                 <div className="form-group">
                   <label htmlFor="email">Email</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
+                  <div className="input-with-icon">
+                    <Mail className="input-icon" size={18} />
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="form-input"
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="phone">Số điện thoại</label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
+                  <div className="input-with-icon">
+                    <Phone className="input-icon" size={18} />
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="form-input"
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -305,6 +356,7 @@ function Profile() {
                 <div className="form-group">
                   <label htmlFor="currentPassword">Mật khẩu hiện tại</label>
                   <div className="input-with-icon">
+                    <Lock className="input-icon" size={18} />
                     <input
                       type={showPassword.currentPassword ? "text" : "password"}
                       id="currentPassword"
@@ -319,7 +371,7 @@ function Profile() {
                       className="eye-icon-btn"
                       onClick={() => togglePasswordVisibility('currentPassword')}
                     >
-                      {showPassword.currentPassword ? '👁️' : '👁️‍🗨️'}
+                      {showPassword.currentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
@@ -327,6 +379,7 @@ function Profile() {
                 <div className="form-group">
                   <label htmlFor="newPassword">Mật khẩu mới</label>
                   <div className="input-with-icon">
+                    <Lock className="input-icon" size={18} />
                     <input
                       type={showPassword.newPassword ? "text" : "password"}
                       id="newPassword"
@@ -341,7 +394,7 @@ function Profile() {
                       className="eye-icon-btn"
                       onClick={() => togglePasswordVisibility('newPassword')}
                     >
-                      {showPassword.newPassword ? '👁️' : '👁️‍🗨️'}
+                      {showPassword.newPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
@@ -349,6 +402,7 @@ function Profile() {
                 <div className="form-group">
                   <label htmlFor="confirmPassword">Nhập lại mật khẩu</label>
                   <div className="input-with-icon">
+                    <Lock className="input-icon" size={18} />
                     <input
                       type={showPassword.confirmPassword ? "text" : "password"}
                       id="confirmPassword"
@@ -363,7 +417,7 @@ function Profile() {
                       className="eye-icon-btn"
                       onClick={() => togglePasswordVisibility('confirmPassword')}
                     >
-                      {showPassword.confirmPassword ? '👁️' : '👁️‍🗨️'}
+                      {showPassword.confirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>

@@ -304,25 +304,34 @@ export async function updateWizard({
   async function fbUpdate(entityId, body, type) {
     if (!entityId || dry_run) {
       console.log(`⚪ Skip ${type} update (no external_id or dry_run)`);
-      return;
+      return false;
     }
     try {
       console.log(`🔵 Updating ${type} on Facebook:`, entityId);
       await axios.post(`${FB_API}/${entityId}`, body, {
-        headers: { Authorization: `Bearer ${access_token}` },
+        params: { access_token },
       });
+      return true;
     } catch (e) {
       console.warn(
         `⚠️ Facebook ${type} update failed:`,
         e.response?.data || e.message
       );
+      return false;
     }
   }
 
   // ✅ Campaign
   if (campaign) {
-    const { external_id, draftId, ...fields } = campaign;
-    if (external_id) await fbUpdate(external_id, fields, "campaign");
+    const { external_id, draftId, ...rawFields } = campaign;
+    // Whitelist updateable fields for Campaign
+    const fields = {
+      ...(rawFields?.name ? { name: rawFields.name } : {}),
+      ...(rawFields?.status ? { status: rawFields.status } : {}),
+    };
+    if (external_id && Object.keys(fields).length > 0) {
+      await fbUpdate(external_id, fields, "campaign");
+    }
     const updated =
       (draftId &&
         (await AdsCampaign.findByIdAndUpdate(
@@ -340,7 +349,21 @@ export async function updateWizard({
 
   // ✅ AdSet
   if (adset) {
-    const { external_id, draftId, ...fields } = adset;
+    const { external_id, draftId, ...rawFields } = adset;
+    // Whitelist updateable fields for AdSet
+    const fields = {
+      ...(rawFields?.name ? { name: rawFields.name } : {}),
+      ...(rawFields?.status ? { status: rawFields.status } : {}),
+      ...(rawFields?.daily_budget ? { daily_budget: rawFields.daily_budget } : {}),
+      ...(rawFields?.lifetime_budget ? { lifetime_budget: rawFields.lifetime_budget } : {}),
+      ...(rawFields?.start_time ? { start_time: rawFields.start_time } : {}),
+      ...(rawFields?.end_time ? { end_time: rawFields.end_time } : {}),
+      ...(rawFields?.targeting ? { targeting: rawFields.targeting } : {}),
+      ...(rawFields?.optimization_goal ? { optimization_goal: rawFields.optimization_goal } : {}),
+      ...(rawFields?.billing_event ? { billing_event: rawFields.billing_event } : {}),
+      ...(rawFields?.bid_strategy ? { bid_strategy: rawFields.bid_strategy } : {}),
+      ...(rawFields?.bid_amount ? { bid_amount: rawFields.bid_amount } : {}),
+    };
     let fbAdSetId = external_id;
 
     if (!fbAdSetId) {
@@ -364,25 +387,19 @@ export async function updateWizard({
       }
     }
 
-    if (fbAdSetId) {
-      try {
-        await fbUpdate(fbAdSetId, fields, "adset");
-      } catch (err) {
-        const msg = err?.response?.data?.error?.error_user_title || "";
-        if (msg.includes("đã bị xóa") || msg.includes("deleted")) {
-          console.log("⚠️ AdSet bị xóa → tạo mới lại thay thế...");
-          const newAdSet = await createAdSet(ad_account_id, access_token, {
-            ...adset,
-            campaign_id: campaign?.external_id,
-            bid_strategy: adset?.bid_strategy || "LOWEST_COST_WITH_BID_CAP",
-            bid_amount: adset?.bid_amount || 1000,
-            billing_event: adset?.billing_event || "IMPRESSIONS", // Thêm billing_event bắt buộc
-          });
-          fbAdSetId = newAdSet?.id || newAdSet;
-          await AdsSet.findByIdAndUpdate(draftId, { external_id: fbAdSetId });
-        } else {
-          throw err;
-        }
+    if (fbAdSetId && Object.keys(fields).length > 0) {
+      const ok = await fbUpdate(fbAdSetId, fields, "adset");
+      if (!ok) {
+        console.log("⚠️ Update adset thất bại → thử tạo mới lại...");
+        const newAdSet = await createAdSet(ad_account_id, access_token, {
+          ...adset,
+          campaign_id: campaign?.external_id,
+          bid_strategy: adset?.bid_strategy || "LOWEST_COST_WITH_BID_CAP",
+          bid_amount: adset?.bid_amount || 1000,
+          billing_event: adset?.billing_event || "IMPRESSIONS",
+        });
+        fbAdSetId = newAdSet?.id || newAdSet;
+        await AdsSet.findByIdAndUpdate(draftId, { external_id: fbAdSetId });
       }
     }
 

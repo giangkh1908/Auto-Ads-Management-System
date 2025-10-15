@@ -17,14 +17,17 @@ import AdStep from "./AdStep";
 import Creative from "./Creative";
 import "./CreateAdsWizard.css";
 import profileService from "../../../services/profileService";
-import { publishAdsWizard, updateAdsWizard } from "../../../services/adsWizardService";
+import {
+  publishAdsWizard,
+  updateAdsWizard,
+} from "../../../services/adsWizardService";
 import { useToast } from "../../../hooks/useToast";
 
-function CreateAdsWizard({ 
-  onClose, 
+function CreateAdsWizard({
+  onClose,
   onSuccess = null,
-  mode = "create", 
-  editingItem = null, 
+  mode = "create",
+  editingItem = null,
   selectedAccountId = null,
   // datasets = null,
   selectedCampaign: _selectedCampaign = null, // eslint-disable-line no-unused-vars
@@ -32,28 +35,38 @@ function CreateAdsWizard({
   setDatasets: _setDatasets = null, // eslint-disable-line no-unused-vars
 }) {
   const toast = useToast();
-  
+
   // Helper function để extract string ID từ ObjectId format
   function extractObjectId(value) {
     if (!value) return null;
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const match = value.match(/[0-9a-fA-F]{24}/);
       return match ? match[0] : null;
     }
     if (value.$oid) return value.$oid; // trong trường hợp Mongo xuất ra kiểu { $oid: '...' }
     return value.toString();
   }
-  
+
   // Helper function để tìm ID trong object
   const findIdInObject = useCallback((obj) => {
-    if (!obj || typeof obj !== 'object') return null;
-    
+    if (!obj || typeof obj !== "object") return null;
+
     // Danh sách các trường có thể chứa ID
     const idFields = [
-      'id', '_id', 'campaign_id', 'adset_id', 'ad_id', 'creative_id', 'set_id',
-      'campaignId', 'adsetId', 'adId', 'creativeId', 'setId'
+      "id",
+      "_id",
+      "campaign_id",
+      "adset_id",
+      "ad_id",
+      "creative_id",
+      "set_id",
+      "campaignId",
+      "adsetId",
+      "adId",
+      "creativeId",
+      "setId",
     ];
-    
+
     // Tìm trong các trường trực tiếp
     for (const field of idFields) {
       if (obj[field]) {
@@ -61,10 +74,10 @@ function CreateAdsWizard({
         return obj[field];
       }
     }
-    
+
     // Tìm trong nested objects
     for (const key in obj) {
-      if (obj[key] && typeof obj[key] === 'object') {
+      if (obj[key] && typeof obj[key] === "object") {
         const nestedId = findIdInObject(obj[key]);
         if (nestedId) {
           // console.log(`🔍 Found ID in nested field '${key}':`, nestedId);
@@ -72,17 +85,17 @@ function CreateAdsWizard({
         }
       }
     }
-    
+
     return null;
   }, []);
-  
+
   const [wizardStep, setWizardStep] = useState(0);
   const contentRef = useRef(null);
   const [facebookPages, setFacebookPages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [ERROR_MESSAGE, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  
+
   // State để quản lý dropdown trong Left Panel
   const [openDropdown, setOpenDropdown] = useState({
     campaign: false,
@@ -160,30 +173,30 @@ function CreateAdsWizard({
 
   // ========== Initial Data ==========
   const initialData = {
-          campaign: {
+    campaign: {
       objective: "POST_ENGAGEMENT",
       name: "Chiến dịch mới",
       budgetType: "CAMPAIGN",
       facebookPage: "Fchat.vn",
       facebookPageId: null,
       facebookPageAvatar: null,
-          },
-          adset: {
-            name: "Nhóm quảng cáo mới",
+    },
+    adset: {
+      name: "Nhóm quảng cáo mới",
       budgetType: "daily",
       budgetAmount: 2000000,
-            placement: "AUTOMATIC",
-            targeting: { location: "Việt Nam", ageMin: 18, ageMax: 45 },
-          },
-          ad: {
-            name: "Quảng cáo mới",
-            page: "Fchat.vn",
-            media: "image",
+      placement: "AUTOMATIC",
+      targeting: { location: "Việt Nam", ageMin: 18, ageMax: 45 },
+    },
+    ad: {
+      name: "Quảng cáo mới",
+      page: "Fchat.vn",
+      media: "image",
       mediaUrl: "",
-            primaryText: "Hãy giới thiệu về nội dung quảng cáo của bạn",
-            headline: "Chat trong Messenger",
+      primaryText: "Hãy giới thiệu về nội dung quảng cáo của bạn",
+      headline: "Chat trong Messenger",
       description: "Khám phá dịch vụ của chúng tôi ngay!",
-            cta: "Gửi tin nhắn",
+      cta: "Gửi tin nhắn",
       destinationUrl: "https://fchat.vn",
     },
   };
@@ -275,22 +288,21 @@ function CreateAdsWizard({
               }))
           : [];
         setFacebookPages(connectedPages);
-        
+
         // Show success toast if pages are loaded
         if (connectedPages.length > 0) {
-          toast.success("Tải danh sách Page...", {
-            description: `Thành công!`
-          });
+          console.log("Tải danh sách Page thành công!");
         } else {
           toast.warning("Không có Page nào được kết nối", {
-            description: "Vui lòng kết nối ít nhất một Page trước khi tạo quảng cáo"
+            description:
+              "Vui lòng kết nối ít nhất một Page trước khi tạo quảng cáo",
           });
         }
       } catch (e) {
         // silent fail; selection will just be empty
         console.log("Failed to load connected facebook pages", e);
         toast.error("Không tải được danh sách Page", {
-          description: "Vui lòng kiểm tra kết nối mạng và thử lại"
+          description: "Vui lòng kiểm tra kết nối mạng và thử lại",
         });
       }
     };
@@ -301,25 +313,26 @@ function CreateAdsWizard({
   useEffect(() => {
     const loadUpdateData = async () => {
       // console.log("🔍 Debug props:", { mode, editingItem, selectedAccountId });
-      
-      if ((mode !== "update" && mode !== "edit") || !editingItem || !selectedAccountId) {
-        console.log("🔍 Early return:", { 
-          mode, 
-          hasEditingItem: !!editingItem, 
-          hasSelectedAccountId: !!selectedAccountId 
+
+      if (mode !== "edit" || !editingItem || !selectedAccountId) {
+        console.log("🔍 Early return:", {
+          mode,
+          hasEditingItem: !!editingItem,
+          hasSelectedAccountId: !!selectedAccountId,
         });
         return;
       }
-      
+
       // Tìm ID trong các trường có thể có
-      let rawItemId = editingItem.id || 
-                     editingItem._id || 
-                     editingItem.campaign_id || 
-                     editingItem.adset_id || 
-                     editingItem.ad_id ||
-                     editingItem.creative_id ||
-                     editingItem.set_id;
-      
+      let rawItemId =
+        editingItem.id ||
+        editingItem._id ||
+        editingItem.campaign_id ||
+        editingItem.adset_id ||
+        editingItem.ad_id ||
+        editingItem.creative_id ||
+        editingItem.set_id;
+
       // Nếu không tìm thấy ID, thử tìm trong toàn bộ object
       if (!rawItemId) {
         rawItemId = findIdInObject(editingItem);
@@ -327,11 +340,8 @@ function CreateAdsWizard({
 
       //Mã hóa id từ ObjectId
       const itemId = extractObjectId(rawItemId);
-      
+
       setLoading(true);
-      toast.info("Vui lòng chờ", {
-        description: "Đang tải dữ liệu ..."
-      });
       try {
         const token =
           localStorage.getItem("accessToken") ||
@@ -355,7 +365,7 @@ function CreateAdsWizard({
           console.log("📋 Campaign ID:", campaignId);
         } else if (editingItem.type === "adset") {
           // Nếu edit adset, tìm campaign ID từ adset
-  
+
           const adsetRes = await fetch(
             `${API_BASE}/adsets/database?adset_id=${itemId}`,
             { headers }
@@ -374,17 +384,20 @@ function CreateAdsWizard({
           const adJson = await adRes.json();
           console.log("📋 Ad response:", adJson);
           adData = adJson.data;
-          
+
           // Ad không có campaign_id trực tiếp, cần tìm qua set_id
           if (adData && adData.set_id) {
-            console.log("🔍 Ad không có campaign_id, tìm qua set_id:", adData.set_id);
+            console.log(
+              "🔍 Ad không có campaign_id, tìm qua set_id:",
+              adData.set_id
+            );
             const adsetRes = await fetch(
               `${API_BASE}/adsets/database?adset_id=${adData.set_id}`,
               { headers }
             );
             const adsetJson = await adsetRes.json();
             console.log("📋 Adset response for campaign lookup:", adsetJson);
-            
+
             if (adsetJson.success && adsetJson.data) {
               campaignId = adsetJson.data.campaign_id;
               console.log("📋 Found campaign_id through adset:", campaignId);
@@ -435,9 +448,11 @@ function CreateAdsWizard({
           );
           const adsetsJson = await adsetsRes.json();
           const adsetsData = adsetsJson.data || [];
-          adsetData = editingItem.type === "adset" 
-            ? adsetsData.find(adset => adset._id === itemId) || adsetsData[0]
-            : adsetsData[0];
+          adsetData =
+            editingItem.type === "adset"
+              ? adsetsData.find((adset) => adset._id === itemId) ||
+                adsetsData[0]
+              : adsetsData[0];
         }
 
         if (adsetData) {
@@ -446,7 +461,7 @@ function CreateAdsWizard({
             external_id: adsetData.external_id,
             name: adsetData.name || "Nhóm quảng cáo mới",
             budgetType: adsetData.daily_budget ? "daily" : "lifetime",
-            budgetAmount: adsetData.daily_budget || adsetData.lifetime_budget || 2000000,
+            budgetAmount: adsetData.daily_budget || adsetData.lifetime_budget,
             schedule: {
               start: adsetData.start_time
                 ? new Date(adsetData.start_time).toISOString().split("T")[0]
@@ -459,7 +474,7 @@ function CreateAdsWizard({
             targeting: adsetData.targeting || {
               location: "Việt Nam",
               ageMin: 18,
-              ageMax: 45,
+              ageMax: 65,
             },
             optimization_goal: adsetData.optimization_goal,
             billing_event: adsetData.billing_event,
@@ -476,9 +491,10 @@ function CreateAdsWizard({
           );
           const adsJson = await adsRes.json();
           const adsData = adsJson.data || [];
-          adData = editingItem.type === "ad" 
-            ? adsData.find(ad => ad._id === itemId) || adsData[0]
-            : adsData[0];
+          adData =
+            editingItem.type === "ad"
+              ? adsData.find((ad) => ad._id === itemId) || adsData[0]
+              : adsData[0];
         }
 
         if (adData) {
@@ -497,25 +513,33 @@ function CreateAdsWizard({
             external_id: adData.external_id,
             name: adData.name || "Quảng cáo mới",
             page: campaignData?.page_name || "Facebook Page",
-            media: creativeData?.object_story_spec?.link_data?.picture ? "image" : "text",
-            mediaUrl: creativeData?.object_story_spec?.link_data?.picture || null,
-            primaryText: creativeData?.object_story_spec?.link_data?.message || "Hãy giới thiệu về nội dung quảng cáo của bạn",
-            headline: creativeData?.object_story_spec?.link_data?.name || "Chat trong Messenger",
-            description: creativeData?.object_story_spec?.link_data?.description || "Khám phá dịch vụ của chúng tôi ngay!",
-            cta: creativeData?.object_story_spec?.link_data?.call_to_action?.type || "Gửi tin nhắn",
-            destinationUrl: creativeData?.object_story_spec?.link_data?.link || "https://fchat.vn",
+            media: creativeData?.object_story_spec?.link_data?.picture
+              ? "image"
+              : "text",
+            mediaUrl:
+              creativeData?.object_story_spec?.link_data?.picture || null,
+            primaryText:
+              creativeData?.object_story_spec?.link_data?.message ||
+              "Hãy giới thiệu về nội dung quảng cáo của bạn",
+            headline:
+              creativeData?.object_story_spec?.link_data?.name ||
+              "Chat trong Messenger",
+            description:
+              creativeData?.object_story_spec?.link_data?.description ||
+              "Khám phá dịch vụ của chúng tôi ngay!",
+            cta:
+              creativeData?.object_story_spec?.link_data?.call_to_action
+                ?.type || "Gửi tin nhắn",
+            destinationUrl:
+              creativeData?.object_story_spec?.link_data?.link ||
+              "https://fchat.vn",
             creative_id: adData.creative_id,
           });
         }
-        
-        // Show success toast for loading data
-        toast.success("Đã xong!", {
-          description: `Tải thành công dữ liệu`
-        });
       } catch (e) {
         console.log("Failed to load update data from database:", e);
         toast.error("Không tải được dữ liệu", {
-          description: "Vui lòng thử lại hoặc kiểm tra kết nối mạng"
+          description: "Vui lòng thử lại hoặc kiểm tra kết nối mạng",
         });
       } finally {
         setLoading(false);
@@ -529,18 +553,19 @@ function CreateAdsWizard({
 
   // Set initial wizard step based on editingItem
   useEffect(() => {
-    if ((mode === "edit" || mode === "update") && editingItem) {
-      // Trong update mode, luôn bắt đầu từ step 1 để hiển thị tất cả 4 steps
-      if (mode === "update") {
-        setWizardStep(1);
-      } else if (mode === "edit") {
-        if (editingItem.type === "campaign") {
+    if (mode === "edit" && editingItem) {
+      switch (editingItem.type) {
+        case "campaign":
           setWizardStep(1);
-        } else if (editingItem.type === "adset") {
+          break;
+        case "adset":
           setWizardStep(2);
-        } else if (editingItem.type === "ad") {
+          break;
+        case "ad":
           setWizardStep(3);
-        }
+          break;
+        default:
+          setWizardStep(1);
       }
     }
   }, [mode, editingItem]);
@@ -600,17 +625,9 @@ function CreateAdsWizard({
       bid_amount: 1000, // 1000 VND
     };
 
-    // const fbBidStrategyByObjective = {
-    //   OUTCOME_AWARENESS: "LOWEST_COST_WITHOUT_CAP",
-    //   OUTCOME_ENGAGEMENT: "LOWEST_COST_WITHOUT_CAP",
-    //   OUTCOME_TRAFFIC: "LOWEST_COST_WITHOUT_CAP",
-    //   OUTCOME_LEADS: "LOWEST_COST_WITHOUT_CAP",
-    //   OUTCOME_SALES: "LOWEST_COST_WITHOUT_CAP",
-    // };
-
     if (!campaign.facebookPageId) {
       toast.warning("Thiếu thông tin Facebook Page", {
-        description: "Vui lòng chọn trang Facebook trước khi tạo quảng cáo"
+        description: "Vui lòng chọn trang Facebook trước khi tạo quảng cáo",
       });
       throw new Error("Vui lòng chọn Trang Facebook trước khi đăng quảng cáo.");
     }
@@ -635,11 +652,13 @@ function CreateAdsWizard({
     };
 
     return {
-      ad_account_id: selectedAccountId || localStorage.getItem("selectedAdAccount"),
+      ad_account_id:
+        selectedAccountId || localStorage.getItem("selectedAdAccount"),
       // Kèm ID để update đúng bản ghi trong DB và Facebook
       campaign: {
         draftId: campaign.id || editingItem?.data?._id || null,
-        external_id: campaign.external_id || editingItem?.data?.external_id || null,
+        external_id:
+          campaign.external_id || editingItem?.data?.external_id || null,
         name: campaign.name,
         objective: fbObjective,
         status: "PAUSED",
@@ -655,20 +674,24 @@ function CreateAdsWizard({
         draftId: adset.id || null,
         external_id: adset.external_id || null,
         name: adset.name,
-        daily_budget: adset.budgetAmount || 2000000,
+        daily_budget: adset.budgetAmount,
         status: "PAUSED",
         ...adsetDefaults,
         targeting: {
           age_min: adset.targeting.ageMin || 18,
-          age_max: adset.targeting.ageMax || 45,
+          age_max: adset.targeting.ageMax || 65,
           geo_locations: { countries: ["VN"] },
           targeting_automation: {
             advantage_audience: 0, // 0 = tắt Advantage Audience, 1 = bật
           },
         },
         // Thêm start_time và end_time để tránh lỗi
-        start_time: adset.schedule?.start ? new Date(adset.schedule.start).toISOString() : new Date().toISOString(),
-        end_time: adset.schedule?.end ? new Date(adset.schedule.end).toISOString() : null,
+        start_time: adset.schedule?.start
+          ? new Date(adset.schedule.start).toISOString()
+          : new Date().toISOString(),
+        end_time: adset.schedule?.end
+          ? new Date(adset.schedule.end).toISOString()
+          : null,
         optimization_goal: adset.optimization_goal,
         billing_event: adset.billing_event,
         bid_strategy: adset.bid_strategy,
@@ -696,19 +719,19 @@ function CreateAdsWizard({
     setLoading(true);
     setError(null);
     setSuccess(false);
-    
+
     // Show loading toast
     toast.info("Đang tạo quảng cáo...", {
-      description: "Vui lòng chờ trong giây lát"
+      description: "Vui lòng chờ trong giây lát",
     });
-    
+
     try {
       const payload = buildPayload();
-      
+
       // Validate ad_account_id
       if (!payload.ad_account_id) {
         toast.warning("Thiếu thông tin tài khoản quảng cáo", {
-          description: "Vui lòng chọn tài khoản quảng cáo hợp lệ"
+          description: "Vui lòng chọn tài khoản quảng cáo hợp lệ",
         });
         throw new Error("Thiếu ad_account_id hoặc access_token.");
       }
@@ -717,31 +740,29 @@ function CreateAdsWizard({
       if (mode === "edit") {
         console.log("🛠 Gửi yêu cầu cập nhật Wizard:", payload);
         toast.info("Đang cập nhật quảng cáo...", {
-          description: "Đang đồng bộ dữ liệu với Facebook"
+          description: "Đang đồng bộ dữ liệu với Facebook",
         });
         result = await updateAdsWizard(payload);
       } else {
         console.log("🚀 Gửi yêu cầu tạo mới Wizard:", payload);
-        toast.info("Đang tạo quảng cáo mới...", {
-          description: "Đang tạo campaign, adset, creative và ad"
-        });
+        toast.info("Đang tạo quảng cáo...", {});
         result = await publishAdsWizard(payload);
       }
 
       console.log("✅ Thành công:", result);
       setSuccess(true);
-      
+
       // Show success toast
       if (mode === "edit") {
         toast.success("Cập nhật quảng cáo thành công!", {
-          description: "Quảng cáo đã được cập nhật trên Facebook"
+          // description: ""
         });
       } else {
         toast.success("Tạo quảng cáo thành công!", {
           // description: ""
         });
       }
-      
+
       setTimeout(() => {
         setLoading(false);
         onSuccess?.(); // Call refresh callback
@@ -751,31 +772,42 @@ function CreateAdsWizard({
       console.error("❌ Lỗi khi xử lý quảng cáo:", err);
       setLoading(false);
       setError(err.message || "Không thể xử lý quảng cáo");
-      
+
       // Show error toast based on error type
       let errorMessage = "Không thể xử lý quảng cáo";
       let errorDescription = "Vui lòng thử lại sau";
-      
+
       if (err.message) {
         if (err.message.includes("facebookPageId")) {
           errorMessage = "Thiếu thông tin Facebook Page";
-          errorDescription = "Vui lòng chọn trang Facebook trước khi tạo quảng cáo";
+          errorDescription =
+            "Vui lòng chọn trang Facebook trước khi tạo quảng cáo";
           toast.warning(errorMessage, { description: errorDescription });
         } else if (err.message.includes("ad_account_id")) {
           errorMessage = "Thiếu thông tin tài khoản quảng cáo";
           errorDescription = "Vui lòng chọn tài khoản quảng cáo hợp lệ";
           toast.warning(errorMessage, { description: errorDescription });
-        } else if (err.message.includes("Bad signature") || err.message.includes("190")) {
+        } else if (
+          err.message.includes("Bad signature") ||
+          err.message.includes("190")
+        ) {
           errorMessage = "Lỗi xác thực Facebook";
           errorDescription = "Token Facebook không hợp lệ hoặc đã hết hạn";
           toast.error(errorMessage, { description: errorDescription });
-        } else if (err.message.includes("Invalid parameter") || err.message.includes("100")) {
+        } else if (
+          err.message.includes("Invalid parameter") ||
+          err.message.includes("100")
+        ) {
           errorMessage = "Tham số không hợp lệ";
           errorDescription = "Vui lòng kiểm tra lại thông tin nhập vào";
           toast.warning(errorMessage, { description: errorDescription });
-        } else if (err.message.includes("bid") || err.message.includes("2490487")) {
+        } else if (
+          err.message.includes("bid") ||
+          err.message.includes("2490487")
+        ) {
           errorMessage = "Thiếu thông tin giá thầu";
-          errorDescription = "Đã cấu hình chiến lược giá thầu LOWEST_COST_WITH_BID_CAP với bid_amount = 1000 VND";
+          errorDescription =
+            "Đã cấu hình chiến lược giá thầu LOWEST_COST_WITH_BID_CAP với bid_amount = 1000 VND";
           toast.warning(errorMessage, { description: errorDescription });
         } else {
           toast.error(errorMessage, { description: err.message });
@@ -791,7 +823,7 @@ function CreateAdsWizard({
       <div className="ads-modal">
         <div className="ads-modal-header">
           <div className="ads-modal-title">
-            {mode === "edit" || mode === "update"
+            {mode === "edit"
               ? `Chỉnh sửa ${
                   editingItem?.type === "campaign"
                     ? "chiến dịch"
@@ -1067,9 +1099,9 @@ function CreateAdsWizard({
                           ],
                           SALES: ["Thương mại điện tử", "Cửa hàng online"],
                         }[campaign.objective]?.map((tag, index) => (
-                            <span key={index} className="suitable-tag">
-                              {tag}
-                            </span>
+                          <span key={index} className="suitable-tag">
+                            {tag}
+                          </span>
                         )) || <span className="suitable-tag">—</span>}
                       </div>
                     </div>
@@ -1160,7 +1192,7 @@ function CreateAdsWizard({
                       ? "Đang xử lý..."
                       : success
                       ? "Thành công!"
-                      : mode === "update"
+                      : mode === "edit"
                       ? "Cập nhật"
                       : "Đăng quảng cáo"}
                   </button>
