@@ -195,7 +195,7 @@ function AppContent() {
               </main>
             </ProtectedRoute>
           } 
-        /> */}
+        />
 
         {/* Route cho Connect Page */}
         <Route 

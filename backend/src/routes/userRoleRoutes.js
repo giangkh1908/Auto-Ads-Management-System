@@ -11,10 +11,10 @@ import { authenticate, authorize } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// 🛡️ Chỉ cho phép người có quyền role/userRole
+//  Chỉ cho phép người có quyền role/userRole
 router.use(authenticate);
 
-// 🎯 Gán và quản lý role
+//  Gán và quản lý role
 router.get("/", authorize("userRole", "view"), getUserRoles);
 router.get("/:id", authorize("userRole", "view"), getUserRoleById);
 router.get("/user/:userId", authorize("userRole", "view"), getRolesByUser);

@@ -6,22 +6,30 @@ function AdsDropdown({
     onCreateAdset, 
     onCreateAd, 
     menuAlign = 'right', 
-    triggerClassName = '' 
+    triggerClassName = '',
+    isOpen = false,
+    onClose
 }) {
-    const [open, setOpen] = useState(false)
+    const [open, setOpen] = useState(isOpen)
     const menuRef = useRef(null)
+
+    // Sync với prop isOpen từ parent
+    useEffect(() => {
+        setOpen(isOpen)
+    }, [isOpen])
 
     useEffect(() => {
         function handleClickOutside(event) {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
                 setOpen(false)
+                onClose?.()
             }
         }
         if (open) document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [open])
+    }, [open, onClose])
 
-    // 🔍 Xác định "type" tự động
+    //  Xác định "type" tự động
     const type = onCreateAdset ? 'campaign' : onCreateAd ? 'adset' : 'ad'
 
     return (
@@ -46,17 +54,17 @@ function AdsDropdown({
                     }}
                 >
                     {/* Mục chung cho tất cả */}
-                    <button className="actions-menu-item" onClick={() => { onCopy?.(); setOpen(false) }}>Sao chép</button>
-                    <button className="actions-menu-item" onClick={() => { onDelete?.(); setOpen(false) }}>Xóa</button>
+                    <button className="actions-menu-item" onClick={() => { onCopy?.(); setOpen(false); onClose?.() }}>Sao chép</button>
+                    <button className="actions-menu-item" onClick={() => { onDelete?.(); setOpen(false); onClose?.() }}>Xóa</button>
 
                     {/* Mục riêng */}
                     {type === 'campaign' && (
-                        <button className="actions-menu-item" onClick={() => { onCreateAdset?.(); setOpen(false) }}>
+                        <button className="actions-menu-item" onClick={() => { onCreateAdset?.(); setOpen(false); onClose?.() }}>
                             Tạo nhóm quảng cáo
                         </button>
                     )}
                     {type === 'adset' && (
-                        <button className="actions-menu-item" onClick={() => { onCreateAd?.(); setOpen(false) }}>
+                        <button className="actions-menu-item" onClick={() => { onCreateAd?.(); setOpen(false); onClose?.() }}>
                             Tạo quảng cáo
                         </button>
                     )}

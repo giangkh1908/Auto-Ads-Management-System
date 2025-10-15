@@ -77,34 +77,37 @@ export const updateAd = async (id, data) => {
 }
 
 // Delete Campaign
-export const deleteCampaign = async (id) => {
+export const deleteCampaign = async (id, accessToken = null) => {
   try {
-    const response = await axiosInstance.delete(API_ENDPOINTS.CAMPAIGNS.DELETE(id))
-    return response.data
+    const url = API_ENDPOINTS.CAMPAIGNS.DELETE(id, accessToken);
+    const response = await axiosInstance.delete(url);
+    return response.data;
   } catch (error) {
-    console.error('Error deleting campaign:', error)
-    throw error
+    console.error('Error deleting campaign:', error);
+    throw error;
   }
-}
+};
 
 // Delete AdSet
-export const deleteAdSet = async (id) => {
+export const deleteAdSet = async (id, accessToken = null) => {
   try {
-    const response = await axiosInstance.delete(API_ENDPOINTS.ADSETS.DELETE(id))
-    return response.data
+    const url = API_ENDPOINTS.ADSETS.DELETE(id, accessToken);
+    const response = await axiosInstance.delete(url);
+    return response.data;
   } catch (error) {
-    console.error('Error deleting ad set:', error)
-    throw error
+    console.error('Error deleting ad set:', error);
+    throw error;
   }
-}
+};
 
 // Delete Ad
-export const deleteAd = async (id) => {
+export const deleteAd = async (id, accessToken = null) => {
   try {
-    const response = await axiosInstance.delete(API_ENDPOINTS.ADS.DELETE(id))
-    return response.data
+    const url = API_ENDPOINTS.ADS.DELETE(id, accessToken);
+    const response = await axiosInstance.delete(url);
+    return response.data;
   } catch (error) {
-    console.error('Error deleting ad:', error)
-    throw error
+    console.error('Error deleting ad:', error);
+    throw error;
   }
-}
+};

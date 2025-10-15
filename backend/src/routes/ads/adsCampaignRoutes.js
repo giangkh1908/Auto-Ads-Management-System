@@ -2,7 +2,11 @@ import express from "express";
 import {
   listCampaignsCtrl,
   getCampaignCtrl,
-  syncCampaignsCtrl
+  syncCampaignsCtrl,
+  getCampaignsLiveCtrl,
+  toggleCampaignStatusCtrl,
+  deleteCampaignCascadeCtrl,
+  getCampaignFromDatabase
 } from "../../controllers/ads/adsCampaign.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
@@ -17,10 +21,14 @@ router.get("/count", (req, res) => {
 });
 
 // Đặt các routes cụ thể TRƯỚC route có tham số /:id
+router.get("/live", getCampaignsLiveCtrl);
+router.get("/database", getCampaignFromDatabase);
+router.patch("/:id/status", toggleCampaignStatusCtrl);
 router.get("/sync", syncCampaignsCtrl);
 router.get("/", listCampaignsCtrl);
 
 // Route với tham số động phải đặt SAU CÙNG
 router.get("/:id", getCampaignCtrl);
+router.delete("/:id", deleteCampaignCascadeCtrl);
 
 export default router;

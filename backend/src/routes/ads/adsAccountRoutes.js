@@ -8,6 +8,9 @@ import {
   updateAdsAccountCtrl,
   deleteAdsAccountCtrl,
   getAccountStatsCtrl, // Thêm import hàm mới
+  getAccountLiveStatsCtrl,
+  listFacebookAdAccountsCtrl,
+  connectAdAccountCtrl,
 } from "../../controllers/ads/adsAccount.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
@@ -17,8 +20,11 @@ router.use(authenticate);
 
 // Các routes cụ thể phải đặt TRƯỚC các routes có dynamic parameter
 router.get("/sync", syncAdsAccounts);
+router.get("/facebook", listFacebookAdAccountsCtrl);
+router.post("/connect", connectAdAccountCtrl);
 router.get("/by-external/:externalId", getAdsAccountByExternalCtrl);
 router.get("/stats", getAccountStatsCtrl); // Thêm route mới này
+router.get("/stats/live", getAccountLiveStatsCtrl);
 
 // Routes có dynamic parameter đặt sau cùng
 router.get("/", listAdsAccountsCtrl);

@@ -5,7 +5,8 @@ const adsCampaignSchema = new mongoose.Schema(
     shop_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Shop",
-      required: true,
+      required: false,
+      default: null,
     },
     account_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -16,6 +17,7 @@ const adsCampaignSchema = new mongoose.Schema(
     external_account_id: {
       type: String,
       index: true,
+      trim: true,
     },
     // ID chiến dịch trên Facebook (có sau khi publish)
     external_id: { type: String, trim: true },

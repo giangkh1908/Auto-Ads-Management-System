@@ -16,6 +16,8 @@ import adsWizardRoutes from "./routes/ads/adsWizardRoutes.js";
 import adsCampaignRoutes from "./routes/ads/adsCampaignRoutes.js";
 import adsSetRoutes from "./routes/ads/adsSetRoutes.js";
 import adsRoutes from "./routes/ads/adsRoutes.js";
+import creativeRoutes from "./routes/ads/creativeRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 //Load các biến môi trường
 dotenv.config();
@@ -45,10 +47,12 @@ app.use("/api/shops", shopRoutes);
 app.use("/api/shop-users", shopUserRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/ads-accounts", adsAccountRoutes);
-app.use("/api", adsWizardRoutes);
 app.use("/api/campaigns", adsCampaignRoutes);
 app.use("/api/adsets", adsSetRoutes);
 app.use("/api/ads", adsRoutes);
+app.use("/api/creatives", creativeRoutes);
+app.use("/api/ads-wizard", adsWizardRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Connect database & start server
 connectDB().then(() => {

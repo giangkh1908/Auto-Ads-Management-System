@@ -1,6 +1,39 @@
+import { useRef, useState } from 'react';
 import { Circle, Image, ChevronDown, Facebook, FileText, Type, MousePointer } from 'lucide-react';
+import axios from '../../../utils/axios';
 
 function AdStep({ ad, setAd, campaign }) {
+    const fileInputRef = useRef(null);
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            setUploading(true);
+            const res = await axios.post('/api/upload/image', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            if (res.data.success) {
+                setAd((prev) => ({
+                    ...prev,
+                    media: 'image',
+                    mediaUrl: res.data.url, // ✅ lưu URL Cloudinary
+                }));
+            } else {
+                alert('Upload thất bại!');
+            }
+        } catch (err) {
+            console.error('Upload error:', err);
+            alert('Không thể upload file.');
+        } finally {
+            setUploading(false);
+        }
+    };
+    
     return (
         <div className="ad-step">
             <div className="config-scroll-container">
@@ -52,11 +85,34 @@ function AdStep({ ad, setAd, campaign }) {
                         {/* Media File */}
                         <div className="field-group">
                             <label className="field-label">*File phương tiện</label>
-                            <div className="media-file-selector">
+                            <div className="media-file-selector" onClick ={() => fileInputRef.current.click()}>
                                 <Image size={18} className="media-icon" />
-                                <span className="media-text">Thêm file phương tiện</span>
+                                <span className="media-text">
+                                    {uploading
+                                        ? 'Đang tải lên...'
+                                        : ad.mediaUrl
+                                            ? 'Đã chọn file'
+                                            : 'Thêm file phương tiện'}
+                                </span>
                                 <ChevronDown size={16} className="dropdown-arrow" />
                             </div>
+                            {/* File input */}
+                            <input
+                                type="file"
+                                accept="image/*,video/*"
+                                style={{ display: 'none' }}
+                                ref={fileInputRef}
+                                onChange={handleFileSelect}
+                            />
+                            {ad.mediaUrl && (
+                                <div style={{ marginTop: 10 }}>
+                                    <img
+                                        src={ad.mediaUrl}
+                                        alt="Preview"
+                                        style={{ width: 200, borderRadius: 8 }}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* Primary Text */}
@@ -98,15 +154,15 @@ function AdStep({ ad, setAd, campaign }) {
                         {/* Call to Action */}
                         <div className="field-group">
                             <label className="field-label">Nút kêu gọi hành động</label>
-                            <div className="cta-selector">
+                            {/* <div className="cta-selector">
                                 <span className="cta-text">{ad.cta}</span>
                                 <ChevronDown size={16} className="dropdown-arrow" />
-                            </div>
+                            </div> */}
                             <select
                                 className="cta-select"
                                 value={ad.cta}
                                 onChange={(e) => setAd(prev => ({ ...prev, cta: e.target.value }))}
-                                style={{ display: 'none' }}
+                                // style={{ display: 'none' }}
                             >
                                 <option value="Gửi tin nhắn">Gửi tin nhắn</option>
                                 <option value="Tìm hiểu thêm">Tìm hiểu thêm</option>

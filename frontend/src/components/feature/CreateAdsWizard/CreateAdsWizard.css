@@ -1380,6 +1380,18 @@ body {
   }
 }
 
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6;
+  margin-top: 4;
+  z-index: 9999;
+}
+
 .dropdown-item-campaign {
   align-items: center;
   gap: 8px;
@@ -1387,3 +1399,4 @@ body {
   cursor: pointer;
   background: #fff;
 }
+

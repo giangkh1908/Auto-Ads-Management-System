@@ -1,6 +1,6 @@
 // src/routes/ads/adsRoutes.js
 import express from "express";
-import { listAdsCtrl, syncAdsCtrl } from "../../controllers/ads/ads.controller.js";
+import { listAdsCtrl, syncAdsCtrl, getAdsLiveCtrl, toggleAdStatusCtrl, deleteAdCtrl, getAdFromDatabase } from "../../controllers/ads/ads.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -12,10 +12,16 @@ router.get("/count", (req, res) => {
   return res.status(200).json({ count: 0 });
 });
 
-// NEW: đồng bộ ads từ Facebook
+// NEW: lấy ads trực tiếp từ Facebook
+router.get("/live", getAdsLiveCtrl);
+// Database endpoints
+router.get("/database", getAdFromDatabase);
+// Đồng bộ ads từ Facebook
 router.get("/sync", syncAdsCtrl);
 
 // List ads
 router.get("/", listAdsCtrl);
+router.patch("/:id/status", toggleAdStatusCtrl);
+router.delete("/:id", deleteAdCtrl);
 
 export default router;

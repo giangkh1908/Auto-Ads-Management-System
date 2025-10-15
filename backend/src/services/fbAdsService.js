@@ -1,5 +1,6 @@
 // services/fbAdsService.js
 import axios from "axios";
+import crypto from "crypto";
 
 // MODELS
 import AdsAccount from "../models/ads/adsAccount.model.js";
@@ -8,6 +9,19 @@ import AdsSet from "../models/ads/adsSet.model.js";
 import Ads from "../models/ads/ads.model.js";
 
 const FB_API = "https://graph.facebook.com/v23.0";
+
+function buildFbAuthParams(accessToken) {
+  const appSecret = process.env.FB_APP_SECRET || process.env.FACEBOOK_APP_SECRET || process.env.APP_SECRET;
+  const base = { access_token: accessToken };
+  if (!accessToken) return base;
+  if (!appSecret) return base;
+  try {
+    const proof = crypto.createHmac("sha256", appSecret).update(accessToken).digest("hex");
+    return { ...base, appsecret_proof: proof };
+  } catch {
+    return base;
+  }
+}
 
 /* =========================
  *  Helpers
@@ -33,39 +47,113 @@ async function findAdsAccountByExternalId(accountId) {
  *  CREATE HELPERS (giữ nguyên)
  * ========================= */
 export async function createCampaign(adAccountId, accessToken, body) {
-  const { data } = await axios.post(`${FB_API}/${adAccountId}/campaigns`, body, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const { data } = await axios.post(
+    `${FB_API}/${withPrefix}/campaigns`,
+    body,
+    { params: buildFbAuthParams(accessToken) }
+  );
   return data.id;
 }
 
 export async function createAdSet(adAccountId, accessToken, body) {
-  const { data } = await axios.post(`${FB_API}/${adAccountId}/adsets`, body, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const { data } = await axios.post(
+    `${FB_API}/${withPrefix}/adsets`,
+    body,
+    { params: buildFbAuthParams(accessToken) }
+  );
   return data.id;
 }
 
 export async function createCreative(adAccountId, accessToken, body) {
-  const { data } = await axios.post(`${FB_API}/${adAccountId}/adcreatives`, body, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const { data } = await axios.post(
+    `${FB_API}/${withPrefix}/adcreatives`,
+    body,
+    { params: buildFbAuthParams(accessToken) }
+  );
   return data.id;
 }
 
 export async function createAd(adAccountId, accessToken, body) {
-  const { data } = await axios.post(`${FB_API}/${adAccountId}/ads`, body, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const { data } = await axios.post(
+    `${FB_API}/${withPrefix}/ads`,
+    body,
+    { params: buildFbAuthParams(accessToken) }
+  );
   return data.id;
 }
 
+/**
+ * Xoá entity (campaign, adset, ad, creative...) khỏi Facebook
+ * @param {string} entityId - ID thật của entity trên Facebook
+ * @param {string} accessToken - Facebook access_token hợp lệ
+ * @returns {boolean} true nếu xoá thành công, false nếu lỗi
+ */
 export async function deleteEntity(entityId, accessToken) {
-  await axios
-    .delete(`${FB_API}/${entityId}`, {
+  if (!entityId || !accessToken) {
+    console.warn("⚠️ deleteEntity() thiếu entityId hoặc accessToken");
+    return false;
+  }
+
+  try {
+    const url = `${FB_API}/${entityId}`;
+    const { data } = await axios.delete(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    .catch(() => {});
+    });
+
+    // Facebook trả về { success: true } nếu xoá thành công
+    if (data?.success) {
+      console.log(`✅ Đã xoá thành công entity ${entityId} trên Facebook`);
+      return true;
+    } else {
+      console.warn(`⚠️ Facebook không xoá entity ${entityId}:`, data);
+      return false;
+    }
+  } catch (err) {
+    const fbErr = err.response?.data?.error;
+    if (fbErr?.code === 190) {
+      console.error("🚨 Token Facebook hết hạn hoặc không hợp lệ:", fbErr);
+    } else if (fbErr?.code === 10) {
+      console.error("🚨 Không có quyền xoá entity:", fbErr);
+    } else {
+      console.error(`❌ Lỗi xoá entity ${entityId}:`, fbErr || err.message);
+    }
+    return false;
+  }
+}
+
+
+/* =========================
+ *  UPDATE STATUS HELPERS
+ * ========================= */
+export async function updateCampaignStatus(entityId, accessToken, status) {
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    { status },
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
+}
+
+export async function updateAdsetStatus(entityId, accessToken, status) {
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    { status },
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
+}
+
+export async function updateAdStatus(entityId, accessToken, status) {
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    { status },
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
 }
 
 /* =========================
@@ -316,5 +404,30 @@ export async function syncAdsFromFacebook(accessToken, adAccountId) {
   } catch (err) {
     console.error(`Error syncing ads for account ${adAccountId}:`, err.message);
     throw err;
+  }
+}
+
+export async function fetchAdInsights(accessToken, adIds = []) {
+  if (!adIds.length) return [];
+
+  try {
+    const url = `${FB_API}/?ids=${adIds.join(",")}`;
+    const fields =
+      "insights{impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
+    const { data } = await axios.get(url, {
+      params: { fields, access_token: accessToken },
+    });
+
+    // Flatten lại dữ liệu cho dễ xử lý
+    return Object.keys(data).map((id) => ({
+      id,
+      insights: data[id].insights?.data?.[0] || {},
+    }));
+  } catch (err) {
+    console.error(
+      "Error fetching insights:",
+      err.response?.data || err.message
+    );
+    return [];
   }
 }
