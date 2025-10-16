@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../hooks/useAuth'
 import './Header.css'
 import avatar from '../../../assets/home.jpg';
+import { useTranslation } from "react-i18next";
 
 function Header({ onLoginClick}) {
 
