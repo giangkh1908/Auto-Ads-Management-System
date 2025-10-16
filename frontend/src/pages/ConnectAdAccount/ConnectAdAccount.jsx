@@ -23,15 +23,15 @@ function ConnectAdAccount() {
       try {
         setLoading(true)
         
-        // Lấy danh sách tài khoản quảng cáo đã kết nối từ database
+        // Lấy danh sách tài khoản quảng cáo đã kết nối từ database (đã connect)
         const connectedRes = await axiosInstance.get('/api/ads-accounts')
         const connectedAccounts = connectedRes.data?.items || []
         setConnectedAccountIds(connectedAccounts.map(acc => acc.external_id))
 
-        // Đồng bộ tài khoản quảng cáo từ Facebook
-        const syncRes = await axiosInstance.get('/api/ads-accounts/sync')
-        const syncedAccounts = syncRes.data?.accounts || []
-        setFbAdAccounts(syncedAccounts)
+        // Lấy danh sách tài khoản quảng cáo trực tiếp từ Facebook (KHÔNG lưu DB)
+        const fbRes = await axiosInstance.get('/api/ads-accounts/facebook')
+        const fbAccounts = fbRes.data?.items || []
+        setFbAdAccounts(fbAccounts)
       } catch (e) {
         console.error('Load ad accounts error:', e)
         toast.error('Không tải được danh sách tài khoản quảng cáo từ Facebook')
@@ -116,8 +116,10 @@ function ConnectAdAccount() {
     
     try {
       setSyncing(true)
-      // Tài khoản quảng cáo đã được lưu vào database thông qua API sync
-      // Chỉ cần cập nhật trạng thái kết nối
+      // Chỉ khi bấm kết nối mới lưu tài khoản vào DB
+      for (const acc of selected) {
+        await axiosInstance.post('/api/ads-accounts/connect', { account_id: acc.externalId })
+      }
       setConnectedAccountIds(prev => Array.from(new Set([...prev, ...selected.map(acc => acc.externalId)])))
       toast.success(`Đã kết nối ${selected.length} tài khoản quảng cáo`)
       navigate('/account-management')
@@ -133,10 +135,10 @@ function ConnectAdAccount() {
   const handleRefresh = async () => {
     try {
       setSyncing(true)
-      // Đồng bộ lại tài khoản quảng cáo từ Facebook
-      const syncRes = await axiosInstance.get('/api/ads-accounts/sync')
-      const syncedAccounts = syncRes.data?.accounts || []
-      setFbAdAccounts(syncedAccounts)
+      // Làm mới danh sách tài khoản quảng cáo từ Facebook (KHÔNG lưu DB)
+      const fbRes = await axiosInstance.get('/api/ads-accounts/facebook')
+      const fbAccounts = fbRes.data?.items || []
+      setFbAdAccounts(fbAccounts)
       toast.success('Làm mới danh sách tài khoản quảng cáo thành công!')
     } catch (error) {
       console.log('Refresh ad accounts error:', error)
@@ -232,6 +234,10 @@ function ConnectAdAccount() {
                   checked={selectAll}
                   onChange={handleSelectAll}
                   className="select-all-checkbox"
+                  disabled={
+                    // Disable khi không còn tài khoản nào có thể chọn (chưa kết nối)
+                    filteredAccounts.filter(account => !account.isConnected).length === 0
+                  }
                 />
                 {/* <span className="select-all-label">Chọn tất cả</span> */}
               </div>

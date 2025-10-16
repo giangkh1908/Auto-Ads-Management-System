@@ -2,8 +2,19 @@ import mongoose from "mongoose";
 
 const adsSetSchema = new mongoose.Schema(
   {
-    campaign_id: { type: mongoose.Schema.Types.ObjectId, ref: "AdsCampaign", required: true },
-    external_id: { type: String, trim: true, required: true },
+    campaign_id: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "AdsCampaign",
+      required: true,  // Mỗi AdSet phải thuộc về một Campaign
+      index: true
+    },
+    external_account_id: { 
+      type: String, 
+      index: true 
+    },
+    // ID ad set trên Facebook (có sau publish)
+    external_id: { type: String, trim: true },
+
     name: { type: String, trim: true },
 
     // ⚙️ Trạng thái
@@ -21,22 +32,28 @@ const adsSetSchema = new mongoose.Schema(
     bid_strategy: { type: String, trim: true },
     bid_amount: { type: Number, default: null },
 
-    // 🧭 Đối tượng quảng cáo và đối tượng mục tiêu
+    // 🧭 Đối tượng mục tiêu
     promoted_object: { type: mongoose.Schema.Types.Mixed, default: {} },
     targeting: { type: mongoose.Schema.Types.Mixed, default: {} },
 
-    // 💰 Ngân sách và thời gian
+    // 💰 Ngân sách & thời gian
     daily_budget: { type: Number },
     lifetime_budget: { type: Number },
     start_time: { type: Date },
     end_time: { type: Date },
 
+    // Audit
+    deleted_at: { type: Date, default: null },
     meta: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );
 
-adsSetSchema.index({ external_id: 1 }, { unique: true });
+// Index
+adsSetSchema.index(
+  { external_id: 1 },
+  { unique: true, partialFilterExpression: { external_id: { $type: "string" } } }
+);
 adsSetSchema.index({ campaign_id: 1 });
 adsSetSchema.index({ status: 1 });
 

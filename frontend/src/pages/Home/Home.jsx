@@ -1,253 +1,378 @@
-import React from 'react'
-import './Home.css'
+import { useState } from "react";
+import { MessageCircle, Globe, Settings,ShoppingCart,DollarSign,Package,TrendingUp,Users,Briefcase,Calendar,Megaphone,
+        MessageSquare,Reply,Bell,Key,List,ShoppingBag,Truck,Play,Mail,ArrowRight,Sparkles,
+} from "lucide-react";
+import "./Home.css";
+import laptop_white from "../../assets/macbook-white.png";
 
 function Home({ onLoginClick }) {
-    return (
-        <div className="landing-page">
-            {/* Hero Section */}
-            <section className="hero-section">
-                <span className="title-landing">☄️ Nền tảng quản lý Facebook Ads thế hệ mới</span>
-                <div className="hero-content">
-                    <div className="hero-text">
-                        <h1 className="hero-title">
-                            <span className="title-highlight">Tăng trưởng chiến dịch Facebook Ads</span>
-                            <br />
-                            <span className="title-sub">với AI vận hành tự động</span>
-                        </h1>
-                        <p className="hero-description">
-                            Nền tảng quản lý Facebook Ads toàn diện giúp bạn tạo, quản lý và tối ưu hóa 
-                            chiến dịch quảng cáo một cách tự động. Tăng ROI lên đến 300% với công nghệ AI tiên tiến.
-                        </p>
-                        <div className="hero-stats">
-                            <div className="stat-item">
-                                <span className="stat-number">500+</span>
-                                <span className="stat-label">Doanh nghiệp tin dùng</span>
-                            </div>
-                            <div className="stat-item">
-                                <span className="stat-number">95%</span>
-                                <span className="stat-label">Tăng hiệu quả</span>
-                            </div>
-                            <div className="stat-item">
-                                <span className="stat-number">24/7</span>
-                                <span className="stat-label">Hỗ trợ chuyên nghiệp</span>
-                            </div>
-                        </div>
-                        <div className="hero-cta">
-                            <button className="btn-primary" onClick={onLoginClick}>
-                                <span className="btn-text">Sử dụng ngay</span>
-                                <span className="btn-icon">→</span>
-                            </button>
-                            <button className="btn-secondary">
-                                <span className="btn-text">Xem demo</span>
-                                <span className="btn-icon">▶</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div className="hero-visual">
-                        <div className="dashboard-preview">
-                            <div className="dashboard-header">
-                                <div className="dashboard-dots">
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
-                                </div>
-                                <div className="dashboard-title">Facebook Ads Dashboard</div>
-                            </div>
-                            <div className="dashboard-content-home">
-                                <div className="metric-card">
-                                    <div className="metric-value">10.000.000 VNĐ</div>
-                                    <div className="metric-label">Doanh thu hôm nay</div>
-                                    <div className="metric-trend up">+15.2%</div>
-                                </div>
-                                <div className="metric-card">
-                                    <div className="metric-value">4.4%</div>
-                                    <div className="metric-label">CTR trung bình</div>
-                                    <div className="metric-trend up">+8.1%</div>
-                                </div>
-                                <div className="chart-area">
-                                    <div className="chart-bars">
-                                        <div className="bar" style={{height: '20%'}}></div>
-                                        <div className="bar" style={{height: '40%'}}></div>
-                                        <div className="bar" style={{height: '60%'}}></div>
-                                        <div className="bar" style={{height: '80%'}}></div>
-                                        <div className="bar" style={{height: '100%'}}></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+  const [email, setEmail] = useState("");
 
-            {/* Features Section */}
-            <section className="features-section">
-                <div className="container">
-                    <h2 className="section-title">Tại sao chọn chúng tôi?</h2>
-                    <p className="section-subtitle">Công nghệ tiên tiến, kết quả vượt trội</p>
-                    
-                    <div className="features-grid">
-                        <div className="feature-card">
-                            <div className="feature-icon">
-                                <div className="icon-automation">⚡</div>
-                            </div>
-                            <h3 className="feature-title">Lập lịch tự động</h3>
-                            <p className="feature-description">
-                                Tự động hóa hoàn toàn việc tạo và quản lý chiến dịch quảng cáo. 
-                                AI thông minh sẽ tối ưu hóa mọi thứ cho bạn.
-                            </p>
-                        </div>
-                        
-                        <div className="feature-card">
-                            <div className="feature-icon">
-                                <div className="icon-analytics">📊</div>
-                            </div>
-                            <h3 className="feature-title">Phân tích chuyên sâu</h3>
-                            <p className="feature-description">
-                                Báo cáo chi tiết và phân tích hiệu suất real-time. 
-                                Hiểu rõ từng chi tiết để tối ưu hóa ROI tối đa.
-                            </p>
-                        </div>
-                        
-                        <div className="feature-card">
-                            <div className="feature-icon">
-                                <div className="icon-budget">💰</div>
-                            </div>
-                            <h3 className="feature-title">Tối ưu ngân sách</h3>
-                            <p className="feature-description">
-                                Công nghệ AI tự động điều chỉnh ngân sách để đạt hiệu quả cao nhất. 
-                                Tiết kiệm chi phí, tăng doanh thu.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log("Email submitted:", email);
+  };
 
-            {/* Partners Section */}
-            {/* <section className="partners-section">
-                <div className="container">
-                    <p className="partners-kicker">Được tin dùng bởi các đội tăng trưởng</p>
-                    <div className="partners-logos">
-                        <div className="logo-chip">Acme Corp</div>
-                        <div className="logo-chip">Nova Tech</div>
-                        <div className="logo-chip">BlueOcean</div>
-                        <div className="logo-chip">MetaMax</div>
-                        <div className="logo-chip">AdGenius</div>
-                    </div>
-                </div>
-            </section> */}
-
-            {/* How It Works */}
-            <section className="how-section">
-                <div className="container">
-                    <h2 className="section-title-how">Vận hành chỉ với 3 bước</h2>
-                    <p className="section-subtitle">Thiết lập nhanh – Tối ưu tự động – Mở rộng dễ dàng</p>
-                    <div className="how-grid">
-                        <div className="how-card">
-                            <div className="how-index">1</div>
-                            <h3 className="how-title">Kết nối tài khoản</h3>
-                            <p className="how-desc">Kết nối Business Manager và tài khoản quảng cáo Facebook trong vài phút.</p>
-                        </div>
-                        <div className="how-card">
-                            <div className="how-index">2</div>
-                            <h3 className="how-title">Tạo chiến dịch</h3>
-                            <p className="how-desc">Sử dụng trình tạo chiến dịch thông minh và thư viện mẫu đã tối ưu.</p>
-                        </div>
-                        <div className="how-card">
-                            <div className="how-index">3</div>
-                            <h3 className="how-title">Tối ưu bằng AI</h3>
-                            <p className="how-desc">AI tự động điều chỉnh ngân sách, lịch chạy, và phân phối để tối ưu ROI.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Testimonials */}
-            {/* <section className="testimonials-section">
-                <div className="container">
-                    <h2 className="section-title">Khách hàng nói gì?</h2>
-                    <div className="testimonials-grid">
-                        <div className="testimonial-card">
-                            <p className="quote">“Chi phí giảm 35% trong 2 tuần, doanh thu tăng đều.”</p>
-                            <div className="author">Minh Anh – Ecom Lead</div>
-                        </div>
-                        <div className="testimonial-card">
-                            <p className="quote">“Quy trình vận hành nhẹ nhàng hơn rất nhiều nhờ tự động hóa.”</p>
-                            <div className="author">Quang Huy – Performance Manager</div>
-                        </div>
-                        <div className="testimonial-card">
-                            <p className="quote">“Dashboard rõ ràng, insight theo thời gian thực cực hữu ích.”</p>
-                            <div className="author">Lan Phương – Growth Marketer</div>
-                        </div>
-                    </div>
-                </div>
-            </section> */}
-
-            {/* Pricing Preview */}
-            <section className="pricing-preview-section">
-                <div className="container">
-                    <h2 className="section-title">Giá linh hoạt cho mọi đội ngũ</h2>
-                    <div className="pricing-grid">
-                        <div className="price-card">
-                            <h3 className="price-name">Starter</h3>
-                            <div className="price-value">0đ</div>
-                            <ul className="price-features">
-                                <li>Quản lý 1 tài khoản</li>
-                                <li>Dashboard cơ bản</li>
-                                <li>Hỗ trợ qua email</li>
-                            </ul>
-                        </div>
-                        <div className="price-card">
-                            <h3 className="price-name">Pro</h3>
-                            <div className="price-value">890.000đ/tháng</div>
-                            <ul className="price-features">
-                                <li>Tối ưu ngân sách bằng AI</li>
-                                <li>Báo cáo real-time</li>
-                                <li>Hỗ trợ ưu tiên</li>
-                            </ul>
-                            <button className="upgrade-btn">Nâng cấp</button>
-                        </div>
-                        <div className="price-card">
-                            <h3 className="price-name">Business</h3>
-                            <div className="price-value">Liên hệ</div>
-                            <ul className="price-features">
-                                <li>Nhiều thành viên</li>
-                                <li>Tùy chỉnh theo nhu cầu</li>
-                                <li>CSKH chuyên trách</li>
-                            </ul>
-                            <button className="upgrade-btn">Liên hệ</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="cta-section">
-                <div className="container">
-                    <div className="cta-content">
-                        <h2 className="cta-title">Sẵn sàng tăng trưởng doanh thu?</h2>
-                        <p className="cta-description">
-                            Tham gia cùng hàng trăm doanh nghiệp đã tin tưởng và thành công với nền tảng của chúng tôi
-                        </p>
-                        <div className="cta-buttons">
-                            <button className="btn-primary-large" onClick={onLoginClick}>
-                                <span className="btn-text">Bắt đầu miễn phí ngay</span>
-                                <span className="btn-icon">🚀</span>
-                            </button>
-                            <button className="btn-outline">
-                                <span className="btn-text">Liên hệ tư vấn</span>
-                                <span className="btn-icon">💬</span>
-                            </button>
-                        </div>
-                        <div className="cta-guarantee">
-                            <span className="guarantee-text">✅ Không cần thẻ tín dụng • ✅ Hủy bất kỳ lúc nào • ✅ Hỗ trợ 24/7</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
+  return (
+    <div className="landing-page">
+      {/* Hero Section */}
+      <section className="hero-section">
+        <div className="hero-container">
+          <div className="hero-content">
+            <div className="hero-text">
+              <h1 className="hero-title">
+                AI Chatbot Messenger, Zalo, Website
+              </h1>
+              <p className="hero-description">
+                Tạo chatbot với khả năng tự động hóa doanh số, bán hàng và chăm
+                sóc khách hàng 24/7
+              </p>
+              <button className="cta-button-home" onClick={onLoginClick}>
+                <span>BẮT ĐẦU MIỄN PHÍ</span>
+                <ArrowRight size={20} />
+              </button>
+            </div>
+            <div className="hero-visual">
+              <img
+                src={laptop_white}
+                alt="Modern laptop computer displaying chatbot dashboard - Vincent Tint on Unsplash"
+                className="laptop-mockup"
+              />
+              <iframe
+                className="youtube-video"
+                src="https://www.youtube.com/embed/9U53xR0fhqI"
+                title="Video Trailer"
+                allow="autoplay; encrypted-media"
+              ></iframe>
+            </div>
+          </div>
         </div>
-    )
+        <div className="wave-divider">
+          <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"></path>
+          </svg>
+        </div>
+      </section>
+
+      {/* Platform Integration Section */}
+      <section className="platform-section">
+        <div className="container">
+          <h2 className="section-title">Nền Tảng Chat và Chatbot Đa Kênh</h2>
+          <p className="section-subtitle">
+            Quản lý tất cả các kênh liên lạc với khách hàng của bạn trên một nền
+            tảng duy nhất
+          </p>
+          <div className="platform-grid">
+            <div className="platform-card">
+              <div className="platform-icon messenger">
+                <MessageCircle size={32} />
+              </div>
+              <h3>Messenger</h3>
+            </div>
+            <div className="platform-card">
+              <div className="platform-icon zalo">
+                <MessageSquare size={32} />
+              </div>
+              <h3>Zalo</h3>
+            </div>
+            <div className="platform-card">
+              <div className="platform-icon website">
+                <Globe size={32} />
+              </div>
+              <h3>Website</h3>
+            </div>
+            <div className="platform-card">
+              <div className="platform-icon tryai">
+                <Settings size={32} />
+              </div>
+              <h3>Try AI</h3>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Chatbot Templates Section */}
+      <section className="templates-section">
+        <div className="container">
+          <h2 className="section-title">Một Số Kịch Bản Chatbot Mẫu</h2>
+          <p className="section-subtitle">
+            Bắt đầu nhanh với các kịch bản chatbot đã được tối ưu hóa sẵn
+          </p>
+          <div className="templates-grid">
+            <div className="template-card">
+              <div className="template-icon">
+                <ShoppingCart size={28} />
+              </div>
+              <h4>Mua hàng</h4>
+              <p>Bán hàng</p>
+            </div>
+            <div className="template-card">
+              <div className="template-icon">
+                <DollarSign size={28} />
+              </div>
+              <h4>Nạp tiền</h4>
+              <p>Bán hàng</p>
+            </div>
+            <div className="template-card">
+              <div className="template-icon">
+                <Package size={28} />
+              </div>
+              <h4>Tra cứu đơn hàng</h4>
+              <p>Bán hàng</p>
+            </div>
+            <div className="template-card">
+              <div className="template-icon">
+                <TrendingUp size={28} />
+              </div>
+              <h4>Khả năng bán hàng</h4>
+              <p>Bán hàng</p>
+            </div>
+            <div className="template-card">
+              <div className="template-icon">
+                <Users size={28} />
+              </div>
+              <h4>Tư vấn bán hàng</h4>
+              <p>Bán hàng</p>
+            </div>
+            <div className="template-card">
+              <div className="template-icon">
+                <Briefcase size={28} />
+              </div>
+              <h4>Tuyển dụng nhân viên</h4>
+              <p>Bán hàng</p>
+            </div>
+            <div className="template-card">
+              <div className="template-icon">
+                <Calendar size={28} />
+              </div>
+              <h4>Đặt hàng và đặt chỗ</h4>
+              <p>Bán hàng</p>
+            </div>
+            <div className="template-card">
+              <div className="template-icon">
+                <Sparkles size={28} />
+              </div>
+              <h4>Viral</h4>
+              <p>Bán hàng</p>
+            </div>
+            <div className="template-card">
+              <div className="template-icon">
+                <ShoppingBag size={28} />
+              </div>
+              <h4>Quản lý đơn hàng</h4>
+              <p>Bán hàng</p>
+            </div>
+          </div>
+          <p className="templates-footer">Và nhiều kịch bản khác nữa tại...</p>
+        </div>
+      </section>
+
+      {/* Automation Features Section */}
+      <section className="automation-section">
+        <div className="container">
+          <h2 className="section-title">
+            Chất 1.000+ Đơn Hàng Tự Động Với Chatbot
+          </h2>
+          <p className="section-subtitle">
+            Chatbot tự động hóa quy trình bán hàng và chăm sóc khách hàng của
+            bạn
+          </p>
+          <div className="automation-grid">
+            <div className="automation-card">
+              <div className="automation-icon">
+                <Megaphone size={32} />
+              </div>
+              <h4>Chiến dịch</h4>
+              <p>Tự động gửi tin nhắn đến khách hàng theo chiến dịch</p>
+            </div>
+            <div className="automation-card">
+              <div className="automation-icon">
+                <MessageSquare size={32} />
+              </div>
+              <h4>LiveChat</h4>
+              <p>Chuyển đổi từ bot sang nhân viên khi cần thiết</p>
+            </div>
+            <div className="automation-card">
+              <div className="automation-icon">
+                <Reply size={32} />
+              </div>
+              <h4>Auto Reply</h4>
+              <p>Tự động trả lời tin nhắn của khách hàng 24/7</p>
+            </div>
+            <div className="automation-card">
+              <div className="automation-icon">
+                <Bell size={32} />
+              </div>
+              <h4>Nhắc hẹn</h4>
+              <p>Tự động nhắc nhở khách hàng về các sự kiện quan trọng</p>
+            </div>
+            <div className="automation-card">
+              <div className="automation-icon">
+                <Key size={32} />
+              </div>
+              <h4>Keyword</h4>
+              <p>Tự động phản hồi dựa trên từ khóa trong tin nhắn</p>
+            </div>
+            <div className="automation-card">
+              <div className="automation-icon">
+                <List size={32} />
+              </div>
+              <h4>Sequence</h4>
+              <p>Tạo chuỗi tin nhắn tự động theo kịch bản</p>
+            </div>
+            <div className="automation-card">
+              <div className="automation-icon">
+                <ShoppingBag size={32} />
+              </div>
+              <h4>Đơn hàng</h4>
+              <p>Quản lý và theo dõi đơn hàng tự động</p>
+            </div>
+            <div className="automation-card">
+              <div className="automation-icon">
+                <Truck size={32} />
+              </div>
+              <h4>Vận chuyển</h4>
+              <p>Tự động cập nhật trạng thái vận chuyển cho khách</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Mini Game Promotion Section */}
+      <section className="minigame-section">
+        <div className="container">
+          <h2 className="section-title">
+            Tăng 30% Khách Hàng Và Doanh Số Nhờ MiniGame
+          </h2>
+          <p className="section-subtitle">
+            Mini game: Quay số vé số, Vòng quay may mắn, Lắc xì, Affiliate,
+            Viral...
+          </p>
+          <div className="minigame-carousel">
+            <div className="carousel-track">
+              <div className="minigame-card">
+                <img
+                  src="https://images.unsplash.com/photo-1663153204573-1e6581da098f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHwyfHxzbWFydHBob25lJTIwbW9iaWxlJTIwZ2FtZSUyMGNvbG9yZnVsJTIwYXBwfGVufDB8MXx8fDE3NjAwMTEyMjN8MA&ixlib=rb-4.1.0&q=85"
+                  alt="Mobile game interface - Typerium App on Unsplash"
+                  className="minigame-image"
+                />
+              </div>
+              <div className="minigame-card">
+                <img
+                  src="https://images.unsplash.com/photo-1591783097660-037e0d08343b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHw1fHxtb2JpbGUlMjBwaG9uZSUyMGdhbWUlMjBjb2xvcmZ1bCUyMHByaXplfGVufDB8MXx8cmVkfDE3NjAwMTEyMjN8MA&ixlib=rb-4.1.0&q=85"
+                  alt="Colorful game screen - Rombo on Unsplash"
+                  className="minigame-image"
+                />
+              </div>
+              <div className="minigame-card">
+                <img
+                  src="https://images.unsplash.com/photo-1588889243484-2cacf85b9b87?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHw0fHxzbWFydHBob25lJTIwZ2FtZSUyMHJld2FyZHMlMjBnaWZ0cyUyMGNvbG9yZnVsfGVufDB8MXx8cHVycGxlfDE3NjAwMTEyMjJ8MA&ixlib=rb-4.1.0&q=85"
+                  alt="Game rewards interface - Batu Gezer on Unsplash"
+                  className="minigame-image"
+                />
+              </div>
+              <div className="minigame-card">
+                <img
+                  src="https://images.unsplash.com/photo-1619241638225-14d56e47ae64?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHw0fHxtb2JpbGUlMjBnYW1lJTIwd2hlZWwlMjBwcml6ZXMlMjBjZWxlYnJhdGlvbnxlbnwwfDF8fG9yYW5nZXwxNzYwMDExMjIyfDA&ixlib=rb-4.1.0&q=85"
+                  alt="Lucky wheel game - Tangerine Newt on Unsplash"
+                  className="minigame-image"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Tutorial Videos Section */}
+      <section className="tutorial-section">
+        <div className="container">
+          <h2 className="section-title">Hướng Dẫn Tạo Chatbot Với Fchat</h2>
+          <p className="section-subtitle">
+            Chatbot là gì, Kịch bản mẫu và bán hàng tự động với Chatbot
+            Messenger
+          </p>
+          <div className="tutorial-grid">
+            <div className="tutorial-card">
+              <div className="tutorial-thumbnail">
+                <img
+                  src="https://images.unsplash.com/photo-1636819488524-1f019c4e1c44?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHw3fHxjaGF0Ym90JTIwcm9ib3QlMjB0ZWNobm9sb2d5JTIwdHV0b3JpYWwlMjBlZHVjYXRpb258ZW58MHwwfHxibHVlfDE3NjAwMTEyMjN8MA&ixlib=rb-4.1.0&q=85"
+                  alt="Chatbot tutorial - Andy Hermawan on Unsplash"
+                />
+                <div className="play-button">
+                  <Play size={32} fill="white" />
+                </div>
+              </div>
+            </div>
+            <div className="tutorial-card">
+              <div className="tutorial-thumbnail">
+                <img
+                  src="https://images.unsplash.com/photo-1617791160588-241658c0f566?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHwzfHx0dXRvcmlhbCUyMHNldHVwJTIwaW50ZXJmYWNlJTIwY29sb3JmdWwlMjBndWlkZXxlbnwwfDB8fHB1cnBsZXwxNzYwMDExMjI3fDA&ixlib=rb-4.1.0&q=85"
+                  alt="Setup tutorial - Milad Fakurian on Unsplash"
+                />
+                <div className="play-button">
+                  <Play size={32} fill="white" />
+                </div>
+              </div>
+            </div>
+            <div className="tutorial-card">
+              <div className="tutorial-thumbnail">
+                <img
+                  src="https://images.unsplash.com/photo-1656821991475-86b1b2ba3c32?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHwxfHxnaWZ0cyUyMHNhbGVzJTIwYXV0b21hdGlvbiUyMGNvbG9yZnVsJTIwdHV0b3JpYWx8ZW58MHwwfHxyZWR8MTc2MDAxMTIyOXww&ixlib=rb-4.1.0&q=85"
+                  alt="Sales automation tutorial - Scarlett Alt on Unsplash"
+                />
+                <div className="play-button">
+                  <Play size={32} fill="white" />
+                </div>
+              </div>
+            </div>
+            <div className="tutorial-card">
+              <div className="tutorial-thumbnail">
+                <img
+                  src="https://images.unsplash.com/photo-1657192809008-729aa92d1228?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHwzfHxnYW1lJTIwd2hlZWwlMjBwcml6ZXMlMjBjZWxlYnJhdGlvbiUyMGNvbG9yZnVsfGVufDB8MHx8b3JhbmdlfDE3NjAwMTEyMjh8MA&ixlib=rb-4.1.0&q=85"
+                  alt="Game features tutorial - Maxim Berg on Unsplash"
+                />
+                <div className="play-button">
+                  <Play size={32} fill="white" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Registration CTA Section */}
+      <section className="registration-section">
+        <div className="container">
+          <h2 className="section-title">
+            ĐĂNG KÝ TƯ VẤN KỊCH BẢN CHATBOT BÁN HÀNG
+          </h2>
+          <p className="section-subtitle">
+            Tư vấn miễn phí về kịch bản chatbot phù hợp với doanh nghiệp của bạn
+          </p>
+          <form className="registration-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <Mail className="input-icon" size={20} />
+              <input
+                type="email"
+                placeholder="Nhập email của bạn"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" className="submit-button-home">
+              LIÊN HỆ CHO TÔI
+            </button>
+          </form>
+        </div>
+        <div className="wave-divider bottom">
+          <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"></path>
+          </svg>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 export default Home;
-
-

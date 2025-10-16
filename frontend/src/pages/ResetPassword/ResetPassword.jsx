@@ -13,6 +13,7 @@ function ResetPassword() {
         password: '',
         confirmPassword: ''
     })
+    
     const [showPassword, setShowPassword] = useState(false)
     const [errors, setErrors] = useState({})
     const [isSubmitted, setIsSubmitted] = useState(false)
@@ -116,7 +117,7 @@ function ResetPassword() {
 
                 <form onSubmit={handleSubmit} className="reset-form">
                     <div className="input-group">
-                        <div className="input-icon">🔑</div>
+                        <div className="input-icon" aria-hidden="true">🔒</div>
                         <input
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Mật khẩu mới"
@@ -134,7 +135,7 @@ function ResetPassword() {
                     </div>
 
                     <div className="input-group">
-                        <div className="input-icon">🔑</div>
+                        <div className="input-icon" aria-hidden="true">🔒</div>
                         <input
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Xác nhận mật khẩu mới"

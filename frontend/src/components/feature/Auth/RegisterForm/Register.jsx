@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../../../hooks/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
+import { validateFullName, validateEmail, validatePhone, validatePassword, buildErrors } from '../../../../utils/validation'
 import './Register.css'
 
 function Register({ onSwitchLogin }) {
@@ -18,30 +20,13 @@ function Register({ onSwitchLogin }) {
     const { register, loading } = useAuth()
 
     const validateForm = () => {
-        const newErrors = {}
-        
-        if (!formData.full_name.trim()) {
-            newErrors.full_name = 'Họ và tên là bắt buộc'
-        } else if (formData.full_name.length < 2) {
-            newErrors.full_name = 'Họ và tên phải có ít nhất 2 ký tự'
-        }
-        
-        if (!formData.email.trim()) {
-            newErrors.email = 'Email là bắt buộc'
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            newErrors.email = 'Email không hợp lệ'
-        }
-        
-        if (formData.phone && !/^[0-9+\-\s()]+$/.test(formData.phone)) {
-            newErrors.phone = 'Số điện thoại không hợp lệ'
-        }
-        
-        if (!formData.password.trim()) {
-            newErrors.password = 'Mật khẩu là bắt buộc'
-        } else if (formData.password.length < 6) {
-            newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
-        }
-        
+        const checks = [
+            { key: 'full_name', valid: validateFullName(formData.full_name), message: 'Họ và tên phải có ít nhất 2 ký tự' },
+            { key: 'email', valid: validateEmail(formData.email), message: 'Email không hợp lệ' },
+            { key: 'phone', valid: validatePhone(formData.phone), message: 'Số điện thoại không hợp lệ' },
+            { key: 'password', valid: validatePassword(formData.password, { minLength: 6 }), message: 'Mật khẩu phải có ít nhất 6 ký tự' },
+        ]
+        const newErrors = buildErrors(checks)
         setErrors(newErrors)
         return Object.keys(newErrors).length === 0
     }
@@ -89,19 +74,19 @@ function Register({ onSwitchLogin }) {
     }   
         return (
             <form className="auth-form" onSubmit={handleSubmit}>
-                <div className="input-group">
-                    <div className="input-icon">👤</div>
+                <div className="input-group-auth">
+                    <div className="input-icon-auth"><User size={16} /></div>
                     <input 
                         placeholder="Họ và tên" 
                         value={formData.name} 
                         onChange={(e) => handleInputChange('full_name', e.target.value)}
                         className={errors.full_name ? 'error' : ''}
                     />
-                    {errors.name && <div className="error-message">{errors.full_name}</div>}
+                    {errors.full_name && <div className="error-message">{errors.full_name}</div>}
                 </div>
                 
-                <div className="input-group">
-                    <div className="input-icon">✉️</div>
+                <div className="input-group-auth">
+                    <div className="input-icon-auth"><Mail size={16} /></div>
                     <input 
                         type="email" 
                         placeholder="Email" 
@@ -112,8 +97,8 @@ function Register({ onSwitchLogin }) {
                     {errors.email && <div className="error-message">{errors.email}</div>}
                 </div>
                 
-                <div className="input-group">
-                    <div className="input-icon">📞</div>
+                <div className="input-group-auth">
+                    <div className="input-icon-auth"><Phone size={16} /></div>
                     <input 
                         placeholder="Số điện thoại" 
                         value={formData.phone} 
@@ -123,8 +108,8 @@ function Register({ onSwitchLogin }) {
                     {errors.phone && <div className="error-message">{errors.phone}</div>}
                 </div>
                 
-                <div className="input-group">
-                    <div className="input-icon">🔑</div>
+                <div className="input-group-auth">
+                    <div className="input-icon-auth" aria-hidden="true"><Lock size={16} /></div>
                     <input 
                         type={showPwd ? 'text' : 'password'} 
                         placeholder="Mật khẩu" 
@@ -133,7 +118,7 @@ function Register({ onSwitchLogin }) {
                         className={errors.password ? 'error' : ''}
                     />
                     <div className="input-action" onClick={() => setShowPwd(v => !v)}>
-                        {showPwd ? '🙈' : '👁️'}
+                        {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                     </div>
                     {errors.password && <div className="error-message">{errors.password}</div>}
                 </div>

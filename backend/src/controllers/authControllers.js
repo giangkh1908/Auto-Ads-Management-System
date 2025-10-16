@@ -89,7 +89,7 @@ export const verifyEmail = async (req, res) => {
     if (!user)
       return res.status(400).json({
         success: false,
-        message: "Token xác nhận không hợp lệ hoặc đã hết hạn.",
+        message: "Email xác nhận không hợp lệ hoặc đã hết hạn.",
       });
 
     user.emailVerified = true;

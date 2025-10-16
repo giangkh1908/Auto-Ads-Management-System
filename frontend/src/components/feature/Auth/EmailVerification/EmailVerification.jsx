@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Mail } from 'lucide-react'
 import { useAuth } from '../../../../hooks/useAuth'
 import './EmailVerification.css'
 
@@ -6,6 +7,7 @@ function EmailVerification({ email, onBack, title = "Xác nhận email của b�
     const [resendLoading, setResendLoading] = useState(false)
     const { resendVerificationEmail } = useAuth()
 
+    //Nút này gửi lại email xác nhận
     const handleResendEmail = async () => {
         try {
             setResendLoading(true)
@@ -23,7 +25,7 @@ function EmailVerification({ email, onBack, title = "Xác nhận email của b�
     return (
         <div className="email-verification-form">
             <div className="verification-content">
-                <div className="verification-icon">📧</div>
+                <div className="verification-icon"><Mail size={32} /></div>
                 <h3>{title}</h3>
                 <p>
                     Chúng tôi đã gửi một email xác nhận đến <strong>{email}</strong>. 

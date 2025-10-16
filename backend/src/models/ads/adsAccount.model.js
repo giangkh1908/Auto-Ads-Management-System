@@ -5,6 +5,7 @@ const adsAccountSchema = new mongoose.Schema(
     // 🧑‍💼 Chủ tài khoản quảng cáo (admin)
     shop_admin_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     shop_user_id: { type: mongoose.Schema.Types.ObjectId, ref: "ShopUser" },
+    shop_id: { type: mongoose.Schema.Types.ObjectId, ref: "Shop" },
 
     // 🔗 Mã tài khoản quảng cáo từ Facebook (vd: act_123456)
     external_id: { type: String, trim: true, required: true },

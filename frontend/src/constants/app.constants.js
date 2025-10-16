@@ -4,13 +4,13 @@
  */
 
 // Layout constants
-export const LAYOUT = {
-  HEADER_HEIGHT: 100,
-  FOOTER_HEIGHT: 140,
-  SIDEBAR_WIDTH_EXPANDED: 240,
-  SIDEBAR_WIDTH_COLLAPSED: 60,
-  SCROLL_THRESHOLD: 10,
-}
+// export const LAYOUT = {
+//   HEADER_HEIGHT: 100,
+//   FOOTER_HEIGHT: 140,
+//   SIDEBAR_WIDTH_EXPANDED: 240,
+//   SIDEBAR_WIDTH_COLLAPSED: 60,
+//   SCROLL_THRESHOLD: 5,
+// }
 
 // Timing constants
 export const TIMING = {
@@ -29,8 +29,11 @@ export const ROUTES = {
   REPORTS: '/reports',
   STATS: '/stats',
   PROFILE: '/profile',
-  SETTINGS: '/settings',
-  CONNECT: '/connect',
+  SHOP: '/shop',
+  SHOP_EMPLOYEE: '/shop/employee',
+  SHOP_HISTORY: '/shop/history',
+  CONNECT_PAGE: '/connect-page',
+  CONNECT_AD_ACCOUNT: '/connect-ad-account',
   VERIFY_EMAIL: '/verify-email/:token',
   RESET_PASSWORD: '/reset-password/:token',
   NOT_FOUND: '*',
@@ -46,6 +49,9 @@ export const HEADER_ROUTES = [
   ROUTES.STATS,
   ROUTES.PROFILE,
   ROUTES.SETTINGS,
+  ROUTES.SHOP,
+  ROUTES.SHOP_EMPLOYEE,
+  ROUTES.SHOP_HISTORY
 ]
 
 // Auth modes

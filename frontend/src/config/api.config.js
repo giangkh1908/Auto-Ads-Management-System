@@ -75,29 +75,59 @@ export const API_ENDPOINTS = {
     DELETE: (id) => `${API_CONFIG.BASE_URL}/api/shop-users/${id}`,
   },
 
+  CAMPAIGNS: {
+    LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns`,
+    CREATE: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns`,
+    DETAIL: (id) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
+    UPDATE: (id) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
+    DELETE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}${
+        token ? `?access_token=${token}` : ""
+      }`,
+    SYNC: (accountId, token) =>
+      `${API_CONFIG.BASE_URL}${
+        API_CONFIG.API_PREFIX
+      }/campaigns/sync?account_id=${accountId}${
+        token ? `&access_token=${token}` : ""
+      }`,
+  },
 
+  ADSETS: {
+    LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets`,
+    DETAIL: (id) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
+    UPDATE: (id) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
+    DELETE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}${
+        token ? `?access_token=${token}` : ""
+      }`,
+    SYNC: (accountId, token) =>
+      `${API_CONFIG.BASE_URL}${
+        API_CONFIG.API_PREFIX
+      }/adsets/sync?account_id=${accountId}${
+        token ? `&access_token=${token}` : ""
+      }`,
+  },
 
-  // API AD chưa có
-  // Campaign endpoints
-  // CAMPAIGNS: {
-  //   CREATE: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/create-campaign`,
-  //   LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns`,
-  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
-  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
-  // },
-  
-  // // AdSet endpoints
-  // ADSETS: {
-  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
-  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
-  // },
-  
-  // // Ad endpoints
-  // ADS: {
-  //   STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/status`,
-  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
-  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
-  // },
+  ADS: {
+    LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads`,
+    DETAIL: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
+    UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
+    DELETE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}${
+        token ? `?access_token=${token}` : ""
+      }`,
+    SYNC: (accountId, token) =>
+      `${API_CONFIG.BASE_URL}${
+        API_CONFIG.API_PREFIX
+      }/ads/sync?account_id=${accountId}${
+        token ? `&access_token=${token}` : ""
+      }`,
+    STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/status`,
+  },
 }
 
 export default API_CONFIG 

@@ -1,292 +1,309 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from "react";
+import {
+  Circle,
+  ChevronDown,
+  Target,
+  DollarSign,
+  Calendar,
+  Users,
+  MapPin,
+  Search,
+} from "lucide-react";
 
 function AdsetStep({ adset, setAdset }) {
-    const [isPerformanceOpen, setIsPerformanceOpen] = useState(false)
-    const [selectedPerformanceGoal, setSelectedPerformanceGoal] = useState('purchase')
-    const performanceRef = useRef(null)
+  const [selectedTags, setSelectedTags] = useState(
+    adset.targeting?.location
+      ? [adset.targeting.location]
+      : ["Hoàn kiếm, Hà Nội, Việt Nam"]
+  );
+  const [selectedInterests, setSelectedInterests] = useState(
+    adset.targeting?.interests || ["Business (business & finance)"]
+  );
 
-    const performanceOptions = [
-        { value: 'chat', title: 'Tối đa hóa số cuộc trò chuyện', description: 'Chúng tôi sẽ cố gắng hiển thị quảng cáo với những người có nhiều khả năng sẽ trò chuyện với bạn qua tin nhắn nhất', group: 'interaction' },
-        { value: 'potential', title: 'Tối đa hóa số khách hàng tiềm năng qua tin nhắn', description: 'Chúng tôi sẽ cố gắng hiển thị quảng cáo của bạn với những người có nhiều khả năng nhất sẽ trở thành khách hàng tiềm năng qua tin nhắn', group: 'interaction' },
-        { value: 'purchase', title: 'Tối đa hóa số lượt mua qua tin nhắn', description: 'Chúng tôi sẽ cố gắng hiển thị quảng cáo của bạn với những người có nhiều khả năng mua hàng qua tin nhắn nhất', group: 'interaction' },
-        { value: 'click', title: 'Tối đa hóa số lượt click vào liên kết', description: 'Chúng tôi sẽ cố gắng hiển thị quảng cáo của bạn với những người có nhiều khả năng nhấp vào đó nhất', group: 'other' },
-    ]
-
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (performanceRef.current && !performanceRef.current.contains(event.target)) {
-                setIsPerformanceOpen(false)
+  return (
+    <div className="adset-step">
+      <div className="config-scroll-container">
+        {/* Adset Name Section */}
+        <div className="config-section">
+          <div className="section-header-ads">
+            <Circle size={8} fill="#2563eb" color="#2563eb" />
+            <h3 className="section-title-ads">Tên nhóm quảng cáo</h3>
+          </div>
+          <input
+            type="text"
+            className="adset-name-input"
+            value={adset.name}
+            onChange={(e) =>
+              setAdset((prev) => ({ ...prev, name: e.target.value }))
             }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
-    return (
-        <div className="panel adset-config-panel">
-            <div className="adset-config-layout">
-                <div className="adset-configuration">
-                    <div className="config-scroll-container">
-                        <div className="config-section">
-
-                        {/* Adset Name */}
-                            <div className="section-header">
-                                <div className="section-bullet"></div>
-                                <div className="section-title">Tên nhóm quảng cáo</div>
-                            </div>
-                            <div className="section-content">
-                                <input
-                                    type="text"
-                                    value={adset.name}
-                                    onChange={(e) => setAdset(prev => ({ ...prev, name: e.target.value }))}
-                                    className="adset-name-input"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Conversion Goal */}
-                        <div className="config-section">
-                            <div className="section-header">
-                                <div className="section-bullet"></div>
-                                <div className="section-title">Lượt chuyển đổi</div>
-                            </div>
-                            <div className="section-content">
-                                <select className="conversion-select">
-                                    <option>Trang web</option>
-                                    <option>Ứng dụng</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Facebook Page */}
-                        <div className="config-section">
-                            <div className="section-header">
-                                <div className="section-bullet"></div>
-                                <div className="section-title">Trang Facebook</div>
-                            </div>
-                            <div className="section-content">
-                                <div className="facebook-page-selector">
-                                    <div className="page-logo">Fchat</div>
-                                    <div className="page-info">
-                                        <div className="page-type">Trang Facebook</div>
-                                        <div className="page-name">Fchat.vn</div>
-                                    </div>
-                                    <div className="page-edit">✏️</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Performance Goal */}
-                        <div className="config-section">
-                            <div className="section-header">
-                                <div className="section-bullet"></div>
-                                <div className="section-title">Mục tiêu hiệu quả</div>
-                            </div>
-                            <div className="section-content">
-                                <div className="radio-dropdown" ref={performanceRef}>
-                                    <button
-                                        type="button"
-                                        className="radio-dropdown-header"
-                                        onClick={() => setIsPerformanceOpen(prev => !prev)}
-                                        aria-expanded={isPerformanceOpen}
-                                    >
-                                        <span>
-                                            {performanceOptions.find(o => o.value === selectedPerformanceGoal)?.title}
-                                        </span>
-                                        <span className="dropdown-arrow">▼</span>
-                                    </button>
-
-                                    {isPerformanceOpen && (
-                                        <div className="radio-dropdown-menu" role="listbox">
-                                            <div className="radio-dropdown-group">
-                                                <div className="radio-dropdown-group-title">Mục tiêu lượt tương tác</div>
-                                                {performanceOptions.filter(o => o.group === 'interaction').map(option => (
-                                                    <label key={option.value} className="radio-dropdown-option">
-                                                        <input
-                                                            type="radio"
-                                                            name="performance-goal"
-                                                            value={option.value}
-                                                            checked={selectedPerformanceGoal === option.value}
-                                                            onChange={(e) => {
-                                                                setSelectedPerformanceGoal(e.target.value)
-                                                                setIsPerformanceOpen(false)
-                                                            }}
-                                                        />
-                                                        <div className="option-text">
-                                                            <div className="option-title">{option.title}</div>
-                                                            <div className="option-description">{option.description}</div>
-                                                        </div>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                            <div className="radio-dropdown-group">
-                                                <div className="radio-dropdown-group-title">Mục tiêu khác</div>
-                                                {performanceOptions.filter(o => o.group === 'other').map(option => (
-                                                    <label key={option.value} className="radio-dropdown-option">
-                                                        <input
-                                                            type="radio"
-                                                            name="performance-goal"
-                                                            value={option.value}
-                                                            checked={selectedPerformanceGoal === option.value}
-                                                            onChange={(e) => {
-                                                                setSelectedPerformanceGoal(e.target.value)
-                                                                setIsPerformanceOpen(false)
-                                                            }}
-                                                        />
-                                                        <div className="option-text">
-                                                            <div className="option-title">{option.title}</div>
-                                                            <div className="option-description">{option.description}</div>
-                                                        </div>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Budget */}
-                         <div className="config-section">
-                             <div className="section-header">
-                                 <div className="section-bullet"></div>
-                                 <div className="section-title">Ngân sách</div>
-                             </div>
-                             <div className="section-content">
-                                 <div className="budget-row">
-                                     <select className="budget-type-select">
-                                         <option>Ngân sách hàng ngày</option>
-                                         <option>Ngân sách tổng</option>
-                                     </select>
-                                     <div className="budget-input-group">
-                                         <input
-                                             type="text"
-                                             className="budget-input" placeholder="0"
-                                         />
-                                         <span className="currency">VND</span>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-
-                         {/* Start Date */}
-                         <div className="config-section-datetime">
-                            <div className = "right-section">
-                                <div className="section-header">
-                                    <div className="section-bullet"></div>
-                                    <div className="section-title">Ngày bắt đầu</div>
-                                </div>
-                                <div className="section-content">
-                                    <div className="datetime-input-group">
-                                        <input
-                                            type="datetime-local"
-                                            value="2025-04-14T12:22"
-                                            className="datetime-input"
-                                        />
-                                        {/* <div className="calendar-icon">📅</div> */}
-                                    </div>
-                                </div>
-                             </div>
-                            <div className = "left-section">
-                                <div className="section-header">
-                                    <div className="section-bullet"></div>
-                                    <div className="section-title">Ngày kết thúc</div>
-                                </div>
-                                <div className="section-content">
-                                    <div className="datetime-input-group">
-                                        <input
-                                            type="datetime-local"
-                                            value="2025-05-14T12:22"
-                                            className="datetime-input"
-                                        />
-                                        {/* <div className="calendar-icon">📅</div> */}
-                                    </div>
-                                </div>
-                            </div>
-                         </div>
-
-                         {/* Custom Audience */}
-                         <div className="config-section">
-                             <div className="section-header">
-                                 <div className="section-bullet"></div>
-                                 <div className="section-title">Đối tượng tùy chỉnh</div>
-                             </div>
-                             <div className="section-content">
-                                 <div className="audience-fields">
-                                    {/* Set Age */}
-                                    <div className = "right-custom">
-                                        <div className="field-group">
-                                            <label className="field-label">Tuổi</label>
-                                            <div className="age-inputs">
-                                                <input type="number" value="" className="age-input" placeholder="18"/>
-                                                <input type="number" value="" className="age-input" placeholder="65"/>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Set Gender */}
-                                    <div className = "center-custom">
-                                     <div className="field-group">
-                                         <label className="field-label">Giới tính</label>
-                                         <select className="gender-select">
-                                             <option>Tất cả</option>
-                                             <option>Nam</option>
-                                             <option>Nữ</option>
-                                         </select>
-                                     </div>
-                                    </div>
-
-                                    {/* Set Language */}
-                                    <div className = "left-custom">
-                                     <div className="field-group">
-                                         <label className="field-label">Ngôn ngữ</label>
-                                         <select className="language-select">
-                                             <option>Tất cả ngôn ngữ</option>
-                                             <option>Tiếng Việt</option>
-                                             <option>English</option>
-                                         </select>
-                                     </div>
-                                    </div>
-                                 </div>
-                             </div>
-                         </div>
-
-                         {/* Location */}
-                         <div className="config-section">
-                             <div className="section-header">
-                                 <div className="section-bullet"></div>
-                                 <div className="section-title">Vị trí</div>
-                             </div>
-                             <div className="section-content">
-                                 <input
-                                     type="text"
-                                     placeholder="Tìm kiếm vị trí"
-                                     className="location-input"
-                                 />
-                             </div>
-                         </div>
-
-                         {/* Targeting */}
-                         <div className="config-section">
-                             <div className="section-header">
-                                 <div className="section-bullet"></div>
-                                 <div className="section-title">Nhằm mục tiêu chi tiết</div>
-                             </div>
-                             <div className="section-content">
-                                 <input
-                                     type="text"
-                                     placeholder="Thêm thông tin nhân khẩu học, sở thích hoặc hành vi"
-                                     className="targeting-input"
-                                 />
-                             </div>
-                         </div>
-                    </div>
-                </div>
-            </div>
+            placeholder="Chiến dịch nhóm quảng cáo Lượt tương tác mới"
+          />
         </div>
-    )
+
+        {/* Conversion Section */}
+        <div className="config-section">
+          <div className="section-header-ads">
+            <Target size={16} color="#2563eb" />
+            <h3 className="section-title-ads">Lượt chuyển đổi</h3>
+          </div>
+          <select
+            className="conversion-select"
+            value={adset.conversion || "destination"}
+            onChange={(e) =>
+              setAdset((prev) => ({ ...prev, conversion: e.target.value }))
+            }
+          >
+            <option value="destination">Đích đến của tin nhắn</option>
+            <option value="website">Trang web</option>
+          </select>
+        </div>
+
+        {/* Performance Goal Section */}
+        <div className="config-section">
+          <div className="section-header-ads">
+            <Target size={16} color="#2563eb" />
+            <h3 className="section-title-ads">Mục tiêu hiệu quả</h3>
+          </div>
+          <select
+            className="performance-select"
+            value={adset.performanceGoal || "purchase"}
+            onChange={(e) =>
+              setAdset((prev) => ({ ...prev, performanceGoal: e.target.value }))
+            }
+          >
+            <option value="purchase">
+              Tối đa hóa số lượt mua qua tin nhắn
+            </option>
+            <option value="chat">Tối đa hóa số cuộc trò chuyện</option>
+            <option value="potential">
+              Tối đa hóa số khách hàng tiềm năng qua tin nhắn
+            </option>
+          </select>
+        </div>
+
+        {/* Budget Section */}
+        <div className="config-section">
+          <div className="section-header-ads">
+            <DollarSign size={16} color="#2563eb" />
+            <h3 className="section-title-ads">Ngân sách</h3>
+          </div>
+          <div className="budget-row">
+            <select
+              className="budget-type"
+              value={adset.budgetType || "daily"}
+              onChange={(e) =>
+                setAdset((prev) => ({ ...prev, budgetType: e.target.value }))
+              }
+            >
+              <option value="daily">Ngân sách hàng ngày</option>
+              <option value="lifetime">Ngân sách tổng</option>
+            </select>
+            <div className="budget-input-group">
+              <input
+                type="text"
+                className="budget-input-text"
+                value={
+                  adset.budgetAmount
+                    ? adset.budgetAmount.toLocaleString("vi-VN")
+                    : "2.000.000"
+                }
+                onChange={(e) => {
+                  const value = parseInt(e.target.value.replace(/[^\d]/g, ""));
+                  setAdset((prev) => ({ ...prev, budgetAmount: value || 0 }));
+                }}
+              />
+              <div className="money-currency">VND</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Date Range Section */}
+        <div className="config-section-datetime">
+          <div className="left-custom">
+            <div className="section-header-ads">
+              <Calendar size={16} color="#2563eb" />
+              <h3 className="section-title-ads">Ngày bắt đầu</h3>
+            </div>
+            <input
+              type="datetime-local"
+              className="datetime-input-ads"
+              value={adset.startDate || "2025-04-14T12:22"}
+              onChange={(e) =>
+                setAdset((prev) => ({ ...prev, startDate: e.target.value }))
+              }
+            />
+          </div>
+          <div className="right-custom">
+            <div className="section-header-ads">
+              <Calendar size={16} color="#2563eb" />
+              <h3 className="section-title-ads">Ngày kết thúc</h3>
+            </div>
+            <input
+              type="datetime-local"
+              className="datetime-input-ads"
+              value={adset.endDate || "2025-05-14T12:22"}
+              onChange={(e) =>
+                setAdset((prev) => ({ ...prev, endDate: e.target.value }))
+              }
+            />
+          </div>
+        </div>
+
+        {/* Custom Audience Section */}
+        <div className="config-section">
+          <div className="section-header-ads">
+            <Users size={16} color="#2563eb" />
+            <h3 className="section-title-ads">Đối tượng tùy chỉnh</h3>
+          </div>
+          <div className="audience-fields">
+            <div className="field-group">
+              <label className="field-label">Tuổi</label>
+              <div className="age-inputs">
+                <input
+                  type="number"
+                  className="age-input-adset"
+                  placeholder="18"
+                  value={adset.targeting?.ageMin || 18}
+                  onChange={(e) =>
+                    setAdset((prev) => ({
+                      ...prev,
+                      targeting: {
+                        ...prev.targeting,
+                        ageMin: parseInt(e.target.value) || 18,
+                      },
+                    }))
+                  }
+                />
+                <span>-</span>
+                <input
+                  type="number"
+                  className="age-input-adset"
+                  placeholder="65+"
+                  value={adset.targeting?.ageMax || 65}
+                  onChange={(e) =>
+                    setAdset((prev) => ({
+                      ...prev,
+                      targeting: {
+                        ...prev.targeting,
+                        ageMax: parseInt(e.target.value) || 65,
+                      },
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Giới tính</label>
+              <select
+                className="gender-select"
+                value={adset.targeting?.gender || "all"}
+                onChange={(e) =>
+                  setAdset((prev) => ({
+                    ...prev,
+                    targeting: {
+                      ...prev.targeting,
+                      gender: e.target.value,
+                    },
+                  }))
+                }
+              >
+                <option value="all">Tất cả</option>
+                <option value="male">Nam</option>
+                <option value="female">Nữ</option>
+              </select>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Ngôn ngữ</label>
+              <select
+                className="language-select"
+                value={adset.targeting?.language || "vi"}
+                onChange={(e) =>
+                  setAdset((prev) => ({
+                    ...prev,
+                    targeting: {
+                      ...prev.targeting,
+                      language: e.target.value,
+                    },
+                  }))
+                }
+              >
+                <option value="all">Tất cả ngôn ngữ</option>
+                <option value="vi">Tiếng Việt</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className = "bid-strategy-adset">
+        <h3>Chiến lược giá thầu</h3>
+          <select
+            name="bid_strategy"
+            value={adset.bid_strategy || "LOWEST_COST"}
+            onChange={(e) =>
+              setAdset({ ...adset, bid_strategy: e.target.value })
+            }
+          >
+            <option value="LOWEST_COST">Chi phí thấp nhất (Tự động)</option>
+            <option value="COST_CAP">
+              Giới hạn chi phí trung bình (Cost cap)
+            </option>
+            <option value="BID_CAP">Giới hạn giá thầu (Bid cap)</option>
+          </select>
+        </div>
+        {/* Location Section */}
+        <div className="config-section">
+          <div className="section-header-ads">
+            <MapPin size={16} color="#2563eb" />
+            <h3 className="section-title-ads">Vị trí</h3>
+          </div>
+          <input
+            type="text"
+            className="location-input"
+            placeholder="Tìm kiếm vị trí"
+            value={selectedTags.join(", ")}
+            onChange={(e) =>
+              setSelectedTags(
+                e.target.value.split(", ").filter((tag) => tag.trim())
+              )
+            }
+          />
+          <div className="location-tags">
+            {selectedTags.map((tag, index) => (
+              <span key={index} className="tag">
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Detailed Targeting Section */}
+        <div className="config-section">
+          <div className="section-header-ads">
+            <Search size={16} color="#2563eb" />
+            <h3 className="section-title-ads">Nhằm mục tiêu chi tiết</h3>
+          </div>
+          <input
+            type="text"
+            className="targeting-input"
+            placeholder="Thêm thông tin nhân khẩu học, sở thích hoặc hành vi"
+            value={selectedInterests.join(", ")}
+            onChange={(e) =>
+              setSelectedInterests(
+                e.target.value.split(", ").filter((interest) => interest.trim())
+              )
+            }
+          />
+          <div className="targeting-tags">
+            {selectedInterests.map((interest, index) => (
+              <span key={index} className="tag">
+                {interest}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export default AdsetStep
-
-
+export default AdsetStep;

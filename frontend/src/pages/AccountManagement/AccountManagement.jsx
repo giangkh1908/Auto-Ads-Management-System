@@ -1,8 +1,11 @@
-// src/pages/AccountManagement/AccountManagement.jsx
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axios";
+import { toast } from "sonner";
+import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import "./AccountManagement.css";
+import { CheckCircle, XCircle, Archive, Trash2, Play, Pause } from "lucide-react";
+import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 
 function AccountManagement() {
   const navigate = useNavigate();
@@ -19,6 +22,19 @@ function AccountManagement() {
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
 
+  // state thống kê
+  const [accountStats, setAccountStats] = useState({});
+  
+  // state cho confirmation popup
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    type: 'delete', // 'delete' | 'archive' | 'activate' | 'deactivate'
+    title: '',
+    message: '',
+    onConfirm: null,
+    isLoading: false
+  });
+
   /** Gọi API list ads accounts */
   const fetchAccounts = useCallback(
     async ({ q = "", page = 1, limit = 10 } = {}) => {
@@ -30,6 +46,7 @@ function AccountManagement() {
 
         const res = await axiosInstance.get("/api/ads-accounts", { params });
         // API trả: { items, total, page, limit, pages }
+        console.log("📦 Dữ liệu API trả về:", res.data);
         setItems(res.data?.items || []);
         setTotal(res.data?.total || 0);
       } catch (err) {
@@ -51,24 +68,65 @@ function AccountManagement() {
     fetchAccounts({ q: "", page, limit });
   }, [fetchAccounts, page, limit]);
 
-  /** Đồng bộ từ Facebook rồi tải lại list */
+  /** Chỉ làm mới số liệu campaign/adset/ad từ Facebook (không đồng bộ DB, không reload list) */
   const handleSync = async () => {
     try {
       setSyncing(true);
-      await axiosInstance.get("/api/ads-accounts/sync"); // backend lấy token từ req.user
-      await fetchAccounts({ q: searchText.trim(), page, limit });
+      const accountIds = items.map((acc) => acc.external_id).filter(Boolean);
+      if (accountIds.length === 0) return;
+      await fetchAccountStats(accountIds);
     } catch (e) {
       console.error(e);
-      alert("Đồng bộ thất bại");
     } finally {
       setSyncing(false);
     }
   };
 
-  /** Map dữ liệu sang UI */
+  /** Lấy thống kê cho các tài khoản */
+  const fetchAccountStats = useCallback(async (accountIds) => {
+    if (!accountIds?.length) return;
+
+    const stats = {};
+    const timestamp = new Date().getTime();
+
+    try {
+      await Promise.all(
+        accountIds.map(async (accountId) => {
+          try {
+            const response = await axiosInstance.get(
+              `/api/ads-accounts/stats/live?account_id=${accountId}&_t=${timestamp}`,
+              { headers: { "Cache-Control": "no-cache" } }
+            );
+
+            if (response.data && response.data.stats) {
+              stats[accountId] = response.data.stats;
+            } else {
+              stats[accountId] = { campaigns: 0, adsets: 0, ads: 0 };
+            }
+          } catch (error) {
+            console.error(`Lỗi lấy thống kê cho ${accountId}:`, error);
+            stats[accountId] = { campaigns: 0, adsets: 0, ads: 0 };
+          }
+        })
+      );
+      setAccountStats(stats);
+    } catch (error) {
+      console.error("Lỗi lấy thống kê tài khoản:", error);
+    }
+  }, []);
+
+  /** Gọi lại thống kê khi danh sách tài khoản thay đổi */
+  useEffect(() => {
+    if (items?.length > 0) {
+      const accountIds = items.map((acc) => acc.external_id).filter(Boolean);
+      if (accountIds.length > 0) fetchAccountStats(accountIds);
+    }
+  }, [items, fetchAccountStats]);
+
+  /** Chuẩn hóa dữ liệu hiển thị */
   const accounts = useMemo(() => {
     return (items || []).map((acc, idx) => {
-      const fbAccountStatus = Number(acc?.account_status); // enum số của FB
+      const fbAccountStatus = Number(acc?.account_status);
       const fbStatusLabel =
         fbAccountStatus === 1
           ? "Hoạt động"
@@ -78,26 +136,119 @@ function AccountManagement() {
           ? "Chưa xác minh"
           : "Không hoạt động";
 
+      const accountId = acc.external_id;
+      const stats = accountStats[accountId] || {
+        campaigns: 0,
+        adsets: 0,
+        ads: 0,
+      };
+
       return {
-        id: acc._id || acc.id || idx,
+        id: acc._id || idx,
         name: acc.name || "Facebook Ad Account",
-        number: acc.external_id || "-", // act_123...
-        // 3 cột này chưa có từ API => để 0 (sau có API count thì thay)
-        campaignCount: 0,
-        adsetCount: 0,
-        adCount: 0,
-        status: fbStatusLabel, // hoặc dùng acc.status (nội bộ) nếu muốn
+        number: accountId || "-",
+        campaignCount: stats.campaigns,
+        adsetCount: stats.adsets,
+        adCount: stats.ads,
+        status: fbStatusLabel,
         updatedAt: new Date(
           acc.last_updated_at || acc.updated_at || acc.created_at || Date.now()
         ).toLocaleString("vi-VN"),
       };
     });
-  }, [items]);
+  }, [items, accountStats]);
 
   /** Tìm kiếm */
   const onSearch = () => {
     setPage(1);
     fetchAccounts({ q: searchText.trim(), page: 1, limit });
+  };
+
+  /** Xử lý các hành động với account */
+  const handleAccountAction = async (accountId, action, accountName) => {
+    try {
+      setConfirmationPopup(prev => ({ ...prev, isLoading: true }));
+      
+      switch (action) {
+        case 'activate':
+          await axiosInstance.patch(`/api/ads-accounts/${accountId}/activate`);
+          toast.success("Kích hoạt tài khoản thành công!", {
+            description: `Tài khoản "${accountName}" đã được kích hoạt`
+          });
+          break;
+        case 'deactivate':
+          await axiosInstance.patch(`/api/ads-accounts/${accountId}/deactivate`);
+          toast.success("Vô hiệu hóa tài khoản thành công!", {
+            description: `Tài khoản "${accountName}" đã được vô hiệu hóa`
+          });
+          break;
+        case 'archive':
+          await axiosInstance.patch(`/api/ads-accounts/${accountId}/archive`);
+          toast.success("Lưu trữ tài khoản thành công!", {
+            description: `Tài khoản "${accountName}" đã được lưu trữ`
+          });
+          break;
+        case 'disconnect':
+          await axiosInstance.delete(`/api/ads-accounts/${accountId}`);
+          toast.success("Gỡ kết nối tài khoản thành công!", {
+            description: `Tài khoản "${accountName}" đã được gỡ kết nối`
+          });
+          break;
+        default:
+          throw new Error('Hành động không hợp lệ');
+      }
+      
+      // Refresh danh sách sau khi thực hiện hành động
+      await fetchAccounts({ q: searchText.trim(), page, limit });
+      
+    } catch (error) {
+      console.error(`Lỗi ${action} account:`, error);
+      toast.error(`Lỗi ${action} tài khoản`, {
+        description: error?.response?.data?.message || 
+        error?.message || 
+        `Không thể ${action} tài khoản ${accountName}`
+      });
+    } finally {
+      setConfirmationPopup(prev => ({ ...prev, isLoading: false, isOpen: false }));
+    }
+  };
+
+  /** Hiển thị confirmation popup */
+  const showConfirmDialog = (accountId, accountName, action) => {
+    const actionConfig = {
+      activate: {
+        type: 'activate',
+        title: "Kích hoạt tài khoản",
+        message: `Bạn có chắc chắn muốn kích hoạt tài khoản "${accountName}"?`
+      },
+      deactivate: {
+        type: 'deactivate',
+        title: "Vô hiệu hóa tài khoản", 
+        message: `Bạn có chắc chắn muốn vô hiệu hóa tài khoản "${accountName}"?`
+      },
+      archive: {
+        type: 'archive',
+        title: "Lưu trữ tài khoản",
+        message: `Bạn có chắc chắn muốn lưu trữ tài khoản "${accountName}"?`
+      },
+      disconnect: {
+        type: 'delete',
+        title: "Gỡ kết nối tài khoản",
+        message: `Bạn có chắc chắn muốn gỡ kết nối tài khoản "${accountName}"?`
+      }
+    };
+
+    const config = actionConfig[action];
+    if (!config) return;
+
+    setConfirmationPopup({
+      isOpen: true,
+      type: config.type,
+      title: config.title,
+      message: config.message,
+      onConfirm: () => handleAccountAction(accountId, action, accountName),
+      isLoading: false
+    });
   };
 
   return (
@@ -126,15 +277,14 @@ function AccountManagement() {
                     onClick={onSearch}
                     disabled={loading || syncing}
                   >
-                    {loading ? "Đang tìm..." : "Tìm"}
+                    {loading ? "Tìm..." : "Tìm"}
                   </button>
                   <button
                     className="btn-find"
                     onClick={handleSync}
                     disabled={loading || syncing}
-                    style={{ marginLeft: 8 }}
                   >
-                    {syncing ? "Đang đồng bộ..." : "Refresh"}
+                    {syncing ? "Refresh..." : "Refresh"}
                   </button>
                 </div>
               </div>
@@ -142,17 +292,14 @@ function AccountManagement() {
               <div>
                 <button
                   className="add-account"
-                  onClick={() => navigate("/connect")}
+                  onClick={() => navigate(ROUTES.CONNECT_AD_ACCOUNT)}
                 >
                   + Thêm tài khoản
                 </button>
               </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>
-            )}
+            {error && toast.error(error)}
 
             {/* Table */}
             <table className="table">
@@ -165,24 +312,19 @@ function AccountManagement() {
                   <th className="text-right">Quảng cáo</th>
                   <th>Trạng thái</th>
                   <th>Cập nhật cuối</th>
+                  <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan="7"
-                      style={{ textAlign: "center", color: "#6b7280" }}
-                    >
+                    <td colSpan="7" style={{ textAlign: "center", color: "#6b7280" }}>
                       Đang tải dữ liệu...
                     </td>
                   </tr>
                 ) : accounts.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan="7"
-                      style={{ textAlign: "center", color: "#6b7280" }}
-                    >
+                    <td colSpan="7" style={{ textAlign: "center", color: "#6b7280" }}>
                       Không tìm thấy tài khoản quảng cáo nào.
                     </td>
                   </tr>
@@ -196,24 +338,59 @@ function AccountManagement() {
                           {acc.number}
                         </div>
                       </td>
-                      <td className="text-right">
-                        {acc.campaignCount.toLocaleString("vi-VN")}
-                      </td>
-                      <td className="text-right">
-                        {acc.adsetCount.toLocaleString("vi-VN")}
-                      </td>
-                      <td className="text-right">
-                        {acc.adCount.toLocaleString("vi-VN")}
-                      </td>
+                      <td className="text-right">{acc.campaignCount}</td>
+                      <td className="text-right">{acc.adsetCount}</td>
+                      <td className="text-right">{acc.adCount}</td>
                       <td className="status-active">{acc.status}</td>
                       <td>{acc.updatedAt}</td>
+                      <td>
+                        <div className="action-buttons">
+                          {/* Hiển thị button dựa trên trạng thái */}
+                          {acc.status === "Hoạt động" ? (
+                            <button 
+                              className="btn-inactive-account"
+                              onClick={() => showConfirmDialog(acc.id, acc.name, 'deactivate')}
+                              disabled={loading}
+                              title="Vô hiệu hóa"
+                            >
+                              <Pause size={15} />
+                            </button>
+                          ) : (
+                            <button 
+                              className="btn-active-account"
+                              onClick={() => showConfirmDialog(acc.id, acc.name, 'activate')}
+                              disabled={loading}
+                              title="Kích hoạt"
+                            >
+                              <Play size={15} />
+                            </button>
+                          )}
+                          
+                          <button 
+                            className="btn-archive-account"
+                            onClick={() => showConfirmDialog(acc.id, acc.name, 'archive')}
+                            disabled={loading}
+                            title="Lưu trữ"
+                          >
+                            <Archive size={15} />
+                          </button>
+                          
+                          <button 
+                            className="btn-disconnect-account"
+                            onClick={() => showConfirmDialog(acc.id, acc.name, 'disconnect')}
+                            disabled={loading}
+                            title="Gỡ kết nối"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
 
-            {/* Pagination */}
             {total > limit && (
               <div
                 style={{
@@ -242,6 +419,17 @@ function AccountManagement() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        isOpen={confirmationPopup.isOpen}
+        onClose={() => setConfirmationPopup(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmationPopup.onConfirm}
+        title={confirmationPopup.title}
+        message={confirmationPopup.message}
+        type={confirmationPopup.type}
+        isLoading={confirmationPopup.isLoading}
+      />
     </div>
   );
 }
