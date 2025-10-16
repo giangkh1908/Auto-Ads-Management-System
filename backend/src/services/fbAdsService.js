@@ -1,5 +1,6 @@
 // services/fbAdsService.js
 import axios from "axios";
+import crypto from "crypto";
 
 // MODELS
 import AdsAccount from "../models/ads/adsAccount.model.js";
@@ -8,6 +9,19 @@ import AdsSet from "../models/ads/adsSet.model.js";
 import Ads from "../models/ads/ads.model.js";
 
 const FB_API = "https://graph.facebook.com/v23.0";
+
+function buildFbAuthParams(accessToken) {
+  const appSecret = process.env.FB_APP_SECRET || process.env.FACEBOOK_APP_SECRET || process.env.APP_SECRET;
+  const base = { access_token: accessToken };
+  if (!accessToken) return base;
+  if (!appSecret) return base;
+  try {
+    const proof = crypto.createHmac("sha256", appSecret).update(accessToken).digest("hex");
+    return { ...base, appsecret_proof: proof };
+  } catch {
+    return base;
+  }
+}
 
 /* =========================
  *  Helpers
@@ -33,38 +47,42 @@ async function findAdsAccountByExternalId(accountId) {
  *  CREATE HELPERS (giữ nguyên)
  * ========================= */
 export async function createCampaign(adAccountId, accessToken, body) {
+  const { withPrefix } = normalizeAccountPair(adAccountId);
   const { data } = await axios.post(
-    `${FB_API}/${adAccountId}/campaigns`,
+    `${FB_API}/${withPrefix}/campaigns`,
     body,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
+    { params: buildFbAuthParams(accessToken) }
   );
   return data.id;
 }
 
 export async function createAdSet(adAccountId, accessToken, body) {
-  const { data } = await axios.post(`${FB_API}/${adAccountId}/adsets`, body, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const { data } = await axios.post(
+    `${FB_API}/${withPrefix}/adsets`,
+    body,
+    { params: buildFbAuthParams(accessToken) }
+  );
   return data.id;
 }
 
 export async function createCreative(adAccountId, accessToken, body) {
+  const { withPrefix } = normalizeAccountPair(adAccountId);
   const { data } = await axios.post(
-    `${FB_API}/${adAccountId}/adcreatives`,
+    `${FB_API}/${withPrefix}/adcreatives`,
     body,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
+    { params: buildFbAuthParams(accessToken) }
   );
   return data.id;
 }
 
 export async function createAd(adAccountId, accessToken, body) {
-  const { data } = await axios.post(`${FB_API}/${adAccountId}/ads`, body, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const { data } = await axios.post(
+    `${FB_API}/${withPrefix}/ads`,
+    body,
+    { params: buildFbAuthParams(accessToken) }
+  );
   return data.id;
 }
 
@@ -107,6 +125,36 @@ export async function deleteEntity(entityId, accessToken) {
   }
 }
 
+
+/* =========================
+ *  UPDATE STATUS HELPERS
+ * ========================= */
+export async function updateCampaignStatus(entityId, accessToken, status) {
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    { status },
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
+}
+
+export async function updateAdsetStatus(entityId, accessToken, status) {
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    { status },
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
+}
+
+export async function updateAdStatus(entityId, accessToken, status) {
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    { status },
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
+}
 
 /* =========================
  *  FETCH HELPERS (giữ nguyên fields)

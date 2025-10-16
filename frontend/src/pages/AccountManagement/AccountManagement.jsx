@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axios";
+import { toast } from "sonner";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import "./AccountManagement.css";
+import { CheckCircle, XCircle, Archive, Trash2, Play, Pause } from "lucide-react";
+import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 
 function AccountManagement() {
   const navigate = useNavigate();
@@ -21,6 +24,16 @@ function AccountManagement() {
 
   // state thống kê
   const [accountStats, setAccountStats] = useState({});
+  
+  // state cho confirmation popup
+  const [confirmationPopup, setConfirmationPopup] = useState({
+    isOpen: false,
+    type: 'delete', // 'delete' | 'archive' | 'activate' | 'deactivate'
+    title: '',
+    message: '',
+    onConfirm: null,
+    isLoading: false
+  });
 
   /** Gọi API list ads accounts */
   const fetchAccounts = useCallback(
@@ -55,49 +68,15 @@ function AccountManagement() {
     fetchAccounts({ q: "", page, limit });
   }, [fetchAccounts, page, limit]);
 
-  /** Đồng bộ từ Facebook rồi tải lại list */
+  /** Chỉ làm mới số liệu campaign/adset/ad từ Facebook (không đồng bộ DB, không reload list) */
   const handleSync = async () => {
     try {
       setSyncing(true);
-
-      // 1️⃣ Đồng bộ danh sách tài khoản quảng cáo
-      await axiosInstance.get("/api/ads-accounts/sync");
-
-      // 2️⃣ Tải lại danh sách tài khoản
-      await fetchAccounts({ q: searchText.trim(), page, limit });
-
-      // 3️⃣ Lấy danh sách account_id từ items (sau khi load lại)
       const accountIds = items.map((acc) => acc.external_id).filter(Boolean);
-
-      if (accountIds.length > 0) {
-        for (const accountId of accountIds) {
-          const formattedId = accountId.startsWith("act_")
-            ? accountId
-            : `act_${accountId}`;
-
-          try {
-            // 🌀 Đồng bộ Campaigns
-            await axiosInstance.get(`/api/campaigns/sync?account_id=${formattedId}`);
-            console.log(`✅ Đã đồng bộ campaigns cho: ${formattedId}`);
-
-            // 🌀 Đồng bộ AdSets
-            await axiosInstance.get(`/api/adsets/sync?account_id=${formattedId}`);
-            console.log(`✅ Đã đồng bộ adsets cho: ${formattedId}`);
-
-            // 🌀 Đồng bộ Ads
-            await axiosInstance.get(`/api/ads/sync?account_id=${formattedId}`);
-            console.log(`✅ Đã đồng bộ ads cho: ${formattedId}`);
-          } catch (error) {
-            console.error(`❌ Lỗi đồng bộ cho ${formattedId}:`, error);
-          }
-        }
-
-        // 4️⃣ Cập nhật thống kê sau khi đồng bộ
-        await fetchAccountStats(accountIds);
-      }
+      if (accountIds.length === 0) return;
+      await fetchAccountStats(accountIds);
     } catch (e) {
       console.error(e);
-      alert("Đồng bộ thất bại");
     } finally {
       setSyncing(false);
     }
@@ -115,7 +94,7 @@ function AccountManagement() {
         accountIds.map(async (accountId) => {
           try {
             const response = await axiosInstance.get(
-              `/api/ads-accounts/stats?account_id=${accountId}&_t=${timestamp}`,
+              `/api/ads-accounts/stats/live?account_id=${accountId}&_t=${timestamp}`,
               { headers: { "Cache-Control": "no-cache" } }
             );
 
@@ -185,6 +164,93 @@ function AccountManagement() {
     fetchAccounts({ q: searchText.trim(), page: 1, limit });
   };
 
+  /** Xử lý các hành động với account */
+  const handleAccountAction = async (accountId, action, accountName) => {
+    try {
+      setConfirmationPopup(prev => ({ ...prev, isLoading: true }));
+      
+      switch (action) {
+        case 'activate':
+          await axiosInstance.patch(`/api/ads-accounts/${accountId}/activate`);
+          toast.success("Kích hoạt tài khoản thành công!", {
+            description: `Tài khoản "${accountName}" đã được kích hoạt`
+          });
+          break;
+        case 'deactivate':
+          await axiosInstance.patch(`/api/ads-accounts/${accountId}/deactivate`);
+          toast.success("Vô hiệu hóa tài khoản thành công!", {
+            description: `Tài khoản "${accountName}" đã được vô hiệu hóa`
+          });
+          break;
+        case 'archive':
+          await axiosInstance.patch(`/api/ads-accounts/${accountId}/archive`);
+          toast.success("Lưu trữ tài khoản thành công!", {
+            description: `Tài khoản "${accountName}" đã được lưu trữ`
+          });
+          break;
+        case 'disconnect':
+          await axiosInstance.delete(`/api/ads-accounts/${accountId}`);
+          toast.success("Gỡ kết nối tài khoản thành công!", {
+            description: `Tài khoản "${accountName}" đã được gỡ kết nối`
+          });
+          break;
+        default:
+          throw new Error('Hành động không hợp lệ');
+      }
+      
+      // Refresh danh sách sau khi thực hiện hành động
+      await fetchAccounts({ q: searchText.trim(), page, limit });
+      
+    } catch (error) {
+      console.error(`Lỗi ${action} account:`, error);
+      toast.error(`Lỗi ${action} tài khoản`, {
+        description: error?.response?.data?.message || 
+        error?.message || 
+        `Không thể ${action} tài khoản ${accountName}`
+      });
+    } finally {
+      setConfirmationPopup(prev => ({ ...prev, isLoading: false, isOpen: false }));
+    }
+  };
+
+  /** Hiển thị confirmation popup */
+  const showConfirmDialog = (accountId, accountName, action) => {
+    const actionConfig = {
+      activate: {
+        type: 'activate',
+        title: "Kích hoạt tài khoản",
+        message: `Bạn có chắc chắn muốn kích hoạt tài khoản "${accountName}"?`
+      },
+      deactivate: {
+        type: 'deactivate',
+        title: "Vô hiệu hóa tài khoản", 
+        message: `Bạn có chắc chắn muốn vô hiệu hóa tài khoản "${accountName}"?`
+      },
+      archive: {
+        type: 'archive',
+        title: "Lưu trữ tài khoản",
+        message: `Bạn có chắc chắn muốn lưu trữ tài khoản "${accountName}"?`
+      },
+      disconnect: {
+        type: 'delete',
+        title: "Gỡ kết nối tài khoản",
+        message: `Bạn có chắc chắn muốn gỡ kết nối tài khoản "${accountName}"?`
+      }
+    };
+
+    const config = actionConfig[action];
+    if (!config) return;
+
+    setConfirmationPopup({
+      isOpen: true,
+      type: config.type,
+      title: config.title,
+      message: config.message,
+      onConfirm: () => handleAccountAction(accountId, action, accountName),
+      isLoading: false
+    });
+  };
+
   return (
     <div className="account-management-layout">
       <div className="account-management-content">
@@ -233,9 +299,7 @@ function AccountManagement() {
               </div>
             </div>
 
-            {error && (
-              <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>
-            )}
+            {error && toast.error(error)}
 
             {/* Table */}
             <table className="table">
@@ -248,6 +312,7 @@ function AccountManagement() {
                   <th className="text-right">Quảng cáo</th>
                   <th>Trạng thái</th>
                   <th>Cập nhật cuối</th>
+                  <th>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,6 +343,48 @@ function AccountManagement() {
                       <td className="text-right">{acc.adCount}</td>
                       <td className="status-active">{acc.status}</td>
                       <td>{acc.updatedAt}</td>
+                      <td>
+                        <div className="action-buttons">
+                          {/* Hiển thị button dựa trên trạng thái */}
+                          {acc.status === "Hoạt động" ? (
+                            <button 
+                              className="btn-inactive-account"
+                              onClick={() => showConfirmDialog(acc.id, acc.name, 'deactivate')}
+                              disabled={loading}
+                              title="Vô hiệu hóa"
+                            >
+                              <Pause size={15} />
+                            </button>
+                          ) : (
+                            <button 
+                              className="btn-active-account"
+                              onClick={() => showConfirmDialog(acc.id, acc.name, 'activate')}
+                              disabled={loading}
+                              title="Kích hoạt"
+                            >
+                              <Play size={15} />
+                            </button>
+                          )}
+                          
+                          <button 
+                            className="btn-archive-account"
+                            onClick={() => showConfirmDialog(acc.id, acc.name, 'archive')}
+                            disabled={loading}
+                            title="Lưu trữ"
+                          >
+                            <Archive size={15} />
+                          </button>
+                          
+                          <button 
+                            className="btn-disconnect-account"
+                            onClick={() => showConfirmDialog(acc.id, acc.name, 'disconnect')}
+                            disabled={loading}
+                            title="Gỡ kết nối"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -312,6 +419,17 @@ function AccountManagement() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Popup */}
+      <ConfirmationPopup
+        isOpen={confirmationPopup.isOpen}
+        onClose={() => setConfirmationPopup(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmationPopup.onConfirm}
+        title={confirmationPopup.title}
+        message={confirmationPopup.message}
+        type={confirmationPopup.type}
+        isLoading={confirmationPopup.isLoading}
+      />
     </div>
   );
 }

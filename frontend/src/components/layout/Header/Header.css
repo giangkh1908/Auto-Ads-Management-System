@@ -168,10 +168,14 @@ a {
 }
 
 .app-nav {
+  position: absolute;        /* Tách khỏi layout flex của header */
+  top: 50%;                  /* Canh giữa theo chiều dọc */
+  left: 50%;                 /* Canh giữa theo chiều ngang */
+  transform: translate(-50%, -50%);  /* Căn giữa chính xác */
   display: flex;
-  gap: 30px;
-  position: relative; /* hoặc absolute */
-  left: 60px;
+  align-items: center;
+  gap: 16px;                 /* Khoảng cách giữa các nút */
+  z-index: 1010;  
 }
 
 .app-nav-2 {
@@ -182,16 +186,18 @@ a {
 }
 
 .nav-btn {
+  background: transparent;
+  border: none;
+  color: #333;
+  font-weight: 500;
+  font-size: 15px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 15px;
-  background: transparent;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  position: relative;
+  gap: 6px;
 }
 
 .nav-btn:hover {

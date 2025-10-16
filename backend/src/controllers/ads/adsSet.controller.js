@@ -1,7 +1,103 @@
+
+// controllers/ads/adsSet.controller.js
 import AdsSet from "../../models/ads/adsSet.model.js";
-import { syncAdSetsFromFacebook, deleteEntity } from "../../services/fbAdsService.js";
+import { syncAdSetsFromFacebook, fetchAdsetsFromFacebook, updateAdsetStatus, deleteEntity } from "../../services/fbAdsService.js";
 import User from "../../models/user.model.js";
 import Ads from "../../models/ads/ads.model.js";
+
+// Helper function để extract string ID từ ObjectId format
+function extractObjectId(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const match = value.match(/[0-9a-fA-F]{24}/);
+    return match ? match[0] : null;
+  }
+  if (value.$oid) return value.$oid; // trong trường hợp Mongo xuất ra kiểu { $oid: '...' }
+  return value.toString();
+}
+
+// Lấy list status của trạng thái on/off ads
+export async function toggleAdsetStatusCtrl(req, res) {
+  try {
+    const { id } = req.params; // Facebook adset id
+    const { status } = req.body; // "ACTIVE" | "PAUSED"
+    if (!id || !status) return res.status(400).json({ message: "Thiếu id hoặc status" });
+
+    const user = await User.findById(req.user?._id).select("+facebookAccessToken");
+    const accessToken = user?.facebookAccessToken;
+    if (!accessToken) return res.status(401).json({ message: "Thiếu access token Facebook" });
+
+    await updateAdsetStatus(id, accessToken, status);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Toggle adset status error:", err.response?.data || err.message);
+    return res.status(500).json({ message: "Không thể cập nhật trạng thái adset", detail: err.response?.data || err.message });
+  }
+}
+/**
+ * GET /api/adsets/database
+ * Lấy adset từ database theo adset_id hoặc campaign_id
+ */
+export async function getAdsetFromDatabase(req, res) {
+  try {
+    const { adset_id, campaign_id } = req.query;
+    
+    if (!adset_id && !campaign_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu adset_id hoặc campaign_id"
+      });
+    }
+
+    // Extract và validate adset_id nếu có
+    const cleanAdsetId = extractObjectId(adset_id);
+    if (adset_id && !cleanAdsetId) {
+      return res.status(400).json({
+        success: false,
+        message: "adset_id không hợp lệ"
+      });
+    }
+
+    // Extract và validate campaign_id nếu có
+    const cleanCampaignId = extractObjectId(campaign_id);
+    if (campaign_id && !cleanCampaignId) {
+      return res.status(400).json({
+        success: false,
+        message: "campaign_id không hợp lệ"
+      });
+    }
+
+    let adset;
+    if (cleanAdsetId) {
+      adset = await AdsSet.findById(cleanAdsetId);
+    } else if (cleanCampaignId) {
+      const adsets = await AdsSet.find({ campaign_id: cleanCampaignId }).sort({ createdAt: -1 });
+      return res.status(200).json({
+        success: true,
+        data: adsets
+      });
+    }
+    
+    if (!adset) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy adset"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: adset
+    });
+  } catch (err) {
+    console.error("GET Adset from database error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy adset từ database",
+      error: err.message
+    });
+  }
+}
 
 /**
  * GET /api/adsets
@@ -83,6 +179,37 @@ export async function syncAdSetsCtrl(req, res) {
       message: "Lỗi khi đồng bộ nhóm quảng cáo từ Facebook",
       error: err.message,
     });
+  }
+}
+
+/**
+ * GET /api/adsets/live
+ * Lấy danh sách adsets trực tiếp từ Facebook (không lưu DB)
+ */
+export async function getAdSetsLiveCtrl(req, res) {
+  try {
+    const { account_id } = req.query;
+    if (!account_id) {
+      return res.status(400).json({ message: "Thiếu account_id" });
+    }
+
+    let accessToken = req.query.access_token;
+    if (!accessToken) {
+      const user = await User.findById(req.user?._id).select("+facebookAccessToken");
+      accessToken = user?.facebookAccessToken || null;
+    }
+    if (!accessToken) {
+      return res.status(400).json({
+        message: "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
+        missingToken: true,
+      });
+    }
+
+    const data = await fetchAdsetsFromFacebook(accessToken, account_id);
+    return res.status(200).json({ items: data, total: data.length });
+  } catch (err) {
+    console.error("GET Live AdSets error:", err);
+    return res.status(500).json({ message: "Lỗi lấy adsets từ Facebook", error: err.message });
   }
 }
 

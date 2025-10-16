@@ -6,7 +6,7 @@ const adsCampaignSchema = new mongoose.Schema(
     shop_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Shop",
-      required: false, // cho phép null khi tạo draft
+      required: false,
       default: null,
     },
 

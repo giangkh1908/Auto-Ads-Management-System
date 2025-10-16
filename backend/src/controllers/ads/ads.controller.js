@@ -1,7 +1,90 @@
 // controllers/ads/ads.controller.js
 import Ads from "../../models/ads/ads.model.js";
-import { syncAdsFromFacebook, deleteEntity } from "../../services/fbAdsService.js";
+import AdsSet from "../../models/ads/adsSet.model.js";
+import { syncAdsFromFacebook, fetchAdsFromFacebook, updateAdStatus, deleteEntity } from "../../services/fbAdsService.js";
 import User from "../../models/user.model.js";
+
+// Helper function để extract string ID từ ObjectId format
+function extractObjectId(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const match = value.match(/[0-9a-fA-F]{24}/);
+    return match ? match[0] : null;
+  }
+  if (value.$oid) return value.$oid; // trong trường hợp Mongo xuất ra kiểu { $oid: '...' }
+  return value.toString();
+}
+
+/**
+ * GET /api/ads/database
+ * Lấy ad từ database theo ad_id hoặc campaign_id
+ */
+export async function getAdFromDatabase(req, res) {
+  try {
+    const { ad_id, campaign_id } = req.query;
+    
+    if (!ad_id && !campaign_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu ad_id hoặc campaign_id"
+      });
+    }
+
+    // Extract và validate ad_id nếu có
+    const cleanAdId = extractObjectId(ad_id);
+    if (ad_id && !cleanAdId) {
+      return res.status(400).json({
+        success: false,
+        message: "ad_id không hợp lệ"
+      });
+    }
+
+    // Extract và validate campaign_id nếu có
+    const cleanCampaignId = extractObjectId(campaign_id);
+    if (campaign_id && !cleanCampaignId) {
+      return res.status(400).json({
+        success: false,
+        message: "campaign_id không hợp lệ"
+      });
+    }
+
+    let ad;
+    if (cleanAdId) {
+      ad = await Ads.findById(cleanAdId);
+    } else if (cleanCampaignId) {
+      // Tìm ads thông qua campaign_id
+      const ads = await Ads.find({ 
+        $or: [
+          { campaign_id: cleanCampaignId },
+          { set_id: { $in: await AdsSet.find({ campaign_id: cleanCampaignId }).distinct('_id') } }
+        ]
+      }).sort({ createdAt: -1 });
+      return res.status(200).json({
+        success: true,
+        data: ads
+      });
+    }
+    
+    if (!ad) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy ad"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: ad
+    });
+  } catch (err) {
+    console.error("GET Ad from database error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy ad từ database",
+      error: err.message
+    });
+  }
+}
 
 /**
  * GET /api/ads
@@ -92,6 +175,60 @@ export async function syncAdsCtrl(req, res) {
     });
   }
 }
+
+/**
+ * GET /api/ads/live
+ * Lấy danh sách quảng cáo (ads) trực tiếp từ Facebook (không lưu DB)
+ */
+export async function getAdsLiveCtrl(req, res) {
+  try {
+    const { account_id } = req.query;
+    if (!account_id) {
+      return res.status(400).json({ message: "Thiếu account_id" });
+    }
+
+    let accessToken = req.query.access_token;
+    if (!accessToken) {
+      const user = await User.findById(req.user?._id).select("+facebookAccessToken");
+      accessToken = user?.facebookAccessToken || null;
+    }
+    if (!accessToken) {
+      return res.status(400).json({
+        message: "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
+        missingToken: true,
+      });
+    }
+
+    const data = await fetchAdsFromFacebook(accessToken, account_id);
+    return res.status(200).json({ items: data, total: data.length });
+  } catch (err) {
+    console.error("GET Live Ads error:", err);
+    return res.status(500).json({ message: "Lỗi lấy ads từ Facebook", error: err.message });
+  }
+}
+
+/**
+ * PATCH /api/ads/:id/status
+ * Bật/Tắt ad trực tiếp trên Facebook
+ */
+export async function toggleAdStatusCtrl(req, res) {
+  try {
+    const { id } = req.params; // Facebook ad id
+    const { status } = req.body; // "ACTIVE" | "PAUSED"
+    if (!id || !status) return res.status(400).json({ message: "Thiếu id hoặc status" });
+
+    const user = await User.findById(req.user?._id).select("+facebookAccessToken");
+    const accessToken = user?.facebookAccessToken;
+    if (!accessToken) return res.status(401).json({ message: "Thiếu access token Facebook" });
+
+    await updateAdStatus(id, accessToken, status);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Toggle ad status error:", err.response?.data || err.message);
+    return res.status(500).json({ message: "Không thể cập nhật trạng thái ad", detail: err.response?.data || err.message });
+  }
+}
+
 export async function deleteAdCtrl(req, res) {
   try {
     const { id } = req.params;

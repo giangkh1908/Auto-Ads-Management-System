@@ -100,8 +100,8 @@
 
 .form-group label {
   font-size: 14px;
-  font-weight: 500;
-  color: #374151;
+  font-weight: 600;
+  color: #375e9b;
 }
 
 .form-input,
@@ -109,8 +109,8 @@
   /* width: 100%; */
   padding: 12px 16px;
   font-size: 15px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid #ffffff;
+  border-radius: 30px;
   background: #f9fafb;
   color: #1f2937;
   transition: all 0.2s ease;
@@ -121,7 +121,7 @@
 .form-select:focus {
   outline: none;
   border-color: #3b82f6;
-  background: #ffffff;
+  background: #daecff;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 

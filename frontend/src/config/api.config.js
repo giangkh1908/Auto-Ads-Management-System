@@ -130,28 +130,4 @@ export const API_ENDPOINTS = {
       }`,
     STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/status`,
   },
-
-  // API AD chưa có
-  // Campaign endpoints
-  // CAMPAIGNS: {
-  //   CREATE: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/create-campaign`,
-  //   LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns`,
-  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
-  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}`,
-  // },
-
-  // // AdSet endpoints
-  // ADSETS: {
-  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
-  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}`,
-  // },
-
-  // // Ad endpoints
-  // ADS: {
-  //   STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/status`,
-  //   UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
-  //   DELETE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
-  // },
-};
-
-export default API_CONFIG;
+}

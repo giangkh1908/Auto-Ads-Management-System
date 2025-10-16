@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../../../hooks/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
+import { validateFullName, validateEmail, validatePhone, validatePassword, buildErrors } from '../../../../utils/validation'
 import './Register.css'
 
 function Register({ onSwitchLogin }) {
@@ -19,30 +20,13 @@ function Register({ onSwitchLogin }) {
     const { register, loading } = useAuth()
 
     const validateForm = () => {
-        const newErrors = {}
-        
-        if (!formData.full_name.trim()) {
-            newErrors.full_name = 'Họ và tên là bắt buộc'
-        } else if (formData.full_name.length < 2) {
-            newErrors.full_name = 'Họ và tên phải có ít nhất 2 ký tự'
-        }
-        
-        if (!formData.email.trim()) {
-            newErrors.email = 'Email là bắt buộc'
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            newErrors.email = 'Email không hợp lệ'
-        }
-        
-        if (formData.phone && !/^[0-9+\-\s()]+$/.test(formData.phone)) {
-            newErrors.phone = 'Số điện thoại không hợp lệ'
-        }
-        
-        if (!formData.password.trim()) {
-            newErrors.password = 'Mật khẩu là bắt buộc'
-        } else if (formData.password.length < 6) {
-            newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
-        }
-        
+        const checks = [
+            { key: 'full_name', valid: validateFullName(formData.full_name), message: 'Họ và tên phải có ít nhất 2 ký tự' },
+            { key: 'email', valid: validateEmail(formData.email), message: 'Email không hợp lệ' },
+            { key: 'phone', valid: validatePhone(formData.phone), message: 'Số điện thoại không hợp lệ' },
+            { key: 'password', valid: validatePassword(formData.password, { minLength: 6 }), message: 'Mật khẩu phải có ít nhất 6 ký tự' },
+        ]
+        const newErrors = buildErrors(checks)
         setErrors(newErrors)
         return Object.keys(newErrors).length === 0
     }

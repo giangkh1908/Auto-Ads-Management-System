@@ -6,4 +6,5 @@ import { publishAdsWizard, updateAdsWizard } from "../../controllers/ads/adsWiza
 const router = Router();
 router.post("/publish", authenticate, publishAdsWizard);
 router.put("/update", authenticate, updateAdsWizard);
+
 export default router;

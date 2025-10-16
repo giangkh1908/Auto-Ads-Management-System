@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useToast } from '../hooks/useToast'
 import authService from '../services/authService'
 import { STORAGE_KEYS, ROUTES } from '../constants/app.constants'
-import { AuthContext } from './AuthContext'
+import { AuthContext } from './AuthContext.js'
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -31,6 +31,28 @@ export const AuthProvider = ({ children }) => {
       return []
     }
   })
+
+  // Đăng xuất
+  const logout = useCallback((showToast = true) => {
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
+    localStorage.removeItem(STORAGE_KEYS.USER_DATA)
+    localStorage.removeItem(STORAGE_KEYS.FB_PAGES)
+    setUser(null)
+    setIsAuthenticated(false)
+    setFbPages([])
+    
+    if (showToast) {
+      toast.success('Đăng xuất thành công!')
+    }
+    // Chuyển trang về trang home sau khi đăng xuất
+    setTimeout(() => {
+      {
+        navigate(ROUTES.HOME)
+      }
+    }, 2000)
+
+  }, [navigate, toast])
 
   // Kiểm tra xác thực khi mount
   useEffect(() => {
@@ -73,7 +95,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     checkAuth()
-  }, [])
+  }, [toast, logout])
 
 
   // Đăng nhập
@@ -197,29 +219,6 @@ export const AuthProvider = ({ children }) => {
 
     return { success: true, user: loggedInUser }
   }
-
-
-  // Đăng xuất
-  const logout = useCallback((showToast = true) => {
-    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
-    localStorage.removeItem(STORAGE_KEYS.USER_DATA)
-    localStorage.removeItem(STORAGE_KEYS.FB_PAGES)
-    setUser(null)
-    setIsAuthenticated(false)
-    setFbPages([])
-    
-    if (showToast) {
-      toast.success('Đăng xuất thành công!')
-    }
-    // Chuyển trang về trang home sau khi đăng xuất
-    setTimeout(() => {
-      {
-        navigate(ROUTES.HOME)
-      }
-    }, 2000)
-
-  }, [navigate, toast])
 
   // Quên mật khẩu
   const forgotPassword = async (email) => {
