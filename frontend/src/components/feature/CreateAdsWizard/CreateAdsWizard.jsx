@@ -3,6 +3,13 @@ import AdsDropdown from "../../common/AdsDropdown/AdsDropdown.jsx";
 import {
   Megaphone,
   ArrowRight,
+  MessageCircle,
+  Search,
+  Users,
+  ShoppingBag,
+  Folder,
+  Grid,
+  FileText,
 } from "lucide-react";
 import CampaignStep from "./CampaignStep";
 import AdsetStep from "./AdsetStep";
@@ -262,7 +269,7 @@ function CreateAdsWizard({
     closeAllDropdowns();
   }, [wizardStep]);
 
-  // ========== Load FB Pages ==========
+  // Load connected Facebook pages for selection
   useEffect(() => {
     const loadPages = async () => {
       try {
@@ -811,173 +818,9 @@ function CreateAdsWizard({
     }
   };
 
-  // ========== Xây payload gửi API ==========
-  const buildPayload = () => {
-    const access_token = localStorage.getItem("fb_access_token") || null;
-    const fbObjectiveMap = {
-      AWARENESS: "OUTCOME_AWARENESS",
-      TRAFFIC: "OUTCOME_TRAFFIC",
-      ENGAGEMENT: "OUTCOME_ENGAGEMENT",
-      LEADS: "OUTCOME_LEADS",
-      SALES: "OUTCOME_SALES",
-      APP_PROMOTION: "OUTCOME_APP_PROMOTION",
-    };
-
-    const fbAdsetDefaultsByObjective = {
-      OUTCOME_AWARENESS: {
-        optimization_goal: "REACH",
-        billing_event: "IMPRESSIONS",
-      },
-      OUTCOME_ENGAGEMENT: {
-        optimization_goal: "POST_ENGAGEMENT",
-        billing_event: "IMPRESSIONS",
-      },
-      OUTCOME_TRAFFIC: {
-        optimization_goal: "LINK_CLICKS",
-        billing_event: "IMPRESSIONS",
-      },
-      OUTCOME_LEADS: {
-        optimization_goal: "LEAD_GENERATION",
-        billing_event: "IMPRESSIONS",
-      },
-      OUTCOME_SALES: {
-        optimization_goal: "CONVERSIONS",
-        billing_event: "IMPRESSIONS",
-      },
-    };
-
-    const fbObjective =
-      fbObjectiveMap[campaign.objective] || "OUTCOME_ENGAGEMENT";
-
-    const adsetDefaults = fbAdsetDefaultsByObjective[fbObjective] || {
-      optimization_goal: "REACH",
-      billing_event: "IMPRESSIONS",
-    };
-
-    const fbBidStrategyByObjective = {
-      OUTCOME_AWARENESS: "LOWEST_COST_WITHOUT_CAP",
-      OUTCOME_ENGAGEMENT: "LOWEST_COST_WITHOUT_CAP",
-      OUTCOME_TRAFFIC: "LOWEST_COST_WITHOUT_CAP",
-      OUTCOME_LEADS: "LOWEST_COST_WITHOUT_CAP",
-      OUTCOME_SALES: "LOWEST_COST_WITHOUT_CAP",
-    };
-
-    const creative = {
-      name: ad.name,
-      object_story_spec: {
-        page_id: campaign.facebookPageId || "fb_page_id_placeholder",
-        link_data: {
-          message: ad.primaryText,
-          link: ad.destinationUrl || "https://fchat.vn",
-          caption: "fchat.vn",
-          name: ad.headline,
-          description: ad.description,
-          call_to_action: {
-            type: "MESSAGE_PAGE",
-            value: { link: ad.destinationUrl || "https://fchat.vn" },
-          },
-          ...(ad.mediaUrl && { picture: ad.mediaUrl }),
-        },
-      },
-    };
-
-    return {
-      ad_account_id: selectedAccountId || localStorage.getItem("selectedAdAccount") || "act_1234567890",
-
-      // ✅ Kèm ID để update đúng bản ghi trong DB và Facebook
-      campaign: {
-        draftId: editingItem?.data?._id || null,
-        external_id: editingItem?.data?.external_id || null,
-        name: campaign.name,
-        objective: fbObjective,
-        status: "PAUSED",
-        special_ad_categories: ["NONE"],
-      },
-
-      adset: {
-        draftId:
-          _selectedAdset?._id ||
-          editingItem?.data?.adset?._id ||
-          datasets?.adsets?.find(a => a.campaignId === editingItem?.data?._id)?._id ||
-          null,
-        external_id:
-          _selectedAdset?.external_id ||
-          editingItem?.data?.adset?.external_id ||
-          datasets?.adsets?.find(a => a.campaignId === editingItem?.data?._id)?.external_id ||
-          null,
-        name: adset.name,
-        daily_budget: adset.budgetAmount || 2000000,
-        status: "PAUSED",
-        ...adsetDefaults,
-        bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-        bid_amount: null,
-        targeting: {
-          age_min: adset.targeting.ageMin || 18,
-          age_max: adset.targeting.ageMax || 45,
-          geo_locations: { countries: ["VN"] },
-          targeting_automation: {
-            advantage_audience: 0, // ✅ BẮT BUỘC - disable Advantage Audience
-          },
-        },
-      },
-
-      creative: {
-        draftId: editingItem?.data?.creative?._id || null,
-        external_id: editingItem?.data?.creative?.external_id || null,
-        ...creative,
-      },
-
-      ad: {
-        draftId:
-          editingItem?.data?.ad?._id ||
-          datasets?.ads?.find(a => a.adsetId === _selectedAdset?._id)?._id ||
-          null,
-        external_id:
-          editingItem?.data?.ad?.external_id ||
-          datasets?.ads?.find(a => a.adsetId === _selectedAdset?._id)?.external_id ||
-          null,
-        name: ad.name,
-        status: "PAUSED",
-      },
-    };
-
-  };
-
-  // ========== Gọi API tạo / cập nhật quảng cáo ==========
-  const handlePublish = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(false);
-    try {
-      const payload = buildPayload();
-
-      let result;
-      if (mode === "edit") {
-        console.log("🛠 Gửi yêu cầu cập nhật Wizard:", payload);
-        result = await updateAdsWizard(payload);
-      } else {
-        console.log("🚀 Gửi yêu cầu tạo mới Wizard:", payload);
-        result = await publishAdsWizard(payload);
-      }
-
-      console.log("✅ Thành công:", result);
-      setSuccess(true);
-      setTimeout(() => {
-        setLoading(false);
-        onClose?.();
-      }, 1200);
-    } catch (err) {
-      console.error("❌ Lỗi khi xử lý quảng cáo:", err);
-      setLoading(false);
-      setError(err.message || "Không thể xử lý quảng cáo");
-    }
-  };
-
-  // ========== Render Wizard ==========
   return (
     <div className="ads-modal-overlay" role="dialog" aria-modal="true">
       <div className="ads-modal">
-        {/* Header */}
         <div className="ads-modal-header">
           <div className="ads-modal-title">
             {mode === "edit"
@@ -990,9 +833,9 @@ function CreateAdsWizard({
                 }`
               : "Tạo chiến dịch"}
           </div>
+          {/* <button className="ads-modal-close" onClick={onClose}>✕</button> */}
         </div>
 
-        {/* Body */}
         <div className="ads-modal-body">
           {/* Unified Left Panel - Campaign Hierarchy (hidden for step 0) */}
           {wizardStep > 0 && (
@@ -1267,6 +1110,7 @@ function CreateAdsWizard({
               </div>
             )}
 
+            {/* Campaign Details Panel */}
             {wizardStep === 1 && (
               <CampaignStep
                 campaign={campaign}
@@ -1274,14 +1118,15 @@ function CreateAdsWizard({
                 facebookPages={facebookPages}
               />
             )}
+
+            {/* Adset Details Panel */}
             {wizardStep === 2 && (
               <AdsetStep adset={adset} setAdset={setAdset} mode={mode} />
             )}
+
+            {/* Ad Details Panel */}
             {wizardStep === 3 && (
-              <AdStep ad={ad} setAd={setAd} campaign={campaign} mode={mode} />
-            )}
-            {wizardStep === 4 && (
-              <Creative ad={ad} campaign={campaign} adset={adset} />
+              <AdStep ad={ad} setAd={setAd} mode={mode} campaign={campaign} />
             )}
 
             {/* Creative Preview Panel */}
@@ -1291,27 +1136,17 @@ function CreateAdsWizard({
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Wizard Footer */}
         <div className="ads-modal-footer">
-          {wizardStep < 4 ? (
+          {wizardStep === 0 ? (
             <>
               <button className="btn-secondary" onClick={onClose}>
-                Đóng
+                Hủy
               </button>
               <div className="spacer" />
-              {wizardStep > 0 && (
-                <button
-                  className="btn-secondary"
-                  onClick={() =>
-                    setWizardStep((prev) => Math.max(0, prev - 1))
-                  }
-                >
-                  Quay lại
-                </button>
-              )}
               <button
                 className="btn-primary"
-                onClick={() => setWizardStep((prev) => prev + 1)}
+                onClick={() => setWizardStep((prev) => Math.min(3, prev + 1))}
               >
                 Tiếp tục
               </button>
@@ -1366,8 +1201,6 @@ function CreateAdsWizard({
             </>
           )}
         </div>
-
-        {error && <div className="publish-error text-center">{error}</div>}
       </div>
     </div>
   );

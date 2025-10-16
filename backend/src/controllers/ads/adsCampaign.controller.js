@@ -320,84 +320,84 @@ export async function toggleCampaignStatusCtrl(req, res) {
   }
 }
 
-export async function deleteCampaignCascadeCtrl(req, res) {
-  try {
-    const { id } = req.params;
-    const campaign = await AdsCampaign.findById(id);
-    if (!campaign)
-      return res.status(404).json({ message: "Không tìm thấy chiến dịch." });
+// export async function deleteCampaignCascadeCtrl(req, res) {
+//   try {
+//     const { id } = req.params;
+//     const campaign = await AdsCampaign.findById(id);
+//     if (!campaign)
+//       return res.status(404).json({ message: "Không tìm thấy chiến dịch." });
 
-    // ✅ Lấy token từ user hoặc query
-    let accessToken = req.query.access_token;
-    if (!accessToken && req.user?._id) {
-      const user = await User.findById(req.user._id).select(
-        "+facebookAccessToken"
-      );
-      accessToken = user?.facebookAccessToken || null;
-    }
+//     // ✅ Lấy token từ user hoặc query
+//     let accessToken = req.query.access_token;
+//     if (!accessToken && req.user?._id) {
+//       const user = await User.findById(req.user._id).select(
+//         "+facebookAccessToken"
+//       );
+//       accessToken = user?.facebookAccessToken || null;
+//     }
 
-    if (!accessToken) {
-      return res.status(400).json({
-        message:
-          "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
-        missingToken: true,
-      });
-    }
+//     if (!accessToken) {
+//       return res.status(400).json({
+//         message:
+//           "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
+//         missingToken: true,
+//       });
+//     }
 
-    // Lấy adset + ads liên quan
-    const adsets = await AdsSet.find({ campaign_id: campaign._id });
-    const adsetIds = adsets.map((a) => a._id);
-    const ads = await Ads.find({ set_id: { $in: adsetIds } });
+//     // Lấy adset + ads liên quan
+//     const adsets = await AdsSet.find({ campaign_id: campaign._id });
+//     const adsetIds = adsets.map((a) => a._id);
+//     const ads = await Ads.find({ set_id: { $in: adsetIds } });
 
-    // ✅ Nếu có token → xoá thật trên Facebook
-    if (accessToken) {
-      try {
-        if (campaign.external_id)
-          await deleteEntity(campaign.external_id, accessToken);
+//     // ✅ Nếu có token → xoá thật trên Facebook
+//     if (accessToken) {
+//       try {
+//         if (campaign.external_id)
+//           await deleteEntity(campaign.external_id, accessToken);
 
-        for (const adset of adsets) {
-          if (adset.external_id)
-            await deleteEntity(adset.external_id, accessToken);
-        }
+//         for (const adset of adsets) {
+//           if (adset.external_id)
+//             await deleteEntity(adset.external_id, accessToken);
+//         }
 
-        for (const ad of ads) {
-          if (ad.external_id) await deleteEntity(ad.external_id, accessToken);
-        }
+//         for (const ad of ads) {
+//           if (ad.external_id) await deleteEntity(ad.external_id, accessToken);
+//         }
 
-        console.log(
-          `🧹 Đã xoá thật campaign ${campaign.name} và ${adsets.length} adsets trên Facebook.`
-        );
-      } catch (fbErr) {
-        console.warn(
-          "⚠️ Lỗi khi xoá campaign trên Facebook:",
-          fbErr?.response?.data || fbErr.message
-        );
-      }
-    }
+//         console.log(
+//           `🧹 Đã xoá thật campaign ${campaign.name} và ${adsets.length} adsets trên Facebook.`
+//         );
+//       } catch (fbErr) {
+//         console.warn(
+//           "⚠️ Lỗi khi xoá campaign trên Facebook:",
+//           fbErr?.response?.data || fbErr.message
+//         );
+//       }
+//     }
 
-    // Dù có token hay không → Xoá mềm trong DB
-    const now = new Date();
-    await Promise.all([
-      Ads.updateMany(
-        { set_id: { $in: adsetIds } },
-        { status: "DELETED", deleted_at: now }
-      ),
-      AdsSet.updateMany(
-        { _id: { $in: adsetIds } },
-        { status: "DELETED", deleted_at: now }
-      ),
-      AdsCampaign.findByIdAndUpdate(id, { status: "DELETED", deleted_at: now }),
-    ]);
+//     // Dù có token hay không → Xoá mềm trong DB
+//     const now = new Date();
+//     await Promise.all([
+//       Ads.updateMany(
+//         { set_id: { $in: adsetIds } },
+//         { status: "DELETED", deleted_at: now }
+//       ),
+//       AdsSet.updateMany(
+//         { _id: { $in: adsetIds } },
+//         { status: "DELETED", deleted_at: now }
+//       ),
+//       AdsCampaign.findByIdAndUpdate(id, { status: "DELETED", deleted_at: now }),
+//     ]);
 
-    return res.status(200).json({
-      success: true,
-      message: `Đã xoá chiến dịch "${campaign.name}" cùng toàn bộ nhóm quảng cáo & quảng cáo liên quan.`,
-    });
-  } catch (err) {
-    console.error("❌ Xoá Campaign cascade lỗi:", err);
-    return res.status(500).json({
-      message: "Xoá thất bại",
-      error: err.message,
-    });
-  }
-}
+//     return res.status(200).json({
+//       success: true,
+//       message: `Đã xoá chiến dịch "${campaign.name}" cùng toàn bộ nhóm quảng cáo & quảng cáo liên quan.`,
+//     });
+//   } catch (err) {
+//     console.error("❌ Xoá Campaign cascade lỗi:", err);
+//     return res.status(500).json({
+//       message: "Xoá thất bại",
+//       error: err.message,
+//     });
+//   }
+// }
