@@ -4,6 +4,8 @@ import { useAuth } from '../../../../hooks/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
 import { validateFullName, validateEmail, validatePhone, validatePassword, buildErrors } from '../../../../utils/validation'
 import './Register.css'
+import ReCAPTCHA from 'react-google-recaptcha'
+import {toast} from 'sonner'
 
 function Register({ onSwitchLogin }) {
     const [formData, setFormData] = useState({
@@ -16,7 +18,9 @@ function Register({ onSwitchLogin }) {
     const [errors, setErrors] = useState({})
     const [showVerificationForm, setShowVerificationForm] = useState(false)
     const [registeredEmail, setRegisteredEmail] = useState('')
-    
+    const [captchaToken, setCaptchaToken] = useState(null)
+    const [captchaKey, setCaptchaKey] = useState(0) // Key để reset CAPTCHA component
+
     const { register, loading } = useAuth()
 
     const validateForm = () => {
@@ -44,12 +48,24 @@ function Register({ onSwitchLogin }) {
         
         if (!validateForm()) return
         
-        const result = await register(formData, onSwitchLogin)
+        // Kiểm tra reCAPTCHA
+        if (!captchaToken) {
+            toast.warning('Vui lòng xác nhận bạn không phải là người máy!');
+            return
+        }
+
+        // Gửi kèm token qua backend để verify
+        const result = await register({ ...formData, captchaToken }, onSwitchLogin)
         
         if (result.success) {
             // Hiển thị form xác thực email thay vì chuyển sang login
             setRegisteredEmail(formData.email)
             setShowVerificationForm(true)
+        } else if (result.error && result.error.includes('CAPTCHA')) {
+            // Xử lý lỗi CAPTCHA từ backend
+            setErrors(prev => ({ ...prev, captcha: result.error }))
+            setCaptchaToken(null) // Reset CAPTCHA để user có thể thử lại
+            setCaptchaKey(prev => prev + 1) // Force re-render CAPTCHA component
         }
     }
 
@@ -78,7 +94,7 @@ function Register({ onSwitchLogin }) {
                     <div className="input-icon-auth"><User size={16} /></div>
                     <input 
                         placeholder="Họ và tên" 
-                        value={formData.name} 
+                        value={formData.full_name} 
                         onChange={(e) => handleInputChange('full_name', e.target.value)}
                         className={errors.full_name ? 'error' : ''}
                     />
@@ -123,6 +139,22 @@ function Register({ onSwitchLogin }) {
                     {errors.password && <div className="error-message">{errors.password}</div>}
                 </div>
     
+                {/* Google reCAPTCHA */}
+            <div className="captcha-box">
+                <ReCAPTCHA
+                    key={captchaKey}
+                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                    onChange={token => {
+                        setCaptchaToken(token)
+                        if (errors.captcha) {
+                            setErrors(prev => ({ ...prev, captcha: '' }))
+                        }
+                    }}
+                    onExpired={() => setCaptchaToken(null)}
+                />
+                {errors.captcha && <div className="error-message">{errors.captcha}</div>}
+            </div>
+
                 <button type="submit" className="btn-login-form" disabled={loading}>
                     {loading ? 'Đang xử lý...' : 'Đăng ký ngay'}
                 </button>
