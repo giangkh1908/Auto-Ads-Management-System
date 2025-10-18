@@ -1,6 +1,6 @@
 // src/routes/ads/adsSetRoutes.js
 import express from "express";
-import { listAdSetsCtrl, syncAdSetsCtrl, getAdSetsLiveCtrl, toggleAdsetStatusCtrl, deleteAdsetCascadeCtrl, getAdsetFromDatabase } from "../../controllers/ads/adsSet.controller.js";
+import { listAdSetsCtrl, syncAdSetsCtrl, getAdSetsLiveCtrl, toggleAdsetStatusCtrl, deleteAdsetCascadeCtrl, getAdsetFromDatabase, copyAdsetCascadeCtrl } from "../../controllers/ads/adsSet.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -16,6 +16,7 @@ router.get("/count", (req, res) => {
 router.get("/live", getAdSetsLiveCtrl);
 // Database endpoints
 router.get("/database", getAdsetFromDatabase);
+router.post("/:id/copy", copyAdsetCascadeCtrl);
 // Đồng bộ adsets từ Facebook
 router.get("/sync", syncAdSetsCtrl);
 

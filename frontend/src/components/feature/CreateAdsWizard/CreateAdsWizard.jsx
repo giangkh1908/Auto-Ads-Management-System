@@ -1,20 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import AdsDropdown from "../../common/AdsDropdown/AdsDropdown.jsx";
-import {
-  Megaphone,
-  ArrowRight,
-  MessageCircle,
-  Search,
-  Users,
-  ShoppingBag,
-  Folder,
-  Grid,
-  FileText,
-} from "lucide-react";
-import CampaignStep from "./CampaignStep";
-import AdsetStep from "./AdsetStep";
-import AdStep from "./AdStep";
-import Creative from "./Creative";
+import Control from "../CreateAdsWizard/Control/Control.jsx";
+import FooterWizard from "../CreateAdsWizard/FooterWizard/FooterWizard.jsx";
+import TargetStep from "../CreateAdsWizard/TargetStep/TargetStep.jsx";
+import CreateChild from "../CreateAdsWizard/CreateChild/CreateChild.jsx";
+import CampaignStep from "../CreateAdsWizard/CampaignStep/CampaignStep.jsx";
+import AdsetStep from "../CreateAdsWizard/AdsetStep/AdsetStep.jsx";
+import AdStep from "../CreateAdsWizard/AdStep/AdStep.jsx";
+import Creative from "./Creative/Creative.jsx";
 import "./CreateAdsWizard.css";
 import profileService from "../../../services/profileService";
 import {
@@ -22,6 +14,7 @@ import {
   updateAdsWizard,
 } from "../../../services/adsWizardService";
 import { useToast } from "../../../hooks/useToast";
+import axiosInstance from "../../../utils/axios";
 
 function CreateAdsWizard({
   onClose,
@@ -96,80 +89,22 @@ function CreateAdsWizard({
   const [ERROR_MESSAGE, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // State để quản lý dropdown trong Left Panel
-  const [openDropdown, setOpenDropdown] = useState({
-    campaign: false,
-    adset: false,
-    ad: false,
+  // Tab management
+  const [activeTab, setActiveTab] = useState("campaign"); // "campaign" or "child"
+
+
+  // Track completed steps so they don't change once completed
+  const [completedSteps, setCompletedSteps] = useState({
+    1: false,
+    2: false,
+    3: false,
+    4: false,
   });
 
-  //Objectives data with descriptions and suitable tags
-  // const objectivesData = {
-  //   AWARENESS: {
-  //     title: "Mức độ nhận biết",
-  //     description:
-  //       "Hiển thị quảng cáo cho những người có nhiều khả năng nhớ đến quảng cáo nhất",
-  //     suitableTags: [
-  //       "Số người tiếp cận",
-  //       "Mức độ nhận biết thương hiệu",
-  //       "Lượt xem video",
-  //       "Mức độ nhận biết về vị trí của hàng",
-  //     ],
-  //   },
-  //   TRAFFIC: {
-  //     title: "Lưu lượng truy cập",
-  //     description:
-  //       "Chuyển mọi người tới một đích đến nào đó, chẳng hạn như trang web, ứng dụng, trang cá nhân Instagram hoặc sự kiện trên Facebook",
-  //     suitableTags: [
-  //       "Lượt click vào liên kết",
-  //       "Lượt xem trang đích",
-  //       "Lượt truy cập vào trang cá nhân Instagram",
-  //       "Messenger, Instagram và WhatsApp",
-  //       "Cuộc gọi",
-  //     ],
-  //   },
-  //   ENGAGEMENT: {
-  //     title: "Lượt tương tác",
-  //     description:
-  //       "Tăng số tin nhắn, lượt mua qua tin nhắn, lượt xem video, lượt tương tác với bài viết, lượt thích Trang hoặc lượt phản hồi sự kiện",
-  //     suitableTags: [
-  //       "Messenger, Instagram và WhatsApp",
-  //       "Lượt xem video",
-  //       "Lượt tương tác với bài viết",
-  //       "Lượt chuyển đổi",
-  //       "Cuộc gọi",
-  //     ],
-  //   },
-  //   LEADS: {
-  //     title: "Khách hàng tiềm năng",
-  //     description:
-  //       "Tìm kiếm khách hàng tiềm năng cho doanh nghiệp hoặc thương hiệu của bạn",
-  //     suitableTags: [
-  //       "Trang web và mẫu phản hồi tức thì",
-  //       "Mẫu phản hồi tức thì",
-  //       "Messenger, Instagram và WhatsApp",
-  //       "Lượt chuyển dổi    ",
-  //       "Cuộc gọi",
-  //     ],
-  //   },
-  //   APP_PROMOTION: {
-  //     title: "Quảng cáo ứng dụng",
-  //     description:
-  //       "Thu hút những người mới cài đặt và tiếp tục sử dụng ứng dụng của bạnbạn",
-  //     suitableTags: ["Lượt cài đặt ứng dụng", "Sự kiện trong ứng dụng"],
-  //   },
-  //   SALES: {
-  //     title: "Doanh số",
-  //     description:
-  //       "Tìm những người có khả năng sẽ mua sản phẩm hoặc dịch vụ của bạn",
-  //     suitableTags: [
-  //       "Lượt chuyển đổi",
-  //       "Doanh số theo danh mục",
-  //       "Messenger, Instagram và WhatsApp",
-  //       "Cuộc gọi",
-  //     ],
-  //   },
-  // };
+  // refs for step validation
+  const campaignRef = useRef(null);
+  const adsetRef = useRef(null);
+  const adRef = useRef(null);
 
   // ========== Initial Data ==========
   const initialData = {
@@ -187,67 +122,97 @@ function CreateAdsWizard({
       budgetAmount: 2000000,
       placement: "AUTOMATIC",
       targeting: { location: "Việt Nam", ageMin: 18, ageMax: 45 },
+      conversion_event: "VIEW_CONTENT",
     },
     ad: {
-      name: "Quảng cáo mới",
-      page: "Fchat.vn",
-      media: "image",
-      mediaUrl: "",
-      primaryText: "Hãy giới thiệu về nội dung quảng cáo của bạn",
-      headline: "Chat trong Messenger",
-      description: "Khám phá dịch vụ của chúng tôi ngay!",
-      cta: "Gửi tin nhắn",
-      destinationUrl: "https://fchat.vn",
+      // name: "Quảng cáo mới",
+      // page: "Fchat.vn",
+      // media: "image",
+      // mediaUrl: "",
+      // primaryText: "Khám phá sản phẩm/dịch vụ tuyệt vời của chúng tôi! Chất lượng cao, giá cả hợp lý và dịch vụ chuyên nghiệp. Liên hệ ngay để được tư vấn miễn phí.",
+      // headline: "Sản phẩm/Dịch vụ chất lượng cao",
+      // description: "Đội ngũ chuyên nghiệp, kinh nghiệm lâu năm trong lĩnh vực. Cam kết mang đến trải nghiệm tốt nhất cho khách hàng.",
+      // cta: "Liên hệ ngay",
+      // destinationUrl: "https://fchat.vn",
     },
   };
 
-  const [campaign, setCampaign] = useState(initialData.campaign);
-  const [adset, setAdset] = useState(initialData.adset);
-  const [ad, setAd] = useState(initialData.ad);
+  // Support multiple campaigns/adsets/ads
+  const [campaignsList, setCampaignsList] = useState([initialData.campaign]);
+  const [selectedCampaignIndex, setSelectedCampaignIndex] = useState(0);
+  const [adsetsByCampaign, setAdsetsByCampaign] = useState([[initialData.adset]]);
+  const [adsByAdset, setAdsByAdset] = useState([[initialData.ad]]);
+  const [selectedAdsetIndex, setSelectedAdsetIndex] = useState(0);
+  const [selectedAdIndex, setSelectedAdIndex] = useState(0);
 
-  // 🟢 Định nghĩa các hàm xử lý (ở đây bạn có thể gọi API, mở modal, v.v.)
-  const onCopy = () => {
-    console.log("Copy campaign:", campaign.id);
-    // Gọi API copy campaign hoặc clone logic tại đây
-  };
-
-  const onDelete = () => {
-    console.log("Delete campaign:", campaign.id);
-    // Gọi API xóa campaign tại đây
-  };
-
-  // ========== Tạo nhóm quảng cáo ==========
-  const createAdset = () => {
-    console.log("Tạo ad set mới cho campaign:", campaign.id);
-    // Mở dropdown của campaign và chuyển đến step 2
-    setOpenDropdown({
-      campaign: true,
-      adset: false,
-      ad: false,
+  // Derived slices for currently selected campaign
+  const campaign = campaignsList[selectedCampaignIndex] || initialData.campaign;
+  const setCampaign = useCallback((updater) => {
+    setCampaignsList((prev) => {
+      const next = [...prev];
+      const current = prev[selectedCampaignIndex] || {};
+      const updated = typeof updater === 'function' ? updater(current) : updater;
+      next[selectedCampaignIndex] = updated;
+      return next;
     });
-    setWizardStep(2);
-  };
+  }, [selectedCampaignIndex]);
 
-  // ========== Tạo quảng cáo ==========
-  const createAd = () => {
-    console.log("Tạo ad mới cho ad set:", adset.id);
-    // Mở dropdown của adset và chuyển đến step 3
-    setOpenDropdown({
-      campaign: false,
-      adset: true,
-      ad: false,
+  const adsetsList = adsetsByCampaign[selectedCampaignIndex] || [initialData.adset];
+  const setAdsetsList = useCallback((updater) => {
+    setAdsetsByCampaign((prev) => {
+      // Ensure prev is an array
+      const prevArray = Array.isArray(prev) ? prev : [];
+      const next = prevArray.map((arr) => Array.isArray(arr) ? [...arr] : []);
+      const currentList = next[selectedCampaignIndex] || [];
+      const updatedList = typeof updater === 'function' ? updater(currentList) : updater;
+      next[selectedCampaignIndex] = updatedList;
+      return next;
     });
-    setWizardStep(3);
-  };
+  }, [selectedCampaignIndex]);
 
-  // Function để đóng tất cả dropdown
-  const closeAllDropdowns = () => {
-    setOpenDropdown({
-      campaign: false,
-      adset: false,
-      ad: false,
+  const adset = adsetsList[selectedAdsetIndex] || initialData.adset;
+  const setAdset = useCallback((updater) => {
+    setAdsetsList((prev) => {
+      // Ensure prev is an array
+      const prevArray = Array.isArray(prev) ? prev : [];
+      const next = [...prevArray];
+      const current = prevArray[selectedAdsetIndex] || {};
+      const updated = typeof updater === 'function' ? updater(current) : updater;
+      next[selectedAdsetIndex] = updated;
+      return next;
     });
-  };
+  }, [selectedAdsetIndex, setAdsetsList]);
+
+  const adsList = adsByAdset[0]?.[0] || [initialData.ad];
+  const setAdsList = useCallback((updater) => {
+    setAdsByAdset((prev) => {
+      // Ensure prev is an array
+      const prevArray = Array.isArray(prev) ? prev : [];
+      const next = prevArray.map((campaignAds) => Array.isArray(campaignAds) ? [...campaignAds] : []);
+      const currentCampaignAds = next[0] || [];
+      const currentAdsetAds = currentCampaignAds[0] || [];
+      const updatedAdsetAds = typeof updater === 'function' ? updater(currentAdsetAds) : updater;
+      currentCampaignAds[0] = updatedAdsetAds;
+      next[0] = currentCampaignAds;
+      return next;
+    });
+  }, []);
+
+  const ad = adsList[selectedAdIndex] || initialData.ad;
+  const setAd = useCallback((updater) => {
+    setAdsList((prev) => {
+      // Ensure prev is an array
+      const prevArray = Array.isArray(prev) ? prev : [];
+      const next = [...prevArray];
+      const current = prevArray[selectedAdIndex] || {};
+      const updated = typeof updater === 'function' ? updater(current) : updater;
+      next[selectedAdIndex] = updated;
+      return next;
+    });
+  }, [selectedAdIndex, setAdsList]);
+
+  // Copy/Delete moved into Control component
+
   // Lock background scroll while wizard is open
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -265,8 +230,6 @@ function CreateAdsWizard({
         behavior: "smooth",
       });
     }
-    // Đóng tất cả dropdown khi chuyển step
-    closeAllDropdowns();
   }, [wizardStep]);
 
   // Load connected Facebook pages for selection
@@ -317,21 +280,14 @@ function CreateAdsWizard({
       if (mode !== "edit" || !editingItem || !selectedAccountId) {
         console.log("🔍 Early return:", {
           mode,
-          hasEditingItem: !!editingItem,
-          hasSelectedAccountId: !!selectedAccountId,
+          // hasEditingItem: !!editingItem,
+          // hasSelectedAccountId: !!selectedAccountId,
         });
         return;
       }
 
       // Tìm ID trong các trường có thể có
-      let rawItemId =
-        editingItem.id ||
-        editingItem._id ||
-        editingItem.campaign_id ||
-        editingItem.adset_id ||
-        editingItem.ad_id ||
-        editingItem.creative_id ||
-        editingItem.set_id;
+      let rawItemId = editingItem.id || editingItem._id || editingItem.campaign_id || editingItem.adset_id || editingItem.ad_id || editingItem.creative_id || editingItem.set_id;
 
       // Nếu không tìm thấy ID, thử tìm trong toàn bộ object
       if (!rawItemId) {
@@ -343,15 +299,6 @@ function CreateAdsWizard({
 
       setLoading(true);
       try {
-        const token =
-          localStorage.getItem("accessToken") ||
-          localStorage.getItem("auth_token") ||
-          localStorage.getItem("token");
-        if (!token) return;
-
-        const headers = { Authorization: `Bearer ${token}` };
-        const API_BASE = "http://localhost:5001/api";
-
         // Determine campaign ID based on editing item type
         let campaignId = null;
         let campaignData = null;
@@ -365,23 +312,20 @@ function CreateAdsWizard({
           console.log("📋 Campaign ID:", campaignId);
         } else if (editingItem.type === "adset") {
           // Nếu edit adset, tìm campaign ID từ adset
-
-          const adsetRes = await fetch(
-            `${API_BASE}/adsets/database?adset_id=${itemId}`,
-            { headers }
-          );
-          const adsetJson = await adsetRes.json();
+          const adsetRes = await axiosInstance.get("/api/adsets/database", {
+            params: { adset_id: itemId },
+          });
+          const adsetJson = adsetRes.data;
           console.log("📋 Adset response:", adsetJson);
           adsetData = adsetJson.data;
           campaignId = adsetData?.campaign_id;
         } else if (editingItem.type === "ad") {
           // Nếu edit ad, tìm campaign ID từ ad
           console.log("🔍 Fetching ad data for ID:", itemId);
-          const adRes = await fetch(
-            `${API_BASE}/ads/database?ad_id=${itemId}`,
-            { headers }
-          );
-          const adJson = await adRes.json();
+          const adRes = await axiosInstance.get("/api/ads/database", {
+            params: { ad_id: itemId },
+          });
+          const adJson = adRes.data;
           console.log("📋 Ad response:", adJson);
           adData = adJson.data;
 
@@ -391,11 +335,10 @@ function CreateAdsWizard({
               "🔍 Ad không có campaign_id, tìm qua set_id:",
               adData.set_id
             );
-            const adsetRes = await fetch(
-              `${API_BASE}/adsets/database?adset_id=${adData.set_id}`,
-              { headers }
-            );
-            const adsetJson = await adsetRes.json();
+            const adsetRes = await axiosInstance.get("/api/adsets/database", {
+              params: { adset_id: adData.set_id },
+            });
+            const adsetJson = adsetRes.data;
             console.log("📋 Adset response for campaign lookup:", adsetJson);
 
             if (adsetJson.success && adsetJson.data) {
@@ -413,11 +356,10 @@ function CreateAdsWizard({
 
         // Fetch campaign data từ database
         console.log("🔍 Fetching campaign data for ID:", campaignId);
-        const campaignRes = await fetch(
-          `${API_BASE}/campaigns/database?campaign_id=${campaignId}`,
-          { headers }
-        );
-        const campaignJson = await campaignRes.json();
+        const campaignRes = await axiosInstance.get("/api/campaigns/database", {
+          params: { campaign_id: campaignId },
+        });
+        const campaignJson = campaignRes.data;
         console.log("📋 Campaign response:", campaignJson);
         campaignData = campaignJson.data;
 
@@ -442,11 +384,10 @@ function CreateAdsWizard({
 
         // Fetch adset data từ database
         if (!adsetData) {
-          const adsetsRes = await fetch(
-            `${API_BASE}/adsets/database?campaign_id=${campaignId}`,
-            { headers }
-          );
-          const adsetsJson = await adsetsRes.json();
+          const adsetsRes = await axiosInstance.get("/api/adsets/database", {
+            params: { campaign_id: campaignId },
+          });
+          const adsetsJson = adsetsRes.data;
           const adsetsData = adsetsJson.data || [];
           adsetData =
             editingItem.type === "adset"
@@ -462,6 +403,8 @@ function CreateAdsWizard({
             name: adsetData.name || "Nhóm quảng cáo mới",
             budgetType: adsetData.daily_budget ? "daily" : "lifetime",
             budgetAmount: adsetData.daily_budget || adsetData.lifetime_budget,
+            start_time: adsetData.start_time,
+            end_time: adsetData.end_time,
             schedule: {
               start: adsetData.start_time
                 ? new Date(adsetData.start_time).toISOString().split("T")[0]
@@ -477,19 +420,19 @@ function CreateAdsWizard({
               ageMax: 65,
             },
             optimization_goal: adsetData.optimization_goal,
+            conversion_event: adsetData.conversion_event,
             billing_event: adsetData.billing_event,
             bid_strategy: adsetData.bid_strategy,
-            bid_amount: adsetData.bid_amount,
+            bid_amount: adsetData.bid_amount,  
           });
         }
 
         // Fetch ad data từ database
         if (!adData) {
-          const adsRes = await fetch(
-            `${API_BASE}/ads/database?campaign_id=${campaignId}`,
-            { headers }
-          );
-          const adsJson = await adsRes.json();
+          const adsRes = await axiosInstance.get("/api/ads/database", {
+            params: { campaign_id: campaignId },
+          });
+          const adsJson = adsRes.data;
           const adsData = adsJson.data || [];
           adData =
             editingItem.type === "ad"
@@ -500,11 +443,13 @@ function CreateAdsWizard({
         if (adData) {
           // Fetch creative data từ database
           if (adData.creative_id) {
-            const creativeRes = await fetch(
-              `${API_BASE}/creatives/database?creative_id=${adData.creative_id}`,
-              { headers }
+            const creativeRes = await axiosInstance.get(
+              "/api/creatives/database",
+              {
+                params: { creative_id: adData.creative_id },
+              }
             );
-            const creativeJson = await creativeRes.json();
+            const creativeJson = creativeRes.data;
             creativeData = creativeJson.data;
           }
 
@@ -538,15 +483,21 @@ function CreateAdsWizard({
         }
       } catch (e) {
         console.log("Failed to load update data from database:", e);
-        toast.error("Không tải được dữ liệu", {
-          description: "Vui lòng thử lại hoặc kiểm tra kết nối mạng",
-        });
+        if (e?.response?.status === 401) {
+          toast.error("Phiên đăng nhập đã hết hạn", {
+            description: "Vui lòng đăng nhập lại để tiếp tục",
+          });
+        } else {
+          toast.error("Không tải được dữ liệu", {
+            description: "Vui lòng thử lại hoặc kiểm tra kết nối mạng",
+          });
+        }
       } finally {
         setLoading(false);
       }
     };
     loadUpdateData();
-  }, [mode, editingItem, selectedAccountId, toast, findIdInObject]);
+  }, [mode, editingItem, selectedAccountId, toast, findIdInObject, setCampaign, setAdset, setAd]);
 
   // ========== Prefill khi edit (đã được thay thế bằng loadUpdateData) ==========
   // Logic cũ đã được loại bỏ để sử dụng dữ liệu từ database thay vì data tĩnh
@@ -693,9 +644,21 @@ function CreateAdsWizard({
           ? new Date(adset.schedule.end).toISOString()
           : null,
         optimization_goal: adset.optimization_goal,
+        conversion_event: adset.conversion_event,
         billing_event: adset.billing_event,
         bid_strategy: adset.bid_strategy,
         bid_amount: adset.bid_amount,
+        // Pixel/conversion for SALES objective
+        ...(fbObjective === "OUTCOME_SALES" && adset.pixel_id
+          ? {
+              promoted_object: {
+                pixel_id: adset.pixel_id,
+                ...(adset.conversion_event
+                  ? { custom_event_type: adset.conversion_event }
+                  : {}),
+              },
+            }
+          : {}),
       },
 
       ad: {
@@ -720,413 +683,156 @@ function CreateAdsWizard({
     setError(null);
     setSuccess(false);
 
-    // Show loading toast
-    toast.info("Đang tạo quảng cáo...", {
-      description: "Vui lòng chờ trong giây lát",
-    });
-
     try {
       const payload = buildPayload();
 
       // Validate ad_account_id
       if (!payload.ad_account_id) {
-        toast.warning("Thiếu thông tin tài khoản quảng cáo", {
-          description: "Vui lòng chọn tài khoản quảng cáo hợp lệ",
-        });
         throw new Error("Thiếu ad_account_id hoặc access_token.");
       }
 
-      let result;
       if (mode === "edit") {
-        console.log("🛠 Gửi yêu cầu cập nhật Wizard:", payload);
-        toast.info("Đang cập nhật quảng cáo...", {
-          description: "Đang đồng bộ dữ liệu với Facebook",
-        });
-        result = await updateAdsWizard(payload);
+        await updateAdsWizard(payload);
       } else {
-        console.log("🚀 Gửi yêu cầu tạo mới Wizard:", payload);
-        toast.info("Đang tạo quảng cáo...", {});
-        result = await publishAdsWizard(payload);
+        await publishAdsWizard(payload);
       }
 
-      console.log("✅ Thành công:", result);
       setSuccess(true);
 
       // Show success toast
       if (mode === "edit") {
-        toast.success("Cập nhật quảng cáo thành công!", {
-          // description: ""
-        });
+        toast.success("Cập nhật quảng cáo thành công!");
       } else {
-        toast.success("Tạo quảng cáo thành công!", {
-          // description: ""
-        });
+        toast.success("Tạo quảng cáo thành công!");
       }
 
       setTimeout(() => {
         setLoading(false);
-        onSuccess?.(); // Call refresh callback
+        onSuccess?.();
         onClose?.();
       }, 1200);
     } catch (err) {
       console.error("❌ Lỗi khi xử lý quảng cáo:", err);
       setLoading(false);
-      setError(err.message || "Không thể xử lý quảng cáo");
 
-      // Show error toast based on error type
-      let errorMessage = "Không thể xử lý quảng cáo";
-      let errorDescription = "Vui lòng thử lại sau";
-
-      if (err.message) {
-        if (err.message.includes("facebookPageId")) {
-          errorMessage = "Thiếu thông tin Facebook Page";
-          errorDescription =
-            "Vui lòng chọn trang Facebook trước khi tạo quảng cáo";
-          toast.warning(errorMessage, { description: errorDescription });
-        } else if (err.message.includes("ad_account_id")) {
-          errorMessage = "Thiếu thông tin tài khoản quảng cáo";
-          errorDescription = "Vui lòng chọn tài khoản quảng cáo hợp lệ";
-          toast.warning(errorMessage, { description: errorDescription });
-        } else if (
-          err.message.includes("Bad signature") ||
-          err.message.includes("190")
-        ) {
-          errorMessage = "Lỗi xác thực Facebook";
-          errorDescription = "Token Facebook không hợp lệ hoặc đã hết hạn";
-          toast.error(errorMessage, { description: errorDescription });
-        } else if (
-          err.message.includes("Invalid parameter") ||
-          err.message.includes("100")
-        ) {
-          errorMessage = "Tham số không hợp lệ";
-          errorDescription = "Vui lòng kiểm tra lại thông tin nhập vào";
-          toast.warning(errorMessage, { description: errorDescription });
-        } else if (
-          err.message.includes("bid") ||
-          err.message.includes("2490487")
-        ) {
-          errorMessage = "Thiếu thông tin giá thầu";
-          errorDescription =
-            "Đã cấu hình chiến lược giá thầu LOWEST_COST_WITH_BID_CAP với bid_amount = 1000 VND";
-          toast.warning(errorMessage, { description: errorDescription });
-        } else {
-          toast.error(errorMessage, { description: err.message });
-        }
-      } else {
-        toast.error(errorMessage, { description: errorDescription });
+      // Chỉ hiển thị thông điệp lỗi từ Facebook (error_user_msg)
+      const data = err?.response?.data || {};
+      const fbMsg = data.error_user_msg || null;
+      setError(fbMsg || null);
+      if (fbMsg) {
+        toast.error(mode === "edit" ? "Cập nhật quảng cáo thất bại" : "Tạo quảng cáo thất bại", {
+          description: fbMsg,
+        });
       }
+      // Không hiển thị thông báo nào khác nếu không có error_user_msg
     }
   };
 
   return (
     <div className="ads-modal-overlay" role="dialog" aria-modal="true">
-      <div className="ads-modal">
+      <div className={`ads-modal ${(activeTab === "child" && wizardStep === 0) ? "child-tab" : "campaign-tab"}`}>
         <div className="ads-modal-header">
-          <div className="ads-modal-title">
-            {mode === "edit"
-              ? `Chỉnh sửa ${
-                  editingItem?.type === "campaign"
-                    ? "chiến dịch"
-                    : editingItem?.type === "adset"
-                    ? "nhóm quảng cáo"
-                    : "quảng cáo"
-                }`
-              : "Tạo chiến dịch"}
-          </div>
+          {wizardStep === 0 && (
+            <div className="ads-modal-tabs">
+              <button 
+                className={`tab-button-campaign ${activeTab === "campaign" ? "active" : "inactive"}`}
+                onClick={() => setActiveTab("campaign")}
+              >
+                {mode === "edit"
+                  ? `Chỉnh sửa ${
+                      editingItem?.type === "campaign"
+                        ? "chiến dịch"
+                        : editingItem?.type === "adset"
+                        ? "nhóm quảng cáo"
+                        : "quảng cáo"
+                    }`
+                  : "Tạo chiến dịch"}
+              </button>
+              <button 
+                className={`tab-button-campaign ${activeTab === "child" ? "active" : "inactive"}`}
+                onClick={() => setActiveTab("child")}
+              >
+                Nhóm quảng cáo hoặc quảng cáo mới
+              </button>
+            </div>
+          )}
+          {wizardStep > 0 && (
+            <div className="ads-modal-title">
+              {mode === "edit"
+                ? `Chỉnh sửa ${
+                    editingItem?.type === "campaign"
+                      ? "chiến dịch"
+                      : editingItem?.type === "adset"
+                      ? "nhóm quảng cáo"
+                      : "quảng cáo"
+                  }`
+                : "Tạo chiến dịch"}
+            </div>
+          )}
           {/* <button className="ads-modal-close" onClick={onClose}>✕</button> */}
         </div>
 
         <div className="ads-modal-body">
+          {(activeTab === "campaign" || wizardStep > 0) ? (
+            <>
           {/* Unified Left Panel - Campaign Hierarchy (hidden for step 0) */}
           {wizardStep > 0 && (
-            <div className="wizard-sidebar">
-              <div className="hierarchy-container">
-                <div className="hierarchy-list">
-                  <div
-                    className={`hierarchy-item campaign-item ${
-                      wizardStep === 1
-                        ? "current"
-                        : wizardStep > 1
-                        ? "completed"
-                        : ""
-                    }`}
-                    onClick={() => setWizardStep(1)}
-                  >
-                    <div className="hierarchy-icon">
-                      <Folder size={16} />
-                    </div>
-                    <div className="hierarchy-content">
-                      <div className="hierarchy-label">Chiến dịch</div>
-                      <div className="hierarchy-name">{campaign.name}</div>
-                    </div>
-                    <div
-                      className="hierarchy-status-actions"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="hierarchy-status">
-                        {wizardStep > 1 ? "✓" : wizardStep === 1 ? "●" : ""}
-                      </div>
-                      {/* Dropdown cho campaign */}
-                      {/* Campaign */}
-                      <AdsDropdown
-                        onCopy={onCopy}
-                        onDelete={onDelete}
-                        onCreateAdset={createAdset}
-                        isOpen={openDropdown.campaign}
-                        onClose={() =>
-                          setOpenDropdown((prev) => ({
-                            ...prev,
-                            campaign: false,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div
-                    className={`hierarchy-item adset-item ${
-                      wizardStep === 2
-                        ? "current"
-                        : wizardStep > 2
-                        ? "completed"
-                        : ""
-                    }`}
-                    onClick={() => setWizardStep(2)}
-                  >
-                    <div className="hierarchy-icon">
-                      <Grid size={16} />
-                    </div>
-                    <div className="hierarchy-content">
-                      <div className="hierarchy-label">Nhóm quảng cáo</div>
-                      <div className="hierarchy-name">{adset.name}</div>
-                    </div>
-                    <div
-                      className="hierarchy-status-actions"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="hierarchy-status">
-                        {wizardStep > 2 ? "✓" : wizardStep === 2 ? "●" : ""}
-                      </div>
-                      {/* Dropdown cho adset */}
-                      {/* Adset */}
-                      <AdsDropdown
-                        onCopy={onCopy}
-                        onDelete={onDelete}
-                        onCreateAd={createAd}
-                        isOpen={openDropdown.adset}
-                        onClose={() =>
-                          setOpenDropdown((prev) => ({ ...prev, adset: false }))
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div
-                    className={`hierarchy-item ad-item ${
-                      wizardStep === 3
-                        ? "current"
-                        : wizardStep > 3
-                        ? "completed"
-                        : ""
-                    }`}
-                    onClick={() => setWizardStep(3)}
-                  >
-                    <div className="hierarchy-icon">
-                      <FileText size={16} />
-                    </div>
-                    <div className="hierarchy-content">
-                      <div className="hierarchy-label">Quảng cáo</div>
-                      <div className="hierarchy-name">{ad.name}</div>
-                    </div>
-                    <div
-                      className="hierarchy-status-actions"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="hierarchy-status">
-                        {wizardStep > 3 ? "✓" : wizardStep === 3 ? "●" : ""}
-                      </div>
-                      {/* Dropdown cho ad */}
-                      {/* Ad */}
-                      <AdsDropdown onCopy={onCopy} onDelete={onDelete} />
-                    </div>
-                  </div>
-
-                  <div
-                    className={`hierarchy-item creative-item ${
-                      wizardStep === 4 ? "current" : ""
-                    }`}
-                    onClick={() => setWizardStep(4)}
-                  >
-                    <div className="hierarchy-icon">
-                      <FileText size={16} />
-                    </div>
-                    <div className="hierarchy-content">
-                      <div className="hierarchy-label">Xem trước</div>
-                      <div className="hierarchy-name">Creative Preview</div>
-                    </div>
-                    <div
-                      className="hierarchy-status-actions"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="hierarchy-status">
-                        {wizardStep === 4 ? "●" : ""}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <Control
+              wizardStep={wizardStep}
+              setWizardStep={setWizardStep}
+              completedSteps={completedSteps}
+              campaignsList={campaignsList}
+              setSelectedCampaignIndex={setSelectedCampaignIndex}
+              adsetsByCampaign={adsetsByCampaign}
+              adsByAdset={adsByAdset}
+              setSelectedAdsetIndex={setSelectedAdsetIndex}
+              setSelectedAdIndex={setSelectedAdIndex}
+            />
           )}
 
           <div className="wizard-content" ref={contentRef}>
             {wizardStep === 0 && (
-              <div className="panel objectives-panel">
-                <div className="objectives-layout">
-                  {/* Left Panel - Objectives List */}
-                  <div className="objectives-sidebar">
-                    <div className="objectives-title">
-                      Chọn mục tiêu chiến dịch
-                    </div>
-                    <div className="objectives-list">
-                      {[
-                        {
-                          key: "AWARENESS",
-                          icon: <Megaphone size={16} />,
-                          label: "Nhận biết thương hiệu",
-                        },
-                        {
-                          key: "TRAFFIC",
-                          icon: <ArrowRight size={16} />,
-                          label: "Lưu lượng truy cập",
-                        },
-                        {
-                          key: "ENGAGEMENT",
-                          icon: <MessageCircle size={16} />,
-                          label: "Tương tác",
-                        },
-                        {
-                          key: "LEADS",
-                          icon: <Search size={16} />,
-                          label: "Khách hàng tiềm năng",
-                        },
-                        {
-                          key: "APP_PROMOTION",
-                          icon: <Users size={16} />,
-                          label: "Quảng bá ứng dụng",
-                        },
-                        {
-                          key: "SALES",
-                          icon: <ShoppingBag size={16} />,
-                          label: "Doanh số",
-                        },
-                      ].map((item) => (
-                        <label
-                          key={item.key}
-                          className={`objective-item ${
-                            campaign.objective === item.key ? "selected" : ""
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="objective"
-                            value={item.key}
-                            checked={campaign.objective === item.key}
-                            onChange={(e) =>
-                              setCampaign((prev) => ({
-                                ...prev,
-                                objective: e.target.value,
-                              }))
-                            }
-                          />
-                          <div className="objective-icon">{item.icon}</div>
-                          <div className="objective-label">
-                            <span className="objective-name">{item.label}</span>
-                            {item.key === "ENGAGEMENT" && (
-                              <span className="recommended-tag">Đề xuất</span>
-                            )}
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Right Panel - Objective Details */}
-                  <div className="objective-details">
-                    <div className="objective-image-placeholder">
-                      <div className="placeholder-circle"></div>
-                    </div>
-                    <div className="objective-detail-title">
-                      {{
-                        AWARENESS: "Nhận biết thương hiệu",
-                        TRAFFIC: "Lưu lượng truy cập",
-                        ENGAGEMENT: "Tương tác",
-                        LEADS: "Khách hàng tiềm năng",
-                        APP_PROMOTION: "Quảng bá ứng dụng",
-                        SALES: "Doanh số",
-                      }[campaign.objective] || "Chọn mục tiêu"}
-                    </div>
-                    <div className="objective-description">
-                      {{
-                        AWARENESS:
-                          "Tăng mức độ nhận biết thương hiệu hoặc sản phẩm của bạn.",
-                        TRAFFIC:
-                          "Tăng lượng truy cập vào website, app hoặc trang đích.",
-                        ENGAGEMENT:
-                          "Khuyến khích người dùng tương tác với bài viết, trang, hoặc tin nhắn.",
-                        LEADS:
-                          "Thu thập thông tin khách hàng tiềm năng qua form, tin nhắn hoặc gọi điện.",
-                        APP_PROMOTION:
-                          "Khuyến khích người dùng cài đặt hoặc tương tác với ứng dụng.",
-                        SALES:
-                          "Tăng doanh số thông qua website, app hoặc cửa hàng trực tuyến.",
-                      }[campaign.objective] ||
-                        "Hãy chọn một mục tiêu để xem mô tả chi tiết."}
-                    </div>
-                    <div className="suitable-for-section">
-                      <div className="suitable-for-title">Phù hợp với</div>
-                      <div className="suitable-tags">
-                        {{
-                          AWARENESS: [
-                            "Doanh nghiệp mới",
-                            "Thương hiệu cần lan tỏa",
-                          ],
-                          TRAFFIC: ["Website", "Landing page", "Ứng dụng"],
-                          ENGAGEMENT: ["Fanpage", "Bài đăng", "Cộng đồng"],
-                          LEADS: ["Form đăng ký", "Tin nhắn", "Tư vấn"],
-                          APP_PROMOTION: [
-                            "Nhà phát triển app",
-                            "Công ty công nghệ",
-                          ],
-                          SALES: ["Thương mại điện tử", "Cửa hàng online"],
-                        }[campaign.objective]?.map((tag, index) => (
-                          <span key={index} className="suitable-tag">
-                            {tag}
-                          </span>
-                        )) || <span className="suitable-tag">—</span>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  <TargetStep campaign={campaign} setCampaign={setCampaign} />
             )}
 
             {/* Campaign Details Panel */}
             {wizardStep === 1 && (
               <CampaignStep
+                ref={campaignRef}
                 campaign={campaign}
                 setCampaign={setCampaign}
+                campaignsList={campaignsList}
+                setCampaignsList={setCampaignsList}
+                selectedCampaignIndex={selectedCampaignIndex}
+                setSelectedCampaignIndex={setSelectedCampaignIndex}
                 facebookPages={facebookPages}
               />
             )}
 
             {/* Adset Details Panel */}
             {wizardStep === 2 && (
-              <AdsetStep adset={adset} setAdset={setAdset} mode={mode} />
+              <AdsetStep
+                ref={adsetRef}
+                adset={adset}
+                setAdset={setAdset}
+                mode={mode}
+                objective={campaign.objective}
+                adsetsList={adsetsList}
+                setAdsetsList={setAdsetsList}
+              />
             )}
 
             {/* Ad Details Panel */}
             {wizardStep === 3 && (
-              <AdStep ad={ad} setAd={setAd} mode={mode} campaign={campaign} />
+              <AdStep
+                ref={adRef}
+                ad={ad}
+                setAd={setAd}
+                mode={mode}
+                campaign={campaign}
+                adsList={adsList}
+                setAdsList={setAdsList}
+              />
             )}
 
             {/* Creative Preview Panel */}
@@ -1134,73 +840,43 @@ function CreateAdsWizard({
               <Creative ad={ad} campaign={campaign} adset={adset} />
             )}
           </div>
-        </div>
-
-        {/* Wizard Footer */}
-        <div className="ads-modal-footer">
-          {wizardStep === 0 ? (
-            <>
-              <button className="btn-secondary" onClick={onClose}>
-                Hủy
-              </button>
-              <div className="spacer" />
-              <button
-                className="btn-primary"
-                onClick={() => setWizardStep((prev) => Math.min(3, prev + 1))}
-              >
-                Tiếp tục
-              </button>
             </>
           ) : (
-            <>
-              <button className="btn-secondary" onClick={onClose}>
-                Đóng
-              </button>
-              <div className="spacer" />
-              {wizardStep > 0 && (
-                <button
-                  className="btn-secondary"
-                  onClick={() => setWizardStep((prev) => Math.max(0, prev - 1))}
-                >
-                  Quay lại
-                </button>
-              )}
-              {wizardStep < 3 && (
-                <button
-                  className="btn-primary"
-                  onClick={() => setWizardStep((prev) => Math.min(4, prev + 1))}
-                >
-                  Tiếp tục
-                </button>
-              )}
-              {wizardStep === 3 && (
-                <button
-                  className="btn-primary"
-                  onClick={() => setWizardStep(4)}
-                >
-                  Xem trước
-                </button>
-              )}
-              {wizardStep === 4 && (
-                <>
-                  <button
-                    className="btn-post"
-                    onClick={handlePublish}
-                    disabled={loading}
-                  >
-                    {loading
-                      ? "Đang xử lý..."
-                      : success
-                      ? "Thành công!"
-                      : mode === "edit"
-                      ? "Cập nhật"
-                      : "Đăng quảng cáo"}
-                  </button>
-                </>
-              )}
-            </>
+            /* CreateChild Mode - Full Width */
+            <div className="create-child-full-mode">
+              <CreateChild
+                onClose={() => setActiveTab("campaign")}
+                onSave={(data) => {
+                  console.log("CreateChild data:", data);
+                  // Handle save logic here
+                  setActiveTab("campaign");
+                }}
+                isFullMode={true}
+              />
+            </div>
           )}
         </div>
+
+        {/* Wizard Footer - Show in campaign mode or when wizardStep > 0 */}
+        {(activeTab === "campaign" || wizardStep > 0) && (
+          <FooterWizard
+            wizardStep={wizardStep}
+            setWizardStep={setWizardStep}
+            completedSteps={completedSteps}
+            setCompletedSteps={setCompletedSteps}
+            campaign={campaign}
+            adset={adset}
+            ad={ad}
+            campaignRef={campaignRef}
+            adsetRef={adsetRef}
+            adRef={adRef}
+            loading={loading}
+            success={success}
+            mode={mode}
+            onClose={onClose}
+            handlePublish={handlePublish}
+          />
+        )}
       </div>
     </div>
   );

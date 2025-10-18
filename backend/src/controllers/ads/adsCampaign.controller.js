@@ -364,16 +364,16 @@ export async function toggleCampaignStatusCtrl(req, res) {
 //           if (ad.external_id) await deleteEntity(ad.external_id, accessToken);
 //         }
 
-//         console.log(
-//           `🧹 Đã xoá thật campaign ${campaign.name} và ${adsets.length} adsets trên Facebook.`
-//         );
-//       } catch (fbErr) {
-//         console.warn(
-//           "⚠️ Lỗi khi xoá campaign trên Facebook:",
-//           fbErr?.response?.data || fbErr.message
-//         );
-//       }
-//     }
+        console.log(
+          `🧹 Đã xoá campaign ${campaign.name} và ${adsets.length} adsets trên Facebook.`
+        );
+      } catch (fbErr) {
+        console.warn(
+          "⚠️ Lỗi khi xoá campaign trên Facebook:",
+          fbErr?.response?.data || fbErr.message
+        );
+      }
+    }
 
 //     // Dù có token hay không → Xoá mềm trong DB
 //     const now = new Date();
@@ -389,15 +389,106 @@ export async function toggleCampaignStatusCtrl(req, res) {
 //       AdsCampaign.findByIdAndUpdate(id, { status: "DELETED", deleted_at: now }),
 //     ]);
 
-//     return res.status(200).json({
-//       success: true,
-//       message: `Đã xoá chiến dịch "${campaign.name}" cùng toàn bộ nhóm quảng cáo & quảng cáo liên quan.`,
-//     });
-//   } catch (err) {
-//     console.error("❌ Xoá Campaign cascade lỗi:", err);
-//     return res.status(500).json({
-//       message: "Xoá thất bại",
-//       error: err.message,
-//     });
-//   }
-// }
+    return res.status(200).json({
+      success: true,
+      message: `Đã xoá chiến dịch "${campaign.name}" cùng toàn bộ nhóm quảng cáo & quảng cáo liên quan.`,
+    });
+  } catch (err) {
+    console.error("❌ Xoá Campaign cascade lỗi:", err);
+    return res.status(500).json({
+      message: "Xoá thất bại",
+      error: err.message,
+    });
+  }
+}
+
+/**
+ * POST /api/campaigns/:id/copy
+ * Tạo bản sao Campaign kèm toàn bộ AdSet và Ad con (DB only, không gọi Facebook)
+ */
+export async function copyCampaignCascadeCtrl(req, res) {
+  try {
+    const { id } = req.params;
+    const source = await AdsCampaign.findById(id);
+    if (!source) return res.status(404).json({ message: "Không tìm thấy chiến dịch." });
+
+    // 1) Tạo campaign mới
+    const newCampaign = await AdsCampaign.create({
+      name: `${source.name || "Chiến dịch"} (bản sao)`,
+      objective: source.objective,
+      status: "IN_PROCESS",
+      account_id: source.account_id,
+      shop_id: source.shop_id,
+      page_id: source.page_id,
+      page_name: source.page_name,
+      daily_budget: source.daily_budget,
+      lifetime_budget: source.lifetime_budget,
+      start_time: source.start_time,
+      stop_time: source.stop_time,
+      external_id: null,
+      external_account_id: source.external_account_id,
+    });
+
+    // 2) Lấy tất cả adsets của source
+    const srcAdsets = await AdsSet.find({ campaign_id: source._id }).lean();
+    const idMap = new Map(); // map source adset _id -> new adset _id
+
+    for (const s of srcAdsets) {
+      const created = await AdsSet.create({
+        campaign_id: newCampaign._id,
+        external_account_id: s.external_account_id,
+        name: `${s.name || "Nhóm quảng cáo"} (bản sao)`,
+        status: "IN_PROCESS",
+        configured_status: s.configured_status,
+        effective_status: s.effective_status,
+        optimization_goal: s.optimization_goal,
+        billing_event: s.billing_event,
+        bid_strategy: s.bid_strategy,
+        bid_amount: s.bid_amount,
+        pixel_id: s.pixel_id,
+        conversion_event: s.conversion_event,
+        promoted_object: s.promoted_object,
+        targeting: s.targeting,
+        daily_budget: s.daily_budget,
+        lifetime_budget: s.lifetime_budget,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        external_id: null,
+      });
+      idMap.set(String(s._id), created._id);
+    }
+
+    // 3) Copy ads của từng adset
+    const srcAdsetIds = srcAdsets.map((a) => a._id);
+    const srcAds = await Ads.find({ set_id: { $in: srcAdsetIds } }).lean();
+    const newAds = [];
+    for (const a of srcAds) {
+      const newSetId = idMap.get(String(a.set_id));
+      if (!newSetId) continue;
+      const createdAd = await Ads.create({
+        name: `${a.name || "Quảng cáo"} (bản sao)`,
+        status: "IN_PROCESS",
+        external_id: null,
+        external_account_id: a.external_account_id,
+        set_id: newSetId,
+        campaign_id: newCampaign._id,
+        effective_status: a.effective_status,
+        creative: a.creative,
+      });
+      newAds.push(createdAd);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Đã sao chép chiến dịch cùng AdSet & Ad.",
+      data: {
+        campaign: newCampaign,
+        adsets: Array.from(idMap.values()),
+        adsCount: newAds.length,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Copy campaign cascade lỗi:", err);
+    return res.status(500).json({ message: "Copy thất bại", error: err.message });
+  }
+}

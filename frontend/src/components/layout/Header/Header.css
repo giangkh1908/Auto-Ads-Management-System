@@ -185,10 +185,10 @@ a {
   left: 400px;
 }
 
-.nav-btn {
+.nav-btn,
+.nav-btn-2 {
   background: transparent;
   border: none;
-  color: #333;
   font-weight: 500;
   font-size: 15px;
   border-radius: 8px;
@@ -200,13 +200,24 @@ a {
   gap: 6px;
 }
 
-.nav-btn:hover {
-  border-bottom: 3px solid #ffffff;
+.nav-btn {
+  color: #333;
 }
 
-.nav-btn.active {
-  border-bottom: 2px solid #ffffff;
+.nav-btn-2 {
+  color: #fff;
 }
+
+.nav-btn:hover,
+.nav-btn-2:hover {
+  border-bottom: 3px solid #fff;
+}
+
+.nav-btn.active,
+.nav-btn-2.active {
+  border-bottom: 2px solid #fff;
+}
+
 
 .btn-login {
   /* Thuộc tính riêng cho nút Login */
@@ -243,18 +254,18 @@ a {
   color: #ffffff;
 }
 
-.app-header.scrolled .nav-btn {
-  color: #5374a7;
+.app-header.scrolled .nav-btn-2 {
+  color: #055df2;
 }
 
-.app-header.scrolled .nav-btn:hover {
-  border-bottom: 2px solid #055df2;
-}
-
-.app-header.scrolled .nav-btn.active {
+.app-header.scrolled .nav-btn:hover,
+.app-header.scrolled .nav-btn-2:hover,
+.app-header.scrolled .nav-btn.active,
+.app-header.scrolled .nav-btn-2.active {
   border-bottom: 2px solid #055df2;
   color: #055df2;
 }
+
 
 .user-name-header {
   color: #ffffff;

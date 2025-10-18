@@ -36,4 +36,50 @@ export const buildErrors = (fields) => {
   return errors
 }
 
+// ===== App-specific helpers with toast =====
+// Lưu ý: truyền vào đối tượng toast từ hook useToast() khi sử dụng
+
+export const validateNonEmpty = (value, label, toast) => {
+  const ok = validateRequired(value)
+  if (!ok && toast) {
+    toast.warning(`Thiếu thông tin ${label}`, {
+      description: `Vui lòng nhập ${label}`
+    })
+  }
+  return ok
+}
+
+export const validateObjectiveSelected = (objective, toast) => {
+  const allowed = [
+    'AWARENESS',
+    'TRAFFIC',
+    'ENGAGEMENT',
+    'LEADS',
+    'APP_PROMOTION',
+    'SALES',
+  ]
+  const ok = allowed.includes(objective)
+  if (!ok && toast) {
+    toast.warning('Chưa chọn mục tiêu chiến dịch', {
+      description: 'Vui lòng chọn một mục tiêu trước khi tiếp tục'
+    })
+  }
+  return ok
+}
+
+export const validateCampaignStep = (campaign, toast) => {
+  if (!campaign) {
+    if (toast) toast.warning('Thiếu dữ liệu chiến dịch')
+    return false
+  }
+  const nameOk = validateNonEmpty(campaign.name, 'tên chiến dịch', toast)
+  const pageOk = !!campaign.facebookPageId
+  if (!pageOk && toast) {
+    toast.warning('Chưa chọn Trang Facebook', {
+      description: 'Vui lòng chọn Trang Facebook cho chiến dịch'
+    })
+  }
+  return nameOk && pageOk
+}
+
 

@@ -5,9 +5,8 @@ export const publishAdsWizard = async (wizardData) => {
     const response = await axiosInstance.post('/api/ads-wizard/publish', wizardData);
     return response.data;
   } catch (error) {
-    const detail = error.response?.data?.detail;
-    const message = error.response?.data?.message || 'Lỗi tạo quảng cáo';
-    throw new Error(detail ? `${message}: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}` : message);
+    // Rethrow original axios error to preserve error.response (including error_user_msg)
+    throw handleError(error);
   }
 };
 
@@ -19,6 +18,12 @@ export const updateAdsWizard = async (wizardData) => {
     );
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || "Lỗi cập nhật quảng cáo");
+    // Rethrow original axios error to preserve error.response (including error_user_msg)
+    throw handleError(error);
   }
 };
+
+// Xử lý lỗi chuẩn cho service
+function handleError(error) {
+  return error;
+}

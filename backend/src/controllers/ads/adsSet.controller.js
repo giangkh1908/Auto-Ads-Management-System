@@ -276,3 +276,56 @@ export async function deleteAdsetCascadeCtrl(req, res) {
     });
   }
 }
+
+/**
+ * POST /api/adsets/:id/copy
+ * Tạo bản sao AdSet kèm toàn bộ Ads con (DB only)
+ */
+export async function copyAdsetCascadeCtrl(req, res) {
+  try {
+    const { id } = req.params;
+    const source = await AdsSet.findById(id);
+    if (!source) return res.status(404).json({ message: "Không tìm thấy nhóm quảng cáo." });
+
+    const newAdset = await AdsSet.create({
+      campaign_id: source.campaign_id,
+      external_account_id: source.external_account_id,
+      name: `${source.name || "Nhóm quảng cáo"} (bản sao)`,
+      status: "IN_PROCESS",
+      configured_status: source.configured_status,
+      effective_status: source.effective_status,
+      optimization_goal: source.optimization_goal,
+      billing_event: source.billing_event,
+      bid_strategy: source.bid_strategy,
+      bid_amount: source.bid_amount,
+      pixel_id: source.pixel_id,
+      conversion_event: source.conversion_event,
+      promoted_object: source.promoted_object,
+      targeting: source.targeting,
+      daily_budget: source.daily_budget,
+      lifetime_budget: source.lifetime_budget,
+      start_time: source.start_time,
+      end_time: source.end_time,
+      external_id: null,
+    });
+
+    const ads = await Ads.find({ set_id: source._id }).lean();
+    for (const a of ads) {
+      await Ads.create({
+        name: `${a.name || "Quảng cáo"} (bản sao)`,
+        status: "IN_PROCESS",
+        external_id: null,
+        external_account_id: a.external_account_id,
+        set_id: newAdset._id,
+        campaign_id: source.campaign_id,
+        effective_status: a.effective_status,
+        creative: a.creative,
+      });
+    }
+
+    return res.status(201).json({ success: true, message: "Đã sao chép AdSet cùng Ads.", data: { adset: newAdset } });
+  } catch (err) {
+    console.error("❌ Copy AdSet cascade lỗi:", err);
+    return res.status(500).json({ message: "Copy thất bại", error: err.message });
+  }
+}
