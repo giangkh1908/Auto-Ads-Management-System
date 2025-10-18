@@ -106,7 +106,7 @@ const AiPopup = ({ isOpen, onClose, onConfirm }) => {
           </div>
 
           {/* Model AI */}
-          <div className="ai-config-field">
+          {/* <div className="ai-config-field">
             <label className="ai-config-label">Model AI</label>
             <select 
               className="ai-config-select"
@@ -117,7 +117,7 @@ const AiPopup = ({ isOpen, onClose, onConfirm }) => {
               <option value="gpt-4o">gpt-4o</option>
               <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
             </select>
-          </div>
+          </div> */}
 
           {/* Confirm Button */}
           <div className="ai-config-actions">
