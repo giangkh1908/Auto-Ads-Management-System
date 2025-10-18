@@ -233,7 +233,7 @@ export async function generateText(req, res) {
  */
 export async function generateImages(req, res) {
   try {
-    const { context_id, count = 3, aspect_ratio = '1:1' } = req.body;
+    const { context_id, count = 4, aspect_ratio = '1:1' } = req.body;
     
     // Validate required fields
     if (!context_id) {
@@ -275,21 +275,20 @@ export async function generateImages(req, res) {
       size = '1024x1792';
     }
 
-    // Build prompt for image generation
+    // Tự động tạo prompt dựa trên context
     const { language, tone, personalization, main_keywords } = ctx;
-    const prompt = `Tạo ảnh sản phẩm phù hợp cho quảng cáo Facebook. 
-Ngữ cảnh: ${personalization}. 
-Từ khóa: ${main_keywords.join(', ')}.
+    const prompt = `Tạo hình ảnh chất lượng cao cho quảng cáo Facebook về chủ đề: ${main_keywords.join(', ')}. 
 Phong cách: ${tone}.
-Ảnh phải chất lượng cao, hấp dẫn, phù hợp để quảng cáo trên Facebook.
-Không được chứa chữ, logo lạ, hoặc nội dung không phù hợp.`;
+Ngữ cảnh: ${personalization || 'Quảng cáo sản phẩm/dịch vụ chuyên nghiệp'}.
+Hình ảnh phải hấp dẫn, phù hợp để quảng cáo trên Facebook.
+Không được chứa chữ, logo, hoặc nội dung không phù hợp.
+Hình ảnh cần rõ nét, màu sắc bắt mắt, phù hợp với thương hiệu.`;
 
     // Generate images using OpenAI DALL-E
     const imagesResponse = await openai.images.generate({
-      model: 'dall-e-3',
+      model: 'dall-e-2',
       prompt: prompt,
       size: size,
-      quality: 'standard',
       n: Math.min(count, 4), // Maximum 4 images
     });
 

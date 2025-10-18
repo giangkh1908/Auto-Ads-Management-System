@@ -1,4 +1,4 @@
-import { useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import {
   Circle,
   Image,
@@ -7,6 +7,7 @@ import {
   FileText,
   Bot,
   MousePointer,
+  X,
 } from "lucide-react";
 import AiPopup from "../AiPopup/AiPopup";
 import "../AiPopup/AiPopup.css";
@@ -22,17 +23,18 @@ function AdStepInner({ ad, setAd }, ref) {
   const [aiImages, setAiImages] = useState([]);
   const [selectedAiImages, setSelectedAiImages] = useState([]);
   const [showAIConfig, setShowAIConfig] = useState(false);
+  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const toast = useToast();
-  
+
   // AI context tracking
   const [contextId, setContextId] = useState(null);
   const [isGenerating, setIsGenerating] = useState({
     headline: false,
     primaryText: false,
     description: false,
-    cta: false
   });
 
+  // Function to handle file upload
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -54,8 +56,8 @@ function AdStepInner({ ad, setAd }, ref) {
         const mediaType = fileType.startsWith("video/")
           ? "video"
           : fileType.startsWith("image/")
-          ? "image"
-          : "unknown";
+            ? "image"
+            : "unknown";
 
         setAd((prev) => ({
           ...prev,
@@ -75,7 +77,7 @@ function AdStepInner({ ad, setAd }, ref) {
     }
   };
 
-  // Function to generate content using AI
+  // Function to generate text content using AI
   const generateAIContent = async (field, maxLength = 100) => {
     if (!contextId) {
       toast.warning("Vui lòng thiết lập AI trước", {
@@ -86,9 +88,9 @@ function AdStepInner({ ad, setAd }, ref) {
 
     try {
       setIsGenerating(prev => ({ ...prev, [field]: true }));
-      
+
       const target = field === 'primaryText' ? 'body' : field;
-      
+
       const response = await axiosInstance.post('/api/ai/generate-text', {
         context_id: contextId,
         target,
@@ -97,9 +99,9 @@ function AdStepInner({ ad, setAd }, ref) {
 
       if (response.data && response.data.success) {
         setAd(prev => ({ ...prev, [field]: response.data.chosen }));
-        toast.success(`Đã tạo ${field === 'headline' ? 'tiêu đề' : 
-                            field === 'primaryText' ? 'văn bản chính' : 
-                            field === 'description' ? 'mô tả' : 'CTA'}`);
+        toast.success(`Đã tạo ${field === 'headline' ? 'tiêu đề' :
+          field === 'primaryText' ? 'văn bản chính' :
+            field === 'description' ? 'mô tả' : 'nội dung'}`);
       } else {
         toast.error("Không thể tạo nội dung", {
           description: response.data?.message || "Vui lòng thử lại"
@@ -112,6 +114,125 @@ function AdStepInner({ ad, setAd }, ref) {
       });
     } finally {
       setIsGenerating(prev => ({ ...prev, [field]: false }));
+    }
+  };
+
+  // Function to generate AI images based on context
+  const generateAIImages = async () => {
+    if (!contextId) {
+      toast.warning("Vui lòng thiết lập AI trước", {
+        description: "Hãy nhấn 'Tạo bằng AI' để thiết lập tham số AI",
+      });
+      return;
+    }
+
+    try {
+      setIsGeneratingImages(true);
+      setShowAIGeneration(true);
+
+      // Gọi API để tạo hình ảnh dựa trên context_id sẵn có
+      const response = await axiosInstance.post('/api/ai/images/generate', {
+        context_id: contextId,
+        count: 4, // Số lượng ảnh cần tạo
+        aspect_ratio: '1:1' // Tỉ lệ khung hình
+      }, {
+        timeout: 60000 // 60 giây
+      }
+      );
+
+      if (response.data && response.data.success && response.data.previews) {
+        const generatedImages = response.data.previews.map((img, index) => ({
+          id: `ai-${Date.now()}-${index}`,
+          url: img.preview_url,
+          selected: index === 0 // Mặc định chọn ảnh đầu tiên
+        }));
+
+        setAiImages(generatedImages);
+        setSelectedAiImages([generatedImages[0]]);
+
+        // Tự động sử dụng ảnh đầu tiên cho quảng cáo
+        setAd(prev => ({
+          ...prev,
+          media: 'image',
+          mediaUrl: generatedImages[0].url
+        }));
+
+        toast.success(`Đã tạo ${generatedImages.length} hình ảnh dựa trên ngữ cảnh`);
+      } else {
+        // Fallback to placeholder images for testing
+        const placeholderImages = Array.from({ length: 4 }, (_, i) => ({
+          id: `placeholder-${Date.now()}-${i}`,
+          url: `https://picsum.photos/512/512?random=${Date.now() + i}`,
+          selected: i === 0
+        }));
+
+        setAiImages(placeholderImages);
+        setSelectedAiImages([placeholderImages[0]]);
+
+        setAd(prev => ({
+          ...prev,
+          media: 'image',
+          mediaUrl: placeholderImages[0].url
+        }));
+
+        toast.info("Đang sử dụng hình ảnh mẫu", {
+          description: response.data?.message || "API chưa sẵn sàng"
+        });
+      }
+    } catch (error) {
+      console.error("Error generating AI images:", error);
+
+      // Thông báo lỗi cụ thể hơn
+      let errorMessage = "Không thể tạo hình ảnh AI";
+      if (error.code === "ECONNABORTED") {
+        errorMessage = "Quá thời gian chờ khi tạo ảnh. Vui lòng thử lại sau.";
+      } else if (error.response) {
+        errorMessage = `Lỗi máy chủ: ${error.response.status}`;
+      }
+
+      // Fall back to placeholder images
+      const placeholderImages = Array.from({ length: 4 }, (_, i) => ({
+        id: `fallback-${Date.now()}-${i}`,
+        url: `https://picsum.photos/512/512?random=${Date.now() + i}`,
+        selected: i === 0
+      }));
+
+      setAiImages(placeholderImages);
+      setSelectedAiImages([placeholderImages[0]]);
+
+      setAd(prev => ({
+        ...prev,
+        media: 'image',
+        mediaUrl: placeholderImages[0].url
+      }));
+
+      toast.error(errorMessage, {
+        description: error.code === "ECONNABORTED"
+          ? "Việc tạo ảnh AI có thể mất nhiều thời gian. Đang sử dụng ảnh mẫu thay thế."
+          : error.message
+      });
+    } finally {
+      setIsGeneratingImages(false);
+    }
+  };
+
+  // Function to handle AI image selection
+  const handleImageSelection = (imageId) => {
+    const newImages = aiImages.map((img) => ({
+      ...img,
+      selected: img.id === imageId
+    }));
+
+    setAiImages(newImages);
+
+    const selectedImage = newImages.find(img => img.id === imageId);
+    if (selectedImage) {
+      setAd(prev => ({
+        ...prev,
+        media: 'image',
+        mediaUrl: selectedImage.url
+      }));
+      setSelectedAiImages([selectedImage]);
     }
   };
 
@@ -157,16 +278,16 @@ function AdStepInner({ ad, setAd }, ref) {
                 "English": "en",
                 "中文": "zh"
               };
-              
+
               const mainKeywords = config.mainKeywords.split(',')
                 .map(kw => kw.trim())
                 .filter(kw => kw.length > 0);
-                
+
               if (mainKeywords.length === 0) {
                 toast.warning("Vui lòng nhập ít nhất một từ khóa chính");
                 return;
               }
-              
+
               // Gọi API để xác nhận context
               axiosInstance.post('/api/ai/context/confirm', {
                 language: languageMap[config.language] || "vi",
@@ -174,22 +295,22 @@ function AdStepInner({ ad, setAd }, ref) {
                 personalization: config.personalization,
                 main_keywords: mainKeywords
               })
-              .then(response => {
-                if (response.data && response.data.success) {
-                  setContextId(response.data.context_id);
-                  toast.success("Đã thiết lập AI thành công");
-                }
-              })
-              .catch(error => {
-                console.error("Error confirming AI context:", error);
-                toast.error("Không thể thiết lập AI", {
-                  description: error.message
+                .then(response => {
+                  if (response.data && response.data.success) {
+                    setContextId(response.data.context_id);
+                    toast.success("Đã thiết lập AI thành công");
+                  }
+                })
+                .catch(error => {
+                  console.error("Error confirming AI context:", error);
+                  toast.error("Không thể thiết lập AI", {
+                    description: error.message
+                  });
                 });
-              });
             }}
           />
         </div>
-        
+
         {/* Ad Name Section */}
         <div className="config-section">
           <div className="section-header-ads">
@@ -219,7 +340,7 @@ function AdStepInner({ ad, setAd }, ref) {
             <div className="field-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="field-label">Tiêu đề</label>
-                <button 
+                <button
                   onClick={() => generateAIContent('headline', 40)}
                   disabled={isGenerating.headline || !contextId}
                   style={{
@@ -248,12 +369,12 @@ function AdStepInner({ ad, setAd }, ref) {
                 placeholder="Sản phẩm/Dịch vụ chất lượng cao"
               />
             </div>
-            
+
             {/* Primary Text */}
             <div className="field-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="field-label">Văn bản chính</label>
-                <button 
+                <button
                   onClick={() => generateAIContent('primaryText', 125)}
                   disabled={isGenerating.primaryText || !contextId}
                   style={{
@@ -287,7 +408,7 @@ function AdStepInner({ ad, setAd }, ref) {
             <div className="field-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="field-label">Mô tả</label>
-                <button 
+                <button
                   onClick={() => generateAIContent('description', 30)}
                   disabled={isGenerating.description || !contextId}
                   style={{
@@ -321,24 +442,6 @@ function AdStepInner({ ad, setAd }, ref) {
             <div className="field-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="field-label">Nút kêu gọi hành động</label>
-                <button 
-                  onClick={() => generateAIContent('cta', 20)}
-                  disabled={isGenerating.cta || !contextId}
-                  style={{
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    padding: '4px 12px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <Bot size={14} />
-                  {isGenerating.cta ? 'Đang tạo...' : 'AI'}
-                </button>
               </div>
               <select
                 className="cta-select"
@@ -386,7 +489,7 @@ function AdStepInner({ ad, setAd }, ref) {
                 placeholder="https://example.com"
               />
             </div>
-            
+
             {/* Media File */}
             <div className="field-group">
               <label className="field-label">* File phương tiện</label>
@@ -397,60 +500,57 @@ function AdStepInner({ ad, setAd }, ref) {
                   disabled={uploading}
                 >
                   <Image size={18} className="media-icon" />
-                  
-                    {uploading
-                      ? "Đang tải lên..."
-                      : ad.mediaUrl
+
+                  {uploading
+                    ? "Đang tải lên..."
+                    : ad.mediaUrl
                       ? "Đã chọn file"
                       : "Thêm file phương tiện"}
                 </button>
                 <button
                   className="media-button ai-button"
                   onClick={() => {
-                    setShowAIGeneration(!showAIGeneration);
-                    if (!showAIGeneration) {
-                      // Simulate AI image generation
-                      const mockImages = Array.from({ length: 10 }, (_, i) => ({
-                        id: i + 1,
-                        url: `https://picsum.photos/200/200?random=${i}`,
-                        selected: i === 0, // First image selected by default
-                      }));
-                      setAiImages(mockImages);
-                      setSelectedAiImages([mockImages[0]]);
+                    if (!contextId) {
+                      toast.warning("Vui lòng thiết lập AI trước", {
+                        description: "Hãy nhấn 'Tạo bằng AI' để thiết lập tham số AI",
+                      });
+                      return;
                     }
+
+                    // Gọi hàm tạo ảnh ngay lập tức
+                    generateAIImages();
                   }}
-                  disabled={uploading}
+                  disabled={uploading || isGeneratingImages}
                 >
                   <Image size={18} className="button-icon" />
-                  AI tạo ảnh
+                  {isGeneratingImages ? "Đang tạo ảnh..." : "AI tạo ảnh"}
                 </button>
               </div>
-              
+
               {/* AI Generation Section */}
               {showAIGeneration && (
                 <div className="ai-generation-section">
                   <div className="ai-images-grid">
-                    {aiImages.map((image) => (
-                      <div
-                        key={image.id}
-                        className={`ai-image-cell ${
-                          image.selected ? "selected" : ""
-                        }`}
-                        onClick={() => {
-                          const newImages = aiImages.map((img) =>
-                            img.id === image.id
-                              ? { ...img, selected: !img.selected }
-                              : img
-                          );
-                          setAiImages(newImages);
-                          setSelectedAiImages(
-                            newImages.filter((img) => img.selected)
-                          );
-                        }}
-                      >
-                        {image.selected && <div className="checkmark">✓</div>}
-                      </div>
-                    ))}
+                    {isGeneratingImages ? (
+                      // Loading placeholders
+                      Array.from({ length: 4 }, (_, i) => (
+                        <div key={`loading-${i}`} className="ai-image-cell loading">
+                          <div className="loading-spinner"></div>
+                        </div>
+                      ))
+                    ) : (
+                      // Rendered images
+                      aiImages.map((image) => (
+                        <div
+                          key={image.id}
+                          className={`ai-image-cell ${image.selected ? "selected" : ""}`}
+                          onClick={() => handleImageSelection(image.id)}
+                        >
+                          <img src={image.url} alt="AI generated" className="ai-image" />
+                          {image.selected && <div className="checkmark">✓</div>}
+                        </div>
+                      ))
+                    )}
                   </div>
 
                   <div className="ai-info-section">
@@ -462,8 +562,7 @@ function AdStepInner({ ad, setAd }, ref) {
                         Ảnh có thể thêm {10 - aiImages.length}
                       </div>
                       <div className="ai-info-line">
-                        Ảnh đã chọn {selectedAiImages.length}/
-                        {selectedAiImages.length}
+                        Ảnh đã chọn {selectedAiImages.length}/{selectedAiImages.length}
                       </div>
                     </div>
                     <button
