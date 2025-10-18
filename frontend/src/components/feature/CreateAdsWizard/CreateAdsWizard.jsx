@@ -118,8 +118,13 @@ function CreateAdsWizard({
     },
     adset: {
       name: "Nhóm quảng cáo mới",
-      budgetType: "daily",
-      budgetAmount: 2000000,
+      // Thêm các giá trị mặc định cho các trường bắt buộc
+      optimization_goal: "REACH", // Mặc định là tiếp cận
+      billing_event: "IMPRESSIONS", // Mặc định là hiển thị
+      bid_strategy: "LOWEST_COST_WITHOUT_CAP", // Mặc định là chi phí thấp nhất không giới hạn
+      bid_amount: 100, // Mặc định là 100 (VND)
+      budgetType: "daily", // Ngân sách hằng ngày
+      budgetAmount: 100000, // Mặc định 100,000 VND
       placement: "AUTOMATIC",
       targeting: { location: "Việt Nam", ageMin: 18, ageMax: 45 },
       conversion_event: "VIEW_CONTENT",

@@ -57,10 +57,27 @@ export async function createCampaign(adAccountId, accessToken, body) {
 }
 
 export async function createAdSet(adAccountId, accessToken, body) {
+  // Clone body để tránh thay đổi dữ liệu gốc
+  const payload = { ...body };
+  
+  // Xử lý xung đột bid_strategy và bid_amount
+  if (payload.bid_strategy === 'LOWEST_COST_WITHOUT_CAP' && payload.bid_amount !== undefined) {
+    console.log("🛠️ fbAdsService: Phát hiện xung đột bid_strategy/bid_amount");
+    console.log(`🔧 Xóa bid_amount (${payload.bid_amount}) khi dùng LOWEST_COST_WITHOUT_CAP`);
+    delete payload.bid_amount;
+  }
+  
+  // Đảm bảo có bid_amount khi dùng LOWEST_COST_WITH_BID_CAP
+  if (payload.bid_strategy === 'LOWEST_COST_WITH_BID_CAP' && payload.bid_amount === undefined) {
+    console.log("⚠️ fbAdsService: Thiếu bid_amount cho LOWEST_COST_WITH_BID_CAP");
+    console.log("🔧 Thêm bid_amount mặc định (100) cho LOWEST_COST_WITH_BID_CAP");
+    payload.bid_amount = 100; // Giá trị mặc định
+  }
+  
   const { withPrefix } = normalizeAccountPair(adAccountId);
   const { data } = await axios.post(
     `${FB_API}/${withPrefix}/adsets`,
-    body,
+    payload, // Sử dụng payload đã được xử lý
     { params: buildFbAuthParams(accessToken) }
   );
   return data.id;
@@ -439,3 +456,6 @@ export async function fetchAdInsights(accessToken, adIds = []) {
     return [];
   }
 }
+
+// Tìm hàm createAdSet và thêm xử lý trước khi gọi API Facebook
+

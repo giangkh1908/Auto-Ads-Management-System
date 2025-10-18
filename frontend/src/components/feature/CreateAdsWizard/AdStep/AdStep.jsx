@@ -5,7 +5,7 @@ import {
   ChevronDown,
   Facebook,
   FileText,
-  Type,
+  Bot,
   MousePointer,
 } from "lucide-react";
 import AiPopup from "../AiPopup/AiPopup";
@@ -23,6 +23,15 @@ function AdStepInner({ ad, setAd }, ref) {
   const [selectedAiImages, setSelectedAiImages] = useState([]);
   const [showAIConfig, setShowAIConfig] = useState(false);
   const toast = useToast();
+  
+  // AI context tracking
+  const [contextId, setContextId] = useState(null);
+  const [isGenerating, setIsGenerating] = useState({
+    headline: false,
+    primaryText: false,
+    description: false,
+    cta: false
+  });
 
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
@@ -66,6 +75,46 @@ function AdStepInner({ ad, setAd }, ref) {
     }
   };
 
+  // Function to generate content using AI
+  const generateAIContent = async (field, maxLength = 100) => {
+    if (!contextId) {
+      toast.warning("Vui lòng thiết lập AI trước", {
+        description: "Hãy nhấn 'Tạo bằng AI' để thiết lập tham số AI",
+      });
+      return;
+    }
+
+    try {
+      setIsGenerating(prev => ({ ...prev, [field]: true }));
+      
+      const target = field === 'primaryText' ? 'body' : field;
+      
+      const response = await axiosInstance.post('/api/ai/generate-text', {
+        context_id: contextId,
+        target,
+        constraints: { max_len: maxLength }
+      });
+
+      if (response.data && response.data.success) {
+        setAd(prev => ({ ...prev, [field]: response.data.chosen }));
+        toast.success(`Đã tạo ${field === 'headline' ? 'tiêu đề' : 
+                            field === 'primaryText' ? 'văn bản chính' : 
+                            field === 'description' ? 'mô tả' : 'CTA'}`);
+      } else {
+        toast.error("Không thể tạo nội dung", {
+          description: response.data?.message || "Vui lòng thử lại"
+        });
+      }
+    } catch (error) {
+      console.error(`Error generating ${field}:`, error);
+      toast.error(`Không thể tạo ${field}`, {
+        description: error.message
+      });
+    } finally {
+      setIsGenerating(prev => ({ ...prev, [field]: false }));
+    }
+  };
+
   // Expose validate() to parent
   useImperativeHandle(
     ref,
@@ -102,11 +151,45 @@ function AdStepInner({ ad, setAd }, ref) {
             isOpen={showAIConfig}
             onClose={() => setShowAIConfig(false)}
             onConfirm={(config) => {
-              console.log("AI Config:", config);
-              setShowAIGeneration(true);
+              // Xử lý config và gọi API để lấy context_id
+              const languageMap = {
+                "Tiếng Việt": "vi",
+                "English": "en",
+                "中文": "zh"
+              };
+              
+              const mainKeywords = config.mainKeywords.split(',')
+                .map(kw => kw.trim())
+                .filter(kw => kw.length > 0);
+                
+              if (mainKeywords.length === 0) {
+                toast.warning("Vui lòng nhập ít nhất một từ khóa chính");
+                return;
+              }
+              
+              // Gọi API để xác nhận context
+              axiosInstance.post('/api/ai/context/confirm', {
+                language: languageMap[config.language] || "vi",
+                tone: config.tone,
+                personalization: config.personalization,
+                main_keywords: mainKeywords
+              })
+              .then(response => {
+                if (response.data && response.data.success) {
+                  setContextId(response.data.context_id);
+                  toast.success("Đã thiết lập AI thành công");
+                }
+              })
+              .catch(error => {
+                console.error("Error confirming AI context:", error);
+                toast.error("Không thể thiết lập AI", {
+                  description: error.message
+                });
+              });
             }}
           />
         </div>
+        
         {/* Ad Name Section */}
         <div className="config-section">
           <div className="section-header-ads">
@@ -134,7 +217,27 @@ function AdStepInner({ ad, setAd }, ref) {
           <div className="ad-content-fields">
             {/* Headline */}
             <div className="field-group">
-              <label className="field-label">Tiêu đề</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="field-label">Tiêu đề</label>
+                <button 
+                  onClick={() => generateAIContent('headline', 40)}
+                  disabled={isGenerating.headline || !contextId}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    padding: '4px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Bot size={14} />
+                  {isGenerating.headline ? 'Đang tạo...' : 'AI'}
+                </button>
+              </div>
               <input
                 type="text"
                 className="headline-input"
@@ -145,9 +248,30 @@ function AdStepInner({ ad, setAd }, ref) {
                 placeholder="Sản phẩm/Dịch vụ chất lượng cao"
               />
             </div>
+            
             {/* Primary Text */}
             <div className="field-group">
-              <label className="field-label">Văn bản chính</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="field-label">Văn bản chính</label>
+                <button 
+                  onClick={() => generateAIContent('primaryText', 125)}
+                  disabled={isGenerating.primaryText || !contextId}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    padding: '4px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Bot size={14} />
+                  {isGenerating.primaryText ? 'Đang tạo...' : 'AI'}
+                </button>
+              </div>
               <textarea
                 className="primary-text-input"
                 value={ad.primaryText}
@@ -155,12 +279,33 @@ function AdStepInner({ ad, setAd }, ref) {
                   setAd((prev) => ({ ...prev, primaryText: e.target.value }))
                 }
                 rows={4}
+                placeholder="Nội dung chính của quảng cáo..."
               />
             </div>
 
             {/* Description */}
             <div className="field-group">
-              <label className="field-label">Mô tả</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="field-label">Mô tả</label>
+                <button 
+                  onClick={() => generateAIContent('description', 30)}
+                  disabled={isGenerating.description || !contextId}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    padding: '4px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Bot size={14} />
+                  {isGenerating.description ? 'Đang tạo...' : 'AI'}
+                </button>
+              </div>
               <textarea
                 className="description-input"
                 value={ad.description || ""}
@@ -168,28 +313,46 @@ function AdStepInner({ ad, setAd }, ref) {
                   setAd((prev) => ({ ...prev, description: e.target.value }))
                 }
                 rows={3}
+                placeholder="Mô tả ngắn gọn bổ sung..."
               />
             </div>
 
             {/* Call to Action */}
             <div className="field-group">
-              <label className="field-label">Nút kêu gọi hành động</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="field-label">Nút kêu gọi hành động</label>
+                <button 
+                  onClick={() => generateAIContent('cta', 20)}
+                  disabled={isGenerating.cta || !contextId}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    padding: '4px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Bot size={14} />
+                  {isGenerating.cta ? 'Đang tạo...' : 'AI'}
+                </button>
+              </div>
               <select
                 className="cta-select"
                 value={ad.cta}
                 onChange={(e) =>
                   setAd((prev) => ({ ...prev, cta: e.target.value }))
                 }
-                // style={{ display: 'none' }}
               >
                 <option value="Liên hệ ngay">Liên hệ ngay</option>
                 <option value="Xem thêm">Xem thêm</option>
                 <option value="Nhận báo giá">Nhận báo giá</option>
                 <option value="Đăng ký ngay">Đăng ký ngay</option>
                 <option value="Đặt ngay">Đặt ngay</option>
-                <option value="Liên hệ với chúng tôi">
-                  Liên hệ với chúng tôi
-                </option>
+                <option value="Liên hệ với chúng tôi">Liên hệ với chúng tôi</option>
                 <option value="Tải xuống">Tải xuống</option>
                 <option value="Nhận ưu đãi">Nhận ưu đãi</option>
                 <option value="Xem khuyến mãi">Xem khuyến mãi</option>
@@ -223,6 +386,7 @@ function AdStepInner({ ad, setAd }, ref) {
                 placeholder="https://example.com"
               />
             </div>
+            
             {/* Media File */}
             <div className="field-group">
               <label className="field-label">* File phương tiện</label>
@@ -261,6 +425,7 @@ function AdStepInner({ ad, setAd }, ref) {
                   AI tạo ảnh
                 </button>
               </div>
+              
               {/* AI Generation Section */}
               {showAIGeneration && (
                 <div className="ai-generation-section">
