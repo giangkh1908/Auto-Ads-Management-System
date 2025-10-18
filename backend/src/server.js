@@ -27,13 +27,19 @@ const __dirname = path.resolve();
 
 const app = express();
 
-// Middleware để parse JSON
-app.use(express.json());
-
 // Bật CORS cho frontend
 app.use(cors({ 
-  origin: process.env.FRONTEND_URL || ["http://localhost:5173", "http://localhost:5174"] ,
-  credentials: true 
+  origin: true, // 👈 Tạm thời cho phép tất cả
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Cache-Control',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ]
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

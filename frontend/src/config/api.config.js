@@ -130,4 +130,6 @@ export const API_ENDPOINTS = {
       }`,
     STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/status`,
   },
-}
+};
+
+export default API_CONFIG;
