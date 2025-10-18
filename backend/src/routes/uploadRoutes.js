@@ -1,7 +1,7 @@
 // routes/upload.routes.js
 import express from "express";
 import multer from "multer";
-import { uploadImage } from "../controllers/uploadController.js";
+import { uploadImage, uploadVideo, uploadMedia } from "../controllers/uploadController.js";
 
 const router = express.Router();
 
@@ -14,5 +14,17 @@ const upload = multer({ storage });
  * Upload ảnh quảng cáo (Creative)
  */
 router.post("/image", upload.single("file"), uploadImage);
+
+/**
+ * POST /api/upload/video
+ * Upload video quảng cáo (Creative)
+ */
+router.post("/video", upload.single("file"), uploadVideo);
+
+/**
+ * POST /api/upload/media
+ * Upload cả ảnh và video (tự nhận diện loại)
+ */
+router.post("/media", upload.single("file"), uploadMedia);
 
 export default router;

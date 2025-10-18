@@ -1,7 +1,7 @@
 // controllers/ads/ads.controller.js
 import Ads from "../../models/ads/ads.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
-import { syncAdsFromFacebook, fetchAdsFromFacebook, updateAdStatus, deleteEntity } from "../../services/fbAdsService.js";
+import { syncAdsFromFacebook, fetchAdsFromFacebook, updateAdStatus, deleteEntity, fetchAdInsights } from "../../services/fbAdsService.js";
 import User from "../../models/user.model.js";
 
 // Helper function để extract string ID từ ObjectId format
@@ -201,6 +201,43 @@ export async function getAdsLiveCtrl(req, res) {
 }
 
 /**
+ * GET /api/ads/insights
+ * Lấy insights cho danh sách ads (ids=comma,separated)
+ */
+export async function getAdsInsightsCtrl(req, res) {
+  try {
+    const { ids } = req.query;
+    if (!ids) {
+      return res.status(400).json({ message: "Thiếu danh sách ids" });
+    }
+
+    // Lấy access token từ query hoặc từ user hiện tại
+    let accessToken = req.query.access_token;
+    if (!accessToken) {
+      const user = await User.findById(req.user?._id).select("+facebookAccessToken");
+      accessToken = user?.facebookAccessToken || null;
+    }
+    if (!accessToken) {
+      return res.status(400).json({
+        message: "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
+        missingToken: true,
+      });
+    }
+
+    const adIds = String(ids)
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    const insights = await fetchAdInsights(accessToken, adIds);
+    return res.status(200).json({ items: insights, total: insights.length });
+  } catch (err) {
+    console.error("GET Ads insights error:", err);
+    return res.status(500).json({ message: "Lỗi lấy insights từ Facebook", error: err.message });
+  }
+}
+
+/**
  * PATCH /api/ads/:id/status
  * Bật/Tắt ad trực tiếp trên Facebook
  */
@@ -272,5 +309,31 @@ export async function deleteAdCtrl(req, res) {
       message: "Xoá thất bại",
       error: err.message,
     });
+  }
+}
+
+/**
+ * POST /api/ads/:id/copy
+ * Tạo bản sao một Ad (DB only)
+ */
+export async function copyAdCtrl(req, res) {
+  try {
+    const { id } = req.params;
+    const ad = await Ads.findById(id).lean();
+    if (!ad) return res.status(404).json({ message: "Không tìm thấy quảng cáo." });
+    const created = await Ads.create({
+      name: `${ad.name || 'Quảng cáo'} (bản sao)`,
+      status: 'IN_PROCESS',
+      external_id: null,
+      external_account_id: ad.external_account_id,
+      set_id: ad.set_id,
+      campaign_id: ad.campaign_id,
+      effective_status: ad.effective_status,
+      creative: ad.creative,
+    });
+    return res.status(201).json({ success: true, data: created });
+  } catch (err) {
+    console.error('❌ Copy Ad lỗi:', err);
+    return res.status(500).json({ message: 'Copy thất bại', error: err.message });
   }
 }

@@ -127,14 +127,14 @@ function Header({ onLoginClick }) {
         {pathname === "/" && (
           <div className="app-nav-2">
             <button
-              className={`nav-btn ${pathname === "/guide" ? "active" : ""}`}
+              className={`nav-btn-2 ${pathname === "/guide" ? "active" : ""}`}
               onClick={() => navigate("/guide")}
             >
               <BookOpen size={20} />&nbsp;Hướng dẫn
             </button>
 
             <button
-              className={`nav-btn ${pathname === "/service" ? "active" : ""}`}
+              className={`nav-btn-2 ${pathname === "/service" ? "active" : ""}`}
               onClick={() => navigate("/service")}
             >
               <Gem size={20} />&nbsp;Gói dịch vụ
@@ -142,7 +142,7 @@ function Header({ onLoginClick }) {
 
             {isAuthenticated && (
               <button
-                className={`nav-btn ${pathname === "/dashboard" ? "active" : ""}`}
+                className={`nav-btn-2 ${pathname === "/dashboard" ? "active" : ""}`}
                 onClick={() => navigate("/dashboard")}
               >
                 <LayoutDashboard size={20} />&nbsp;Dashboard

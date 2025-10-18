@@ -32,6 +32,10 @@ const adsSetSchema = new mongoose.Schema(
     bid_strategy: { type: String, trim: true },
     bid_amount: { type: Number, default: null },
 
+    // Sự kiện chuyển dổi
+    pixel_id: { type: String, trim: true, default: null },
+    conversion_event: { type: String, trim: true, default: null },
+
     // 🧭 Đối tượng mục tiêu
     promoted_object: { type: mongoose.Schema.Types.Mixed, default: {} },
     targeting: { type: mongoose.Schema.Types.Mixed, default: {} },

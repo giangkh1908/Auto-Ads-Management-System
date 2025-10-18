@@ -132,10 +132,15 @@ export async function publishAdsWizard(req, res) {
     });
   } catch (error) {
     console.error("Publish Wizard Error:", error?.response?.data || error);
-    return res.status(500).json({
+    const status = error?.response?.status || 500;
+    const error_user_msg =
+      error?.response?.data?.error_user_msg ||
+      error?.response?.data?.error?.error_user_msg ||
+      null;
+    return res.status(status).json({
       success: false,
       message: "Publish thất bại.",
-      detail: error?.response?.data || error?.message,
+      error_user_msg,
     });
   }
 }
@@ -200,10 +205,15 @@ export async function updateAdsWizard(req, res) {
     });
   } catch (error) {
     console.error("🔥 Update Wizard Error:", error?.response?.data || error);
-    return res.status(500).json({
+    const status = error?.response?.status || 500;
+    const error_user_msg =
+      error?.response?.data?.error_user_msg ||
+      error?.response?.data?.error?.error_user_msg ||
+      null;
+    return res.status(status).json({
       success: false,
       message: "Cập nhật wizard thất bại.",
-      detail: error?.response?.data || error?.message,
+      error_user_msg,
     });
   }
 }

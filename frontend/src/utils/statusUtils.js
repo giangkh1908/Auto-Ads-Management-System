@@ -9,6 +9,7 @@ export const translateStatus = (status) => {
       'DELETED': 'Đã xóa',
       'ARCHIVED': 'Đã lưu trữ',
       'IN_PROCESS': 'Đang xử lý',
+      'FAILED': 'Thất bại',
       'WITH_ISSUES': 'Có vấn đề',
       'CAMPAIGN_PAUSED': 'Tạm dừng',
       'CAMPAIGN_ACTIVE': 'Hoạt động',

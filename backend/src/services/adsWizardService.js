@@ -57,6 +57,7 @@ export async function publishWizard({
         name: adset?.name,
         status: "IN_PROCESS",
         optimization_goal: adset?.optimization_goal,
+        conversion_event: adset?.conversion_event,
         billing_event: adset?.billing_event,
         bid_strategy: adset?.bid_strategy,
         bid_amount: adset?.bid_amount,
@@ -141,6 +142,16 @@ export async function publishWizard({
       fbAdSetId = "dry_" + (Date.now() + 1);
       console.log(`[DRY RUN] AdSet giả: ${adset.name}`);
     } else {
+      console.log(`🚀 Tạo AdSet trên Facebook: ${adset.name}`);
+      console.log('📋 AdSet data:', {
+        name: adset.name,
+        optimization_goal: adset.optimization_goal,
+        conversion_event: adset.conversion_event,
+        billing_event: adset.billing_event,
+        bid_strategy: adset.bid_strategy,
+        bid_amount: adset.bid_amount
+      });
+      
       fbAdSetId = await createAdSet(ad_account_id, access_token, {
         ...adset,
         campaign_id: fbCampaignId,
@@ -158,6 +169,9 @@ export async function publishWizard({
       external_id: fbAdSetId,
       external_account_id: ad_account_id,
       status: "PAUSED",
+      optimization_goal: adset.optimization_goal,
+      conversion_event: adset.conversion_event,
+      billing_event: adset.billing_event,
       synced_at: now,
       updated_at: now,
     });
@@ -360,6 +374,7 @@ export async function updateWizard({
       ...(rawFields?.end_time ? { end_time: rawFields.end_time } : {}),
       ...(rawFields?.targeting ? { targeting: rawFields.targeting } : {}),
       ...(rawFields?.optimization_goal ? { optimization_goal: rawFields.optimization_goal } : {}),
+      ...(rawFields?.conversion_event ? { conversion_event: rawFields.conversion_event } : {}),
       ...(rawFields?.billing_event ? { billing_event: rawFields.billing_event } : {}),
       ...(rawFields?.bid_strategy ? { bid_strategy: rawFields.bid_strategy } : {}),
       ...(rawFields?.bid_amount ? { bid_amount: rawFields.bid_amount } : {}),

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, ExternalLink, MessageCircle, ThumbsUp, Share, MoreHorizontal } from 'lucide-react';
+import { Play, ExternalLink, MessageCircle, ThumbsUp, Share, MoreHorizontal, Globe } from 'lucide-react';
 import './Creative.css';
 
 function Creative({ ad, campaign, adset: _adset }) { // eslint-disable-line no-unused-vars
@@ -32,17 +32,34 @@ function Creative({ ad, campaign, adset: _adset }) { // eslint-disable-line no-u
       <div className="creative-container">
         {/* Facebook Post Style Creative */}
         <div className="facebook-post">
+        
           {/* Header */}
           <div className="post-header">
             <div className="page-info">
               <div className="page-avatar">
-                <div className="avatar-circle-creative">F</div>
+                {campaign?.facebookPageAvatar ? (
+                  <img
+                    src={campaign.facebookPageAvatar}
+                    alt={campaign.facebookPage || "Facebook Page"}
+                    className="avatar-circle-creative"
+                  />
+                ) : campaign?.facebookPageId ? (
+                  <img
+                    src={`https://graph.facebook.com/${campaign.facebookPageId}/picture?type=square`}
+                    alt={campaign.facebookPage || "Facebook Page"}
+                    className="avatar-circle-creative"
+                  />
+                ) : (
+                  <div className="avatar-circle-creative">
+                    {(campaign?.facebookPage || ad?.page || "").charAt(0) || "F"}
+                  </div>
+                )}
               </div>
               <div className="page-details">
-                <div className="page-name">{ad.page || campaign.facebookPage}</div>
+                <div className="page-name">{campaign?.facebookPage || ad?.page || "Facebook Page"}</div>
                 <div className="post-meta">
                   <span className="sponsored-badge">Được tài trợ</span>
-                  <span className="post-time">2 giờ</span>
+                  <span className="post-time"><Globe size = {14}/></span>
                 </div>
               </div>
             </div>
@@ -87,7 +104,7 @@ function Creative({ ad, campaign, adset: _adset }) { // eslint-disable-line no-u
                 <div className="link-description">
                   {ad.description || "Khám phá dịch vụ của chúng tôi và trải nghiệm những điều tuyệt vời nhất"}
                 </div>
-                <div className="link-domain">fchat.vn</div>
+                <div className="link-domain">{ad.destinationUrl}</div>
               </div>
             </div>
             <div
@@ -100,20 +117,6 @@ function Creative({ ad, campaign, adset: _adset }) { // eslint-disable-line no-u
 
           {/* Engagement Bar */}
           <div className="engagement-bar">
-            <div className="engagement-stats">
-              <div className="stat-item">
-                <ThumbsUp size={16} />
-                <span>1.2K</span>
-              </div>
-              <div className="stat-item">
-                <MessageCircle size={16} />
-                <span>45</span>
-              </div>
-              <div className="stat-item">
-                <Share size={16} />
-                <span>12</span>
-              </div>
-            </div>
             <div className="engagement-actions">
               <button className="action-btn like-btn">
                 <ThumbsUp size={16} />
@@ -130,45 +133,6 @@ function Creative({ ad, campaign, adset: _adset }) { // eslint-disable-line no-u
             </div>
           </div>
         </div>
-
-        {/* Ad Details Panel */}
-        {/* <div className="ad-details-panel">
-          <h3>Chi tiết quảng cáo</h3>
-          <div className="details-grid">
-            <div className="detail-item">
-              <label>Loại phương tiện:</label>
-              <span className="media-type">
-                {ad.media === 'image' ? 'Hình ảnh' : 
-                 ad.media === 'video' ? 'Video' : 
-                 ad.media === 'carousel' ? 'Carousel' : 'Hình ảnh'}
-              </span>
-            </div>
-            <div className="detail-item">
-              <label>Văn bản chính:</label>
-              <span>{ad.primaryText || "Chưa có"}</span>
-            </div>
-            <div className="detail-item">
-              <label>Tiêu đề:</label>
-              <span>{ad.headline || "Chưa có"}</span>
-            </div>
-            <div className="detail-item">
-              <label>Mô tả:</label>
-              <span>{ad.description || "Chưa có"}</span>
-            </div>
-            <div className="detail-item">
-              <label>Nút kêu gọi hành động:</label>
-              <span className="cta-display" style={{ color: getCTAColor(ad.cta) }}>
-                {ad.cta || "Chưa có"}
-              </span>
-            </div>
-            <div className="detail-item">
-              <label>URL đích:</label>
-              <span className="url-display">
-                {ad.destinationUrl || "https://fchat.vn"}
-              </span>
-            </div>
-          </div> 
-        </div>*/}
       </div>
     </div>
   );
