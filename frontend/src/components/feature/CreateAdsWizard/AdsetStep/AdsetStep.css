@@ -133,3 +133,33 @@
   color: #6b7280;
   font-size: 12px;
 }
+
+.bid-strategy-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.bid-amount-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bid-strategy-input {
+  width: 30%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  color: #000000; 
+}
+
+.currency-suffix {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}

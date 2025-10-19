@@ -1,4 +1,3 @@
-// services/adsWizardService.js
 import AdsCampaign from "../models/ads/adsCampaign.model.js";
 import AdsSet from "../models/ads/adsSet.model.js";
 import Ads from "../models/ads/ads.model.js";
@@ -532,3 +531,75 @@ export async function updateWizard({
 
   return result;
 }
+
+// Thêm fallback cho các trường thiếu trong hàm publishWizard hoặc createAdset
+
+function ensureRequiredFields(adset, objective) {
+  const mapping = CAMPAIGN_OBJECTIVE_MAPPING[objective] || CAMPAIGN_OBJECTIVE_MAPPING.AWARENESS;
+  
+  return {
+    ...adset,
+    optimization_goal: adset.optimization_goal || mapping.optimization_goals[0]?.value || "REACH",
+    billing_event: adset.billing_event || mapping.billing_events[0] || "IMPRESSIONS",
+    bid_strategy: adset.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
+    bid_amount: adset.bid_amount || 100
+  };
+}
+
+// Sử dụng trong hàm tạo adset:
+// const adsetData = ensureRequiredFields(adset, campaign.objective);
+
+// Tìm hàm createAdset và thêm xử lý cho bid_strategy/bid_amount
+const createAdset = async (accessToken, accountId, campaign, adset) => {
+  try {
+    console.log("🚀 Tạo AdSet trên Facebook:", adset.name);
+    
+    // Clone để tránh thay đổi dữ liệu gốc từ bên ngoài
+    const adsetPayload = { ...adset };
+    
+    // 🔧 XỬ LÝ XUNG ĐỘT BID STRATEGY/AMOUNT
+    if (adsetPayload.bid_strategy === 'LOWEST_COST_WITHOUT_CAP' && adsetPayload.bid_amount !== undefined) {
+      console.log("🔧 Service: Xóa bid_amount khi dùng LOWEST_COST_WITHOUT_CAP");
+      delete adsetPayload.bid_amount;
+    }
+    
+    console.log("📋 AdSet data:", adsetPayload);
+    
+    // Tiếp tục với API call...
+    const adsetResponse = await axios.post(
+      `https://graph.facebook.com/v23.0/act_${accountId}/adsets`,
+      {
+        ...adsetPayload
+        // Các trường khác giữ nguyên
+      },
+      {
+        params: {
+          access_token: accessToken,
+        },
+      }
+    );
+    
+    // Phần còn lại của code...
+  } catch (error) {
+    // Xử lý lỗi...
+  }
+};
+
+// Tìm hàm updateAdset và thêm logic tương tự
+
+const updateAdset = async (accessToken, adsetId, data) => {
+  try {
+    // Clone data để không làm thay đổi object gốc
+    const payload = { ...data };
+    
+    // Kiểm tra và xóa bid_amount nếu cần
+    if (payload.bid_strategy === 'LOWEST_COST_WITHOUT_CAP' && payload.bid_amount !== undefined) {
+      console.log("🔧 Service (update): Xóa bid_amount khi dùng LOWEST_COST_WITHOUT_CAP");
+      delete payload.bid_amount;
+    }
+    
+    // Tiếp tục với API call...
+  } catch (error) {
+    // Xử lý lỗi...
+  }
+};

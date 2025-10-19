@@ -4,11 +4,11 @@
  */
 
 const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:5001',
-  API_PREFIX: '/api',
-  AUTH_PREFIX: '/api/auth',
+  BASE_URL: import.meta.env.VITE_API_URL || "http://localhost:5001",
+  API_PREFIX: "/api",
+  AUTH_PREFIX: "/api/auth",
   TIMEOUT: 10000, // 10 seconds
-}
+};
 
 export const API_ENDPOINTS = {
   // Auth endpoints
@@ -17,15 +17,17 @@ export const API_ENDPOINTS = {
     REGISTER: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/register`,
     LOGOUT: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/logout`,
     FACEBOOK_LOGIN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/facebook`,
-    VERIFY_EMAIL: (token) => `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/verify-email/${token}`,
+    VERIFY_EMAIL: (token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/verify-email/${token}`,
     RESEND_VERIFICATION: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/resend-verification`,
     FORGOT_PASSWORD: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/forgot-password`,
-    RESET_PASSWORD: (token) => `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/reset-password/${token}`,
+    RESET_PASSWORD: (token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/reset-password/${token}`,
     ME: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/me`,
     REFRESH_TOKEN: `${API_CONFIG.BASE_URL}${API_CONFIG.AUTH_PREFIX}/refresh`,
     CHANGE_PASSWORD: `${API_CONFIG.BASE_URL}/api/auth/change-password`, // Cái này chưa có backend
   },
-  
+
   USERS: {
     LIST: `${API_CONFIG.BASE_URL}/api/users`,
     DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}`,
@@ -128,6 +130,6 @@ export const API_ENDPOINTS = {
       }`,
     STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/status`,
   },
-}
+};
 
-export default API_CONFIG 
+export default API_CONFIG;

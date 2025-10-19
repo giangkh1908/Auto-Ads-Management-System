@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
 import { useOnClickOutside } from "../../../../utils/useOnClickOutside";
 import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
@@ -32,10 +32,12 @@ const CAMPAIGN_OBJECTIVE_MAPPING = {
   },
   ENGAGEMENT: {
     optimization_goals: [
+      { value: 'REACH', label: 'Tiếp cận' },
       { value: 'POST_ENGAGEMENT', label: 'Tương tác bài viết' },
-      { value: 'THRUPLAY', label: 'Lượt xem video' }
+      { value: 'THRUPLAY', label: 'Lượt xem video' },
+      { value: 'PAGE_LIKES', label: 'Lượt thích trang' }
     ],
-    billing_events: ['IMPRESSIONS', 'POST_ENGAGEMENT', 'VIDEO_VIEWS']
+    billing_events: ['IMPRESSIONS', 'POST_ENGAGEMENT']
   },
   APP_PROMOTION: {
     optimization_goals: [
@@ -246,11 +248,95 @@ function AdsetStepInner({ adset, setAdset, objective }, ref) {
   // Expose validate() to parent
   useImperativeHandle(ref, () => ({
     validate: () => {
-      const okName = !!adset?.name && String(adset.name).trim() !== "";
-      if (!okName) validateNonEmpty(adset.name, "tên nhóm quảng cáo", toast);
-      return okName;
+      let isValid = true;
+      
+      // Kiểm tra tên adset
+      if (!adset?.name || adset.name.trim() === "") {
+        toast.warning("Vui lòng nhập tên nhóm quảng cáo");
+        isValid = false;
+      }
+      
+      // Kiểm tra bid_amount khi chiến lược là LOWEST_COST_WITH_BID_CAP
+      if (adset.bid_strategy === 'LOWEST_COST_WITH_BID_CAP' && (!adset.bid_amount || adset.bid_amount <= 0)) {
+        toast.warning("Vui lòng nhập giới hạn giá thầu hợp lệ");
+        isValid = false;
+      }
+      
+      // Đảm bảo có optimization_goal
+      const okOptimization = !!adset?.optimization_goal;
+      if (!okOptimization) {
+        toast.error("Thiếu mục tiêu tối ưu hóa");
+        // Tự động thiết lập giá trị mặc định nếu chưa có
+        setAdset(prev => ({
+          ...prev,
+          optimization_goal: getObjectiveOptions().optimization_goals[0]?.value || "REACH",
+          billing_event: getCompatibleBillingEvents()[0] || "IMPRESSIONS"
+        }));
+      }
+
+      // Đảm bảo có billing_event
+      const okBillingEvent = !!adset?.billing_event;
+      if (!okBillingEvent) {
+        toast.error("Thiếu sự kiện tính phí");
+      }
+      
+      return isValid && okOptimization && okBillingEvent;
     }
-  }), [adset, toast]);
+  }), [adset, toast, getObjectiveOptions, getCompatibleBillingEvents]);
+
+  // Thêm useEffect để đảm bảo các giá trị mặc định khi component mount
+  useEffect(() => {
+    // Nếu optimization_goal chưa được thiết lập
+    if (!adset.optimization_goal) {
+      const defaultOptimizationGoal = getObjectiveOptions().optimization_goals[0]?.value;
+      const defaultBillingEvent = getCompatibleBillingEvents()[0];
+      
+      setAdset(prev => ({
+        ...prev,
+        optimization_goal: defaultOptimizationGoal,
+        billing_event: defaultBillingEvent,
+        bid_strategy: prev.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
+        bid_amount: prev.bid_amount || 100
+      }));
+    }
+  }, [objective]); // Re-run khi objective thay đổi
+
+  // Thêm useEffect để theo dõi thay đổi của bid_strategy
+  useEffect(() => {
+    // Khi bid_strategy thay đổi thành LOWEST_COST_WITHOUT_CAP, xóa bid_amount
+    if (adset.bid_strategy === 'LOWEST_COST_WITHOUT_CAP' && adset.bid_amount !== undefined) {
+      setAdset(prev => {
+        const updated = { ...prev };
+        delete updated.bid_amount;
+        return updated;
+      });
+    }
+  }, [adset.bid_strategy]);
+
+  // Thêm hàm xử lý thay đổi bid strategy
+  const handleBidStrategyChange = (value) => {
+    if (value === 'LOWEST_COST_WITHOUT_CAP') {
+      // Khi chọn LOWEST_COST_WITHOUT_CAP, xóa bid_amount
+      setAdset(prev => {
+        const updated = { ...prev, bid_strategy: value };
+        delete updated.bid_amount;
+        return updated;
+      });
+      
+      // Thông báo người dùng (optional)
+      toast?.info("Đã tắt giới hạn giá thầu theo chính sách của Facebook");
+    } else if (value === 'LOWEST_COST_WITH_BID_CAP') {
+      // Khi chọn LOWEST_COST_WITH_BID_CAP, cần có bid_amount
+      setAdset(prev => ({
+        ...prev,
+        bid_strategy: value,
+        bid_amount: prev.bid_amount || 100 // Giá trị mặc định nếu chưa có
+      }));
+    } else {
+      // Các loại khác
+      setAdset(prev => ({ ...prev, bid_strategy: value }));
+    }
+  };
 
   return (
     <div className="adset-step">
@@ -325,7 +411,7 @@ function AdsetStepInner({ adset, setAdset, objective }, ref) {
             <label className="field-label">Mục tiêu tối ưu hóa</label>
             <select
               className="optimization-select"
-              value={adset.optimization_goal || getObjectiveOptions().optimization_goals[0]?.value}
+              value={adset?.optimization_goal || getObjectiveOptions().optimization_goals[0]?.value || "REACH"}
               onChange={(e) => handleOptimizationGoalChange(e.target.value)}
             >
               {getObjectiveOptions().optimization_goals.map((goal) => (
@@ -727,6 +813,58 @@ function AdsetStepInner({ adset, setAdset, objective }, ref) {
                 </button>
               </span>
             ))}
+          </div>
+        </div>
+
+        {/* --- Bid Strategy Section --- */}
+        <div className="config-section">
+          <div className="section-header-ads">
+            <Target size={16} color="#2563eb" />
+            <h3 className="section-title-ads">Chiến lược giá thầu</h3>
+          </div>
+          <div className="field-group">
+            <select
+              className="bid-strategy-select"
+              value={adset.bid_strategy || "LOWEST_COST_WITHOUT_CAP"}
+              onChange={(e) => handleBidStrategyChange(e.target.value)}
+            >
+              <option value="LOWEST_COST_WITHOUT_CAP">Giá thầu tối thiểu</option>
+              <option value="LOWEST_COST_WITH_BID_CAP">Giá thầu tối thiểu có giới hạn</option>
+            </select>
+          </div>
+
+          {/* Chỉ hiển thị trường bid_amount khi bid_strategy là LOWEST_COST_WITH_BID_CAP */}
+          {adset.bid_strategy === 'LOWEST_COST_WITH_BID_CAP' && (
+            <div className="field-group">
+              <label>Giới hạn giá thầu</label>
+              <div className="bid-amount-container">
+                <input
+                  type="number"
+                  value={adset.bid_amount || ''}
+                  onChange={(e) => setAdset(prev => ({...prev, bid_amount: parseInt(e.target.value) || 0}))}
+                  min="1000"
+                  className="bid-strategy-input"
+                  placeholder="1000"
+                />
+                <span className="currency-suffix">VNĐ</span>
+              </div>
+            </div>
+          )}
+
+          {/* Thêm thông báo giải thích cho từng loại bid strategy */}
+          <div className="bid-strategy-info">
+            {adset.bid_strategy === 'LOWEST_COST_WITHOUT_CAP' && (
+              <div className="info-box">
+                <i className="info-icon"></i>
+                <span> Facebook sẽ tự động tối ưu hóa giá thầu để đạt chi phí thấp nhất.</span>
+              </div>
+            )}
+            {adset.bid_strategy === 'LOWEST_COST_WITH_BID_CAP' && (
+              <div className="info-box">
+                <i className="info-icon"></i>
+                <span>Bạn cần đặt giới hạn giá thầu tối đa Facebook có thể sử dụng.</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

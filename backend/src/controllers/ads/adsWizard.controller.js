@@ -85,6 +85,16 @@ export async function publishAdsWizard(req, res) {
       ` [Wizard] Bắt đầu publish quảng cáo cho account: ${ad_account_id}`
     );
 
+    // Sửa trong hàm publishAdsWizard
+
+    // Thêm đoạn này ngay trước khi gọi service
+    // Khoảng dòng 68 (sau phần validate)
+    if (adset.bid_strategy === "LOWEST_COST_WITHOUT_CAP" && adset.bid_amount !== undefined) {
+      console.log("⚠️ Controller: Phát hiện xung đột bid_strategy và bid_amount");
+      // Xóa bid_amount trực tiếp từ đối tượng hiện tại
+      delete adset.bid_amount; // ✅ Hợp lệ - chỉ sửa thuộc tính không gán lại biến
+    }
+
     // Gọi service chính
     const result = await publishWizard({
       ad_account_id,
@@ -98,7 +108,7 @@ export async function publishAdsWizard(req, res) {
         page_name: campaign.page_name,
       },
       adset: {
-        ...adset,
+        ...adset, // Sử dụng adset đã được xử lý
         created_by: req.user._id,
       },
       creative: {
@@ -156,6 +166,12 @@ export async function updateAdsWizard(req, res) {
       ad,
       dry_run = false,
     } = req.body;
+
+    // Thêm vào trước khi gọi service
+    if (adset?.bid_strategy === "LOWEST_COST_WITHOUT_CAP" && adset?.bid_amount !== undefined) {
+      console.log("⚠️ Controller (update): Phát hiện xung đột bid_strategy và bid_amount");
+      delete adset.bid_amount;
+    }
 
     // 🧩 1️⃣ Lấy Access Token
     let access_token = tokenFromFE;

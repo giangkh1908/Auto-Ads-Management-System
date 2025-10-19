@@ -96,12 +96,16 @@ export async function listAdsCtrl(req, res) {
 
     // Xây dựng filter
     const filter = {};
+
+    filter.status = { $ne: "DELETED" };
     if (account_id) {
       // Hỗ trợ cả định dạng có act_ và không có act_
       const normalizedId = account_id.startsWith("act_")
         ? account_id.substring(4)
         : account_id;
-      filter.external_account_id = { $in: [normalizedId, `act_${normalizedId}`] };
+      filter.external_account_id = {
+        $in: [normalizedId, `act_${normalizedId}`],
+      };
     }
 
     if (adset_id) filter.set_id = adset_id;
@@ -144,13 +148,16 @@ export async function syncAdsCtrl(req, res) {
     // Lấy token: ưu tiên query, fallback DB của user hiện tại
     let accessToken = req.query.access_token;
     if (!accessToken) {
-      const user = await User.findById(req.user?._id).select("+facebookAccessToken");
+      const user = await User.findById(req.user?._id).select(
+        "+facebookAccessToken"
+      );
       accessToken = user?.facebookAccessToken || null;
     }
 
     if (!accessToken) {
       return res.status(400).json({
-        message: "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
+        message:
+          "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
         missingToken: true,
       });
     }

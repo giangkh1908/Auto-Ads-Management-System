@@ -107,10 +107,10 @@ export async function listAdSetsCtrl(req, res) {
   try {
     const { account_id, campaign_id, q, status, page = 1, limit = 10 } = req.query;
 
-    // Xây dựng filter
     const filter = {};
+
+    filter.status = { $ne: "DELETED" };
     if (account_id) {
-      // Hỗ trợ cả định dạng có act_ và không có act_
       const normalizedId = account_id.startsWith("act_")
         ? account_id.substring(4)
         : account_id;
@@ -121,7 +121,6 @@ export async function listAdSetsCtrl(req, res) {
     if (status) filter.status = status;
     if (q) filter.name = new RegExp(q, "i");
 
-    // Lấy dữ liệu có phân trang
     const skip = (Number(page) - 1) * Number(limit);
     const [items, total] = await Promise.all([
       AdsSet.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
@@ -137,15 +136,16 @@ export async function listAdSetsCtrl(req, res) {
     });
   } catch (err) {
     console.error("GET AdSets error:", err);
-    return res
-      .status(500)
-      .json({ message: "Lỗi khi lấy danh sách nhóm quảng cáo", error: err.message });
+    return res.status(500).json({
+      message: "Lỗi khi lấy danh sách nhóm quảng cáo",
+      error: err.message,
+    });
   }
 }
 
 /**
  * GET /api/adsets/sync
- * Đồng bộ nhóm quảng cáo (AdSets) từ Facebook
+ * Đồng bộ nhóm quảng cáo từ Facebook
  */
 export async function syncAdSetsCtrl(req, res) {
   try {
@@ -156,8 +156,8 @@ export async function syncAdSetsCtrl(req, res) {
 
     // Lấy token: ưu tiên query, fallback DB của user hiện tại
     let accessToken = req.query.access_token;
-    if (!accessToken) {
-      const user = await User.findById(req.user?._id).select("+facebookAccessToken");
+    if (!accessToken && req.user?._id) {
+      const user = await User.findById(req.user._id).select("+facebookAccessToken");
       accessToken = user?.facebookAccessToken || null;
     }
 
