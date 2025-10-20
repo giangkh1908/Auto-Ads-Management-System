@@ -8,6 +8,7 @@
     background: #f9fafb; 
     display: flex;
     flex-direction: column;
+    overflow: auto;
 }
 
 .hierarchy-container {
@@ -47,20 +48,45 @@
     box-shadow: 0 0 0 1px #0ea5e9;
 }
 
-.hierarchy-item.completed {
+/* .hierarchy-item.completed {
     background: #f0fdf4;
     border-color: #22c55e;
-}
+} */
 
-.hierarchy-item.completed:hover {
+/* .hierarchy-item.completed:hover {
     background: #dcfce7;
-}
+} */
 
 .hierarchy-icon {
     font-size: 18px;
-    width: 24px;
+    width: auto;
     text-align: center;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.expand-btn {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 1;
+    width: 20px;
+    height: 20px;
+}
+
+.expand-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
 }
 
 .hierarchy-content {
@@ -84,6 +110,116 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+
+.hierarchy-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.status-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-badge.paused {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.draft {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.date-info, .budget-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hierarchy-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+}
+
+.dropdown-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.more-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: #6b7280;
+    transition: all 0.2s ease;
+}
+
+.more-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.dropdown-content {
+    position: absolute;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    min-width: 160px;
+    margin-left: 8px;
+}
+
+/* Dropdown content is controlled by JavaScript state, not CSS hover */
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    text-align: right;
+    cursor: pointer;
+    color: #374151;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background: #f3f4f6;
+}
+
+.dropdown-item.delete-item {
+    color: #dc2626;
+}
+
+.dropdown-item.delete-item:hover {
+    background: #fef2f2;
 }
 
 .hierarchy-status {
