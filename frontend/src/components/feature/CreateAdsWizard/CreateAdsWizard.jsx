@@ -71,7 +71,7 @@ function CreateAdsWizard({
 
   const facebookPages = useFacebookPages();
 
-  const { handlePublish } = useWizardPublish();
+  const { handleSmartPublish } = useWizardPublish();
 
   // Edit mode logic
   useEditMode({
@@ -111,12 +111,11 @@ function CreateAdsWizard({
     }
   }, [mode, editingItem, setWizardStep]);
 
-  // Handle publish with proper parameters
+  // Handle publish with proper parameters - SMART PUBLISH
   const handlePublishClick = () => {
-    handlePublish({
-      campaign,
-      adset,
-      ad,
+    // Smart publish - tự động chọn batch hoặc sequential
+    handleSmartPublish({
+      campaignsList, // THÊM DÒNG NÀY
       selectedAccountId,
       editingItem,
       mode,

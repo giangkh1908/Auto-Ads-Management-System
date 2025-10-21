@@ -32,6 +32,28 @@ function Control({
     adsets: {},
   });
 
+  // Auto-expand campaigns and adsets by default
+  useEffect(() => {
+    const newExpandedItems = {
+      campaigns: {},
+      adsets: {},
+    };
+
+    // Auto-expand all campaigns
+    campaignsList.forEach((_, campaignIndex) => {
+      newExpandedItems.campaigns[campaignIndex] = true;
+    });
+
+    // Auto-expand all adsets
+    campaignsList.forEach((campaign, campaignIndex) => {
+      (campaign.adsets || []).forEach((_, adsetIndex) => {
+        newExpandedItems.adsets[`${campaignIndex}-${adsetIndex}`] = true;
+      });
+    });
+
+    setExpandedItems(newExpandedItems);
+  }, [campaignsList]);
+
   const [openDropdowns, setOpenDropdowns] = useState({});
 
   // Close dropdown when clicking outside
