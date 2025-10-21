@@ -113,7 +113,7 @@ function CreateAdsWizard({
 
   // Handle publish with proper parameters - SMART PUBLISH
   const handlePublishClick = () => {
-    // Smart publish - tự động chọn batch hoặc sequential
+    // Sequential publish - xử lý từng campaign một cách tuần tự
     handleSmartPublish({
       campaignsList, // THÊM DÒNG NÀY
       selectedAccountId,

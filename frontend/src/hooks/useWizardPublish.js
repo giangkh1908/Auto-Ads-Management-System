@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useToast } from "./useToast";
-import { publishAdsWizard, updateAdsWizard, publishAdsWizardBatch } from "../services/adsWizardService";
+import { publishAdsWizard, updateAdsWizard } from "../services/adsWizardService";
 import { buildPayload } from "../utils/wizardUtils";
 import { FB_OBJECTIVE_MAP, FB_ADSET_DEFAULTS_BY_OBJECTIVE } from "../constants/wizardConstants";
 
@@ -79,7 +79,7 @@ export function useWizardPublish() {
   //   }
   // };
 
-  // FUNCTION MỚI - Smart Publish Logic (SỬA LẠI)
+  // Sequential Publish Logic - Xử lý từng campaign một cách tuần tự
   const handleSmartPublish = async ({
     campaignsList,
     selectedAccountId,
@@ -92,57 +92,23 @@ export function useWizardPublish() {
     setSuccess(false);
 
     try {
-      // Auto-detect và chọn phương thức tối ưu
-      if (campaignsList.length > 1) {
-        console.log('🚀 Using Batch API for multiple campaigns');
-        
-        // ✅ SỬA: Xử lý TẤT CẢ adsets và ads trong mỗi campaign
-        const batchPayload = campaignsList.map(campaign => {
-          // Tạo array chứa tất cả adsets và ads
-          const campaignData = {
-            campaign: campaign,
-            adsets: [],
-            ads: [],
-            creatives: []
-          };
-
-          // Xử lý tất cả adsets trong campaign
-          campaign.adsets.forEach((adset) => {
-            campaignData.adsets.push(adset);
-            
-            // Xử lý tất cả ads trong mỗi adset
-            adset.ads.forEach((ad) => {
-              campaignData.ads.push(ad);
-              campaignData.creatives.push(ad.creative);
-            });
-          });
-
-          return campaignData;
-        });
-
-        const result = await publishAdsWizardBatch({
-          campaignsList: batchPayload,
-          selectedAccountId,
-          mode
-        });
-
-        toast.success(`Publish thành công ${result.data.successCount}/${campaignsList.length} chiến dịch!`);
-        
-      } else {
-        console.log('📝 Using Sequential API for single campaign');
-        
-        const campaign = campaignsList[0];
-        
-        // ✅ SỬA: Xử lý TẤT CẢ adsets và ads trong single campaign
-        let successCount = 0;
-        let totalAds = 0;
-        
-        // Đếm tổng số ads
+      console.log('📝 Using Sequential API for all campaigns');
+      
+      let totalSuccessCount = 0;
+      let totalAds = 0;
+      
+      // Đếm tổng số ads trong tất cả campaigns
+      campaignsList.forEach(campaign => {
         campaign.adsets.forEach(adset => {
           totalAds += adset.ads.length;
         });
+      });
+      
+      // Xử lý từng campaign
+      for (let campaignIndex = 0; campaignIndex < campaignsList.length; campaignIndex++) {
+        const campaign = campaignsList[campaignIndex];
         
-        // Xử lý từng adset và ads
+        // Xử lý từng adset và ads trong campaign
         for (let adsetIndex = 0; adsetIndex < campaign.adsets.length; adsetIndex++) {
           const adset = campaign.adsets[adsetIndex];
           
@@ -165,12 +131,12 @@ export function useWizardPublish() {
               await publishAdsWizard(payload);
             }
             
-            successCount++;
+            totalSuccessCount++;
           }
         }
-
-        toast.success(`Tạo thành công ${successCount}/${totalAds} quảng cáo trong chiến dịch!`);
       }
+
+      toast.success(`Tạo thành công ${totalSuccessCount}/${totalAds} quảng cáo trong ${campaignsList.length} chiến dịch!`);
 
       setSuccess(true);
       setTimeout(() => {
