@@ -1,7 +1,7 @@
 import UserRole from "../models/userRole.model.js";
 import Role from "../models/role.model.js";
 import User from "../models/user.model.js";
-import Shop from "../models/shop.model.js";
+import Shop from "../models/shops/shop.model.js";
 
 /**
  * 🎯 Gán role cho user

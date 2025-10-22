@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import fetch from "node-fetch";
 import { generateTokens, verifyRefreshToken } from "../utils/jwt.js";
-import Shop from "../models/shop.model.js";
+import Shop from "../models/shops/shop.model.js";
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
