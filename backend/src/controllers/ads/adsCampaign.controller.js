@@ -25,12 +25,17 @@ export async function listCampaignsCtrl(req, res) {
     
     // Xây dựng filter
     const filter = {};
+    
+    // ✅ Luôn loại bỏ items đã DELETED ở backend
+    filter.status = { $ne: "DELETED" };
+    
     if (account_id) {
       // Hỗ trợ cả định dạng có act_ và không có act_
       const normalizedId = account_id.startsWith('act_') ? account_id.substring(4) : account_id;
       filter.external_account_id = { $in: [normalizedId, `act_${normalizedId}`] };
     }
     
+    // Nếu có filter status cụ thể, ghi đè filter mặc định
     if (status) filter.status = status;
     if (q) filter.name = new RegExp(q, 'i');
     
@@ -56,7 +61,6 @@ export async function listCampaignsCtrl(req, res) {
     });
   }
 }
-
 /**
  * GET /api/campaigns/database
  * Lấy campaign từ database theo campaign_id

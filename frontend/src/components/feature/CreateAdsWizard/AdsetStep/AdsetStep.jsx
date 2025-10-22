@@ -32,10 +32,12 @@ const CAMPAIGN_OBJECTIVE_MAPPING = {
   },
   ENGAGEMENT: {
     optimization_goals: [
+      { value: 'REACH', label: 'Tiếp cận' },
       { value: 'POST_ENGAGEMENT', label: 'Tương tác bài viết' },
-      { value: 'THRUPLAY', label: 'Lượt xem video' }
+      { value: 'THRUPLAY', label: 'Lượt xem video' },
+      { value: 'PAGE_LIKES', label: 'Lượt thích trang' }
     ],
-    billing_events: ['IMPRESSIONS', 'POST_ENGAGEMENT', 'VIDEO_VIEWS']
+    billing_events: ['IMPRESSIONS', 'POST_ENGAGEMENT']
   },
   APP_PROMOTION: {
     optimization_goals: [
@@ -821,7 +823,6 @@ function AdsetStepInner({ adset, setAdset, objective }, ref) {
             <h3 className="section-title-ads">Chiến lược giá thầu</h3>
           </div>
           <div className="field-group">
-            <label className="field-label">Chiến lược giá thầu</label>
             <select
               className="bid-strategy-select"
               value={adset.bid_strategy || "LOWEST_COST_WITHOUT_CAP"}
@@ -834,14 +835,19 @@ function AdsetStepInner({ adset, setAdset, objective }, ref) {
 
           {/* Chỉ hiển thị trường bid_amount khi bid_strategy là LOWEST_COST_WITH_BID_CAP */}
           {adset.bid_strategy === 'LOWEST_COST_WITH_BID_CAP' && (
-            <div className="form-group">
+            <div className="field-group">
               <label>Giới hạn giá thầu</label>
-              <input
-                type="number"
-                value={adset.bid_amount || ''}
-                onChange={(e) => setAdset(prev => ({...prev, bid_amount: parseInt(e.target.value) || 0}))}
-                min="1"
-              />
+              <div className="bid-amount-container">
+                <input
+                  type="number"
+                  value={adset.bid_amount || ''}
+                  onChange={(e) => setAdset(prev => ({...prev, bid_amount: parseInt(e.target.value) || 0}))}
+                  min="1000"
+                  className="bid-strategy-input"
+                  placeholder="1000"
+                />
+                <span className="currency-suffix">VNĐ</span>
+              </div>
             </div>
           )}
 
@@ -850,7 +856,7 @@ function AdsetStepInner({ adset, setAdset, objective }, ref) {
             {adset.bid_strategy === 'LOWEST_COST_WITHOUT_CAP' && (
               <div className="info-box">
                 <i className="info-icon"></i>
-                <span>Facebook sẽ tự động tối ưu hóa giá thầu để đạt chi phí thấp nhất.</span>
+                <span> Facebook sẽ tự động tối ưu hóa giá thầu để đạt chi phí thấp nhất.</span>
               </div>
             )}
             {adset.bid_strategy === 'LOWEST_COST_WITH_BID_CAP' && (

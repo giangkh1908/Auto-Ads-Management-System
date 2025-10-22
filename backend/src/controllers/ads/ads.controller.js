@@ -106,9 +106,13 @@ export async function listAdsCtrl(req, res) {
       filter.external_account_id = {
         $in: [normalizedId, `act_${normalizedId}`],
       };
+      filter.external_account_id = {
+        $in: [normalizedId, `act_${normalizedId}`],
+      };
     }
 
     if (adset_id) filter.set_id = adset_id;
+    // Nếu có filter status cụ thể, ghi đè filter mặc định
     if (status) filter.status = status;
     if (q) filter.name = new RegExp(q, "i");
 
@@ -151,11 +155,16 @@ export async function syncAdsCtrl(req, res) {
       const user = await User.findById(req.user?._id).select(
         "+facebookAccessToken"
       );
+      const user = await User.findById(req.user?._id).select(
+        "+facebookAccessToken"
+      );
       accessToken = user?.facebookAccessToken || null;
     }
 
     if (!accessToken) {
       return res.status(400).json({
+        message:
+          "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
         message:
           "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
         missingToken: true,

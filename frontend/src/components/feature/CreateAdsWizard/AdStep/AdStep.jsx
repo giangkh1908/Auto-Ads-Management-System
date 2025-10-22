@@ -547,7 +547,6 @@ function AdStepInner({ ad, setAd }, ref) {
                           onClick={() => handleImageSelection(image.id)}
                         >
                           <img src={image.url} alt="AI generated" className="ai-image" />
-                          {image.selected && <div className="checkmark">✓</div>}
                         </div>
                       ))
                     )}

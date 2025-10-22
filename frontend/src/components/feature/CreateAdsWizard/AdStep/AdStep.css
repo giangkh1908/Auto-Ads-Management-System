@@ -225,6 +225,7 @@
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
   transition: all 0.2s ease;
 }
 
@@ -232,16 +233,30 @@
   background: #f3f4f6;
 }
 
+/* Khi được chọn */
 .ai-image-cell.selected {
-  background: #f0fdf4;
-  border-color: #22c55e;
+  background: radial-gradient(circle at center, #0f172a 0%, #1e293b 100%);
+  border: 1px solid #6366f1;
+  transform: scale(1.15);
+  z-index: 5;
+  transition: all 0.25s ease;
 }
 
-.checkmark {
-  color: #22c55e;
-  font-size: 20px;
-  font-weight: bold;
-  transform: rotate(15deg);
+/* Lớp phủ nhấn mạnh */
+.ai-image-cell.selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background-clip: padding-box;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2),  /* xanh dương sáng */
+    rgba(255, 255, 255, 0.2),  /* tím sáng */
+    rgba(16, 185, 129, 0.2)   /* xanh ngọc */
+  );
 }
 
 .ai-info-section {
