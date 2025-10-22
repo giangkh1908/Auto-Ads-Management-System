@@ -4,20 +4,20 @@ export const INITIAL_DATA = {
   campaign: {
     id: 1,
     name: "Chiến dịch mới",
-    status: "Active",
+    status: "PAUSED",
     objective: "POST_ENGAGEMENT",
     budgetType: "CAMPAIGN",
     facebookPage: "Fchat.vn",
     facebookPageId: null,
     facebookPageAvatar: null,
     createdAt: new Date().toISOString(),
-    adsets: []
+    adsets: [],
   },
   adset: {
     id: 101,
     name: "Nhóm quảng cáo mới",
     budget: "100.000đ",
-    status: "Active",
+    status: "PAUSED",
     optimization_goal: "REACH",
     billing_event: "IMPRESSIONS",
     bid_strategy: "LOWEST_COST_WITHOUT_CAP",
@@ -27,12 +27,12 @@ export const INITIAL_DATA = {
     placement: "AUTOMATIC",
     targeting: { location: "Việt Nam", ageMin: 18, ageMax: 45 },
     conversion_event: "VIEW_CONTENT",
-    ads: []
+    ads: [],
   },
   ad: {
     id: 1001,
     name: "Quảng cáo mới",
-    status: "Active",
+    status: "PAUSED",
     page: "Fchat.vn",
     media: "text",
     mediaUrl: "",
@@ -80,6 +80,12 @@ export const FB_ADSET_DEFAULTS_BY_OBJECTIVE = {
   },
   OUTCOME_SALES: {
     optimization_goal: "CONVERSIONS",
+    billing_event: "IMPRESSIONS",
+    bid_strategy: "LOWEST_COST_WITH_BID_CAP",
+    bid_amount: 1000,
+  },
+  OUTCOME_APP_PROMOTION: {
+    optimization_goal: "APP_INSTALLS",
     billing_event: "IMPRESSIONS",
     bid_strategy: "LOWEST_COST_WITH_BID_CAP",
     bid_amount: 1000,

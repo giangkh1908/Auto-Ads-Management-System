@@ -13,7 +13,7 @@ import "./CreateAdsWizard.css";
 import { useWizardState, useWizardData } from "../../../hooks/useWizardState.js";
 import { useFacebookPages } from "../../../hooks/useFacebookPages.js";
 import { useEditMode } from "../../../hooks/useEditMode.js";
-import { useWizardPublish } from "../../../hooks/useWizardPublish.js";
+import { useWizardPublish, useFlexibleWizardPublish } from "../../../hooks/useWizardPublish.js";
 
 // Import utils and constants
 import { getInitialWizardStep } from "../../../utils/wizardUtils.js";
@@ -71,6 +71,10 @@ function CreateAdsWizard({
 
   const facebookPages = useFacebookPages();
 
+  // Sử dụng logic publish mới (linh hoạt)
+  const { handleFlexiblePublish, handleStepByStepPublish } = useFlexibleWizardPublish();
+  
+  // Giữ logic cũ để tương thích
   const { handleSmartPublish } = useWizardPublish();
 
   // Edit mode logic
@@ -111,11 +115,23 @@ function CreateAdsWizard({
     }
   }, [mode, editingItem, setWizardStep]);
 
-  // Handle publish with proper parameters - SMART PUBLISH
+  // Handle publish with proper parameters - FLEXIBLE PUBLISH
   const handlePublishClick = () => {
-    // Sequential publish - xử lý từng campaign một cách tuần tự
+    // Sử dụng logic publish mới (linh hoạt)
+    // Có thể chọn giữa handleFlexiblePublish (nhanh) hoặc handleStepByStepPublish (chi tiết)
+    handleFlexiblePublish({
+      campaignsList,
+      selectedAccountId,
+      mode,
+      onSuccess,
+      onClose,
+    });
+  };
+
+  // Fallback cho logic cũ (nếu cần)
+  const handleLegacyPublishClick = () => {
     handleSmartPublish({
-      campaignsList, // THÊM DÒNG NÀY
+      campaignsList,
       selectedAccountId,
       editingItem,
       mode,

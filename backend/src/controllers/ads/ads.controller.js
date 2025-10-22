@@ -97,7 +97,9 @@ export async function listAdsCtrl(req, res) {
     // Xây dựng filter
     const filter = {};
 
+    // ✅ Luôn loại bỏ items đã DELETED ở backend
     filter.status = { $ne: "DELETED" };
+    
     if (account_id) {
       // Hỗ trợ cả định dạng có act_ và không có act_
       const normalizedId = account_id.startsWith("act_")
@@ -109,6 +111,7 @@ export async function listAdsCtrl(req, res) {
     }
 
     if (adset_id) filter.set_id = adset_id;
+    // Nếu có filter status cụ thể, ghi đè filter mặc định
     if (status) filter.status = status;
     if (q) filter.name = new RegExp(q, "i");
 

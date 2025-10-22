@@ -109,7 +109,9 @@ export async function listAdSetsCtrl(req, res) {
 
     const filter = {};
 
+    // ✅ Luôn loại bỏ items đã DELETED ở backend
     filter.status = { $ne: "DELETED" };
+    
     if (account_id) {
       const normalizedId = account_id.startsWith("act_")
         ? account_id.substring(4)
@@ -118,6 +120,7 @@ export async function listAdSetsCtrl(req, res) {
     }
 
     if (campaign_id) filter.campaign_id = campaign_id;
+    // Nếu có filter status cụ thể, ghi đè filter mặc định
     if (status) filter.status = status;
     if (q) filter.name = new RegExp(q, "i");
 
@@ -142,7 +145,6 @@ export async function listAdSetsCtrl(req, res) {
     });
   }
 }
-
 /**
  * GET /api/adsets/sync
  * Đồng bộ nhóm quảng cáo từ Facebook
