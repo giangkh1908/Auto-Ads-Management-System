@@ -155,9 +155,6 @@ export async function syncAdsCtrl(req, res) {
       const user = await User.findById(req.user?._id).select(
         "+facebookAccessToken"
       );
-      const user = await User.findById(req.user?._id).select(
-        "+facebookAccessToken"
-      );
       accessToken = user?.facebookAccessToken || null;
     }
 

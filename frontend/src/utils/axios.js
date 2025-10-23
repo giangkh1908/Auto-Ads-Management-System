@@ -4,7 +4,7 @@ import { STORAGE_KEYS } from '../constants/app.constants'
 
 const axiosInstance = axios.create({
   baseURL: API_CONFIG.BASE_URL,
-  timeout: API_CONFIG.TIMEOUT || 20000,
+  timeout: API_CONFIG.TIMEOUT || 60000,
   headers: { 'Content-Type': 'application/json' },
   // withCredentials: true, // bật nếu backend dùng cookie
 })

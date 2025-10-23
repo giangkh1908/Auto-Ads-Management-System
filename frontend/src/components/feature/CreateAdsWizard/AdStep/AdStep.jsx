@@ -27,6 +27,7 @@ function AdStepInner({ ad, setAd }, ref) {
   const toast = useToast();
 
   // AI context tracking
+  const [aiProvider, setAiProvider] = useState('openai');
   const [contextId, setContextId] = useState(null);
   const [isGenerating, setIsGenerating] = useState({
     headline: false,
@@ -90,11 +91,13 @@ function AdStepInner({ ad, setAd }, ref) {
       setIsGenerating(prev => ({ ...prev, [field]: true }));
 
       const target = field === 'primaryText' ? 'body' : field;
-
+      const model =
+        aiProvider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini';
       const response = await axiosInstance.post('/api/ai/generate-text', {
         context_id: contextId,
         target,
-        constraints: { max_len: maxLength }
+        constraints: { max_len: maxLength },
+        model
       });
 
       if (response.data && response.data.success) {
@@ -129,12 +132,14 @@ function AdStepInner({ ad, setAd }, ref) {
     try {
       setIsGeneratingImages(true);
       setShowAIGeneration(true);
-
+      const model =
+        aiProvider === 'gemini' ? 'gemini-2.5-flash-image' : 'dall-e-2';
       // Gọi API để tạo hình ảnh dựa trên context_id sẵn có
       const response = await axiosInstance.post('/api/ai/images/generate', {
         context_id: contextId,
         count: 4, // Số lượng ảnh cần tạo
-        aspect_ratio: '1:1' // Tỉ lệ khung hình
+        aspect_ratio: '1:1', // Tỉ lệ khung hình
+        model
       }, {
         timeout: 60000 // 60 giây
       }
@@ -278,16 +283,24 @@ function AdStepInner({ ad, setAd }, ref) {
                 "English": "en",
                 "中文": "zh"
               };
-
-              const mainKeywords = config.mainKeywords.split(',')
-                .map(kw => kw.trim())
-                .filter(kw => kw.length > 0);
+              const toArray = (v) =>
+                Array.isArray(v)
+                  ? v
+                  : String(v || '')
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean);
+              const mainKeywords = [
+                ...toArray(config.mainKeywords),
+                ...toArray(config.synonymousKeywords),
+                ...toArray(config.main_keywords),           // phòng trường hợp FE đã gửi dạng array
+              ];
 
               if (mainKeywords.length === 0) {
                 toast.warning("Vui lòng nhập ít nhất một từ khóa chính");
                 return;
               }
-
+              setAiProvider(config.ai_provider || 'openai');
               // Gọi API để xác nhận context
               axiosInstance.post('/api/ai/context/confirm', {
                 language: languageMap[config.language] || "vi",
