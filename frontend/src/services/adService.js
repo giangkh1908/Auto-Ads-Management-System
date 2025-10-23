@@ -80,7 +80,7 @@ export const updateAd = async (id, data) => {
 export const deleteCampaign = async (id, accessToken = null) => {
   try {
     const url = API_ENDPOINTS.CAMPAIGNS.DELETE(id, accessToken);
-    const response = await axiosInstance.delete(url);
+    const response = await axiosInstance.delete(url, { timeout: 120000 });
     return response.data;
   } catch (error) {
     console.error('Error deleting campaign:', error);
@@ -92,7 +92,7 @@ export const deleteCampaign = async (id, accessToken = null) => {
 export const deleteAdSet = async (id, accessToken = null) => {
   try {
     const url = API_ENDPOINTS.ADSETS.DELETE(id, accessToken);
-    const response = await axiosInstance.delete(url);
+    const response = await axiosInstance.delete(url, { timeout: 60000 });
     return response.data;
   } catch (error) {
     console.error('Error deleting ad set:', error);
@@ -104,7 +104,7 @@ export const deleteAdSet = async (id, accessToken = null) => {
 export const deleteAd = async (id, accessToken = null) => {
   try {
     const url = API_ENDPOINTS.ADS.DELETE(id, accessToken);
-    const response = await axiosInstance.delete(url);
+    const response = await axiosInstance.delete(url, { timeout: 30000 });
     return response.data;
   } catch (error) {
     console.error('Error deleting ad:', error);

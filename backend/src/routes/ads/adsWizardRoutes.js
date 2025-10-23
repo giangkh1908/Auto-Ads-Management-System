@@ -7,7 +7,8 @@ import {
   publishCampaignController,
   publishAdsetController,
   publishAdController,
-  publishFlexibleController
+  publishFlexibleController,
+  updateFlexibleController,
 } from "../../controllers/ads/adsWizard.controller.js";
 
 const router = Router();
@@ -16,10 +17,13 @@ const router = Router();
 router.post("/publish", authenticate, publishAdsWizard);
 router.put("/update", authenticate, updateAdsWizard);
 
-// New flexible routes
+// New flexible routes - Publish
 router.post("/publish-campaign", authenticate, publishCampaignController);
 router.post("/publish-adset", authenticate, publishAdsetController);
 router.post("/publish-ad", authenticate, publishAdController);
 router.post("/publish-flexible", authenticate, publishFlexibleController);
+
+// New flexible routes - Update
+router.put("/update-flexible", authenticate, updateFlexibleController);
 
 export default router;

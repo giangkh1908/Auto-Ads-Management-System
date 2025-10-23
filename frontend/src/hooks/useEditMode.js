@@ -5,14 +5,13 @@ import { extractObjectId, findIdInObject } from "../utils/wizardUtils";
 
 /**
  * Custom hook để xử lý logic edit mode
+ * ✅ CẢI THIỆN: Load FULL HIERARCHY (campaign + tất cả adsets + ads)
  */
 export function useEditMode({
   mode,
   editingItem,
   selectedAccountId,
-  setCampaign,
-  setAdset,
-  setAd,
+  setCampaignsList, // NEW: Set full hierarchy
   setLoading,
 }) {
   const toast = useToast();
@@ -88,21 +87,133 @@ export function useEditMode({
           throw new Error("Không tìm thấy campaign ID");
         }
 
-        // Fetch campaign data từ database
-        console.log("🔍 Fetching campaign data for ID:", campaignId);
+        // ========================================
+        // 🎯 LOAD FULL HIERARCHY
+        // ========================================
+        console.log("🔍 Loading FULL HIERARCHY for campaign:", campaignId);
+        
+        // Step 1: Fetch campaign data
         const campaignRes = await axiosInstance.get("/api/campaigns/database", {
           params: { campaign_id: campaignId },
         });
-        const campaignJson = campaignRes.data;
-        console.log("📋 Campaign response:", campaignJson);
-        campaignData = campaignJson.data;
+        campaignData = campaignRes.data.data;
+        console.log("📋 Campaign loaded:", campaignData?.name);
 
-        if (campaignData) {
-          setCampaign({
+        // Step 2: Fetch ALL adsets của campaign
+        const adsetsRes = await axiosInstance.get("/api/adsets/database", {
+          params: { campaign_id: campaignId },
+        });
+        const allAdsetsData = adsetsRes.data.data || [];
+        console.log(`📋 Loaded ${allAdsetsData.length} adsets`);
+
+        // Step 3: Fetch ALL ads của campaign
+        const adsRes = await axiosInstance.get("/api/ads/database", {
+          params: { campaign_id: campaignId },
+        });
+        const allAdsData = adsRes.data.data || [];
+        console.log(`📋 Loaded ${allAdsData.length} ads`);
+
+        // Step 4: Fetch ALL creatives (parallel with error handling)
+        const creativeIds = [...new Set(allAdsData.map(ad => ad.creative_id).filter(Boolean))];
+        const creativesMap = {};
+        
+        if (creativeIds.length > 0) {
+          console.log(`📋 Fetching ${creativeIds.length} creatives...`);
+          const creativesPromises = creativeIds.map(id =>
+            axiosInstance.get("/api/creatives/database", {
+              params: { creative_id: id },
+            }).catch(err => {
+              console.warn(`⚠️ Failed to fetch creative ${id}:`, err.message);
+              return null;
+            })
+          );
+          
+          const creativesResults = await Promise.all(creativesPromises);
+          creativesResults.forEach(res => {
+            if (res?.data?.data) {
+              const creative = res.data.data;
+              creativesMap[creative._id] = creative;
+            }
+          });
+          console.log(`✅ Loaded ${Object.keys(creativesMap).length} creatives`);
+        }
+
+        // Step 5: Build FULL HIERARCHY structure
+        const buildAdsetWithAds = (adsetDbData) => {
+          const adsetAds = allAdsData
+            .filter(ad => ad.set_id?.toString() === adsetDbData._id?.toString())
+            .map(ad => {
+              const creative = creativesMap[ad.creative_id];
+              return {
+                id: ad._id,
+                _id: ad._id,
+                external_id: ad.external_id,
+                adset_id: adsetDbData._id, // ✅ THÊM adset_id để filter trong update
+                name: ad.name || "Quảng cáo mới",
+                status: ad.status,
+                creative_id: ad.creative_id,
+                page: campaignData?.page_name || "Facebook Page",
+                media: creative?.object_story_spec?.link_data?.picture ? "image" : "text",
+                mediaUrl: creative?.object_story_spec?.link_data?.picture || null,
+                primaryText: creative?.object_story_spec?.link_data?.message || "Hãy giới thiệu về nội dung quảng cáo của bạn",
+                headline: creative?.object_story_spec?.link_data?.name || "Chat trong Messenger",
+                description: creative?.object_story_spec?.link_data?.description || "Khám phá dịch vụ của chúng tôi ngay!",
+                cta: creative?.object_story_spec?.link_data?.call_to_action?.type || "Gửi tin nhắn",
+                destinationUrl: creative?.object_story_spec?.link_data?.link || "https://fchat.vn",
+                creative: creative ? {
+                  name: creative.name,
+                  object_story_spec: creative.object_story_spec,
+                } : null,
+              };
+            });
+
+          return {
+            id: adsetDbData._id,
+            _id: adsetDbData._id,
+            external_id: adsetDbData.external_id,
+            name: adsetDbData.name || "Nhóm quảng cáo mới",
+            status: adsetDbData.status,
+            budgetType: adsetDbData.daily_budget ? "daily" : "lifetime",
+            budgetAmount: adsetDbData.daily_budget || adsetDbData.lifetime_budget,
+            daily_budget: adsetDbData.daily_budget,
+            lifetime_budget: adsetDbData.lifetime_budget,
+            start_time: adsetDbData.start_time,
+            end_time: adsetDbData.end_time,
+            schedule: {
+              start: adsetDbData.start_time
+                ? new Date(adsetDbData.start_time).toISOString().split("T")[0]
+                : "",
+              end: adsetDbData.end_time
+                ? new Date(adsetDbData.end_time).toISOString().split("T")[0]
+                : "",
+            },
+            placement: "AUTOMATIC",
+            targeting: adsetDbData.targeting || {
+              location: "Việt Nam",
+              ageMin: 18,
+              ageMax: 65,
+            },
+            optimization_goal: adsetDbData.optimization_goal,
+            conversion_event: adsetDbData.conversion_event,
+            billing_event: adsetDbData.billing_event,
+            bid_strategy: adsetDbData.bid_strategy,
+            bid_amount: adsetDbData.bid_amount,
+            ads: adsetAds, // ✅ Nested ads
+          };
+        };
+
+        const adsetsWithAds = allAdsetsData.map(buildAdsetWithAds);
+        console.log(`✅ Built hierarchy: ${adsetsWithAds.length} adsets with ${allAdsData.length} total ads`);
+
+        // Step 6: Set FULL HIERARCHY to campaignsList
+        if (campaignData && setCampaignsList) {
+          const fullHierarchy = [{
             id: campaignData._id,
+            _id: campaignData._id,
             external_id: campaignData.external_id,
             name: campaignData.name || "Chiến dịch mới",
             objective: campaignData.objective || "POST_ENGAGEMENT",
+            status: campaignData.status || "PAUSED",
             budgetType: campaignData.daily_budget ? "CAMPAIGN" : "ADSET",
             facebookPage: campaignData.page_name || "Facebook Page",
             facebookPageId: campaignData.page_id,
@@ -113,108 +224,19 @@ export function useEditMode({
             lifetime_budget: campaignData.lifetime_budget,
             start_time: campaignData.start_time,
             stop_time: campaignData.stop_time,
+            adsets: adsetsWithAds, // ✅ Full nested structure
+          }];
+
+          console.log("✅ Setting campaignsList with FULL HIERARCHY");
+          setCampaignsList(fullHierarchy);
+          
+          console.log("✅ FULL HIERARCHY loaded successfully:", {
+            campaign: campaignData?.name,
+            adsets: adsetsWithAds.length,
+            totalAds: allAdsData.length,
           });
         }
 
-        // Fetch adset data từ database
-        if (!adsetData) {
-          const adsetsRes = await axiosInstance.get("/api/adsets/database", {
-            params: { campaign_id: campaignId },
-          });
-          const adsetsJson = adsetsRes.data;
-          const adsetsData = adsetsJson.data || [];
-          adsetData =
-            editingItem.type === "adset"
-              ? adsetsData.find((adset) => adset._id === itemId) ||
-                adsetsData[0]
-              : adsetsData[0];
-        }
-
-        if (adsetData) {
-          setAdset({
-            id: adsetData._id,
-            external_id: adsetData.external_id,
-            name: adsetData.name || "Nhóm quảng cáo mới",
-            budgetType: adsetData.daily_budget ? "daily" : "lifetime",
-            budgetAmount: adsetData.daily_budget || adsetData.lifetime_budget,
-            start_time: adsetData.start_time,
-            end_time: adsetData.end_time,
-            schedule: {
-              start: adsetData.start_time
-                ? new Date(adsetData.start_time).toISOString().split("T")[0]
-                : "",
-              end: adsetData.end_time
-                ? new Date(adsetData.end_time).toISOString().split("T")[0]
-                : "",
-            },
-            placement: "AUTOMATIC",
-            targeting: adsetData.targeting || {
-              location: "Việt Nam",
-              ageMin: 18,
-              ageMax: 65,
-            },
-            optimization_goal: adsetData.optimization_goal,
-            conversion_event: adsetData.conversion_event,
-            billing_event: adsetData.billing_event,
-            bid_strategy: adsetData.bid_strategy,
-            bid_amount: adsetData.bid_amount,  
-          });
-        }
-
-        // Fetch ad data từ database
-        if (!adData) {
-          const adsRes = await axiosInstance.get("/api/ads/database", {
-            params: { campaign_id: campaignId },
-          });
-          const adsJson = adsRes.data;
-          const adsData = adsJson.data || [];
-          adData =
-            editingItem.type === "ad"
-              ? adsData.find((ad) => ad._id === itemId) || adsData[0]
-              : adsData[0];
-        }
-
-        if (adData) {
-          // Fetch creative data từ database
-          if (adData.creative_id) {
-            const creativeRes = await axiosInstance.get(
-              "/api/creatives/database",
-              {
-                params: { creative_id: adData.creative_id },
-              }
-            );
-            const creativeJson = creativeRes.data;
-            creativeData = creativeJson.data;
-          }
-
-          setAd({
-            id: adData._id,
-            external_id: adData.external_id,
-            name: adData.name || "Quảng cáo mới",
-            page: campaignData?.page_name || "Facebook Page",
-            media: creativeData?.object_story_spec?.link_data?.picture
-              ? "image"
-              : "text",
-            mediaUrl:
-              creativeData?.object_story_spec?.link_data?.picture || null,
-            primaryText:
-              creativeData?.object_story_spec?.link_data?.message ||
-              "Hãy giới thiệu về nội dung quảng cáo của bạn",
-            headline:
-              creativeData?.object_story_spec?.link_data?.name ||
-              "Chat trong Messenger",
-            description:
-              creativeData?.object_story_spec?.link_data?.description ||
-              "Khám phá dịch vụ của chúng tôi ngay!",
-            cta:
-              creativeData?.object_story_spec?.link_data?.call_to_action
-                ?.type || "Gửi tin nhắn",
-            destinationUrl:
-              creativeData?.object_story_spec?.link_data?.link ||
-              "https://fchat.vn",
-            creative_id: adData.creative_id,
-          });
-        }
       } catch (e) {
         console.log("Failed to load update data from database:", e);
         if (e?.response?.status === 401) {
@@ -231,5 +253,5 @@ export function useEditMode({
       }
     };
     loadUpdateData();
-  }, [mode, editingItem, selectedAccountId, toast, setCampaign, setAdset, setAd, setLoading]);
+  }, [mode, editingItem, selectedAccountId]);
 }
