@@ -2,7 +2,8 @@ import { OpenAI } from "openai";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary } from "cloudinary";
+import pLimit from "p-limit";
 
 dotenv.config();
 
@@ -28,6 +29,30 @@ cloudinary.config({
 const contexts = new Map();
 const TTL = 30 * 60 * 1000; // 30 phút
 
+// Cấu hình concurrency và retry
+const CONCURRENT_LIMIT = 3; // Giới hạn 3 request đồng thời
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff
+
+/**
+ * Retry function với exponential backoff
+ */
+async function retryWithBackoff(fn, maxRetries = MAX_RETRIES, delays = RETRY_DELAYS) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      const delay = delays[attempt] || delays[delays.length - 1];
+      console.log(`🔄 Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 /**
  * POST /api/ai/keywords/suggest
  * Gợi ý từ khóa liên quan
@@ -39,7 +64,7 @@ export async function suggestKeywords(req, res) {
       main_keywords = [],
       ai_provider = "openai", // Thêm parameter này
     } = req.body;
-    
+
     if (!main_keywords.length) {
       return res
         .status(400)
@@ -60,7 +85,7 @@ export async function suggestKeywords(req, res) {
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
+        temperature: 0.5,
         max_tokens: 300,
       });
       relatedKeywordsText = response.choices[0].message.content.trim();
@@ -70,23 +95,19 @@ export async function suggestKeywords(req, res) {
       .split(",")
       .map((k) => k.trim())
       .filter(Boolean);
-      
-    return res
-      .status(200)
-      .json({ 
-        success: true, 
-        related_keywords: relatedKeywords,
-        ai_provider_used: ai_provider
-      });
+
+    return res.status(200).json({
+      success: true,
+      related_keywords: relatedKeywords,
+      ai_provider_used: ai_provider,
+    });
   } catch (error) {
     console.error("Error suggesting keywords:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Lỗi khi gợi ý từ khóa",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi gợi ý từ khóa",
+      error: error.message,
+    });
   }
 }
 
@@ -151,29 +172,45 @@ function buildPromptByTarget(target, ctx, constraints = {}) {
   const kw = main_keywords.join(", ");
   const maxLen = constraints.max_len || 100;
   const policy = `
-Không dùng từ ngữ phóng đại ("tốt nhất", "cam kết 100%"), 
-không nhắm vào cá nhân ("bạn đang"), 
-không nói về bệnh lý, cơ thể, tài chính, chính trị, 
-không nhắc đến Facebook, Meta hoặc thương hiệu khác.`;
+TUÂN THỦ NGHIÊM:
+1) Không gán/suy đoán thuộc tính cá nhân (sức khỏe, tài chính, chủng tộc, tôn giáo, tuổi, bệnh…); tránh "bạn đang/bạn bị".
+2) Không nội dung y tế/giảm cân/thuốc, không chẩn đoán hay kết quả định lượng.
+3) Không "trước–sau", không bảo đảm kết quả, không từ ngữ tuyệt đối: "tốt nhất", "rẻ nhất", "100%", "cam kết".
+4) Không nhắc Facebook/Meta hay thương hiệu bên thứ ba nếu không được phép; không logo, watermark.
+5) Không giật gân/sốc, kỳ thị, người lớn, vũ khí, hàng cấm, tin sai.
+6) Giới hạn kỹ thuật: tránh ALL CAPS dài, không chuỗi ký tự đặc biệt, không để số ĐT/email trong tiêu đề.
+7) Tuân độ dài: Primary ≤125 ký tự ưu tiên phần đầu; Headline 25-40; Description ~30; CTA 2-3 từ.
+Chỉ viết nội dung trung tính, nói về lợi ích/sử dụng, không nhắm trúng người dùng cụ thể.`;
+
+  const sharedContext = `Ngữ cảnh: ${
+    personalization || "Quảng cáo sản phẩm/dịch vụ"
+  }.Từ khóa: ${kw}.Giọng: ${tone}. Ngôn ngữ: ${language}.${policy}`;
 
   switch (target) {
     case "headline":
-      return `Viết tiêu đề quảng cáo Facebook bằng ${language}, giọng ${tone}.
-Ngữ cảnh: ${personalization}. Từ khóa: ${kw}.
-Tiêu đề phải ngắn, gây chú ý, nêu lợi ích sản phẩm. ${policy}
-Giới hạn ${maxLen} ký tự. Trả về đúng 1 dòng.`;
+      return `Viết 1 tiêu đề quảng cáo (${language}) theo AIDA: chú ý mạnh vào lợi ích chính, tối đa ${Math.min(
+        maxLen,
+        60
+      )} ký tự.${sharedContext}.Yêu cầu:
+- 1 dòng duy nhất, không chấm câu cuối câu nếu không cần
+- Tránh từ sáo rỗng, nêu lợi ích cụ thể, có yếu tố khẩn trương hợp lý.`;
 
     case "body":
-      return `Viết nội dung chính cho quảng cáo Facebook bằng ${language}, giọng ${tone}.
-Ngữ cảnh: ${personalization}. Từ khóa: ${kw}.
-Giới hạn ${maxLen} ký tự. ${policy}
-Nội dung nên có điểm thu hút, lợi ích rõ, kết thúc bằng lời kêu gọi nhẹ.`;
+      return `Viết nội dung chính (${language}) theo AIDA, tối đa ${maxLen} ký tự. ${sharedContext}.
+Cấu trúc:
+1) Attention: 1 câu mở đầu chạm vấn đề/mong muốn.
+2) Interest/Desire: 2-3 ý lợi ích cụ thể, có bằng chứng ngắn (số liệu/mini proof).
+3) Action: 1 CTA rõ.
+Kết thúc bằng CTA ngắn. Không liệt kê dạng bullet, viết thành đoạn mạch lạc.`;
 
     case "description":
-      return `Viết mô tả ngắn cho quảng cáo Facebook bằng ${language}, giọng ${tone}.
-Ngữ cảnh: ${personalization}. Từ khóa: ${kw}.
-Mô tả ngắn 1 câu, bổ trợ cho tiêu đề quảng cáo.
-Giới hạn ${maxLen} ký tự. ${policy}`;
+      return `Viết 1 mô tả ngắn (${language}) bổ trợ tiêu đề, tối đa ${Math.min(
+        maxLen,
+        90
+      )} ký tự. ${sharedContext}.
+Yêu cầu:
+- Nêu điểm khác biệt/cụ thể hóa lợi ích
+- Tránh lặp lại nguyên văn tiêu đề.`;
 
     default:
       return `Viết nội dung quảng cáo Facebook bằng ${language}, giọng ${tone}.
@@ -195,32 +232,26 @@ export async function generateText(req, res) {
       model = "gpt-4o-mini",
     } = req.body;
     if (!context_id || !target) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Thiếu thông tin (context_id, target)",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin (context_id, target)",
+      });
     }
 
     const ctx = contexts.get(context_id);
     if (!ctx)
-      return res
-        .status(404)
-        .json({
-          success: false,
-          code: "CONTEXT_NOT_FOUND",
-          message: "Context không tồn tại",
-        });
+      return res.status(404).json({
+        success: false,
+        code: "CONTEXT_NOT_FOUND",
+        message: "Context không tồn tại",
+      });
     if (ctx.expiresAt < Date.now()) {
       contexts.delete(context_id);
-      return res
-        .status(410)
-        .json({
-          success: false,
-          code: "CONTEXT_EXPIRED",
-          message: "Context đã hết hạn, vui lòng tạo lại",
-        });
+      return res.status(410).json({
+        success: false,
+        code: "CONTEXT_EXPIRED",
+        message: "Context đã hết hạn, vui lòng tạo lại",
+      });
     }
 
     const prompt = buildPromptByTarget(target, ctx, constraints);
@@ -249,13 +280,11 @@ export async function generateText(req, res) {
     return res.status(200).json({ success: true, chosen: generatedText });
   } catch (error) {
     console.error("Error generating text:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Lỗi khi tạo nội dung",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi tạo nội dung",
+      error: error.message,
+    });
   }
 }
 
@@ -267,32 +296,32 @@ async function uploadToCloudinary(base64Data, mimeType) {
     // Check base64 data size (rough estimation)
     const sizeInBytes = (base64Data.length * 3) / 4;
     const sizeInMB = sizeInBytes / (1024 * 1024);
-    
+
     console.log(`📊 Image size: ${sizeInMB.toFixed(5)}MB`);
-    
+
     // If image is too large (>5MB), compress it
-    let quality = 'auto:good';
+    let quality = "auto:good";
     if (sizeInMB > 5) {
-      quality = 'auto:low';
-      console.log('🔧 Large image detected, using compression');
+      quality = "auto:low";
+      console.log("🔧 Large image detected, using compression");
     }
-    
+
     const dataUri = `data:${mimeType};base64,${base64Data}`;
     const result = await cloudinary.uploader.upload(dataUri, {
-      folder: 'ai_ads_images',
-      resource_type: 'image',
-      format: 'jpg',
+      folder: "ai_ads_images",
+      resource_type: "image",
+      format: "jpg",
       quality: quality,
       width: 1024,
       height: 1024,
-      crop: 'limit',
-      flags: 'progressive'
+      crop: "limit",
+      flags: "progressive",
     });
-    
+
     console.log(`✅ Uploaded to Cloudinary: ${result.secure_url}`);
     return result.secure_url;
   } catch (error) {
-    console.error('Cloudinary upload error:', error);
+    console.error("Cloudinary upload error:", error);
     throw error;
   }
 }
@@ -308,45 +337,110 @@ function processGeminiImageData(part) {
       return {
         data: inline.data,
         mimeType: inline.mimeType,
-        source: 'inline'
+        source: "inline",
       };
     }
-    
+
     // Check for media data
     const media = part.media;
     if (media?.data && media?.mimeType) {
       return {
         data: media.data,
         mimeType: media.mimeType,
-        source: 'media'
+        source: "media",
       };
     }
-    
+
     // Check for file URI
     const fileUri = part.fileData?.fileUri || part.file_data?.file_uri;
-    if (fileUri && fileUri.startsWith('http')) {
+    if (fileUri && fileUri.startsWith("http")) {
       return {
         url: fileUri,
-        source: 'fileUri'
+        source: "fileUri",
       };
     }
-    
+
     // Check for text containing URL
     if (typeof part.text === "string") {
       const urlMatch = part.text.match(/https?:\/\/\S+/g);
       if (urlMatch && urlMatch.length) {
         return {
           url: urlMatch[0],
-          source: 'text'
+          source: "text",
         };
       }
     }
-    
+
     return null;
   } catch (error) {
-    console.error('Error processing Gemini image data:', error);
+    console.error("Error processing Gemini image data:", error);
     return null;
   }
+}
+
+/**
+ * Tạo một ảnh đơn lẻ với Gemini và upload lên Cloudinary
+ */
+async function generateSingleGeminiImage(prompt, imageIndex) {
+  return retryWithBackoff(async () => {
+    console.log(`🔄 Generating Gemini image ${imageIndex + 1}...`);
+
+    const enhancedPrompt = `${prompt}\n\nGenerate a single high-quality image suitable for Facebook advertising. The image should be clear, professional, and visually appealing. Return the image data directly as base64.`;
+
+    const resp = await geminiImageModel.generateContent([
+      {
+        text: enhancedPrompt,
+      },
+    ]);
+
+    const cands = resp?.response?.candidates || [];
+    let imageFound = false;
+    let result = null;
+
+    for (const c of cands) {
+      const parts = c?.content?.parts || [];
+      for (const p of parts) {
+        try {
+          const imageData = processGeminiImageData(p);
+
+          if (!imageData) continue;
+
+          let publicUrl = null;
+
+          // Handle different data sources
+          if (imageData.url) {
+            // Direct URL (fileUri or text URL)
+            publicUrl = imageData.url;
+            console.log(`✅ Gemini image ${imageIndex + 1} (direct URL): ${publicUrl}`);
+          } else if (imageData.data && imageData.mimeType) {
+            // Base64 data - upload to Cloudinary
+            console.log(`📤 Uploading Gemini image ${imageIndex + 1} to Cloudinary (${imageData.source})...`);
+            publicUrl = await uploadToCloudinary(imageData.data, imageData.mimeType);
+          }
+
+          if (publicUrl) {
+            result = {
+              preview_url: publicUrl,
+              source: imageData.source || "unknown",
+              model: "gemini",
+            };
+            console.log(`✅ Gemini image ${imageIndex + 1}: ${publicUrl}`);
+            imageFound = true;
+            break;
+          }
+        } catch (partError) {
+          console.error(`❌ Error processing Gemini image part ${imageIndex + 1}:`, partError.message);
+        }
+      }
+      if (imageFound) break;
+    }
+
+    if (!imageFound) {
+      throw new Error(`No valid image generated for image ${imageIndex + 1}`);
+    }
+
+    return result;
+  });
 }
 
 /**
@@ -355,23 +449,40 @@ function processGeminiImageData(part) {
  */
 export async function generateImages(req, res) {
   try {
-    const { context_id, count = 4, aspect_ratio = "1:1", model = "dall-e-2" } = req.body;
-    
+    const {
+      context_id,
+      count = 3,
+      aspect_ratio = "1:1",
+      model = "dall-e-2",
+    } = req.body;
+
     if (!context_id) {
-      return res.status(400).json({ success: false, message: "Thiếu context_id" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu context_id" });
     }
 
     const ctx = contexts.get(context_id);
     if (!ctx) {
-      return res.status(404).json({ success: false, code: "CONTEXT_NOT_FOUND", message: "Context không tồn tại" });
+      return res.status(404).json({
+        success: false,
+        code: "CONTEXT_NOT_FOUND",
+        message: "Context không tồn tại",
+      });
     }
     if (ctx.expiresAt < Date.now()) {
       contexts.delete(context_id);
-      return res.status(410).json({ success: false, code: "CONTEXT_EXPIRED", message: "Context đã hết hạn" });
+      return res.status(410).json({
+        success: false,
+        code: "CONTEXT_EXPIRED",
+        message: "Context đã hết hạn",
+      });
     }
 
     const { tone, personalization, main_keywords } = ctx;
-    const prompt = `Create a high-quality image for Facebook advertising about: ${main_keywords.join(", ")}.
+    const prompt = `Create a high-quality image for Facebook advertising about: ${main_keywords.join(
+      ", "
+    )}.
 Style: ${tone}.
 Context: ${personalization || "Professional product/service advertising"}.
 The image should be attractive, suitable for Facebook advertising.
@@ -383,158 +494,157 @@ Clear, eye-catching colors, brand-appropriate.`;
 
     // --------- GEMINI IMAGE ----------
     if (model.startsWith("gemini")) {
-      const n = Math.min(count, 4);
+      const n = Math.min(count, 3);
+      console.log(`🚀 Starting parallel generation of ${n} Gemini images with concurrency limit ${CONCURRENT_LIMIT}`);
 
-      for (let i = 0; i < n; i++) {
-        try {
-          console.log(`🔄 Generating Gemini image ${i + 1}/${n}...`);
-          
-          // Use a more specific prompt for better image generation
-          const enhancedPrompt = `${prompt}\n\nGenerate a single high-quality image suitable for Facebook advertising. The image should be clear, professional, and visually appealing. Return the image data directly as base64.`;
-          
-          const resp = await geminiImageModel.generateContent([{
-            text: enhancedPrompt
-          }]);
+      // Tạo limit function để kiểm soát concurrency
+      const limit = pLimit(CONCURRENT_LIMIT);
 
-          const cands = resp?.response?.candidates || [];
-          let imageFound = false;
+      // Tạo array các tasks
+      const tasks = Array.from({ length: n }, (_, i) => 
+        limit(() => generateSingleGeminiImage(prompt, i))
+      );
 
-          for (const c of cands) {
-            const parts = c?.content?.parts || [];
-            for (const p of parts) {
-              try {
-                const imageData = processGeminiImageData(p);
-                
-                if (!imageData) continue;
+      // Chạy tất cả tasks song song với Promise.allSettled
+      const results = await Promise.allSettled(tasks);
 
-                let publicUrl = null;
+      // Xử lý kết quả
+      const successfulImages = [];
+      const failedImages = [];
 
-                // Handle different data sources
-                if (imageData.url) {
-                  // Direct URL (fileUri or text URL)
-                  publicUrl = imageData.url;
-                  console.log(`✅ Gemini image ${i + 1} (direct URL): ${publicUrl}`);
-                } else if (imageData.data && imageData.mimeType) {
-                  // Base64 data - upload to Cloudinary
-                  console.log(`📤 Uploading Gemini image ${i + 1} to Cloudinary (${imageData.source})...`);
-                  publicUrl = await uploadToCloudinary(imageData.data, imageData.mimeType);
-                }
-
-                if (publicUrl) {
-                  previews.push({ 
-                    preview_url: publicUrl,
-                    source: imageData.source || 'unknown',
-                    model: 'gemini'
-                  });
-                  console.log(`✅ Gemini image ${i + 1}: ${publicUrl}`);
-                  imageFound = true;
-                  break;
-                }
-              } catch (partError) {
-                console.error(`❌ Error processing Gemini image part ${i + 1}:`, partError.message);
-              }
-            }
-            if (imageFound) break;
-          }
-        } catch (e) {
-          console.error(`❌ Error generating Gemini image ${i + 1}:`, e.message);
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          successfulImages.push(result.value);
+          console.log(`✅ Image ${index + 1} generated successfully`);
+        } else {
+          failedImages.push({ index: index + 1, error: result.reason });
+          console.error(`❌ Image ${index + 1} failed:`, result.reason.message);
         }
-      }
+      });
 
+      previews = successfulImages;
+
+      // Nếu không có ảnh nào thành công, thử fallback
       if (!previews.length) {
-        console.log('⚠️ No valid images generated by Gemini, trying fallback...');
-        
-        // Fallback: Try with a simpler prompt
+        console.log("⚠️ No valid images generated by Gemini, trying fallback...");
+
         try {
-          const fallbackPrompt = `Create a simple, clean image for Facebook advertising about: ${main_keywords.join(", ")}. Professional style, no text.`;
-          const fallbackResp = await geminiImageModel.generateContent([{
-            text: fallbackPrompt
-          }]);
+          const fallbackPrompt = `Create a simple, clean image for Facebook advertising about: ${main_keywords.join(
+            ", "
+          )}. Professional style, no text.`;
           
-          const fallbackCands = fallbackResp?.response?.candidates || [];
-          for (const c of fallbackCands) {
-            const parts = c?.content?.parts || [];
-            for (const p of parts) {
-              const imageData = processGeminiImageData(p);
-              if (imageData && (imageData.url || (imageData.data && imageData.mimeType))) {
-                let publicUrl = imageData.url;
-                if (!publicUrl && imageData.data) {
-                  publicUrl = await uploadToCloudinary(imageData.data, imageData.mimeType);
-                }
-                if (publicUrl) {
-                  previews.push({ 
-                    preview_url: publicUrl,
-                    source: imageData.source || 'fallback',
-                    model: 'gemini'
-                  });
-                  break;
+          const fallbackResult = await retryWithBackoff(async () => {
+            const fallbackResp = await geminiImageModel.generateContent([
+              {
+                text: fallbackPrompt,
+              },
+            ]);
+
+            const fallbackCands = fallbackResp?.response?.candidates || [];
+            for (const c of fallbackCands) {
+              const parts = c?.content?.parts || [];
+              for (const p of parts) {
+                const imageData = processGeminiImageData(p);
+                if (
+                  imageData &&
+                  (imageData.url || (imageData.data && imageData.mimeType))
+                ) {
+                  let publicUrl = imageData.url;
+                  if (!publicUrl && imageData.data) {
+                    publicUrl = await uploadToCloudinary(
+                      imageData.data,
+                      imageData.mimeType
+                    );
+                  }
+                  if (publicUrl) {
+                    return {
+                      preview_url: publicUrl,
+                      source: imageData.source || "fallback",
+                      model: "gemini",
+                    };
+                  }
                 }
               }
             }
-            if (previews.length > 0) break;
+            throw new Error("Fallback generation failed");
+          });
+
+          if (fallbackResult) {
+            previews.push(fallbackResult);
           }
         } catch (fallbackError) {
-          console.error('Fallback generation failed:', fallbackError);
+          console.error("Fallback generation failed:", fallbackError);
         }
-        
+
         if (!previews.length) {
           return res.status(500).json({
             success: false,
-            message: "Gemini không tạo được hình ảnh hợp lệ. Vui lòng thử lại hoặc sử dụng OpenAI.",
-            code: "GEMINI_NO_IMAGE"
+            message:
+              "Gemini không tạo được hình ảnh hợp lệ. Vui lòng thử lại hoặc sử dụng OpenAI.",
+            code: "GEMINI_NO_IMAGE",
           });
         }
       }
+
+      console.log(`📊 Generation summary: ${successfulImages.length} successful, ${failedImages.length} failed`);
     }
     // --------- OPENAI DALL-E ----------
     else {
-      console.log('🎨 Generating OpenAI DALL-E images...');
-      
+      console.log("🎨 Generating OpenAI DALL-E images...");
+
       const imagesResponse = await openai.images.generate({
         model: "dall-e-2",
         prompt,
         size: "1024x1024", // DALL-E-2 chỉ hỗ trợ size vuông
         n: Math.min(count, 4),
       });
-      
+
       previews = imagesResponse.data.map((image, index) => {
         console.log(`✅ OpenAI image ${index + 1}: ${image.url}`);
-        return { 
+        return {
           preview_url: image.url,
-          source: 'openai',
-          model: 'dall-e-2'
+          source: "openai",
+          model: "dall-e-2",
         };
       });
     }
 
     console.log(`🎉 Successfully generated ${previews.length} images`);
 
-    return res.status(200).json({ 
-      success: true, 
-      previews, 
+    return res.status(200).json({
+      success: true,
+      previews,
       ttl: 900,
       model_used: model,
       total_generated: previews.length,
-      note: model.startsWith("gemini") ? "Gemini images processed and uploaded to Cloudinary with size optimization" : "OpenAI DALL-E images with direct URLs"
+      note: model.startsWith("gemini")
+        ? "Gemini images processed and uploaded to Cloudinary with size optimization"
+        : "OpenAI DALL-E images with direct URLs",
     });
-    
   } catch (error) {
     console.error("Error generating images:", error);
-    
+
     // Xử lý lỗi cụ thể
-    if (error.code === 'content_policy_violation' || error.message?.includes('safety')) {
+    if (
+      error.code === "content_policy_violation" ||
+      error.message?.includes("safety")
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Nội dung không phù hợp với chính sách AI. Vui lòng thử từ khóa khác.",
-        code: "CONTENT_POLICY_VIOLATION"
+        message:
+          "Nội dung không phù hợp với chính sách AI. Vui lòng thử từ khóa khác.",
+        code: "CONTENT_POLICY_VIOLATION",
       });
     }
-    
-    if (error.message?.includes('quota') || error.message?.includes('rate limit')) {
+
+    if (
+      error.message?.includes("quota") ||
+      error.message?.includes("rate limit")
+    ) {
       return res.status(429).json({
         success: false,
         message: "Đã đạt giới hạn API. Vui lòng thử lại sau.",
-        code: "RATE_LIMIT_EXCEEDED"
+        code: "RATE_LIMIT_EXCEEDED",
       });
     }
 
@@ -545,4 +655,3 @@ Clear, eye-catching colors, brand-appropriate.`;
     });
   }
 }
-

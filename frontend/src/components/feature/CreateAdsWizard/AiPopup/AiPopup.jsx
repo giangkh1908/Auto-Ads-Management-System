@@ -99,7 +99,7 @@ const AiPopup = ({ isOpen, onClose, onConfirm }) => {
 
           {/* Giọng Điệu */}
           <div className="ai-config-field">
-            <label className="ai-config-label">Giọng Điệu</label>
+            <label className="ai-config-label">Phong Cách</label>
             <select 
               className="ai-config-select"
               value={aiConfig.tone}
@@ -127,7 +127,7 @@ const AiPopup = ({ isOpen, onClose, onConfirm }) => {
 
           {/* Cá nhân hóa */}
           <div className="ai-config-field">
-            <label className="ai-config-label">Cá nhân hóa</label>
+            <label className="ai-config-label">Mô tả quảng cáo</label>
             <textarea
               className="ai-config-textarea"
               value={aiConfig.personalization}

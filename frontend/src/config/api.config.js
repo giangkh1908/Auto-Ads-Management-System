@@ -7,7 +7,7 @@ const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_URL || "http://localhost:5001",
   API_PREFIX: "/api",
   AUTH_PREFIX: "/api/auth",
-  TIMEOUT: 10000, // 10 seconds
+  TIMEOUT: 70000, // 70 seconds
 };
 
 export const API_ENDPOINTS = {

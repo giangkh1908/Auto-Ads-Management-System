@@ -545,12 +545,16 @@ function AdStepInner({ ad, setAd }, ref) {
                 <div className="ai-generation-section">
                   <div className="ai-images-grid">
                     {isGeneratingImages ? (
-                      // Loading placeholders
-                      Array.from({ length: 4 }, (_, i) => (
-                        <div key={`loading-${i}`} className="ai-image-cell loading">
-                          <div className="loading-spinner"></div>
+                      // Loading text with wave effect
+                      <div className="loading-wave-container">
+                        <div className="loading-wave-text">
+                          {'Vui lòng chờ đợi...'.split('').map((char, index) => (
+                            <span key={index} style={{ animationDelay: `${index * 0.1}s` }}>
+                              {char === ' ' ? '\u00A0' : char}
+                            </span>
+                          ))}
                         </div>
-                      ))
+                      </div>
                     ) : (
                       // Rendered images
                       aiImages.map((image) => (
