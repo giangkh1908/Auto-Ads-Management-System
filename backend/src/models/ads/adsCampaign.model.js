@@ -54,8 +54,8 @@ const adsCampaignSchema = new mongoose.Schema(
     // Trạng thái
     status: {
       type: String,
-      enum: ["PAUSED", "ACTIVE", "DELETED", "ARCHIVED", "IN_PROCESS"],
-      default: "IN_PROCESS",
+      enum: ["PAUSED", "ACTIVE", "DELETED", "ARCHIVED", "DRAFT", "FAILED"],
+      default: "DRAFT",
     },
     configured_status: { type: String },
     effective_status: { type: String },

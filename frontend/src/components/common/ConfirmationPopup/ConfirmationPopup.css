@@ -206,13 +206,13 @@
   cursor: not-allowed;
 }
 
-.loading-spinner {
+.loading-spinner-popup {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.spinner {
+.spinner-popup {
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.3);

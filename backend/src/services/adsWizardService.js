@@ -8,8 +8,254 @@ import {
   createCreative,
   createAd,
   deleteEntity,
+  updateCampaign,
+  updateAdset,
+  updateAd,
 } from "./fbAdsService.js";
 import axios from "axios";
+
+/* =========================
+ *  HELPER FUNCTIONS
+ * ========================= */
+
+/**
+ * Helper function: Chạy promises với giới hạn concurrency
+ * @param {Array} tasks - Mảng các async functions
+ * @param {number} limit - Số lượng tasks chạy đồng thời tối đa
+ */
+async function runWithConcurrencyLimit(tasks, limit = 8) {
+  const localResults = [];
+  const batches = [];
+
+  // Chia tasks thành các batches
+  for (let i = 0; i < tasks.length; i += limit) {
+    batches.push(tasks.slice(i, i + limit));
+  }
+
+  // Chạy từng batch tuần tự, nhưng trong batch thì song song
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    console.log(
+      `🔄 Xử lý batch ${batchIndex + 1}/${batches.length} (${batch.length} items)...`
+    );
+
+    const batchResults = await Promise.all(batch.map((task) => task()));
+    localResults.push(...batchResults);
+
+    const successCount = batchResults.filter((r) => r?.success !== false).length;
+    console.log(
+      `✅ Batch ${batchIndex + 1} hoàn thành: ${successCount}/${batch.length} thành công`
+    );
+  }
+
+  return localResults;
+}
+
+/**
+ * Helper: Tìm entity hiện có trong DB theo _id, draftId, hoặc external_id
+ */
+async function findExistingEntity(entity, Model) {
+  if (!entity) return null;
+  
+  // Priority 1: Tìm theo _id hoặc draftId
+  if (entity._id || entity.draftId) {
+    const found = await Model.findById(entity._id || entity.draftId);
+    if (found) return found;
+  }
+  
+  // Priority 2: Tìm theo external_id
+  if (entity.external_id) {
+    const found = await Model.findOne({ external_id: entity.external_id });
+    if (found) return found;
+  }
+  
+  return null;
+}
+
+/* =========================
+ *  UPDATE OR CREATE HELPERS
+ * ========================= */
+
+/**
+ * Update hoặc tạo mới Campaign
+ */
+async function updateOrCreateCampaign({ 
+  campaign, 
+  ad_account_id, 
+  access_token 
+}) {
+  const now = new Date();
+  const existingCampaign = await findExistingEntity(campaign, AdsCampaign);
+  
+  if (existingCampaign) {
+    console.log(`🔄 Updating existing campaign: ${existingCampaign.name} (${existingCampaign._id})`);
+    
+    // Build updates (chỉ các field được phép update)
+    const updates = {
+      ...(campaign.name && { name: campaign.name }),
+      ...(campaign.status && { status: campaign.status }),
+      ...(campaign.daily_budget !== undefined && { daily_budget: campaign.daily_budget }),
+      ...(campaign.lifetime_budget !== undefined && { lifetime_budget: campaign.lifetime_budget }),
+      ...(campaign.start_time && { start_time: campaign.start_time }),
+      ...(campaign.stop_time && { stop_time: campaign.stop_time }),
+      updated_at: now,
+    };
+    
+    // Update trên Facebook nếu có external_id
+    if (existingCampaign.external_id) {
+      try {
+        await updateCampaign(existingCampaign.external_id, access_token, updates);
+      } catch (fbError) {
+        console.warn(`⚠️ Facebook update campaign failed:`, fbError.response?.data || fbError.message);
+        // Continue với DB update ngay cả khi Facebook fail
+      }
+    }
+    
+    // Update trong MongoDB
+    await AdsCampaign.findByIdAndUpdate(existingCampaign._id, updates);
+    
+    return { 
+      action: 'updated',
+      campaignId: existingCampaign.external_id,
+      campaignDbId: existingCampaign._id,
+      success: true,
+    };
+  } else {
+    // CREATE new campaign
+    console.log(`➕ Creating new campaign: ${campaign.name}`);
+    return await publishCampaignService({
+      ad_account_id,
+      access_token,
+      campaign,
+      campaignDraftId: campaign.draftId,
+    });
+  }
+}
+
+/**
+ * Update hoặc tạo mới AdSet
+ */
+async function updateOrCreateAdset({ 
+  adset, 
+  campaignId,
+  campaignDbId,
+  ad_account_id, 
+  access_token 
+}) {
+  const now = new Date();
+  const existingAdset = await findExistingEntity(adset, AdsSet);
+  
+  if (existingAdset) {
+    console.log(`🔄 Updating existing adset: ${existingAdset.name} (${existingAdset._id})`);
+    
+    // Build updates
+    const updates = {
+      ...(adset.name && { name: adset.name }),
+      // ...(adset.status && { status: adset.status }),
+      ...(adset.daily_budget !== undefined && { daily_budget: adset.daily_budget }),
+      ...(adset.lifetime_budget !== undefined && { lifetime_budget: adset.lifetime_budget }),
+      ...(adset.end_time && { end_time: adset.end_time }),
+      ...(adset.targeting && { targeting: adset.targeting }),
+      ...(adset.optimization_goal && { optimization_goal: adset.optimization_goal }),
+      ...(adset.bid_strategy && { bid_strategy: adset.bid_strategy }),
+      ...(adset.bid_amount !== undefined && { bid_amount: adset.bid_amount }),
+      ...(adset.billing_event && { billing_event: adset.billing_event }),
+      ...(adset.conversion_event && { conversion_event: adset.conversion_event }),
+      updated_at: now,
+    };
+    
+    // Update trên Facebook nếu có external_id
+    if (existingAdset.external_id) {
+      try {
+        await updateAdset(existingAdset.external_id, access_token, updates);
+      } catch (fbError) {
+        console.warn(`⚠️ Facebook update adset failed:`, fbError.response?.data || fbError.message);
+      }
+    }
+    
+    // Update trong MongoDB
+    await AdsSet.findByIdAndUpdate(existingAdset._id, updates);
+    
+    return { 
+      action: 'updated',
+      adsetId: existingAdset.external_id,
+      adsetDbId: existingAdset._id,
+      success: true,
+    };
+  } else {
+    // CREATE new adset
+    console.log(`➕ Creating new adset: ${adset.name}`);
+    return await publishAdsetService({
+      ad_account_id,
+      access_token,
+      campaignId,
+      campaignDbId,
+      adset,
+      adsetDraftId: adset.draftId,
+    });
+  }
+}
+
+/**
+ * Update hoặc tạo mới Ad
+ * NOTE: Creative KHÔNG thể update - chỉ tạo mới nếu creative thay đổi
+ */
+async function updateOrCreateAd({ 
+  ad, 
+  adsetId,
+  adsetDbId,
+  ad_account_id, 
+  access_token 
+}) {
+  const now = new Date();
+  const existingAd = await findExistingEntity(ad, Ads);
+  
+  if (existingAd) {
+    console.log(`🔄 Updating existing ad: ${existingAd.name} (${existingAd._id})`);
+    
+    // Build updates (Ad chỉ update được name và status)
+    const updates = {
+      ...(ad.name && { name: ad.name }),
+      ...(ad.status && { status: ad.status }),
+      updated_at: now,
+    };
+    
+    // ⚠️ IMPORTANT: Facebook KHÔNG cho update creative
+    // Nếu creative thay đổi, cần tạo ad mới (không implement ở đây để giữ metrics)
+    
+    // Update trên Facebook nếu có external_id
+    if (existingAd.external_id) {
+      try {
+        await updateAd(existingAd.external_id, access_token, updates);
+      } catch (fbError) {
+        console.warn(`⚠️ Facebook update ad failed:`, fbError.response?.data || fbError.message);
+      }
+    }
+    
+    // Update trong MongoDB
+    await Ads.findByIdAndUpdate(existingAd._id, updates);
+    
+    return { 
+      action: 'updated',
+      adId: existingAd.external_id,
+      adDbId: existingAd._id,
+      success: true,
+    };
+  } else {
+    // CREATE new ad
+    console.log(`➕ Creating new ad: ${ad.name}`);
+    return await publishAdService({
+      ad_account_id,
+      access_token,
+      adsetId,
+      adsetDbId,
+      creative: ad.creative,
+      ad,
+      adDraftId: ad.draftId,
+    });
+  }
+}
+
 /**
  * 🧩 Publish toàn bộ quy trình tạo quảng cáo Wizard
  * (Campaign → Ad Set → Creative → Ad)
@@ -37,7 +283,7 @@ export async function publishWizard({
     : await AdsCampaign.create({
         name: campaign?.name,
         objective: campaign?.objective,
-        status: "IN_PROCESS",
+        status: "DRAFT",
         account_id: campaign?.account_id,
         shop_id: campaign?.shop_id,
         page_id: campaign?.page_id,
@@ -54,7 +300,7 @@ export async function publishWizard({
     : await AdsSet.create({
         campaign_id: draftCamp._id,
         name: adset?.name,
-        status: "IN_PROCESS",
+        status: "DRAFT",
         optimization_goal: adset?.optimization_goal,
         conversion_event: adset?.conversion_event,
         billing_event: adset?.billing_event,
@@ -87,7 +333,7 @@ export async function publishWizard({
         account_id: campaign?.account_id,
         name: ad?.name,
         creative_id: draftCreative._id,
-        status: "IN_PROCESS",
+        status: "DRAFT",
       });
 
   try {
@@ -550,94 +796,6 @@ export async function updateWizard({
   return result;
 }
 
-// Thêm fallback cho các trường thiếu trong hàm publishWizard hoặc createAdset
-
-function ensureRequiredFields(adset, objective) {
-  const mapping =
-    CAMPAIGN_OBJECTIVE_MAPPING[objective] ||
-    CAMPAIGN_OBJECTIVE_MAPPING.AWARENESS;
-
-  return {
-    ...adset,
-    optimization_goal:
-      adset.optimization_goal ||
-      mapping.optimization_goals[0]?.value ||
-      "REACH",
-    billing_event:
-      adset.billing_event || mapping.billing_events[0] || "IMPRESSIONS",
-    bid_strategy: adset.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
-    bid_amount: adset.bid_amount || 100,
-  };
-}
-
-// Sử dụng trong hàm tạo adset:
-// const adsetData = ensureRequiredFields(adset, campaign.objective);
-
-// Tìm hàm createAdset và thêm xử lý cho bid_strategy/bid_amount
-const createAdset = async (accessToken, accountId, campaign, adset) => {
-  try {
-    console.log("🚀 Tạo AdSet trên Facebook:", adset.name);
-
-    // Clone để tránh thay đổi dữ liệu gốc từ bên ngoài
-    const adsetPayload = { ...adset };
-
-    // 🔧 XỬ LÝ XUNG ĐỘT BID STRATEGY/AMOUNT
-    if (
-      adsetPayload.bid_strategy === "LOWEST_COST_WITHOUT_CAP" &&
-      adsetPayload.bid_amount !== undefined
-    ) {
-      console.log(
-        "🔧 Service: Xóa bid_amount khi dùng LOWEST_COST_WITHOUT_CAP"
-      );
-      delete adsetPayload.bid_amount;
-    }
-
-    console.log("📋 AdSet data:", adsetPayload);
-
-    // Tiếp tục với API call...
-    const adsetResponse = await axios.post(
-      `https://graph.facebook.com/v23.0/act_${accountId}/adsets`,
-      {
-        ...adsetPayload,
-        // Các trường khác giữ nguyên
-      },
-      {
-        params: {
-          access_token: accessToken,
-        },
-      }
-    );
-
-    // Phần còn lại của code...
-  } catch (error) {
-    // Xử lý lỗi...
-  }
-};
-
-// Tìm hàm updateAdset và thêm logic tương tự
-
-const updateAdset = async (accessToken, adsetId, data) => {
-  try {
-    // Clone data để không làm thay đổi object gốc
-    const payload = { ...data };
-
-    // Kiểm tra và xóa bid_amount nếu cần
-    if (
-      payload.bid_strategy === "LOWEST_COST_WITHOUT_CAP" &&
-      payload.bid_amount !== undefined
-    ) {
-      console.log(
-        "🔧 Service (update): Xóa bid_amount khi dùng LOWEST_COST_WITHOUT_CAP"
-      );
-      delete payload.bid_amount;
-    }
-
-    // Tiếp tục với API call...
-  } catch (error) {
-    // Xử lý lỗi...
-  }
-};
-
 // ========================================
 // 🎯 NEW FLEXIBLE SERVICES FOR DIFFERENT MODELS
 // ========================================
@@ -662,7 +820,7 @@ export async function publishCampaignService({
     : await AdsCampaign.create({
         name: campaign?.name,
         objective: campaign?.objective,
-        status: "IN_PROCESS",
+        status: "DRAFT",
         account_id: campaign?.account_id,
         shop_id: campaign?.shop_id,
         page_id: campaign?.page_id,
@@ -761,7 +919,7 @@ export async function publishAdsetService({
     : await AdsSet.create({
         campaign_id: campaignDbId, // MongoDB _id của campaign
         name: adset?.name,
-        status: "IN_PROCESS",
+        status: "DRAFT",
         optimization_goal: adset?.optimization_goal,
         billing_event: adset?.billing_event,
         bid_strategy: adset?.bid_strategy,
@@ -866,7 +1024,6 @@ export async function publishAdService({
     adset_id: adsetDbId, // MongoDB _id của adset
     name: creative?.name,
     object_story_spec: creative?.object_story_spec,
-    status: "IN_PROCESS",
     created_by: creative?.created_by,
   });
 
@@ -876,7 +1033,7 @@ export async function publishAdService({
         set_id: adsetDbId, // MongoDB _id của adset
         name: ad?.name,
         creative_id: draftCreative._id,
-        status: "IN_PROCESS",
+        status: "DRAFT",
       });
 
   try {
@@ -940,19 +1097,6 @@ export async function publishAdService({
       updated_at: now,
     });
 
-    // 3) Tạo Ad trên Facebook
-    if (dry_run) {
-      fbAdId = "dry_" + (Date.now() + 3);
-      console.log(`[DRY RUN] Ad giả: ${ad.name}`);
-    } else {
-      fbAdId = await createAd(ad_account_id, access_token, {
-        ...ad,
-        adset_id: adsetId,
-        creative: { creative_id: fbCreativeId },
-        status: ad?.status || "PAUSED",
-      });
-    }
-
     // Lưu Ad vào database
     console.log(`Lưu Ad vào database: ${draftAd._id} -> ${fbAdId}`);
     await Ads.findByIdAndUpdate(draftAd._id, {
@@ -995,6 +1139,22 @@ export async function publishFlexibleService({
     errors: [],
   };
 
+  // 🔍 LOG RECEIVED PAYLOAD
+  console.log("\n🔍 ========== RECEIVED PAYLOAD IN BACKEND ==========");
+  console.log("📊 Total Campaigns:", campaignsList.length);
+  campaignsList.forEach((campaign, cIdx) => {
+    console.log(`\n📋 Campaign ${cIdx + 1}: ${campaign.name}`);
+    console.log(`  AdSets: ${campaign.adsets?.length || 0}`);
+    campaign.adsets?.forEach((adset, aIdx) => {
+      console.log(`    📦 AdSet ${aIdx + 1}: ${adset.name}`);
+      console.log(`      Ads: ${adset.ads?.length || 0}`);
+      adset.ads?.forEach((ad, adIdx) => {
+        console.log(`        📝 Ad ${adIdx + 1}: ${ad.name}`);
+      });
+    });
+  });
+  console.log("====================================================\n");
+
   try {
     //Xử lý từng campaign
     for (
@@ -1021,39 +1181,6 @@ export async function publishFlexibleService({
         console.log(
           `Bắt đầu tạo ${campaign.adsets.length} AdSets cho Campaign "${campaign.name}"...`
         );
-
-        /**
-         * Helper function: Chạy promises với giới hạn concurrency
-         * @param {Array} tasks - Mảng các async functions
-         * @param {number} limit - Số lượng tasks chạy đồng thời tối đa
-         */
-        async function runWithConcurrencyLimit(tasks, limit = 8) {
-          const localResults = [];
-          const batches = [];
-
-          // Chia tasks thành các batches
-          for (let i = 0; i < tasks.length; i += limit) {
-            batches.push(tasks.slice(i, i + limit));
-          }
-
-          // Chạy từng batch tuần tự, nhưng trong batch thì song song
-          for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-            const batch = batches[batchIndex];
-            console.log(
-              `Xử lý batch ${batchIndex + 1}/${batches.length} (${batch.length} AdSets)...`
-            );
-
-            const batchResults = await Promise.all(batch.map((task) => task()));
-            localResults.push(...batchResults);
-
-            const successCount = batchResults.filter((r) => r.success).length;
-            console.log(
-              `Batch ${batchIndex + 1} hoàn thành: ${successCount}/${batch.length} thành công`
-            );
-          }
-
-          return localResults;
-        }
 
         // Tạo tasks cho mỗi AdSet
         const adsetTasks = campaign.adsets.map(
@@ -1084,13 +1211,20 @@ export async function publishFlexibleService({
               // 2.2: Tạo Ads TUẦN TỰ cho AdSet này (vì phụ thuộc creative)
               if (adset.ads && adset.ads.length > 0) {
                 console.log(
-                  `Bắt đầu tạo ${adset.ads.length} Ads cho AdSet "${adset.name}"...`
+                  `🎨 Bắt đầu tạo ${adset.ads.length} Ads cho AdSet "${adset.name}"...`
                 );
+                console.log(`   AdSet._id: ${adset._id || 'undefined'}`);
+                console.log(`   Ads in adset:`, adset.ads.map(ad => ({ name: ad.name, adset_id: ad.adset_id })));
 
                 for (let adIndex = 0; adIndex < adset.ads.length; adIndex++) {
                   const ad = adset.ads[adIndex];
 
                   try {
+                    console.log(
+                      `   📝 [${adIndex + 1}/${adset.ads.length}] Tạo Ad: "${ad.name}"...`
+                    );
+                    console.log(`      Ad.adset_id: ${ad.adset_id || 'undefined'}`);
+                    
                     const adPayload = {
                       ad_account_id,
                       access_token,
@@ -1102,14 +1236,11 @@ export async function publishFlexibleService({
                       adDraftId: ad.draftId,
                     };
 
-                    console.log(
-                      `   [${adIndex + 1}/${adset.ads.length}] Tạo Ad: "${ad.name}"...`
-                    );
                     const adResult = await publishAdService(adPayload);
                     results.ads.push(adResult);
                     results.totalSuccess++;
                     console.log(
-                      `   Ad "${ad.name}" đã tạo (ID: ${adResult.adId})`
+                      `      ✅ Ad "${ad.name}" đã tạo (ID: ${adResult.adId})`
                     );
                   } catch (adError) {
                     console.error(
@@ -1217,6 +1348,263 @@ export async function publishFlexibleService({
     };
   } catch (error) {
     console.error("Lỗi tổng thể:", error);
+    throw error;
+  }
+}
+
+/**
+ * 🔄 UPDATE: Flexible service cho cascade update
+ * Hỗ trợ update nhiều campaigns với cấu trúc linh hoạt (giống publishFlexibleService)
+ * Update matching entities, tạo mới nếu chưa có
+ */
+export async function updateFlexibleService({
+  ad_account_id,
+  access_token,
+  campaignsList, // Array of campaigns với nested adsets và ads
+}) {
+  const results = {
+    campaigns: [],
+    adsets: [],
+    ads: [],
+    totalUpdated: 0,
+    totalCreated: 0,
+    totalErrors: 0,
+    errors: [],
+    details: {
+      updated: { campaigns: [], adsets: [], ads: [] },
+      created: { campaigns: [], adsets: [], ads: [] },
+    },
+  };
+
+  // 🔍 LOG RECEIVED PAYLOAD
+  console.log("\n🔄 ========== UPDATE FLEXIBLE SERVICE ==========");
+  console.log("📊 Total Campaigns:", campaignsList.length);
+  campaignsList.forEach((campaign, cIdx) => {
+    console.log(`\n📋 Campaign ${cIdx + 1}: ${campaign.name} (_id: ${campaign._id || 'none'})`);
+    console.log(`  AdSets: ${campaign.adsets?.length || 0}`);
+    campaign.adsets?.forEach((adset, aIdx) => {
+      console.log(`    📦 AdSet ${aIdx + 1}: ${adset.name} (_id: ${adset._id || 'none'})`);
+      console.log(`      Ads: ${adset.ads?.length || 0}`);
+    });
+  });
+  console.log("====================================================\n");
+
+  try {
+    // Xử lý từng campaign
+    for (
+      let campaignIndex = 0;
+      campaignIndex < campaignsList.length;
+      campaignIndex++
+    ) {
+      const campaign = campaignsList[campaignIndex];
+
+      try {
+        // Bước 1: Update hoặc tạo Campaign
+        console.log(`\n🎯 Processing campaign ${campaignIndex + 1}/${campaignsList.length}: ${campaign.name}`);
+        
+        const campaignResult = await updateOrCreateCampaign({
+          campaign,
+          ad_account_id,
+          access_token,
+        });
+        
+        results.campaigns.push(campaignResult);
+        
+        // Track action
+        if (campaignResult.action === 'updated') {
+          results.totalUpdated++;
+          results.details.updated.campaigns.push(campaignResult);
+        } else {
+          results.totalCreated++;
+          results.details.created.campaigns.push(campaignResult);
+        }
+
+        // Bước 2: Xử lý AdSets với concurrency limit (8)
+        console.log(
+          `\n📦 Processing ${campaign.adsets?.length || 0} AdSets cho Campaign "${campaign.name}"...`
+        );
+
+        const adsetTasks = (campaign.adsets || []).map(
+          (adset, adsetIndex) => async () => {
+            const startTime = Date.now();
+
+            try {
+              // 2.1: Update hoặc tạo AdSet
+              console.log(
+                ` [${adsetIndex + 1}/${campaign.adsets.length}] Processing AdSet: "${adset.name}"...`
+              );
+              
+              const adsetResult = await updateOrCreateAdset({
+                adset,
+                campaignId: campaignResult.campaignId,
+                campaignDbId: campaignResult.campaignDbId,
+                ad_account_id,
+                access_token,
+              });
+              
+              results.adsets.push(adsetResult);
+              
+              // Track action
+              if (adsetResult.action === 'updated') {
+                results.details.updated.adsets.push(adsetResult);
+              } else {
+                results.details.created.adsets.push(adsetResult);
+              }
+              
+              console.log(
+                `   ${adsetResult.action === 'updated' ? '🔄 Updated' : '➕ Created'} AdSet "${adset.name}" (ID: ${adsetResult.adsetId})`
+              );
+
+              // 2.2: Xử lý Ads TUẦN TỰ cho AdSet này
+              if (adset.ads && adset.ads.length > 0) {
+                console.log(
+                  `   🎨 Processing ${adset.ads.length} Ads cho AdSet "${adset.name}"...`
+                );
+
+                for (let adIndex = 0; adIndex < adset.ads.length; adIndex++) {
+                  const ad = adset.ads[adIndex];
+
+                  try {
+                    console.log(
+                      `     [${adIndex + 1}/${adset.ads.length}] Processing Ad: "${ad.name}"...`
+                    );
+                    
+                    const adResult = await updateOrCreateAd({
+                      ad,
+                      adsetId: adsetResult.adsetId,
+                      adsetDbId: adsetResult.adsetDbId,
+                      ad_account_id,
+                      access_token,
+                    });
+                    
+                    results.ads.push(adResult);
+                    
+                    // Track action
+                    if (adResult.action === 'updated') {
+                      results.totalUpdated++;
+                      results.details.updated.ads.push(adResult);
+                    } else {
+                      results.totalCreated++;
+                      results.details.created.ads.push(adResult);
+                    }
+                    
+                    console.log(
+                      `       ${adResult.action === 'updated' ? '🔄 Updated' : '➕ Created'} Ad "${ad.name}" (ID: ${adResult.adId})`
+                    );
+                  } catch (adError) {
+                    console.error(
+                      `     ❌ Lỗi xử lý Ad "${ad.name}":`,
+                      adError.message
+                    );
+                    results.totalErrors++;
+                    results.errors.push({
+                      type: "ad",
+                      campaignIndex,
+                      adsetIndex,
+                      adIndex,
+                      error: adError.message,
+                      name: ad.name,
+                      adsetName: adset.name,
+                    });
+                  }
+                }
+              }
+
+              const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+              console.log(
+                `   ✅ AdSet "${adset.name}" hoàn thành trong ${duration}s`
+              );
+
+              return {
+                success: true,
+                adsetIndex,
+                adsetName: adset.name,
+                adsProcessed: adset.ads?.length || 0,
+                duration,
+              };
+            } catch (adsetError) {
+              const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+              console.error(
+                `   ❌ Lỗi xử lý AdSet "${adset.name}" sau ${duration}s:`,
+                adsetError.message
+              );
+              results.totalErrors++;
+              results.errors.push({
+                type: "adset",
+                campaignIndex,
+                adsetIndex,
+                error: adsetError.message,
+                name: adset.name,
+                campaignName: campaign.name,
+              });
+
+              return {
+                success: false,
+                adsetIndex,
+                adsetName: adset.name,
+                error: adsetError.message,
+                duration,
+              };
+            }
+          }
+        );
+
+        // Chạy tất cả AdSet tasks với giới hạn 8 cùng lúc
+        const campaignStartTime = Date.now();
+        const adsetResults = await runWithConcurrencyLimit(adsetTasks, 8);
+        const campaignDuration = (
+          (Date.now() - campaignStartTime) /
+          1000
+        ).toFixed(2);
+
+        // Log tổng kết campaign
+        const successfulAdsets = adsetResults.filter((r) => r.success).length;
+        const failedAdsets = adsetResults.filter((r) => !r.success).length;
+        const totalAdsProcessed = adsetResults.reduce(
+          (sum, r) => sum + (r.adsProcessed || 0),
+          0
+        );
+
+        console.log(
+          `\n✅ ========== KẾT QUẢ CAMPAIGN "${campaign.name}" ==========`
+        );
+        console.log(
+          `AdSets thành công: ${successfulAdsets}/${campaign.adsets?.length || 0}`
+        );
+        console.log(`AdSets thất bại: ${failedAdsets}`);
+        console.log(`Tổng Ads đã xử lý: ${totalAdsProcessed}`);
+        console.log(`Tổng thời gian: ${campaignDuration}s`);
+        console.log(`========================================\n`);
+      } catch (campaignError) {
+        console.error(
+          `❌ Lỗi xử lý Campaign "${campaign.name}":`,
+          campaignError.message
+        );
+        results.totalErrors++;
+        results.errors.push({
+          type: "campaign",
+          campaignIndex,
+          error: campaignError.message,
+          name: campaign.name,
+        });
+      }
+    }
+
+    const finalMessage = `Cập nhật ${results.details.updated.campaigns.length + results.details.updated.adsets.length + results.details.updated.ads.length} entities, tạo mới ${results.details.created.campaigns.length + results.details.created.adsets.length + results.details.created.ads.length} entities trong ${campaignsList.length} campaigns`;
+    
+    console.log(`\n🎉 ========== KẾT QUẢ TỔNG ==========`);
+    console.log(`✅ Updated: ${results.details.updated.campaigns.length} campaigns, ${results.details.updated.adsets.length} adsets, ${results.details.updated.ads.length} ads`);
+    console.log(`➕ Created: ${results.details.created.campaigns.length} campaigns, ${results.details.created.adsets.length} adsets, ${results.details.created.ads.length} ads`);
+    console.log(`❌ Errors: ${results.totalErrors}`);
+    console.log(`========================================\n`);
+
+    return {
+      success: results.totalErrors === 0,
+      ...results,
+      message: finalMessage,
+    };
+  } catch (error) {
+    console.error("❌ Lỗi tổng thể updateFlexibleService:", error);
     throw error;
   }
 }

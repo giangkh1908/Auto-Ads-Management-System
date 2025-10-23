@@ -60,14 +60,14 @@ function Control({
   useEffect(() => {
     const handleClickOutside = (event) => {
       // Check if click is outside dropdown menu
-      if (!event.target.closest('.dropdown-menu')) {
+      if (!event.target.closest(".dropdown-menu")) {
         setOpenDropdowns({});
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
     };
   }, []);
 
@@ -104,9 +104,23 @@ function Control({
   };
 
   // Add new campaign
+  // Fix hàm addCampaign
   const addCampaign = () => {
+    // ✅ Generate ID cho adset đầu tiên
+    const firstAdsetId = `temp_adset_${Date.now()}`;
+
+    // ✅ Lấy campaign hiện tại làm template
+    const currentCampaign =
+      campaignsList[selectedCampaignIndex] || INITIAL_DATA.campaign;
+
     const newCampaign = {
       ...INITIAL_DATA.campaign,
+      // ✅ Copy các thông tin quan trọng từ campaign hiện tại
+      facebookPageId: currentCampaign.facebookPageId,
+      facebookPage: currentCampaign.facebookPage,
+      facebookPageAvatar: currentCampaign.facebookPageAvatar,
+      objective: currentCampaign.objective,
+      budgetType: currentCampaign.budgetType,
       id: Date.now(),
       name: `Chiến dịch ${campaignsList.length + 1}`,
       createdAt: new Date().toISOString(),
@@ -114,12 +128,14 @@ function Control({
         {
           ...INITIAL_DATA.adset,
           id: Date.now() + 1,
+          _id: firstAdsetId, // ✅ Set _id cho adset
           name: "Nhóm quảng cáo mới",
           ads: [
             {
               ...INITIAL_DATA.ad,
               id: Date.now() + 2,
               name: "Quảng cáo mới",
+              adset_id: firstAdsetId, // ✅ Set adset_id cho ad
             },
           ],
         },
@@ -144,30 +160,36 @@ function Control({
 
   // Add new adset
   const addAdset = (campaignIndex) => {
-    const newAdset = {
-      ...INITIAL_DATA.adset,
-      id: Date.now(),
-      name: `Nhóm quảng cáo ${
-        (campaignsList[campaignIndex]?.adsets || []).length + 1
-      }`,
-      ads: [
-        {
-          ...INITIAL_DATA.ad,
-          id: Date.now() + 1,
-          name: "Quảng cáo mới",
-        },
-      ],
-    };
-
     setCampaignsList((prev) => {
-      const next = [...prev];
+      // ✅ Deep clone để tránh mutation và shared references
+      const next = JSON.parse(JSON.stringify(prev));
+
+      // Lấy campaign hiện tại
       const currentCampaign = next[campaignIndex];
-      if (currentCampaign) {
-        next[campaignIndex] = {
-          ...currentCampaign,
-          adsets: [...(currentCampaign.adsets || []), newAdset],
-        };
-      }
+      if (!currentCampaign) return next;
+
+      // ✅ Generate ID cho adset mới
+      const newAdsetId = `temp_adset_${Date.now()}`;
+
+      // ✅ Tạo adset mới với _id và ad có adset_id
+      const newAdset = {
+        ...INITIAL_DATA.adset,
+        id: Date.now(),
+        _id: newAdsetId,
+        name: `Nhóm quảng cáo ${(currentCampaign.adsets || []).length + 1}`,
+        ads: [
+          {
+            ...INITIAL_DATA.ad,
+            id: Date.now() + 1,
+            name: "Quảng cáo mới",
+            adset_id: newAdsetId, // ✅ Link ad với adset
+          },
+        ],
+      };
+
+      // ✅ Thêm adset vào campaign
+      currentCampaign.adsets = [...(currentCampaign.adsets || []), newAdset];
+
       return next;
     });
   };
@@ -198,28 +220,28 @@ function Control({
 
   // Add new ad
   const addAd = (campaignIndex, adsetIndex) => {
-    const newAd = {
-      ...INITIAL_DATA.ad,
-      id: Date.now(),
-      name: `Quảng cáo ${
-        (campaignsList[campaignIndex]?.adsets?.[adsetIndex]?.ads || []).length +
-        1
-      }`,
-    };
-
     setCampaignsList((prev) => {
-      const next = [...prev];
+      // Deep clone để tránh mutation
+      const next = JSON.parse(JSON.stringify(prev));
+
+      // Lấy campaign và adset hiện tại
       const currentCampaign = next[campaignIndex];
-      if (currentCampaign && currentCampaign.adsets[adsetIndex]) {
-        next[campaignIndex] = {
-          ...currentCampaign,
-          adsets: currentCampaign.adsets.map((adset, index) =>
-            index === adsetIndex
-              ? { ...adset, ads: [...(adset.ads || []), newAd] }
-              : adset
-          ),
-        };
-      }
+      if (!currentCampaign) return next;
+
+      const currentAdset = currentCampaign.adsets[adsetIndex];
+      if (!currentAdset) return next;
+
+      // ✅ Tạo ad mới với adset_id
+      const newAd = {
+        ...INITIAL_DATA.ad,
+        id: Date.now(),
+        name: `Quảng cáo ${(currentAdset.ads || []).length + 1}`,
+        adset_id: currentAdset._id, // ✅ Set adset_id
+      };
+
+      // ✅ Thêm trực tiếp ad vào adset
+      currentAdset.ads = [...(currentAdset.ads || []), newAd];
+
       return next;
     });
   };
@@ -267,12 +289,12 @@ function Control({
                 className="hierarchy-group"
               >
                 {/* Campaign Item */}
-                  <div
-                    className={`hierarchy-item campaign-item ${
-                      wizardStep === 1 && isSelected ? "current" : ""
-                    } ${isSelected ? "selected" : ""}`}
-                    onClick={() => handleStepClick(1, campaignIndex, 0, 0)}
-                  >
+                <div
+                  className={`hierarchy-item campaign-item ${
+                    wizardStep === 1 && isSelected ? "current" : ""
+                  } ${isSelected ? "selected" : ""}`}
+                  onClick={() => handleStepClick(1, campaignIndex, 0, 0)}
+                >
                   <div className="hierarchy-icon">
                     <button
                       className="expand-btn"
@@ -357,12 +379,14 @@ function Control({
                         className="hierarchy-group adset-group"
                       >
                         {/* Adset Item */}
-                         <div
-                           className={`hierarchy-item adset-item ${
-                             wizardStep === 2 && isAdsetSelected ? "current" : ""
-                           } ${isAdsetSelected ? "selected" : ""}`}
-                           onClick={() => handleStepClick(2, campaignIndex, adsetIndex, 0)}
-                         >
+                        <div
+                          className={`hierarchy-item adset-item ${
+                            wizardStep === 2 && isAdsetSelected ? "current" : ""
+                          } ${isAdsetSelected ? "selected" : ""}`}
+                          onClick={() =>
+                            handleStepClick(2, campaignIndex, adsetIndex, 0)
+                          }
+                        >
                           <div className="hierarchy-icon">
                             <button
                               className="expand-btn"
@@ -395,13 +419,17 @@ function Control({
                                 className="more-btn"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  toggleDropdown(`adset-${campaignIndex}-${adsetIndex}`);
+                                  toggleDropdown(
+                                    `adset-${campaignIndex}-${adsetIndex}`
+                                  );
                                 }}
                                 title="Thêm tùy chọn"
                               >
                                 <MoreVertical size={16} />
                               </button>
-                              {openDropdowns[`adset-${campaignIndex}-${adsetIndex}`] && (
+                              {openDropdowns[
+                                `adset-${campaignIndex}-${adsetIndex}`
+                              ] && (
                                 <div className="dropdown-content">
                                   <button
                                     className="dropdown-item"
@@ -431,9 +459,9 @@ function Control({
                               )}
                             </div>
                           </div>
-                           <div className="hierarchy-status">
-                             {wizardStep === 2 && isAdsetSelected ? "●" : ""}
-                           </div>
+                          <div className="hierarchy-status">
+                            {wizardStep === 2 && isAdsetSelected ? "●" : ""}
+                          </div>
                         </div>
 
                         {/* Ads */}
@@ -451,19 +479,21 @@ function Control({
                                 className="hierarchy-group ad-group"
                               >
                                 {/* Ad Item */}
-                                 <div
-                                   className={`hierarchy-item ad-item ${
-                                     wizardStep === 3 && isAdSelected ? "current" : ""
-                                   } ${isAdSelected ? "selected" : ""}`}
-                                   onClick={() =>
-                                     handleStepClick(
-                                       3,
-                                       campaignIndex,
-                                       adsetIndex,
-                                       adIndex
-                                     )
-                                   }
-                                 >
+                                <div
+                                  className={`hierarchy-item ad-item ${
+                                    wizardStep === 3 && isAdSelected
+                                      ? "current"
+                                      : ""
+                                  } ${isAdSelected ? "selected" : ""}`}
+                                  onClick={() =>
+                                    handleStepClick(
+                                      3,
+                                      campaignIndex,
+                                      adsetIndex,
+                                      adIndex
+                                    )
+                                  }
+                                >
                                   <div className="hierarchy-icon">
                                     <FileText size={16} />
                                   </div>
@@ -481,13 +511,17 @@ function Control({
                                         className="more-btn"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          toggleDropdown(`ad-${campaignIndex}-${adsetIndex}-${adIndex}`);
+                                          toggleDropdown(
+                                            `ad-${campaignIndex}-${adsetIndex}-${adIndex}`
+                                          );
                                         }}
                                         title="Thêm tùy chọn"
                                       >
                                         <MoreVertical size={16} />
                                       </button>
-                                      {openDropdowns[`ad-${campaignIndex}-${adsetIndex}-${adIndex}`] && (
+                                      {openDropdowns[
+                                        `ad-${campaignIndex}-${adsetIndex}-${adIndex}`
+                                      ] && (
                                         <div className="dropdown-content">
                                           <button
                                             className="dropdown-item"
@@ -521,9 +555,11 @@ function Control({
                                       )}
                                     </div>
                                   </div>
-                                   <div className="hierarchy-status">
-                                     {wizardStep === 3 && isAdSelected ? "●" : ""}
-                                   </div>
+                                  <div className="hierarchy-status">
+                                    {wizardStep === 3 && isAdSelected
+                                      ? "●"
+                                      : ""}
+                                  </div>
                                 </div>
                               </div>
                             );

@@ -86,8 +86,8 @@ const ConfirmationPopup = ({
             disabled={isLoading}
           >
             {isLoading ? (
-              <div className="loading-spinner">
-                <div className="spinner"></div>
+              <div className="loading-spinner-popup">
+                <div className="spinner-popup"></div>
                 <span>Đang xử lý...</span>
               </div>
             ) : (

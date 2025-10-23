@@ -13,7 +13,7 @@ import "./CreateAdsWizard.css";
 import { useWizardState, useWizardData } from "../../../hooks/useWizardState.js";
 import { useFacebookPages } from "../../../hooks/useFacebookPages.js";
 import { useEditMode } from "../../../hooks/useEditMode.js";
-import { useWizardPublish, useFlexibleWizardPublish } from "../../../hooks/useWizardPublish.js";
+import { useFlexibleWizardPublish } from "../../../hooks/useWizardPublish.js";
 
 // Import utils and constants
 import { getInitialWizardStep } from "../../../utils/wizardUtils.js";
@@ -34,6 +34,9 @@ function CreateAdsWizard({
   const campaignRef = useRef(null);
   const adsetRef = useRef(null);
   const adRef = useRef(null);
+  
+  // Ref to track previous indices (prevent unnecessary re-loads)
+  const prevIndicesRef = useRef({ campaign: -1, adset: -1, ad: -1 });
 
   // Custom hooks
   const {
@@ -72,17 +75,18 @@ function CreateAdsWizard({
   const facebookPages = useFacebookPages();
 
   // Sử dụng logic publish mới (linh hoạt)
-  const { handleFlexiblePublish, handleStepByStepPublish } = useFlexibleWizardPublish();
+  const { handleFlexiblePublish, handleFlexibleUpdate, loading: _publishLoading } = useFlexibleWizardPublish();
   
   // Giữ logic cũ để tương thích
-  const { handleSmartPublish } = useWizardPublish();
+  //const { handleSmartPublish } = useWizardPublish();
 
-  // Edit mode logic
+  // Edit mode logic - Load FULL HIERARCHY
   useEditMode({
     mode,
     editingItem,
     selectedAccountId,
     setCampaign,
+    setCampaignsList, // ✅ Pass setCampaignsList để load full hierarchy
     setAdset,
     setAd,
     setLoading,
@@ -115,30 +119,130 @@ function CreateAdsWizard({
     }
   }, [mode, editingItem, setWizardStep]);
 
-  // Handle publish with proper parameters - FLEXIBLE PUBLISH
+  // ==============================
+  // 🔄 SYNC: Load từ campaignsList khi click item khác
+  // ==============================
+  useEffect(() => {
+    if (campaignsList.length === 0) return;
+    
+    const prev = prevIndicesRef.current;
+    const indicesChanged = 
+      prev.campaign !== selectedCampaignIndex ||
+      prev.adset !== selectedAdsetIndex ||
+      prev.ad !== selectedAdIndex;
+    
+    // Chỉ load khi user click item khác trong Control
+    if (!indicesChanged) return;
+    
+    console.log(`📥 [LOAD] Item at [${selectedCampaignIndex}][${selectedAdsetIndex}][${selectedAdIndex}]`);
+    
+    const selectedCampaign = campaignsList[selectedCampaignIndex];
+    const selectedAdset = selectedCampaign?.adsets?.[selectedAdsetIndex];
+    const selectedAd = selectedAdset?.ads?.[selectedAdIndex];
+    
+    if (selectedCampaign) {
+      console.log(`  📋 Campaign: ${selectedCampaign.name}`);
+      setCampaign(selectedCampaign);
+    }
+    if (selectedAdset) {
+      console.log(`  📦 AdSet: ${selectedAdset.name}`);
+      setAdset(selectedAdset);
+    }
+    if (selectedAd) {
+      console.log(`  📢 Ad: ${selectedAd.name}`);
+      setAd(selectedAd);
+    }
+    
+    prevIndicesRef.current = {
+      campaign: selectedCampaignIndex,
+      adset: selectedAdsetIndex,
+      ad: selectedAdIndex,
+    };
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCampaignIndex,
+    selectedAdsetIndex,
+    selectedAdIndex,
+    campaignsList.length,
+    campaignsList[selectedCampaignIndex]?.adsets?.length,
+    campaignsList[selectedCampaignIndex]?.adsets?.[selectedAdsetIndex]?.ads?.length,]);
+
+  // ==============================
+  // 📤 SUBMIT: Sync states → campaignsList trước khi gửi
+  // ==============================
   const handlePublishClick = () => {
-    // Sử dụng logic publish mới (linh hoạt)
-    // Có thể chọn giữa handleFlexiblePublish (nhanh) hoặc handleStepByStepPublish (chi tiết)
-    handleFlexiblePublish({
-      campaignsList,
-      selectedAccountId,
-      mode,
-      onSuccess,
-      onClose,
+    console.log("🚀 [SUBMIT] Preparing payload...");
+    
+    // ✅ Sync current states vào campaignsList trước khi submit
+    const finalCampaignsList = campaignsList.map((camp, cIdx) => {
+      if (cIdx === selectedCampaignIndex) {
+        return {
+          ...camp,
+          ...campaign,
+          // Preserve structure fields
+          adsets: camp.adsets?.map((as, aIdx) => {
+            if (aIdx === selectedAdsetIndex) {
+              return {
+                ...as,
+                ...adset,
+                // Preserve structure fields
+                ads: as.ads?.map((a, adIdx) => {
+                  if (adIdx === selectedAdIndex) {
+                    return {
+                      ...a,
+                      ...ad,
+                      // Ensure adset_id
+                      adset_id: ad.adset_id || a.adset_id || as._id,
+                    };
+                  }
+                  return a;
+                }),
+              };
+            }
+            return as;
+          }),
+        };
+      }
+      return camp;
     });
+    
+    console.log("📦 Final payload:", {
+      campaigns: finalCampaignsList.length,
+      mode,
+      hasIds: finalCampaignsList[0]?._id ? '✅' : '❌',
+    });
+    
+    // ✅ Check mode để gọi đúng function
+    if (mode === "edit") {
+      console.log("🔄 Mode: EDIT - Calling handleFlexibleUpdate");
+      handleFlexibleUpdate({
+        campaignsList: finalCampaignsList,
+        selectedAccountId,
+        onSuccess,
+        onClose,
+      });
+    } else {
+      console.log("➕ Mode: CREATE - Calling handleFlexiblePublish");
+      handleFlexiblePublish({
+        campaignsList: finalCampaignsList,
+        selectedAccountId,
+        onSuccess,
+        onClose,
+      });
+    }
   };
 
   // Fallback cho logic cũ (nếu cần)
-  const handleLegacyPublishClick = () => {
-    handleSmartPublish({
-      campaignsList,
-      selectedAccountId,
-      editingItem,
-      mode,
-      onSuccess,
-      onClose,
-    });
-  };
+  // const handleLegacyPublishClick = () => {
+  //   handleSmartPublish({
+  //     campaignsList,
+  //     selectedAccountId,
+  //     editingItem,
+  //     mode,
+  //     onSuccess,
+  //     onClose,
+  //   });
+  // };
 
   // Get title for modal header
   const getModalTitle = () => {

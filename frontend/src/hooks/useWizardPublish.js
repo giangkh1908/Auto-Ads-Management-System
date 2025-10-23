@@ -162,7 +162,7 @@ export function useWizardPublish() {
         onClose?.();
       }, 1200);
     } catch (err) {
-      console.error("❌ Lỗi khi xử lý quảng cáo:", err);
+      console.error("Lỗi khi xử lý quảng cáo:", err);
       setLoading(false);
 
       const data = err?.response?.data || {};
@@ -196,13 +196,12 @@ export function useFlexibleWizardPublish() {
   const toast = useToast();
 
   /**
-   * 🎯 Publish toàn bộ cấu trúc linh hoạt
+   * Publish toàn bộ cấu trúc linh hoạt
    * Sử dụng API mới: /api/ads-wizard/publish-flexible
    */
   const handleFlexiblePublish = async ({
     campaignsList,
     selectedAccountId,
-    mode = "create",
     onSuccess,
     onClose,
   }) => {
@@ -211,20 +210,54 @@ export function useFlexibleWizardPublish() {
     setSuccess(false);
 
     try {
-      console.log("🎯 Using Flexible API for all campaigns");
+      console.log("🚀 Using Flexible API for all campaigns");
+
+      // Log campaign structure BEFORE building payload
+      console.log(
+        "📊 Campaign Structure BEFORE building payload:",
+        campaignsList.map((campaign) => ({
+          name: campaign.name,
+          adsets: campaign.adsets.map((adset) => ({
+            name: adset.name,
+            _id: adset._id,
+            ads_count: adset.ads.length,
+            ads: adset.ads.map((ad) => ({
+              name: ad.name,
+              adset_id: ad.adset_id,
+              match: ad.adset_id === adset._id ? "✅" : "❌",
+            })),
+          })),
+        }))
+      );
 
       // Chuẩn bị dữ liệu cho API
       const payload = {
         ad_account_id: selectedAccountId,
         campaignsList: campaignsList.map((campaign) => ({
-          ...buildCampaignPayload(campaign, selectedAccountId), // ✅ Dùng payload đã map
-          adsets: campaign.adsets.map((adset) => ({
-            ...buildAdsetPayload(adset, campaign), // ✅ Dùng payload đã map
-            ads: adset.ads.map((ad) => ({
-              ...buildAdPayload(ad), // ✅ Dùng payload đã map
-              creative: buildCreativePayload(ad, campaign),
-            })),
-          })),
+          ...buildCampaignPayload(campaign, selectedAccountId),
+          adsets: campaign.adsets.map((adset) => {
+            console.log(
+              `🔍 Processing adset: ${adset.name}, _id: ${adset._id}`
+            );
+
+            const filteredAds = adset.ads.filter((ad) => {
+              const match = ad.adset_id === adset._id;
+              console.log(
+                `  Ad: ${ad.name}, adset_id: ${ad.adset_id}, match: ${match}`
+              );
+              return match;
+            });
+
+            console.log(`  ✅ Filtered ads count: ${filteredAds.length}`);
+
+            return {
+              ...buildAdsetPayload(adset, campaign),
+              ads: filteredAds.map((ad) => ({
+                ...buildAdPayload(ad),
+                creative: buildCreativePayload(ad, campaign),
+              })),
+            };
+          }),
         })),
         dry_run: false,
       };
@@ -285,7 +318,6 @@ export function useFlexibleWizardPublish() {
   const handleStepByStepPublish = async ({
     campaignsList,
     selectedAccountId,
-    mode = "create",
     onSuccess,
     onClose,
   }) => {
@@ -396,11 +428,140 @@ export function useFlexibleWizardPublish() {
     }
   };
 
+  /**
+   * 🔄 Update toàn bộ cấu trúc linh hoạt (cascade update)
+   * Hỗ trợ update matching entities, tạo mới nếu chưa có
+   */
+  const handleFlexibleUpdate = async ({
+    campaignsList,
+    selectedAccountId,
+    onSuccess,
+    onClose,
+  }) => {
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      console.log("🔄 Using Flexible Update API for all campaigns");
+
+      // Log campaign structure BEFORE building payload
+      console.log(
+        "📊 Campaign Structure BEFORE update:",
+        campaignsList.map((campaign) => ({
+          name: campaign.name,
+          _id: campaign._id,
+          external_id: campaign.external_id,
+          adsets: campaign.adsets?.map((adset) => ({
+            name: adset.name,
+            _id: adset._id,
+            external_id: adset.external_id,
+            ads_count: adset.ads?.length || 0,
+            ads: adset.ads?.map((ad) => ({
+              name: ad.name,
+              _id: ad._id,
+              external_id: ad.external_id,
+              adset_id: ad.adset_id,
+              match: ad.adset_id === adset._id ? "✅" : "❌",
+            })),
+          })),
+        }))
+      );
+
+      // Chuẩn bị dữ liệu cho API
+      const payload = {
+        ad_account_id: selectedAccountId,
+        campaignsList: campaignsList.map((campaign) => ({
+          _id: campaign._id, // MongoDB _id để update
+          external_id: campaign.external_id, // Facebook ID để update
+          draftId: campaign.draftId,
+          ...buildCampaignPayload(campaign, selectedAccountId),
+          adsets: (campaign.adsets || []).map((adset) => {
+            console.log(
+              `🔍 Processing adset for update: ${adset.name}, _id: ${adset._id}, external_id: ${adset.external_id}`
+            );
+
+            const filteredAds = (adset.ads || []).filter((ad) => {
+              const match = ad.adset_id === adset._id;
+              console.log(
+                `  Ad: ${ad.name}, adset_id: ${ad.adset_id}, match: ${match}`
+              );
+              return match;
+            });
+
+            console.log(`  ✅ Filtered ads count: ${filteredAds.length}`);
+
+            return {
+              _id: adset._id,
+              external_id: adset.external_id,
+              draftId: adset.draftId,
+              ...buildAdsetPayload(adset, campaign),
+              ads: filteredAds.map((ad) => ({
+                _id: ad._id,
+                external_id: ad.external_id,
+                draftId: ad.draftId,
+                ...buildAdPayload(ad),
+                creative: buildCreativePayload(ad, campaign),
+              })),
+            };
+          }),
+        })),
+      };
+
+      // Gọi API update
+      const response = await axiosInstance.put(
+        "/api/ads-wizard/update-flexible",
+        payload,
+        {
+          timeout: 120000, // 120 giây = 2 phút
+        }
+      );
+
+      if (response.data.success) {
+        const { totalUpdated, totalCreated, totalErrors, errors, details } = response.data.data;
+
+        if (totalErrors === 0) {
+          toast.success(
+            `Cập nhật thành công ${details.updated.campaigns.length + details.updated.adsets.length + details.updated.ads.length} entities, tạo mới ${details.created.campaigns.length + details.created.adsets.length + details.created.ads.length} entities!`
+          );
+        } else {
+          toast.warning(
+            `Cập nhật ${totalUpdated} entities, tạo mới ${totalCreated} entities. Có ${totalErrors} lỗi.`
+          );
+          console.warn("Một số cập nhật thất bại:", errors);
+        }
+
+        setSuccess(true);
+        setTimeout(() => {
+          setLoading(false);
+          onSuccess?.(response.data.data);
+          onClose?.();
+        }, 1200);
+      } else {
+        throw new Error(response.data.message || "Cập nhật thất bại");
+      }
+    } catch (err) {
+      console.error("❌ Lỗi khi cập nhật quảng cáo:", err);
+      setLoading(false);
+
+      const data = err?.response?.data || {};
+      const fbMsg = data.error_user_msg || data.message || null;
+      setError(fbMsg || null);
+
+      if (fbMsg) {
+        toast.error("Cập nhật thất bại", {
+          description: fbMsg,
+        });
+      }
+    }
+  };
+
   return {
     loading,
     error,
     success,
     handleFlexiblePublish, // API mới - nhanh hơn
+    handleFlexibleUpdate, // API update - cascade update
     handleStepByStepPublish, // API từng bước - chi tiết hơn
   };
 }
@@ -412,7 +573,7 @@ export function useFlexibleWizardPublish() {
 /**
  * Xây dựng payload cho Campaign
  */
-function buildCampaignPayload(campaign, selectedAccountId) {
+function buildCampaignPayload(campaign) {
   const fbObjective =
     FB_OBJECTIVE_MAP[campaign.objective] || "OUTCOME_ENGAGEMENT";
 
@@ -444,6 +605,7 @@ function buildAdsetPayload(adset, campaign) {
   };
 
   return {
+    _id: adset._id,
     name: adset.name,
     daily_budget: adset.budgetAmount,
     status: "PAUSED",
@@ -499,6 +661,7 @@ function buildCreativePayload(ad, campaign) {
  */
 function buildAdPayload(ad) {
   return {
+    adset_id: ad.adset_id,
     name: ad.name,
     status: "PAUSED",
   };

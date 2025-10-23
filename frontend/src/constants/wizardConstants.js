@@ -15,6 +15,7 @@ export const INITIAL_DATA = {
   },
   adset: {
     id: 101,
+    _id: null, // ✅ Thêm _id cho adset
     name: "Nhóm quảng cáo mới",
     budget: "100.000đ",
     status: "PAUSED",
@@ -31,6 +32,7 @@ export const INITIAL_DATA = {
   },
   ad: {
     id: 1001,
+    adset_id: null, // ✅ Thêm adset_id cho ad
     name: "Quảng cáo mới",
     status: "PAUSED",
     page: "Fchat.vn",
