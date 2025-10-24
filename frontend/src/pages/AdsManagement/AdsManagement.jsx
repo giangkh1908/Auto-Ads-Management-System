@@ -511,23 +511,55 @@ function AdsManagement() {
         }));
 
         // ✅ Không cần filter thêm - backend đã filter DELETED
+        const mapped = items.map((campaign) => ({
+          ...campaign,
+          id: campaign._id || campaign.id || campaign.external_id,
+          external_id: campaign.external_id,
+          isChecked: false,
+          enabled:
+            campaign.status === "ACTIVE" ||
+            campaign.effective_status === "ACTIVE",
+          budget: campaign.daily_budget || campaign.lifetime_budget || 0,
+          start_time: campaign.start_time,
+          end_time: campaign.stop_time,
+          objective: campaign.objective,
+          buying_type: campaign.buying_type,
+          updated_at: campaign.updated_at || campaign.updatedAt,
+        }));
+
+        // Fetch insights for these campaigns
+        const campaignIds = mapped.map((c) => c.external_id).filter(Boolean);
+        let insightsMap = {};
+        if (campaignIds.length) {
+          try {
+            const { data: ins } = await axiosInstance.get(`/api/campaigns/insights?ids=${campaignIds.join(',')}`);
+            if (ins?.items?.length) {
+              insightsMap = ins.items.reduce((acc, it) => {
+                acc[it.id] = it.insights || {};
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('Campaign insights fetch failed', e);
+          }
+        }
+
+        const merged = mapped.map((c) => {
+          const ins = insightsMap[c.external_id] || {};
+          const actions = Array.isArray(ins.actions) ? ins.actions : [];
+          const results = actions.reduce((sum, act) => sum + (Number(act.value) || 0), 0);
+          return {
+            ...c,
+            impressions: ins.impressions || 0,
+            reach: ins.reach || 0,
+            results,
+            quality: ins.quality_ranking || '-',
+          };
+        });
+
         setDatasets((prev) => ({
           ...prev,
-          campaigns: items.map((campaign) => ({
-            ...campaign,
-            id: campaign._id || campaign.id || campaign.external_id,
-            external_id: campaign.external_id,
-            isChecked: false,
-            enabled:
-              campaign.status === "ACTIVE" ||
-              campaign.effective_status === "ACTIVE",
-            budget: campaign.daily_budget || campaign.lifetime_budget || 0,
-            start_time: campaign.start_time,
-            end_time: campaign.stop_time,
-            objective: campaign.objective,
-            buying_type: campaign.buying_type,
-            updated_at: campaign.updated_at || campaign.updatedAt,
-          })),
+          campaigns: merged,
         }));
       }
     } catch (error) {
@@ -557,26 +589,58 @@ function AdsManagement() {
         }));
 
         // ✅ Không cần filter thêm - backend đã filter DELETED
+        const mapped = items.map((adset) => ({
+          ...adset,
+          id: adset._id || adset.id || adset.external_id,
+          external_id: adset.external_id,
+          campaignId,
+          isChecked: false,
+          enabled:
+            adset.status === "ACTIVE" ||
+            adset.effective_status === "ACTIVE",
+          budget: adset.daily_budget || adset.lifetime_budget || 0,
+          start_time: adset.start_time,
+          end_time: adset.end_time,
+          targeting: adset.targeting || {},
+          optimization_goal: adset.optimization_goal,
+          bid_strategy: adset.bid_strategy,
+          bid_amount: adset.bid_amount,
+          updated_at: adset.updated_at || adset.updatedAt,
+        }));
+
+        // Fetch insights for these adsets
+        const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
+        let insightsMap = {};
+        if (adsetIds.length) {
+          try {
+            const { data: ins } = await axiosInstance.get(`/api/adsets/insights?ids=${adsetIds.join(',')}`);
+            if (ins?.items?.length) {
+              insightsMap = ins.items.reduce((acc, it) => {
+                acc[it.id] = it.insights || {};
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('Adset insights fetch failed', e);
+          }
+        }
+
+        const merged = mapped.map((a) => {
+          const ins = insightsMap[a.external_id] || {};
+          const actions = Array.isArray(ins.actions) ? ins.actions : [];
+          const results = actions.reduce((sum, act) => sum + (Number(act.value) || 0), 0);
+          return {
+            ...a,
+            impressions: ins.impressions || 0,
+            reach: ins.reach || 0,
+            results,
+            quality: ins.quality_ranking || '-',
+          };
+        });
+
         setDatasets((prev) => ({
           ...prev,
-          adsets: items.map((adset) => ({
-            ...adset,
-            id: adset._id || adset.id || adset.external_id,
-            external_id: adset.external_id,
-            campaignId,
-            isChecked: false,
-            enabled:
-              adset.status === "ACTIVE" ||
-              adset.effective_status === "ACTIVE",
-            budget: adset.daily_budget || adset.lifetime_budget || 0,
-            start_time: adset.start_time,
-            end_time: adset.end_time,
-            targeting: adset.targeting || {},
-            optimization_goal: adset.optimization_goal,
-            bid_strategy: adset.bid_strategy,
-            bid_amount: adset.bid_amount,
-            updated_at: adset.updated_at || adset.updatedAt,
-          })),
+          adsets: merged,
         }));
       }
     } catch (error) {
@@ -656,7 +720,7 @@ function AdsManagement() {
     }
   }, [pagination.page, pagination.limit]);
 
-  // 🔹 Fetch all AdSets & Ads by account (không sync)
+  // 🔹 Fetch all Adsets & Ads by account (không sync)
   const fetchAllAdsetsForAccount = useCallback(async (accountId) => {
     if (!accountId) return;
     try {
@@ -678,26 +742,58 @@ function AdsManagement() {
         }));
 
         // ✅ Không cần filter thêm - backend đã filter DELETED
+        const mapped = items.map((adset) => ({
+          ...adset,
+          id: adset._id || adset.id || adset.external_id,
+          external_id: adset.external_id,
+          campaignId: adset.campaign_id,
+          isChecked: false,
+          enabled:
+            adset.status === "ACTIVE" ||
+            adset.effective_status === "ACTIVE",
+          budget: adset.daily_budget || adset.lifetime_budget || 0,
+          start_time: adset.start_time,
+          end_time: adset.end_time,
+          targeting: adset.targeting || {},
+          optimization_goal: adset.optimization_goal,
+          bid_strategy: adset.bid_strategy,
+          bid_amount: adset.bid_amount,
+          updated_at: adset.updated_at || adset.updatedAt,
+        }));
+
+        // Fetch insights for these adsets
+        const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
+        let insightsMap = {};
+        if (adsetIds.length) {
+          try {
+            const { data: ins } = await axiosInstance.get(`/api/adsets/insights?ids=${adsetIds.join(',')}`);
+            if (ins?.items?.length) {
+              insightsMap = ins.items.reduce((acc, it) => {
+                acc[it.id] = it.insights || {};
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('Adset insights fetch failed', e);
+          }
+        }
+
+        const merged = mapped.map((a) => {
+          const ins = insightsMap[a.external_id] || {};
+          const actions = Array.isArray(ins.actions) ? ins.actions : [];
+          const results = actions.reduce((sum, act) => sum + (Number(act.value) || 0), 0);
+          return {
+            ...a,
+            impressions: ins.impressions || 0,
+            reach: ins.reach || 0,
+            results,
+            quality: ins.quality_ranking || '-',
+          };
+        });
+
         setDatasets((prev) => ({
           ...prev,
-          adsets: items.map((adset) => ({
-            ...adset,
-            id: adset._id || adset.id || adset.external_id,
-            external_id: adset.external_id,
-            campaignId: adset.campaign_id,
-            isChecked: false,
-            enabled:
-              adset.status === "ACTIVE" ||
-              adset.effective_status === "ACTIVE",
-            budget: adset.daily_budget || adset.lifetime_budget || 0,
-            start_time: adset.start_time,
-            end_time: adset.end_time,
-            targeting: adset.targeting || {},
-            optimization_goal: adset.optimization_goal,
-            bid_strategy: adset.bid_strategy,
-            bid_amount: adset.bid_amount,
-            updated_at: adset.updated_at || adset.updatedAt,
-          })),
+          adsets: merged,
         }));
       }
     } catch (error) {

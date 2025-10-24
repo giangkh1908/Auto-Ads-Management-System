@@ -618,5 +618,69 @@ export async function fetchAdInsights(accessToken, adIds = []) {
   }
 }
 
-// Tìm hàm createAdSet và thêm xử lý trước khi gọi API Facebook
+/**
+ * Lấy insights cho nhiều thực thể (campaigns, adsets, ads) bằng batch request.
+ * @param {string[]} entityIds - Mảng các ID của Facebook.
+ * @param {string} accessToken - Access token của người dùng.
+ * @returns {Promise<Array<{id: string, insights: object}>>}
+ */
+export async function fetchInsightsForEntities(entityIds, accessToken) {
+  if (!entityIds || entityIds.length === 0) {
+    return [];
+  }
+
+  const fields = [
+    'impressions',
+    'reach',
+    'spend',
+    'clicks',
+    'actions',
+    'quality_ranking',
+  ].join(',');
+
+  // Tạo mảng batch request
+  const batch = entityIds.map(id => ({
+    method: 'GET',
+    relative_url: `${id}/insights?fields=${fields}`
+  }));
+
+  try {
+    const response = await axios.post(
+      `${FB_API}/`, // Sửa FB_GRAPH_API_URL thành FB_API
+      {
+        batch: JSON.stringify(batch),
+        include_headers: false
+      },
+      {
+        params: {
+          access_token: accessToken
+        }
+      }
+    );
+
+    // Xử lý kết quả trả về từ batch request
+    const results = response.data.map((res, index) => {
+      const originalId = entityIds[index];
+      if (res.code === 200) {
+        const body = JSON.parse(res.body);
+        return {
+          id: originalId,
+          insights: body // body chính là object insights { data: [...] }
+        };
+      } else {
+        console.warn(`Lỗi khi lấy insights cho ID ${originalId}:`, JSON.parse(res.body).error);
+        return {
+          id: originalId,
+          insights: { data: [] } // Trả về rỗng nếu có lỗi
+        };
+      }
+    });
+
+    return results;
+
+  } catch (error) {
+    console.error("Lỗi batch insights request từ Facebook:", error.response?.data || error.message);
+    throw error; // Ném lỗi để controller xử lý
+  }
+}
 
