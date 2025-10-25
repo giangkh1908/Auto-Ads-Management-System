@@ -252,6 +252,7 @@ async function updateOrCreateAd({
       creative: ad.creative,
       ad,
       adDraftId: ad.draftId,
+      creativeDraftId: ad.creative?.draftId || ad.creative?._id, // ✅ THÊM creative draft ID
     });
   }
 }
@@ -311,6 +312,7 @@ export async function publishWizard({
         lifetime_budget: adset?.lifetime_budget,
         start_time: adset?.start_time,
         end_time: adset?.end_time,
+        created_by: adset?.created_by,
       });
 
   const draftCreative = creativeDraftId
@@ -334,6 +336,7 @@ export async function publishWizard({
         name: ad?.name,
         creative_id: draftCreative._id,
         status: "DRAFT",
+        created_by: ad?.created_by,
       });
 
   try {
@@ -1011,21 +1014,47 @@ export async function publishAdService({
   access_token,
   adsetId, // ID của adset đã tạo
   adsetDbId, // MongoDB _id của adset
-  creative,
-  ad,
-  dry_run = false,
-  adDraftId,
+  creative, // Object creative
+  ad, // Object ad
+  dry_run = false, 
+  adDraftId, // MongoDB _id của ad
+  creativeDraftId, // MongoDB _id của creative
 }) {
   const now = new Date();
   let fbCreativeId, fbAdId;
 
-  // 🧱 1) Khởi tạo draft (nháp) với đầy đủ thông tin
-  const draftCreative = await Creative.create({
-    adset_id: adsetDbId, // MongoDB _id của adset
-    name: creative?.name,
-    object_story_spec: creative?.object_story_spec,
-    created_by: creative?.created_by,
-  });
+  // 🧱 1) Tìm hoặc tạo draft creative
+  let draftCreative;
+  
+  if (creativeDraftId) {
+    console.log(`🔍 Tìm creative draft với ID: ${creativeDraftId}`);
+    draftCreative = await Creative.findById(creativeDraftId);
+    
+    // Chỉ update nếu creative chưa được publish (chưa có external_id)
+    if (draftCreative && !draftCreative.external_id) {
+      console.log(`✏️ Update creative draft: ${creativeDraftId}`);
+      await Creative.findByIdAndUpdate(creativeDraftId, {
+        name: creative?.name,
+        object_story_spec: creative?.object_story_spec,
+        updated_at: now,
+      });
+      draftCreative = await Creative.findById(creativeDraftId);
+    } else if (draftCreative && draftCreative.external_id) {
+      // Nếu creative đã publish, không thể update → tạo mới
+      console.log(`⚠️ Creative đã publish (${draftCreative.external_id}), tạo mới...`);
+      draftCreative = null; // Force tạo mới
+    }
+  }
+  
+  if (!draftCreative) {
+    console.log(`➕ Tạo mới creative draft`);
+    draftCreative = await Creative.create({
+      adset_id: adsetDbId, // MongoDB _id của adset
+      name: creative?.name,
+      object_story_spec: creative?.object_story_spec,
+      created_by: creative?.created_by,
+    });
+  }
 
   const draftAd = adDraftId
     ? await Ads.findById(adDraftId)
@@ -1034,6 +1063,7 @@ export async function publishAdService({
         name: ad?.name,
         creative_id: draftCreative._id,
         status: "DRAFT",
+        created_by: ad?.created_by,
       });
 
   try {
@@ -1102,6 +1132,7 @@ export async function publishAdService({
     await Ads.findByIdAndUpdate(draftAd._id, {
       external_id: fbAdId,
       external_account_id: ad_account_id,
+      creative_id: draftCreative._id, // ✅ Link với creative
       status: "PAUSED",
       synced_at: now,
       updated_at: now,
@@ -1110,7 +1141,9 @@ export async function publishAdService({
     return {
       success: true,
       adId: fbAdId,
+      adDbId: draftAd._id,
       creativeId: fbCreativeId,
+      creativeDbId: draftCreative._id, // ✅ Trả về để frontend biết
       draftId: draftAd._id,
       message: `Ad "${ad.name}" đã được tạo thành công`,
     };
@@ -1234,6 +1267,7 @@ export async function publishFlexibleService({
                       ad,
                       dry_run,
                       adDraftId: ad.draftId,
+                      creativeDraftId: ad.creative?.draftId || ad.creative?._id, // ✅ THÊM creative draft ID
                     };
 
                     const adResult = await publishAdService(adPayload);
@@ -1315,17 +1349,7 @@ export async function publishFlexibleService({
           (sum, r) => sum + (r.adsCreated || 0),
           0
         );
-
-        console.log(
-          `\n ========== KẾT QUẢ CAMPAIGN "${campaign.name}" ==========`
-        );
-        console.log(
-          `AdSets thành công: ${successfulAdsets}/${campaign.adsets.length}`
-        );
-        console.log(`AdSets thất bại: ${failedAdsets}`);
-        console.log(`Tổng Ads đã tạo: ${totalAdsCreated}`);
-        console.log(`Tổng thời gian: ${campaignDuration}s`);
-        console.log(`========================================\n`);
+        console.log(`Campaign "${campaign.name}" hoàn thành trong ${campaignDuration}s`);
       } catch (campaignError) {
         console.error(
           `Lỗi tạo Campaign "${campaign.name}":`,
@@ -1376,19 +1400,6 @@ export async function updateFlexibleService({
     },
   };
 
-  // 🔍 LOG RECEIVED PAYLOAD
-  console.log("\n🔄 ========== UPDATE FLEXIBLE SERVICE ==========");
-  console.log("📊 Total Campaigns:", campaignsList.length);
-  campaignsList.forEach((campaign, cIdx) => {
-    console.log(`\n📋 Campaign ${cIdx + 1}: ${campaign.name} (_id: ${campaign._id || 'none'})`);
-    console.log(`  AdSets: ${campaign.adsets?.length || 0}`);
-    campaign.adsets?.forEach((adset, aIdx) => {
-      console.log(`    📦 AdSet ${aIdx + 1}: ${adset.name} (_id: ${adset._id || 'none'})`);
-      console.log(`      Ads: ${adset.ads?.length || 0}`);
-    });
-  });
-  console.log("====================================================\n");
-
   try {
     // Xử lý từng campaign
     for (
@@ -1400,7 +1411,7 @@ export async function updateFlexibleService({
 
       try {
         // Bước 1: Update hoặc tạo Campaign
-        console.log(`\n🎯 Processing campaign ${campaignIndex + 1}/${campaignsList.length}: ${campaign.name}`);
+        console.log(`Processing campaign ${campaignIndex + 1}/${campaignsList.length}: ${campaign.name}`);
         
         const campaignResult = await updateOrCreateCampaign({
           campaign,
@@ -1421,7 +1432,7 @@ export async function updateFlexibleService({
 
         // Bước 2: Xử lý AdSets với concurrency limit (8)
         console.log(
-          `\n📦 Processing ${campaign.adsets?.length || 0} AdSets cho Campaign "${campaign.name}"...`
+          `\nProcessing ${campaign.adsets?.length || 0} AdSets cho Campaign "${campaign.name}"...`
         );
 
         const adsetTasks = (campaign.adsets || []).map(
@@ -1564,17 +1575,7 @@ export async function updateFlexibleService({
           (sum, r) => sum + (r.adsProcessed || 0),
           0
         );
-
-        console.log(
-          `\n✅ ========== KẾT QUẢ CAMPAIGN "${campaign.name}" ==========`
-        );
-        console.log(
-          `AdSets thành công: ${successfulAdsets}/${campaign.adsets?.length || 0}`
-        );
-        console.log(`AdSets thất bại: ${failedAdsets}`);
-        console.log(`Tổng Ads đã xử lý: ${totalAdsProcessed}`);
-        console.log(`Tổng thời gian: ${campaignDuration}s`);
-        console.log(`========================================\n`);
+        console.log(`Campaign "${campaign.name}" hoàn thành trong ${campaignDuration}s`);
       } catch (campaignError) {
         console.error(
           `❌ Lỗi xử lý Campaign "${campaign.name}":`,
@@ -1592,7 +1593,7 @@ export async function updateFlexibleService({
 
     const finalMessage = `Cập nhật ${results.details.updated.campaigns.length + results.details.updated.adsets.length + results.details.updated.ads.length} entities, tạo mới ${results.details.created.campaigns.length + results.details.created.adsets.length + results.details.created.ads.length} entities trong ${campaignsList.length} campaigns`;
     
-    console.log(`\n🎉 ========== KẾT QUẢ TỔNG ==========`);
+    console.log(`\n========== KẾT QUẢ TỔNG ==========`);
     console.log(`✅ Updated: ${results.details.updated.campaigns.length} campaigns, ${results.details.updated.adsets.length} adsets, ${results.details.updated.ads.length} ads`);
     console.log(`➕ Created: ${results.details.created.campaigns.length} campaigns, ${results.details.created.adsets.length} adsets, ${results.details.created.ads.length} ads`);
     console.log(`❌ Errors: ${results.totalErrors}`);

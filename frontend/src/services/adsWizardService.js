@@ -41,6 +41,19 @@ export const updateFlexibleAdsWizard = async (wizardData) => {
   }
 };
 
+/**
+ * 💾 Lưu nháp campaign/adset/ad
+ */
+export const saveDraft = async (data) => {
+  try {
+    const response = await axiosInstance.post('/api/ads-wizard/save-draft', data);
+    return response.data;
+  } catch (error) {
+    console.error('Error saving draft:', error);
+    throw handleError(error);
+  }
+};
+
 // Xử lý lỗi chuẩn cho service
 function handleError(error) {
   return error;

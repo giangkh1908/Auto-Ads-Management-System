@@ -112,3 +112,61 @@ export const TAB_TYPES = {
   CAMPAIGN: "campaign",
   CHILD: "child",
 };
+
+// Thêm vào cuối file wizardConstants.js
+
+// 🌐 Vietnamese translation maps
+export const OBJECTIVE_LABELS_VN = {
+  // Facebook Objective values
+  OUTCOME_AWARENESS: "Mức độ nhận biết",
+  OUTCOME_TRAFFIC: "Lưu lượng truy cập",
+  OUTCOME_ENGAGEMENT: "Tương tác",
+  OUTCOME_LEADS: "Khách hàng tiềm năng",
+  OUTCOME_SALES: "Doanh sô",
+  OUTCOME_APP_PROMOTION: "Quảng bá ứng dụng",
+  
+  // Legacy/Short format (nếu backend trả về format ngắn)
+  AWARENESS: "Mức độ nhận biết",
+  TRAFFIC: "Lưu lượng truy cập",
+  ENGAGEMENT: "Tương tác",
+  LEADS: "Khách hàng tiềm năng",
+  SALES: "Doanh sô",
+  APP_PROMOTION: "Quảng bá ứng dụng",
+  
+  // Other possible values
+  POST_ENGAGEMENT: "Tương tác bài viết",
+  CONVERSIONS: "Chuyển đổi",
+  LINK_CLICKS: "Nhấp chuột liên kết",
+  PAGE_LIKES: "Thích trang",
+  VIDEO_VIEWS: "Lượt xem video",
+  MESSAGES: "Tin nhắn",
+  REACH: "Tiếp cận",
+};
+
+export const GENDER_LABELS_VN = {
+  male: "Nam",
+  female: "Nữ",
+  1: "Nam",
+  2: "Nữ",
+};
+
+export const COUNTRY_LABELS_VN = {
+  VN: "Việt Nam",
+  US: "Hoa Kỳ",
+  JP: "Nhật Bản",
+  KR: "Hàn Quốc",
+  TH: "Thái Lan",
+  // Thêm các quốc gia khác nếu cần
+};
+
+export const OPTIMIZATION_GOAL_LABELS_VN = {
+  REACH: "Tiếp cận",
+  POST_ENGAGEMENT: "Tương tác bài viết",
+  LINK_CLICKS: "Nhấp chuột liên kết",
+  IMPRESSIONS: "Hiển thị",
+  CONVERSIONS: "Chuyển đổi",
+  LEAD_GENERATION: "Tạo khách hàng tiềm năng",
+  APP_INSTALLS: "Cài đặt ứng dụng",
+  VIDEO_VIEWS: "Lượt xem video",
+  LANDING_PAGE_VIEWS: "Lượt xem trang đích",
+};

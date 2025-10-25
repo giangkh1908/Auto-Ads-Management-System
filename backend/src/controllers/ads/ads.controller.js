@@ -50,7 +50,7 @@ export async function getAdFromDatabase(req, res) {
 
     let ad;
     if (cleanAdId) {
-      ad = await Ads.findById(cleanAdId);
+      ad = await Ads.findById(cleanAdId).populate('created_by', 'full_name email');
     } else if (cleanCampaignId) {
       // Tìm ads thông qua campaign_id
       const ads = await Ads.find({ 
@@ -58,7 +58,9 @@ export async function getAdFromDatabase(req, res) {
           { campaign_id: cleanCampaignId },
           { set_id: { $in: await AdsSet.find({ campaign_id: cleanCampaignId }).distinct('_id') } }
         ]
-      }).sort({ createdAt: -1 });
+      })
+      .populate('created_by', 'full_name email')
+      .sort({ createdAt: -1 });
       return res.status(200).json({
         success: true,
         data: ads
@@ -118,7 +120,11 @@ export async function listAdsCtrl(req, res) {
     // Lấy dữ liệu có phân trang
     const skip = (Number(page) - 1) * Number(limit);
     const [items, total] = await Promise.all([
-      Ads.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      Ads.find(filter)
+        .populate('created_by', 'full_name email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
       Ads.countDocuments(filter),
     ]);
 

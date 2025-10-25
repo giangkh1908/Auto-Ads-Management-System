@@ -69,9 +69,11 @@ export async function getAdsetFromDatabase(req, res) {
 
     let adset;
     if (cleanAdsetId) {
-      adset = await AdsSet.findById(cleanAdsetId);
+      adset = await AdsSet.findById(cleanAdsetId).populate('created_by', 'full_name email');
     } else if (cleanCampaignId) {
-      const adsets = await AdsSet.find({ campaign_id: cleanCampaignId }).sort({ createdAt: -1 });
+      const adsets = await AdsSet.find({ campaign_id: cleanCampaignId })
+        .populate('created_by', 'full_name email')
+        .sort({ createdAt: -1 });
       return res.status(200).json({
         success: true,
         data: adsets
@@ -126,7 +128,11 @@ export async function listAdSetsCtrl(req, res) {
 
     const skip = (Number(page) - 1) * Number(limit);
     const [items, total] = await Promise.all([
-      AdsSet.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      AdsSet.find(filter)
+        .populate('created_by', 'full_name email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
       AdsSet.countDocuments(filter),
     ]);
 

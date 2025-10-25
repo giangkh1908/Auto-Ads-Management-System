@@ -42,7 +42,11 @@ export async function listCampaignsCtrl(req, res) {
     // Lấy dữ liệu có phân trang
     const skip = (Number(page) - 1) * Number(limit);
     const [items, total] = await Promise.all([
-      AdsCampaign.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      AdsCampaign.find(filter)
+        .populate('created_by', 'full_name email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
       AdsCampaign.countDocuments(filter)
     ]);
     
@@ -85,7 +89,8 @@ export async function getCampaignFromDatabase(req, res) {
       });
     }
 
-    const campaign = await AdsCampaign.findById(cleanCampaignId);
+    const campaign = await AdsCampaign.findById(cleanCampaignId)
+      .populate('created_by', 'full_name email');
     
     if (!campaign) {
       return res.status(404).json({

@@ -49,6 +49,8 @@ const adsSetSchema = new mongoose.Schema(
     // Audit
     deleted_at: { type: Date, default: null },
     meta: { type: mongoose.Schema.Types.Mixed, default: {} },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    updated_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

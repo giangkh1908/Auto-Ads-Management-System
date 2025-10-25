@@ -219,10 +219,6 @@ export async function updateAdStatus(entityId, accessToken, status) {
   return data;
 }
 
-/* =========================
- *  UPDATE ENTITY HELPERS (Full field updates)
- * ========================= */
-
 /**
  * Update campaign với nhiều fields (không chỉ status)
  * Whitelist: name, status, daily_budget, lifetime_budget, start_time, stop_time
@@ -294,7 +290,7 @@ export async function updateAdset(entityId, accessToken, updates) {
     return null;
   }
 
-  console.log(`🔄 Updating adset ${entityId} với fields:`, Object.keys(filteredPayload));
+  console.log(`🔄 Updating Adset ${entityId} với fields:`, Object.keys(filteredPayload));
   const { data } = await axios.post(
     `${FB_API}/${entityId}`,
     filteredPayload,
@@ -325,7 +321,7 @@ export async function updateAd(entityId, accessToken, updates) {
     return null;
   }
 
-  console.log(`🔄 Updating ad ${entityId} với fields:`, Object.keys(filteredPayload));
+  console.log(`🔄 Updating Ad ${entityId} với fields:`, Object.keys(filteredPayload));
   const { data } = await axios.post(
     `${FB_API}/${entityId}`,
     filteredPayload,

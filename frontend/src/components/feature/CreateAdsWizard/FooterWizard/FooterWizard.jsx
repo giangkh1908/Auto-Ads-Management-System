@@ -148,7 +148,7 @@ function FooterWizard({
                   ? "Đang xử lý..."
                   : success
                   ? "Thành công!"
-                  : mode === "edit"
+                  : mode === "edit" && campaign?.status !== "DRAFT"
                   ? "Cập nhật"
                   : "Đăng quảng cáo"}
               </button>
