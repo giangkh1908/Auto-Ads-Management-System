@@ -12,6 +12,7 @@ const AiPopup = ({ isOpen, onClose, onConfirm }) => {
   });
 
   const [isGeneratingKeywords, setIsGeneratingKeywords] = useState(false);
+  const [showCustomToneInput, setShowCustomToneInput] = useState(false);
 
   if (!isOpen) return null;
 
@@ -53,6 +54,10 @@ const AiPopup = ({ isOpen, onClose, onConfirm }) => {
   };
 
   const handleConfirm = () => {
+    if (showCustomToneInput && !aiConfig.tone.trim()) {
+      alert('Vui lòng nhập phong cách tùy chỉnh.');
+      return;
+    }
     // Chuẩn bị dữ liệu cho backend
     const configData = {
       language: aiConfig.language === 'Tiếng Việt' ? 'vi' : aiConfig.language === 'English' ? 'en' : 'zh',
@@ -102,14 +107,33 @@ const AiPopup = ({ isOpen, onClose, onConfirm }) => {
             <label className="ai-config-label">Phong Cách</label>
             <select 
               className="ai-config-select"
-              value={aiConfig.tone}
-              onChange={(e) => setAiConfig(prev => ({ ...prev, tone: e.target.value }))}
+              value={showCustomToneInput ? '__custom__' : aiConfig.tone}
+              onChange={(e) => {
+                if (e.target.value === '__custom__') {
+                  setShowCustomToneInput(true);
+                  setAiConfig(prev => ({ ...prev, tone: '' }));
+                } else {
+                  setShowCustomToneInput(false);
+                  setAiConfig(prev => ({ ...prev, tone: e.target.value }));
+                }
+              }}
             >
               <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
               <option value="Thân Thiện">Thân Thiện</option>
               <option value="Vui Vẻ">Vui Vẻ</option>
-              <option value="Trang Trọng">Trang Trọng</option>
+              <option value="__custom__">Khác...</option>
             </select>
+            {showCustomToneInput && (
+              <input
+                type="text"
+                className="ai-config-input"
+                style={{ marginTop: '8px' }}
+                value={aiConfig.tone}
+                onChange={(e) => setAiConfig(prev => ({ ...prev, tone: e.target.value }))}
+                placeholder="Ví dụ: Sang trọng, Tối giản, Hài hước"
+                autoFocus
+              />
+            )}
           </div>
 
           {/* Model AI */}
@@ -190,21 +214,40 @@ const AiPopup = ({ isOpen, onClose, onConfirm }) => {
               backgroundColor: '#f8f9fa'
             }}>
               {aiConfig.synonymousKeywords.split(',').filter(k => k.trim()).map((keyword, index) => (
-                <span key={index} className="keyword-tag" style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '500'
-                }}>
+                <span 
+                  key={index} 
+                  className="keyword-tag" 
+                  onClick={() => {
+                    const currentSynonyms = aiConfig.synonymousKeywords.split(',').filter(k => k.trim());
+                    currentSynonyms.splice(index, 1); // Xóa từ khóa khỏi danh sách
+                    setAiConfig(prev => {
+                      const newMainKeywords = [prev.mainKeywords.trim(), keyword.trim()]
+                        .filter(Boolean) // Lọc ra các chuỗi rỗng
+                        .join(', '); // Nối lại bằng dấu phẩy
+                      return {
+                        ...prev,
+                        mainKeywords: newMainKeywords, // Thêm từ khóa vào ô chính
+                        synonymousKeywords: currentSynonyms.join(', ') // Cập nhật lại danh sách
+                      };
+                    });
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}>
                   {keyword.trim()}
                   <button
                     className="keyword-remove"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation(); // Ngăn sự kiện click của thẻ span
                       const keywords = aiConfig.synonymousKeywords.split(',').filter(k => k.trim());
                       keywords.splice(index, 1);
                       setAiConfig(prev => ({ ...prev, synonymousKeywords: keywords.join(', ') }));

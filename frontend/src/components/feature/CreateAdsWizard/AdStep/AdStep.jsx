@@ -33,6 +33,7 @@ function AdStepInner({ ad, setAd }, ref) {
     headline: false,
     primaryText: false,
     description: false,
+    cta: false,
   });
 
   // Function to handle file upload
@@ -104,7 +105,8 @@ function AdStepInner({ ad, setAd }, ref) {
         setAd(prev => ({ ...prev, [field]: response.data.chosen }));
         toast.success(`Đã tạo ${field === 'headline' ? 'tiêu đề' :
           field === 'primaryText' ? 'văn bản chính' :
-            field === 'description' ? 'mô tả' : 'nội dung'}`);
+            field === 'description' ? 'mô tả' :
+              field === 'cta' ? 'nút kêu gọi hành động' : 'nội dung'}`);
       } else {
         toast.error("Không thể tạo nội dung", {
           description: response.data?.message || "Vui lòng thử lại"
@@ -455,35 +457,34 @@ function AdStepInner({ ad, setAd }, ref) {
             <div className="field-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="field-label">Nút kêu gọi hành động</label>
+                <button
+                  onClick={() => generateAIContent('cta', 25)}
+                  disabled={isGenerating.cta || !contextId}
+                  style={{
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    padding: '4px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Bot size={14} />
+                  {isGenerating.cta ? 'Đang tạo...' : 'AI'}
+                </button>
               </div>
-              <select
-                className="cta-select"
-                value={ad.cta}
+              <input
+                type="text"
+                className="headline-input" // Sử dụng lại class của headline cho đồng bộ
+                value={ad.cta || ""}
                 onChange={(e) =>
                   setAd((prev) => ({ ...prev, cta: e.target.value }))
                 }
-              >
-                <option value="Liên hệ ngay">Liên hệ ngay</option>
-                <option value="Xem thêm">Xem thêm</option>
-                <option value="Nhận báo giá">Nhận báo giá</option>
-                <option value="Đăng ký ngay">Đăng ký ngay</option>
-                <option value="Đặt ngay">Đặt ngay</option>
-                <option value="Liên hệ với chúng tôi">Liên hệ với chúng tôi</option>
-                <option value="Tải xuống">Tải xuống</option>
-                <option value="Nhận ưu đãi">Nhận ưu đãi</option>
-                <option value="Xem khuyến mãi">Xem khuyến mãi</option>
-                <option value="Xem suất chiếu">Xem suất chiếu</option>
-                <option value="Tìm hiểu thêm">Tìm hiểu thêm</option>
-                <option value="Nghe ngay">Nghe ngay</option>
-                <option value="Đặt hàng ngay">Đặt hàng ngay</option>
-                <option value="Nhận quyền truy cập">Nhận quyền truy cập</option>
-                <option value="Đặt lịch hẹn">Đặt lịch hẹn</option>
-                <option value="Xem menu">Xem menu</option>
-                <option value="Nhận thông tin mới">Nhận thông tin mới</option>
-                <option value="Mua ngay">Mua ngay</option>
-                <option value="Đăng ký">Đăng ký</option>
-                <option value="Đăng ký dài hạn">Đăng ký dài hạn</option>
-              </select>
+                placeholder="Ví dụ: Mua ngay, Xem thêm"
+              />
             </div>
 
             {/* Destination URL */}

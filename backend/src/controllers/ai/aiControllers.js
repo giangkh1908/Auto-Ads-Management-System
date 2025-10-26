@@ -212,6 +212,15 @@ Yêu cầu:
 - Nêu điểm khác biệt/cụ thể hóa lợi ích
 - Tránh lặp lại nguyên văn tiêu đề.`;
 
+    case "cta":
+      return `Tạo 1 nút kêu gọi hành động (Call To Action - CTA) bằng ${language}, tối đa ${Math.min(
+        maxLen,
+        25
+      )} ký tự, phù hợp với quảng cáo. ${sharedContext}.
+Yêu cầu:
+- Chỉ trả về text cho nút, ví dụ: "Mua ngay", "Tìm hiểu thêm".
+- Không giải thích, không dấu ngoặc kép, không dấu chấm cuối câu.`;
+
     default:
       return `Viết nội dung quảng cáo Facebook bằng ${language}, giọng ${tone}.
 Ngữ cảnh: ${personalization}. Từ khóa: ${kw}.
