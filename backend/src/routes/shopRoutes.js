@@ -2,6 +2,7 @@ import express from "express";
 import { 
     createShop, 
     getShops, 
+    getMyShops,
     getShopById, 
     updateShop, 
     deleteShop, 
@@ -14,8 +15,9 @@ import { authenticate } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/", getShops);
+router.get("/my-shops", authenticate, getMyShops);
 router.get("/facebook/pages", authenticate, getFacebookPages);
+router.get("/", getShops);
 router.get("/:id", getShopById);
 
 router.post("/", createShop);

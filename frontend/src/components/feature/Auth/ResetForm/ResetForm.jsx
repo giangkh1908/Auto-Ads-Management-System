@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Mail, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../../../hooks/useAuth';
 import './ResetForm.css';
 
 function ResetForm({ onSwitchLogin }) {
+    const { t } = useTranslation()
     const [email, setEmail] = useState('')
     const [errors, setErrors] = useState({})
     const [isSubmitted, setIsSubmitted] = useState(false)
@@ -14,9 +16,9 @@ function ResetForm({ onSwitchLogin }) {
         const newErrors = {}
         
         if (!email.trim()) {
-            newErrors.email = 'Email là bắt buộc'
+            newErrors.email = t('validation.email_required')
         } else if (!/\S+@\S+\.\S+/.test(email)) {
-            newErrors.email = 'Email không hợp lệ'
+            newErrors.email = t('validation.email_invalid')
         }
         
         setErrors(newErrors)
@@ -52,20 +54,20 @@ function ResetForm({ onSwitchLogin }) {
             <div className="auth-form">
                 <div className="success-message">
                     <div className="success-icon"><CheckCircle size={20} /></div>
-                    <h3>Email đã được gửi!</h3>
-                    <p>Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu đến email <strong>{email}</strong></p>
-                    <p>Vui lòng kiểm tra hộp thư (kể cả thư mục spam) và làm theo hướng dẫn.</p>
+                    <h3>{t('auth.email_sent')}</h3>
+                    <p>{t('auth.reset_email_sent', { email })}</p>
+                    <p>{t('auth.check_inbox')}</p>
                     <button 
                         type="button" 
                         className="btn-login-form" 
                         onClick={handleResendEmail}
                         disabled={loading}
                     >
-                        {loading ? 'Đang gửi...' : 'Gửi lại email'}
+                        {loading ? t('auth.sending') : t('auth.resend_email')}
                     </button>
                 </div>
                 <div className="form-switch">
-                    <span className="link" onClick={onSwitchLogin}>Quay lại đăng nhập</span>
+                    <span className="link" onClick={onSwitchLogin}>{t('auth.back_to_login')}</span>
                 </div>
             </div>
         )
@@ -74,15 +76,15 @@ function ResetForm({ onSwitchLogin }) {
     return (
         <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-header">
-                <h3>Đặt lại mật khẩu</h3>
-                <p>Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu</p>
+                <h3>{t('auth.reset_password_title')}</h3>
+                <p>{t('auth.reset_instruction')}</p>
             </div>
             
             <div className="input-group-auth">
                 <div className="input-icon-auth"><Mail size={16} /></div>
                 <input 
                     type="email" 
-                    placeholder="Nhập email" 
+                    placeholder={t('auth.email_placeholder')} 
                     value={email} 
                     onChange={(e) => {
                         setEmail(e.target.value)
@@ -94,11 +96,11 @@ function ResetForm({ onSwitchLogin }) {
             </div>
             
             <button type="submit" className="btn-login-form" disabled={loading}>
-                {loading ? 'Đang xử lý...' : 'Xác nhận'}
+                {loading ? t('auth.processing') : t('common.confirm')}
             </button>
             
             <div className="form-switch">
-                Bạn nhớ mật khẩu? <span className="link" onClick={onSwitchLogin}>Đăng nhập ngay</span>
+                {t('auth.remember_password')} <span className="link" onClick={onSwitchLogin}>{t('auth.login_now')}</span>
             </div>
         </form>
     )

@@ -2,6 +2,15 @@ import axiosInstance from '../utils/axios'
 import { API_ENDPOINTS } from '../config/api.config'
 
 class ShopService {
+  async getMyShops() {
+    try {
+      const res = await axiosInstance.get(API_ENDPOINTS.SHOPS.MY_SHOPS)
+      return res.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   async updateShop(id, payload) {
     try {
       const res = await axiosInstance.put(API_ENDPOINTS.SHOPS.UPDATE(id), payload)

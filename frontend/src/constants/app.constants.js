@@ -34,6 +34,7 @@ export const ROUTES = {
   SHOP_HISTORY: '/shop/history',
   CONNECT_PAGE: '/connect-page',
   CONNECT_AD_ACCOUNT: '/connect-ad-account',
+  SERVICE_PACKAGE: '/service-package',
   VERIFY_EMAIL: '/verify-email/:token',
   RESET_PASSWORD: '/reset-password/:token',
   NOT_FOUND: '*',
@@ -51,7 +52,8 @@ export const HEADER_ROUTES = [
   ROUTES.SETTINGS,
   ROUTES.SHOP,
   ROUTES.SHOP_EMPLOYEE,
-  ROUTES.SHOP_HISTORY
+  ROUTES.SHOP_HISTORY,
+  ROUTES.SERVICE_PACKAGE
 ]
 
 // Auth modes

@@ -1,0 +1,74 @@
+{
+    "objectives": {
+      "OUTCOME_AWARENESS": "Mức độ nhận biết",
+      "OUTCOME_TRAFFIC": "Lưu lượng truy cập",
+      "OUTCOME_ENGAGEMENT": "Tương tác",
+      "OUTCOME_LEADS": "Khách hàng tiềm năng",
+      "OUTCOME_SALES": "Doanh số",
+      "OUTCOME_APP_PROMOTION": "Quảng bá ứng dụng",
+      "AWARENESS": "Mức độ nhận biết",
+      "TRAFFIC": "Lưu lượng truy cập",
+      "ENGAGEMENT": "Tương tác",
+      "LEADS": "Khách hàng tiềm năng",
+      "SALES": "Doanh số",
+      "APP_PROMOTION": "Quảng bá ứng dụng",
+      "POST_ENGAGEMENT": "Tương tác bài viết",
+      "CONVERSIONS": "Chuyển đổi",
+      "LINK_CLICKS": "Nhấp chuột liên kết",
+      "PAGE_LIKES": "Thích trang",
+      "VIDEO_VIEWS": "Lượt xem video",
+      "MESSAGES": "Tin nhắn",
+      "REACH": "Tiếp cận"
+    },
+    "optimization_goals": {
+      "REACH": "Tiếp cận",
+      "POST_ENGAGEMENT": "Tương tác bài viết",
+      "LINK_CLICKS": "Nhấp chuột liên kết",
+      "IMPRESSIONS": "Hiển thị",
+      "CONVERSIONS": "Chuyển đổi",
+      "LEAD_GENERATION": "Tạo khách hàng tiềm năng",
+      "APP_INSTALLS": "Cài đặt ứng dụng",
+      "VIDEO_VIEWS": "Lượt xem video",
+      "LANDING_PAGE_VIEWS": "Lượt xem trang đích"
+    },
+    "genders": {
+      "male": "Nam",
+      "female": "Nữ",
+      "1": "Nam",
+      "2": "Nữ"
+    },
+    "countries": {
+      "VN": "Việt Nam",
+      "US": "Hoa Kỳ",
+      "JP": "Nhật Bản",
+      "KR": "Hàn Quốc",
+      "TH": "Thái Lan",
+      "CN": "Trung Quốc",
+      "SG": "Singapore",
+      "MY": "Malaysia",
+      "ID": "Indonesia",
+      "PH": "Philippines"
+    },
+    "status": {
+      "ACTIVE": "Đang hoạt động",
+      "PAUSED": "Tạm dừng",
+      "DELETED": "Đã xóa",
+      "ARCHIVED": "Đã lưu trữ",
+      "DRAFT": "Bản nháp"
+    },
+    "labels": {
+      "campaign": "Chiến dịch",
+      "adset": "Nhóm quảng cáo",
+      "ad": "Quảng cáo",
+      "creative": "Nội dung sáng tạo",
+      "budget": "Ngân sách",
+      "targeting": "Mục tiêu",
+      "schedule": "Lịch trình",
+      "performance": "Hiệu suất",
+      "not_set": "Chưa thiết lập",
+      "gender": "Giới tính",
+      "age": "Tuổi",
+      "location": "Vị trí",
+      "language": "Ngôn ngữ"
+    }
+  }

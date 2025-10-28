@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import axiosInstance from "../../utils/axios";
 import { toast } from "sonner";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
@@ -8,6 +9,7 @@ import { CheckCircle, XCircle, Archive, Trash2, Play, Pause } from "lucide-react
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 
 function AccountManagement() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   // UI states
@@ -129,12 +131,12 @@ function AccountManagement() {
       const fbAccountStatus = Number(acc?.account_status);
       const fbStatusLabel =
         fbAccountStatus === 1
-          ? "Hoạt động"
+          ? t('account_management.status_active')
           : fbAccountStatus === 2
-          ? "Vô hiệu hóa"
+          ? t('account_management.status_disabled')
           : fbAccountStatus === 3
-          ? "Chưa xác minh"
-          : "Không hoạt động";
+          ? t('account_management.status_unverified')
+          : t('account_management.status_inactive');
 
       const accountId = acc.external_id;
       const stats = accountStats[accountId] || {
@@ -172,30 +174,30 @@ function AccountManagement() {
       switch (action) {
         case 'activate':
           await axiosInstance.patch(`/api/ads-accounts/${accountId}/activate`);
-          toast.success("Kích hoạt tài khoản thành công!", {
-            description: `Tài khoản "${accountName}" đã được kích hoạt`
+          toast.success(t('account_management.activate_success'), {
+            description: t('account_management.activate_description', { name: accountName })
           });
           break;
         case 'deactivate':
           await axiosInstance.patch(`/api/ads-accounts/${accountId}/deactivate`);
-          toast.success("Vô hiệu hóa tài khoản thành công!", {
-            description: `Tài khoản "${accountName}" đã được vô hiệu hóa`
+          toast.success(t('account_management.deactivate_success'), {
+            description: t('account_management.deactivate_description', { name: accountName })
           });
           break;
         case 'archive':
           await axiosInstance.patch(`/api/ads-accounts/${accountId}/archive`);
-          toast.success("Lưu trữ tài khoản thành công!", {
-            description: `Tài khoản "${accountName}" đã được lưu trữ`
+          toast.success(t('account_management.archive_success'), {
+            description: t('account_management.archive_description', { name: accountName })
           });
           break;
         case 'disconnect':
           await axiosInstance.delete(`/api/ads-accounts/${accountId}`);
-          toast.success("Gỡ kết nối tài khoản thành công!", {
-            description: `Tài khoản "${accountName}" đã được gỡ kết nối`
+          toast.success(t('account_management.disconnect_success'), {
+            description: t('account_management.disconnect_description', { name: accountName })
           });
           break;
         default:
-          throw new Error('Hành động không hợp lệ');
+          throw new Error(t('common.error'));
       }
       
       // Refresh danh sách sau khi thực hiện hành động
@@ -218,23 +220,23 @@ function AccountManagement() {
     const actionConfig = {
       activate: {
         type: 'activate',
-        title: "Kích hoạt tài khoản",
-        message: `Bạn có chắc chắn muốn kích hoạt tài khoản "${accountName}"?`
+        title: t('account_management.confirm_activate_title'),
+        message: t('account_management.confirm_activate_message', { name: accountName })
       },
       deactivate: {
         type: 'deactivate',
-        title: "Vô hiệu hóa tài khoản", 
-        message: `Bạn có chắc chắn muốn vô hiệu hóa tài khoản "${accountName}"?`
+        title: t('account_management.confirm_disconnect_title'),
+        message: t('account_management.confirm_disconnect_message', { name: accountName })
       },
       archive: {
         type: 'archive',
-        title: "Lưu trữ tài khoản",
-        message: `Bạn có chắc chắn muốn lưu trữ tài khoản "${accountName}"?`
+        title: t('account_management.confirm_disconnect_title'),
+        message: t('account_management.confirm_disconnect_message', { name: accountName })
       },
       disconnect: {
         type: 'delete',
-        title: "Gỡ kết nối tài khoản",
-        message: `Bạn có chắc chắn muốn gỡ kết nối tài khoản "${accountName}"?`
+        title: t('account_management.confirm_disconnect_title'),
+        message: t('account_management.confirm_disconnect_message', { name: accountName })
       }
     };
 
@@ -259,15 +261,14 @@ function AccountManagement() {
             {/* Header */}
             <div className="account-management-header">
               <div>
-                <h3>Tài khoản quảng cáo</h3>
+                <h3>{t('account_management.title')}</h3>
                 <p>
-                  Kết nối tài khoản quảng cáo Facebook để đo hiệu quả của từng
-                  Chiến dịch.
+                  {t('account_management.description')}
                 </p>
                 <div className="search-row">
                   <input
                     className="search-input"
-                    placeholder="Tìm kiếm ID, tên tài khoản"
+                    placeholder={t('account_management.search_placeholder')}
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && onSearch()}
@@ -277,14 +278,14 @@ function AccountManagement() {
                     onClick={onSearch}
                     disabled={loading || syncing}
                   >
-                    {loading ? "Tìm..." : "Tìm"}
+                    {loading ? t('account_management.searching') : t('account_management.search')}
                   </button>
                   <button
                     className="btn-find"
                     onClick={handleSync}
                     disabled={loading || syncing}
                   >
-                    {syncing ? "Refresh..." : "Refresh"}
+                    {syncing ? t('account_management.refreshing') : t('account_management.refresh')}
                   </button>
                 </div>
               </div>
@@ -294,7 +295,7 @@ function AccountManagement() {
                   className="add-account"
                   onClick={() => navigate(ROUTES.CONNECT_AD_ACCOUNT)}
                 >
-                  + Thêm tài khoản
+                  + {t('account_management.add_account')}
                 </button>
               </div>
             </div>
@@ -305,27 +306,27 @@ function AccountManagement() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>STT</th>
-                  <th>Tên tài khoản</th>
-                  <th className="text-right">Chiến dịch</th>
-                  <th className="text-right">Nhóm quảng cáo</th>
-                  <th className="text-right">Quảng cáo</th>
-                  <th>Trạng thái</th>
-                  <th>Cập nhật cuối</th>
-                  <th>Hành động</th>
+                  <th>{t('account_management.stt')}</th>
+                  <th>{t('account_management.account_name')}</th>
+                  <th className="text-right">{t('account_management.campaigns')}</th>
+                  <th className="text-right">{t('account_management.adsets')}</th>
+                  <th className="text-right">{t('account_management.ads')}</th>
+                  <th>{t('account_management.status')}</th>
+                  <th>{t('account_management.last_update')}</th>
+                  <th>{t('account_management.action')}</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
                     <td colSpan="7" style={{ textAlign: "center", color: "#6b7280" }}>
-                      Đang tải dữ liệu...
+                      {t('account_management.loading')}
                     </td>
                   </tr>
                 ) : accounts.length === 0 ? (
                   <tr>
                     <td colSpan="7" style={{ textAlign: "center", color: "#6b7280" }}>
-                      Không tìm thấy tài khoản quảng cáo nào.
+                      {t('account_management.no_accounts')}
                     </td>
                   </tr>
                 ) : (
@@ -346,12 +347,12 @@ function AccountManagement() {
                       <td>
                         <div className="action-buttons">
                           {/* Hiển thị button dựa trên trạng thái */}
-                          {acc.status === "Hoạt động" ? (
+                          {acc.status === t('account_management.status_active') ? (
                             <button 
                               className="btn-inactive-account"
                               onClick={() => showConfirmDialog(acc.id, acc.name, 'deactivate')}
                               disabled={loading}
-                              title="Vô hiệu hóa"
+                              title={t('account_management.disconnect')}
                             >
                               <Pause size={15} />
                             </button>
@@ -360,7 +361,7 @@ function AccountManagement() {
                               className="btn-active-account"
                               onClick={() => showConfirmDialog(acc.id, acc.name, 'activate')}
                               disabled={loading}
-                              title="Kích hoạt"
+                              title={t('account_management.activate')}
                             >
                               <Play size={15} />
                             </button>
@@ -370,7 +371,7 @@ function AccountManagement() {
                             className="btn-archive-account"
                             onClick={() => showConfirmDialog(acc.id, acc.name, 'archive')}
                             disabled={loading}
-                            title="Lưu trữ"
+                            title={t('account_management.disconnect')}
                           >
                             <Archive size={15} />
                           </button>
@@ -379,7 +380,7 @@ function AccountManagement() {
                             className="btn-disconnect-account"
                             onClick={() => showConfirmDialog(acc.id, acc.name, 'disconnect')}
                             disabled={loading}
-                            title="Gỡ kết nối"
+                            title={t('account_management.disconnect')}
                           >
                             <Trash2 size={15} />
                           </button>

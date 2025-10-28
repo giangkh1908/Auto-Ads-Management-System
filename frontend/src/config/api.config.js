@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
 
   SHOPS: {
     LIST: `${API_CONFIG.BASE_URL}/api/shops`,
+    MY_SHOPS: `${API_CONFIG.BASE_URL}/api/shops/my-shops`,
     DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/shops/${id}`,
     CREATE: `${API_CONFIG.BASE_URL}/api/shops`,
     UPDATE: (id) => `${API_CONFIG.BASE_URL}/api/shops/${id}`,

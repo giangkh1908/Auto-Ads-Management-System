@@ -25,6 +25,26 @@ export const getShops = async (req, res) => {
   }
 };
 
+//  Lấy các shop của user hiện tại
+export const getMyShops = async (req, res) => {
+  try {
+    const shops = await Shop.find({ owner_id: req.user._id })
+      .populate("owner_id", "name email")
+      .populate("salesman_id", "name email");
+    
+    res.json({
+      success: true,
+      items: shops,
+      total: shops.length
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+};
+
 //  Lấy Shop theo ID
 export const getShopById = async (req, res) => {
   try {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Edit, Archive, Trash, RefreshCw } from "lucide-react";
 import Pagination from "../../components/common/Pagination/Pagination";
 import "./AdsManagement.css";
@@ -17,6 +18,7 @@ import { useAdsSelection } from "../../hooks/useAdsSelection";
 import { useAdsActions } from "../../hooks/useAdsActions";
 
 function AdsManagement() {
+  const { t } = useTranslation();
   const toast = useToast();
   
   // 🎯 Custom Hooks
@@ -306,8 +308,8 @@ const getFilteredRows = () => {
   // 🔹 Handle refresh - Sync + Fetch ALL data 1 lần
   const handleRefresh = useCallback(async () => {
     if (!selectedAccountId) {
-      toast.warning("Vui lòng chọn tài khoản quảng cáo", {
-        description: "Chọn tài khoản quảng cáo trước khi làm mới dữ liệu",
+      toast.warning(t('ads_management.select_account_warning'), {
+        description: t('ads_management.select_account_description'),
       });
       return;
     }
@@ -322,14 +324,14 @@ const getFilteredRows = () => {
       await fetchAllData(selectedAccountId);
 
       console.log("✅ Data refreshed successfully");
-      toast.success("Làm mới dữ liệu thành công!");
+      toast.success(t('ads_management.refresh_success'));
     } catch (error) {
       console.error("❌ Error refreshing data:", error);
-      toast.error("Lỗi khi làm mới dữ liệu");
+      toast.error(t('ads_management.refresh_error'));
     } finally {
       setRefreshing(false);
     }
-  }, [selectedAccountId, syncData, fetchAllData, toast]);
+  }, [selectedAccountId, syncData, fetchAllData, toast, t]);
 
   return (
     <div className="ads-management-layout">
@@ -343,15 +345,15 @@ const getFilteredRows = () => {
                   onChange={handleAccountChange}
                   disabled={loadingAccounts}
                 >
-                  <option value="">Chọn tài khoản quảng cáo</option>
+                  <option value="">{t('ads_management.select_account')}</option>
                   {loadingAccounts ? (
-                    <option disabled>Đang tải tài khoản...</option>
+                    <option disabled>{t('ads_management.loading_accounts')}</option>
                   ) : adAccounts.length === 0 ? (
-                    <option disabled>Không có tài khoản nào</option>
+                    <option disabled>{t('ads_management.no_accounts')}</option>
                   ) : (
                     adAccounts.map((account) => (
                       <option key={account._id} value={account.external_id}>
-                        {account.name || "Tài khoản"} ({account.external_id})
+                        {account.name || t('ads_management.account')} ({account.external_id})
                       </option>
                     ))
                   )}
@@ -368,16 +370,16 @@ const getFilteredRows = () => {
                   }}
                   disabled={!selectedAccountId}
                 >
-                  + Tạo chiến dịch
+                  + {t('ads_management.create_campaign')}
                 </button>
               </div>
 
               <div className="filters">
-                <span>Từ</span>
+                <span>{t('ads_management.from')}</span>
                 <input type="date" />
-                <span>đến</span>
+                <span>{t('ads_management.to')}</span>
                 <input type="date" />
-                <button className="btn-filter">Tìm</button>
+                <button className="btn-filter">{t('ads_management.search')}</button>
               </div>
             </div>
 
@@ -392,7 +394,7 @@ const getFilteredRows = () => {
                     setPagination(prev => ({ ...prev, page: 1 }));
                   }}
                 >
-                  Tất cả chiến dịch
+                  {t('ads_management.all_campaigns')}
                 </button>
                 {selectedCampaign && (
                   <>
@@ -405,7 +407,7 @@ const getFilteredRows = () => {
                         setPagination(prev => ({ ...prev, page: 1 }));
                       }}
                     >
-                      Chiến dịch <span className="breadcrumb-name">{selectedCampaign.name}</span>
+                      {t('ads_management.campaign')} <span className="breadcrumb-name">{selectedCampaign.name}</span>
                     </button>
                   </>
                 )}
@@ -419,7 +421,7 @@ const getFilteredRows = () => {
                         setPagination(prev => ({ ...prev, page: 1 }));
                       }}
                     >
-                      Nhóm quảng cáo <span className="breadcrumb-name">{selectedAdset.name}</span>
+                      {t('ads_management.adset')} <span className="breadcrumb-name">{selectedAdset.name}</span>
                     </button>
                   </>
                 )}
@@ -436,7 +438,7 @@ const getFilteredRows = () => {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
-                <span className="tab-icon">▦</span> Chiến dịch
+                <span className="tab-icon">▦</span> {t('ads_management.campaigns')}
               </button>
               <button
                 className={`tab ${activeTab === "adsets" ? "active" : ""}`}
@@ -446,7 +448,7 @@ const getFilteredRows = () => {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
-                <span className="tab-icon">▣</span> Nhóm quảng cáo
+                <span className="tab-icon">▣</span> {t('ads_management.adsets')}
               </button>
               <button
                 className={`tab ${activeTab === "ads" ? "active" : ""}`}
@@ -456,7 +458,7 @@ const getFilteredRows = () => {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
-                <span className="tab-icon">▥</span> Quảng cáo
+                <span className="tab-icon">▥</span> {t('ads_management.ads')}
               </button>
 
               {hasSelectedItems && (
@@ -481,10 +483,10 @@ const getFilteredRows = () => {
                 className="btn-refresh-ads"
                 onClick={handleRefresh}
                 disabled={refreshing || !selectedAccountId}
-                title="Làm mới dữ liệu"
+                title={t('account_management.refresh')}
               >
                 <RefreshCw size={16} className={refreshing ? "spinning" : ""} />
-                {refreshing ? "Đang tải..." : "Làm mới"}
+                {refreshing ? t('ads_management.loading') : t('account_management.refresh')}
               </button>
             </div>
 
@@ -500,26 +502,26 @@ const getFilteredRows = () => {
                         onChange={handleCheckAll}
                       />
                     </th>
-                    <th>Tắt/Bật</th>
-                    <th>Tên</th>
-                    <th>Trạng thái</th>
-                    <th>Ngân sách</th>
-                    {activeTab === "adsets" && <th>Thời gian chạy</th>}
-                    {activeTab === "adsets" && <th>Nhắm mục tiêu</th>}
-                    {activeTab === "campaigns" && <th>Mục tiêu</th>}
-                    <th>Hiển thị</th>
-                    <th>Tiếp cận</th>
-                    <th>Kết quả</th>
-                    <th>Chất lượng</th>
-                    <th>Người đăng</th>
-                    <th>Hành động</th>
+                    <th>{t('ads_management.on_off')}</th>
+                    <th>{t('ads_management.name')}</th>
+                    <th>{t('ads_management.status')}</th>
+                    <th>{t('ads_management.budget')}</th>
+                    {activeTab === "adsets" && <th>{t('ads_management.targeting')}</th>}
+                    {activeTab === "adsets" && <th>{t('ads_management.targeting')}</th>}
+                    {activeTab === "campaigns" && <th>{t('ads_management.objective')}</th>}
+                    <th>{t('ads_management.impressions')}</th>
+                    <th>{t('ads_management.reach')}</th>
+                    <th>{t('ads_management.results')}</th>
+                    <th>{t('ads_management.quality')}</th>
+                    <th>{t('ads_management.creator_name')}</th>
+                    <th>{t('ads_management.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(activeTab === "ads" || activeTab === "adsets" || activeTab === "campaigns") && rows.length === 0 && (
                     <tr>
                       <td colSpan={activeTab === "adsets" ? 13 : activeTab === "campaigns" ? 12 : 11} style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
-                        Chưa có quảng cáo nào để hiển thị. Hãy chọn tài khoản quảng cáo khác hoặc tạo mới.
+                        {activeTab === "campaigns" ? t('ads_management.no_campaigns') : activeTab === "adsets" ? t('ads_management.no_adsets') : t('ads_management.no_ads')}
                       </td>
                     </tr>
                   )}

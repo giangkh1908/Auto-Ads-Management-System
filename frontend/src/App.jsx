@@ -15,6 +15,7 @@ import AccountManagement from './pages/AccountManagement/AccountManagement.jsx'
 import AdsManagement from './pages/AdsManagement/AdsManagement.jsx'
 import ConnectPage from './pages/ConnectPage/ConnectPage.jsx'
 import ConnectAdAccount from './pages/ConnectAdAccount/ConnectAdAccount.jsx'
+import ServicePackage from './pages/ServicePackage/ServicePackage.jsx'
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail.jsx'
 import ResetPassword from './pages/ResetPassword/ResetPassword.jsx'
 import Profile from './pages/Profile/Profile.jsx'
@@ -195,6 +196,19 @@ function AppContent() {
               </main>
             </ProtectedRoute>
           } 
+        />
+
+        {/* Route cho Service Package */}
+        <Route 
+          path={ROUTES.SERVICE_PACKAGE}
+          element={
+            <>
+              <main className="page-content">
+                <ServicePackage />
+              </main>
+              <Footer />
+            </>
+          }
         />
 
         {/* Route cho Connect Page */}
