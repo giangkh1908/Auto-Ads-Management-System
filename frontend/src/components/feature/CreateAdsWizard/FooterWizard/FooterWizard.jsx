@@ -1,5 +1,6 @@
 import React from "react";
 import "./FooterWizard.css";
+import { FB_OBJECTIVE_MAP } from "../../../../constants/wizardConstants";
 
 function FooterWizard({
   wizardStep,
@@ -28,17 +29,8 @@ function FooterWizard({
           <div className="spacer" />
           <button
             className="btn-primary"
-            onClick={() => setWizardStep((prev) => Math.min(3, prev + 1))}
-            disabled={
-              ![
-                "AWARENESS",
-                "TRAFFIC",
-                "ENGAGEMENT",
-                "LEADS",
-                "APP_PROMOTION",
-                "SALES",
-              ].includes(campaign.objective)
-            }
+            onClick={() => setWizardStep(1)}
+            disabled={!Object.keys(FB_OBJECTIVE_MAP).includes(campaign.objective)}
           >
             Tiếp tục
           </button>

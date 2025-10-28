@@ -1,77 +1,37 @@
 import {
   useState,
-  useRef,
+  useEffect,
   forwardRef,
   useImperativeHandle,
-  useEffect,
+  useRef,
+  useCallback,
 } from "react";
+import {
+  MapPin,
+  Users,
+  Clock,
+  Calendar,
+  DollarSign,
+  Target,
+  Languages,
+  MinusCircle,
+  PlusCircle,
+  Globe,
+  Smartphone,
+  MessageSquare,
+  Phone,
+  Circle,
+  Search,
+} from "lucide-react";
 import { useOnClickOutside } from "../../../../utils/useOnClickOutside";
 import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
-import {
-  Circle,
-  Target,
-  DollarSign,
-  Calendar,
-  Users,
-  MapPin,
-  Search,
-} from "lucide-react";
 import "./AdsetStep.css";
 import { getNames } from "country-list";
-
-// Mapping các optimization_goal và billing_event theo mục tiêu chiến dịch
-const CAMPAIGN_OBJECTIVE_MAPPING = {
-  AWARENESS: {
-    optimization_goals: [
-      { value: "IMPRESSIONS", label: "Số lần hiển thị" },
-      { value: "REACH", label: "Tiếp cận" },
-    ],
-    billing_events: ["IMPRESSIONS", "REACH"],
-  },
-  TRAFFIC: {
-    optimization_goals: [
-      { value: "LINK_CLICKS", label: "Lượt nhấp link" },
-      { value: "LANDING_PAGE_VIEWS", label: "Lượt xem trang đích" },
-    ],
-    billing_events: ["IMPRESSIONS", "LINK_CLICKS"],
-  },
-  ENGAGEMENT: {
-    optimization_goals: [
-      { value: "REACH", label: "Tiếp cận" },
-      { value: "POST_ENGAGEMENT", label: "Tương tác bài viết" },
-      { value: "THRUPLAY", label: "Lượt xem video" },
-      { value: "PAGE_LIKES", label: "Lượt thích trang" },
-    ],
-    billing_events: ["IMPRESSIONS", "POST_ENGAGEMENT"],
-  },
-  APP_PROMOTION: {
-    optimization_goals: [
-      { value: "APP_INSTALLS", label: "Lượt cài đặt ứng dụng" },
-    ],
-    billing_events: ["IMPRESSIONS", "APP_INSTALLS"],
-  },
-  LEADS: {
-    optimization_goals: [
-      { value: "LEAD_GENERATION", label: "Khách hàng tiềm năng" },
-      { value: "QUALITY_LEAD", label: "Chuyển đổi" },
-    ],
-    conversion_events: [
-      { value: "LEAD", label: "Khách hàng tiềm năng" },
-      { value: "COMPLETE_REGISTRATION", label: "Hoàn tất đăng ký" },
-    ],
-    billing_events: ["IMPRESSIONS", "LEAD_GENERATION", "CONVERSIONS"],
-  },
-  CONVERSIONS: {
-    optimization_goals: [{ value: "OFFSITE_CONVERSIONS", label: "Chuyển đổi" }],
-    conversion_events: [
-      { value: "PURCHASE", label: "Mua hàng" },
-      { value: "ADD_TO_CART", label: "Thêm vào giỏ hàng" },
-      { value: "VIEW_CONTENT", label: "Xem nội dung" },
-    ],
-    billing_events: ["IMPRESSIONS", "LINK_CLICKS", "CONVERSIONS"],
-  },
-};
+import {
+  getAdsetDefaultsByObjective,
+  ADSET_CONFIG_BY_OBJECTIVE, // 1. Import cấu hình mới
+} from "../../../../constants/wizardConstants";
 
 // Labels cho billing_event
 const BILLING_EVENT_LABELS = {
@@ -90,20 +50,22 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
   const [selectedTags, setSelectedTags] = useState(
     adset.targeting?.location ? [adset.targeting.location] : ["Viet Nam"]
   );
+  const [trafficDestination, setTrafficDestination] = useState("WEBSITE");
 
   // Lấy các options dựa trên mục tiêu chiến dịch
-  const getObjectiveOptions = () => {
+  const getObjectiveOptions = useCallback(() => {
+    // 3. Cập nhật hàm này để sử dụng cấu hình mới và có fallback an toàn
     const mapping =
-      CAMPAIGN_OBJECTIVE_MAPPING[objective] ||
-      CAMPAIGN_OBJECTIVE_MAPPING.AWARENESS;
+      ADSET_CONFIG_BY_OBJECTIVE[objective] ||
+      ADSET_CONFIG_BY_OBJECTIVE.AWARENESS;
     return mapping;
-  };
+  }, [objective]);
 
   // Lấy các billing_event tương thích với mục tiêu chiến dịch
-  const getCompatibleBillingEvents = () => {
+  const getCompatibleBillingEvents = useCallback(() => {
     const mapping = getObjectiveOptions();
     return mapping.billing_events || ["IMPRESSIONS"];
-  };
+  }, [getObjectiveOptions]);
 
   // Cập nhật billing_event khi optimization_goal thay đổi
   const handleOptimizationGoalChange = (newOptimizationGoal) => {
@@ -121,6 +83,18 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
       billing_event: newBillingEvent,
     }));
   };
+
+  // Auto-apply v23 defaults when campaign objective changes (limit to 3 objectives)
+  useEffect(() => {
+    if (!objective) return;
+    const defaults = getAdsetDefaultsByObjective(objective);
+    if (!defaults) return;
+    setAdset((prev) => ({
+      ...prev,
+      optimization_goal: defaults.optimization_goal,
+      billing_event: defaults.billing_event,
+    }));
+  }, [objective, setAdset]);
   const [selectedInterests, setSelectedInterests] = useState(
     adset.targeting?.interests || ["E-commerce"]
   );
@@ -292,71 +266,79 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
         return isValid && okOptimization && okBillingEvent;
       },
     }),
-    [adset, toast, getObjectiveOptions, getCompatibleBillingEvents]
+    [adset, toast, getObjectiveOptions, getCompatibleBillingEvents, setAdset]
   );
 
   // Thêm useEffect để đảm bảo các giá trị mặc định khi component mount
   useEffect(() => {
-    // Nếu optimization_goal chưa được thiết lập
-    if (!adset.optimization_goal) {
-      const defaultOptimizationGoal =
-        getObjectiveOptions().optimization_goals[0]?.value;
-      const defaultBillingEvent = getCompatibleBillingEvents()[0];
+    const defaults = getAdsetDefaultsByObjective(objective);
+    const compatibleBillingEvents = getCompatibleBillingEvents();
 
-      setAdset((prev) => ({
-        ...prev,
-        optimization_goal: defaultOptimizationGoal,
-        billing_event: defaultBillingEvent,
-        bid_strategy: prev.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
-        bid_amount: prev.bid_amount || 100,
-      }));
-    }
-  }, [objective]); // Re-run khi objective thay đổi
+    setAdset((prev) => {
+      const updates = {};
+      if (prev.optimization_goal !== defaults.optimization_goal) {
+        updates.optimization_goal = defaults.optimization_goal;
+      }
+      if (!compatibleBillingEvents.includes(prev.billing_event)) {
+        updates.billing_event = compatibleBillingEvents[0];
+      }
+      return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+    });
+  }, [objective, adset.optimization_goal, getCompatibleBillingEvents, getObjectiveOptions, setAdset]); // Re-run khi objective thay đổi
 
   // Thêm useEffect để theo dõi thay đổi của bid_strategy
   useEffect(() => {
-    // Khi bid_strategy thay đổi thành LOWEST_COST_WITHOUT_CAP, xóa bid_amount
-    if (
-      adset.bid_strategy === "LOWEST_COST_WITHOUT_CAP" &&
-      adset.bid_amount !== undefined
-    ) {
+    if (adset.bid_strategy !== "COST_CAP" && adset.bid_amount) {
       setAdset((prev) => {
-        const updated = { ...prev };
-        delete updated.bid_amount;
-        return updated;
+        const newAdset = { ...prev };
+        delete newAdset.bid_amount;
+        return newAdset;
       });
     }
-  }, [adset.bid_strategy]);
+  }, [adset.bid_strategy, adset.bid_amount, setAdset]);
 
   // Thêm hàm xử lý thay đổi bid strategy
   const handleBidStrategyChange = (value) => {
-    if (value === "LOWEST_COST_WITHOUT_CAP") {
-      // Khi chọn LOWEST_COST_WITHOUT_CAP, xóa bid_amount
-      setAdset((prev) => {
-        const updated = { ...prev, bid_strategy: value };
-        delete updated.bid_amount;
-        return updated;
-      });
-
-      // Thông báo người dùng (optional)
-      toast?.info("Đã tắt giới hạn giá thầu theo chính sách của Facebook");
-    } else if (value === "LOWEST_COST_WITH_BID_CAP") {
-      // Khi chọn LOWEST_COST_WITH_BID_CAP, cần có bid_amount
-      setAdset((prev) => ({
-        ...prev,
-        bid_strategy: value,
-        bid_amount: prev.bid_amount || 100, // Giá trị mặc định nếu chưa có
-      }));
-    } else {
-      // Các loại khác
-      setAdset((prev) => ({ ...prev, bid_strategy: value }));
-    }
+    setAdset((prev) => {
+      const updates = { bid_strategy: value };
+      if (value === "COST_CAP") {
+        updates.bid_amount = 10000; // Mặc định hoặc giá trị cuối
+      } else {
+        delete prev.bid_amount; // Xóa nếu không phải COST_CAP
+      }
+      return { ...prev, ...updates };
+    });
   };
+
+  // Handle traffic destination changes
+  useEffect(() => {
+    if (objective !== "TRAFFIC") {
+      if (trafficDestination !== "WEBSITE") setTrafficDestination("WEBSITE");
+      return;
+    }
+
+    let newPromotedObject = null;
+    if (trafficDestination === "APP") {
+      newPromotedObject = {
+        application_id: adset.promoted_object?.application_id || "",
+        object_store_url: adset.promoted_object?.object_store_url || "",
+      };
+    }
+
+    setAdset((prev) => {
+      if (JSON.stringify(prev.promoted_object) !== JSON.stringify(newPromotedObject)) {
+        return {
+          ...prev,
+          promoted_object: newPromotedObject,
+        };
+      }
+      return prev;
+    });
+  }, [trafficDestination, objective, setAdset, adset.promoted_object?.application_id, adset.promoted_object?.object_store_url]);
 
   return (
     <div className="adset-step">
-      <div className="config-scroll-container">
-        {/* --- Adset Name --- */}
+      <div className="step-content">
         <div className="config-section">
           <div className="section-header-adset">
             <Circle size={8} fill="#2563eb" color="#2563eb" />
@@ -375,25 +357,27 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
             placeholder="Chiến dịch nhóm quảng cáo Lượt tương tác mới"
           />
         </div>
-        {/* Conversion Section */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <Target size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Lượt chuyển đổi</h3>
+        {/* Destination (only for TRAFFIC) */}
+        {objective === "TRAFFIC" && (
+          <div className="config-section">
+            <div className="section-header-ads">
+              <Target size={16} color="#2563eb" />
+              <h3 className="section-title-ads">Đích đến</h3>
+            </div>
+            <select
+              className="conversion-select"
+              value={adset.conversion || "website"}
+              onChange={(e) =>
+                setAdset((prev) => ({ ...prev, conversion: e.target.value }))
+              }
+            >
+              <option value="website">Trang web</option>
+              <option value="destination">Đích đến của tin nhắn</option>
+            </select>
           </div>
-          <select
-            className="conversion-select"
-            value={adset.conversion || "destination"}
-            onChange={(e) =>
-              setAdset((prev) => ({ ...prev, conversion: e.target.value }))
-            }
-          >
-            <option value="destination">Đích đến của tin nhắn</option>
-            <option value="website">Trang web</option>
-          </select>
-        </div>
+        )}
 
-        {/* Performance Goal Section */}
+        {/* Performance Goal Section (drives optimization_goal by objective) */}
         <div className="config-section">
           <div className="section-header-ads">
             <Target size={16} color="#2563eb" />
@@ -401,47 +385,31 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
           </div>
           <select
             className="performance-select"
-            value={adset.performanceGoal || "purchase"}
-            onChange={(e) =>
-              setAdset((prev) => ({ ...prev, performanceGoal: e.target.value }))
+            value={
+              adset?.optimization_goal ||
+              getObjectiveOptions().optimization_goals[0]?.value ||
+              "REACH"
             }
+            onChange={(e) => handleOptimizationGoalChange(e.target.value)}
           >
-            <option value="purchase">
-              Tối đa hóa số lượt mua qua tin nhắn
-            </option>
-            <option value="chat">Tối đa hóa số cuộc trò chuyện</option>
-            <option value="potential">
-              Tối đa hóa số khách hàng tiềm năng qua tin nhắn
-            </option>
+            {getObjectiveOptions().optimization_goals.map((goal) => (
+              <option key={goal.value} value={goal.value}>
+                {goal.label}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Optimization & Billing */}
+        {/* Billing (optimization is driven by Performance Goal above) */}
         <div className="config-section">
           <div className="section-header-ads">
             <Target size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Tối ưu hóa & Thanh toán</h3>
-          </div>
-          <div className="field-group">
-            <label className="field-label">Mục tiêu tối ưu hóa</label>
-            <select
-              className="optimization-select"
-              value={
-                adset?.optimization_goal ||
-                getObjectiveOptions().optimization_goals[0]?.value ||
-                "REACH"
-              }
-              onChange={(e) => handleOptimizationGoalChange(e.target.value)}
-            >
-              {getObjectiveOptions().optimization_goals.map((goal) => (
-                <option key={goal.value} value={goal.value}>
-                  {goal.label}
-                </option>
-              ))}
-            </select>
+            <h3 className="section-title-ads">Thanh toán</h3>
           </div>
 
-          {/* billing_event = "Facebook thu tiền bạn theo sự kiện nào?" */}
+          {/* billing_event = "Facebook thu tiền bạn theo sự kiện nào?"
+              Sự kiện tính phí ?
+            */}
           <div className="field-group">
             <label
               className="field-label"
@@ -477,55 +445,148 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
           </div>
 
           {/* conversion_event = "Facebook nên tối ưu quảng cáo hướng tới hành vi nào?" - chỉ hiển thị cho LEADS và CONVERSIONS */}
-          {(objective === "LEADS" || objective === "CONVERSIONS") &&
-            getObjectiveOptions().conversion_events && (
-              <div className="field-group">
-                <label
-                  className="field-label"
-                  title="Facebook nên tối ưu quảng cáo hướng tới hành vi nào?"
-                >
-                  Sự kiện chuyển đổi ?
-                </label>
-                <select
-                  className="conversion-event-select"
-                  value={
-                    adset.conversion_event ||
-                    getObjectiveOptions().conversion_events[0]?.value
-                  }
-                  onChange={(e) =>
-                    setAdset((prev) => ({
-                      ...prev,
-                      conversion_event: e.target.value,
-                    }))
-                  }
-                >
-                  {getObjectiveOptions().conversion_events.map((event) => (
-                    <option key={event.value} value={event.value}>
-                      {event.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          {/* Pixel ID chỉ hiển thị cho CONVERSIONS */}
-          {objective === "CONVERSIONS" && (
+          {(objective === "LEADS" || objective === "CONVERSIONS") && (
             <div className="field-group">
-              <label className="field-label">Pixel ID</label>
-              <input
-                type="text"
-                className="text-input-pixel"
-                value={adset.pixel_id || ""}
-                onChange={(e) =>
-                  setAdset((prev) => ({ ...prev, pixel_id: e.target.value }))
-                }
-                onBlur={() =>
-                  validateNonEmpty(adset.pixel_id, "Pixel ID", toast)
-                }
-                placeholder="Nhập Pixel ID"
-              />
+              <label className="field-label">Sự kiện chuyển đổi</label>
+              <select className="conversion-event-select">
+                <option value="PURCHASE">Mua hàng</option>
+                <option value="LEAD">Khách hàng tiềm năng</option>
+                <option value="ADD_TO_CART">Thêm vào giỏ hàng</option>
+              </select>
             </div>
           )}
         </div>
+
+        {/* ============== NEW SECTION for Traffic Destination ============== */}
+        {objective === "TRAFFIC" && (
+          <div className="config-section">
+            <div className="section-header-ads">
+              <Target size={16} color="#2563eb" />
+              <h3 className="section-title-ads">Vị trí chuyển đổi</h3>
+            </div>
+            <div className="field-group">
+              <label className="field-label">
+                Chọn nơi bạn muốn thúc đẩy lưu lượng truy cập
+              </label>
+              <div className="traffic-destination-options">
+                {/* Option for Website */}
+                <label
+                  className={`traffic-option ${
+                    trafficDestination === "WEBSITE" ? "selected" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="trafficDestination"
+                    value="WEBSITE"
+                    checked={trafficDestination === "WEBSITE"}
+                    onChange={(e) => setTrafficDestination(e.target.value)}
+                  />
+                  <div className="traffic-option-content">
+                    <Globe size={20} />
+                    <span>Trang web</span>
+                  </div>
+                </label>
+                {/* Option for App */}
+                <label
+                  className={`traffic-option ${
+                    trafficDestination === "APP" ? "selected" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="trafficDestination"
+                    value="APP"
+                    checked={trafficDestination === "APP"}
+                    onChange={(e) => setTrafficDestination(e.target.value)}
+                  />
+                  <div className="traffic-option-content">
+                    <Smartphone size={20} />
+                    <span>Ứng dụng</span>
+                  </div>
+                </label>
+                {/* Option for Messaging */}
+                <label
+                  className={`traffic-option ${
+                    trafficDestination === "MESSAGING" ? "selected" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="trafficDestination"
+                    value="MESSAGING"
+                    checked={trafficDestination === "MESSAGING"}
+                    onChange={(e) => setTrafficDestination(e.target.value)}
+                  />
+                  <div className="traffic-option-content">
+                    <MessageSquare size={20} />
+                    <span>Ứng dụng nhắn tin</span>
+                  </div>
+                </label>
+                {/* Option for Calls */}
+                <label
+                  className={`traffic-option ${
+                    trafficDestination === "CALLS" ? "selected" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="trafficDestination"
+                    value="CALLS"
+                    checked={trafficDestination === "CALLS"}
+                    onChange={(e) => setTrafficDestination(e.target.value)}
+                  />
+                  <div className="traffic-option-content">
+                    <Phone size={20} />
+                    <span>Cuộc gọi</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Conditional fields for APP destination */}
+            {trafficDestination === "APP" && (
+              <div className="app-details-fields">
+                <div className="field-group">
+                  <label className="field-label">ID ứng dụng</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Nhập ID ứng dụng của bạn"
+                    value={adset.promoted_object?.application_id || ""}
+                    onChange={(e) =>
+                      setAdset((prev) => ({
+                        ...prev,
+                        promoted_object: {
+                          ...prev.promoted_object,
+                          application_id: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                <div className="field-group">
+                  <label className="field-label">URL App Store</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="https://..."
+                    value={adset.promoted_object?.object_store_url || ""}
+                    onChange={(e) =>
+                      setAdset((prev) => ({
+                        ...prev,
+                        promoted_object: {
+                          ...prev.promoted_object,
+                          object_store_url: e.target.value,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* --- Budget Section --- */}
         <div className="config-section">

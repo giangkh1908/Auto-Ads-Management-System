@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from "react";
 import { Circle, DollarSign, Settings, Facebook, Edit2 } from "lucide-react";
 import no_avatar from "../../../../assets/no-avatar.jpg";
 import "./CampaignStep.css";
@@ -9,17 +9,101 @@ function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
   const [showPageSelect, setShowPageSelect] = useState(false);
   const toast = useToast();
 
+  // Hàm xử lý tập trung khi chọn một Page
+  const handlePageChange = useCallback((selectedPage) => {
+    setCampaign((prevCampaign) => {
+      // 1. Cập nhật thông tin Page ở cấp chiến dịch
+      const updatedCampaign = {
+        ...prevCampaign,
+        facebookPage: selectedPage.name,
+        facebookPageId: selectedPage.id,
+        facebookPageAvatar: selectedPage.avatar,
+      };
+
+      // 2. Cập nhật `promoted_object` cho tất cả adset con và `page_id` cho ad con
+      const updatedAdsets = updatedCampaign.adsets.map((adset) => {
+        const newAdset = { ...adset };
+
+        // Cập nhật adset nếu cần
+        if (
+          updatedCampaign.objective === "ENGAGEMENT" ||
+          updatedCampaign.objective === "LEADS"
+        ) {
+          newAdset.promoted_object = {
+            ...newAdset.promoted_object,
+            page_id: selectedPage.id,
+          };
+        }
+
+        // Cập nhật tất cả ad bên trong adset
+        const updatedAds = newAdset.ads.map((ad) => ({
+          ...ad,
+          page_id: selectedPage.id,
+          object_story_spec: {
+            ...ad.object_story_spec,
+            page_id: selectedPage.id,
+          },
+        }));
+        newAdset.ads = updatedAds;
+
+        return newAdset;
+      });
+
+      // 3. Trả về state cuối cùng
+      return {
+        ...updatedCampaign,
+        adsets: updatedAdsets,
+      };
+    });
+
+    // Ẩn dropdown sau khi chọn
+    setShowPageSelect(false);
+  }, [setCampaign]);
+
   useEffect(() => {
+    // Tự động chọn page đầu tiên nếu chưa có page nào được chọn
     if (facebookPages.length > 0 && !campaign.facebookPageId) {
-      const firstPage = facebookPages[0];
-      setCampaign(prev => ({
-        ...prev,
-        facebookPageId: firstPage.id,
-        facebookPage: firstPage.name,
-        facebookPageAvatar: firstPage.avatar,
-      }));
+      handlePageChange(facebookPages[0]);
     }
-  }, [facebookPages, campaign.facebookPageId, setCampaign]);
+    // Thêm campaign.objective vào dependency array để đảm bảo logic chạy đúng
+    // khi objective thay đổi và component này vẫn được mount.
+  }, [facebookPages, campaign.facebookPageId, campaign.objective, handlePageChange]);
+
+  // This new useEffect ensures that if the objective changes AFTER a page has been selected,
+  // the adsets' promoted_object is kept in sync with the selected page.
+  // This prevents a mismatch where the adset is for ENGAGEMENT but its promoted_object
+  // doesn't have the page_id set correctly.
+  useEffect(() => {
+    if (campaign.facebookPageId) {
+      const needsPage = campaign.objective === "ENGAGEMENT" || campaign.objective === "LEADS";
+      
+      setCampaign(prev => {
+        // Avoid unnecessary re-renders if the state is already correct
+        const isAlreadySynced = prev.adsets.every(adset => 
+          !needsPage || (adset.promoted_object && adset.promoted_object.page_id === prev.facebookPageId)
+        );
+        if (isAlreadySynced) return prev;
+
+        const updatedAdsets = prev.adsets.map(adset => {
+          if (needsPage) {
+            return {
+              ...adset,
+              promoted_object: {
+                ...adset.promoted_object,
+                page_id: prev.facebookPageId,
+              },
+            };
+          }
+          return adset; // Return unchanged if objective doesn't need a page
+        });
+
+        return {
+          ...prev,
+          adsets: updatedAdsets,
+        };
+      });
+    }
+  }, [campaign.objective, campaign.facebookPageId, setCampaign]);
 
   // Expose validate() to parent (CreateAdsWizard)
   useImperativeHandle(ref, () => ({
@@ -74,9 +158,8 @@ function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
           </div>
           <div className="budget-options">
             <label
-              className={`budget-option ${
-                campaign.budgetType === "CAMPAIGN" ? "selected" : ""
-              }`}
+              className={`budget-option ${campaign.budgetType === "CAMPAIGN" ? "selected" : ""
+                }`}
             >
               <input
                 type="radio"
@@ -100,7 +183,7 @@ function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
               </div>
             </label>
 
-            <label className={`budget-option ${ campaign.budgetType === "ADSET" ? "selected" : ""}`}>
+            <label className={`budget-option ${campaign.budgetType === "ADSET" ? "selected" : ""}`}>
               <input
                 type="radio"
                 name="budgetType"
@@ -172,15 +255,7 @@ function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
                       <div
                         key={p.id}
                         className="dropdown-item-campaign"
-                        onClick={() => {
-                          setCampaign((prev) => ({
-                            ...prev,
-                            facebookPage: p.name,
-                            facebookPageId: p.id,
-                            facebookPageAvatar: p.avatar,
-                          }));
-                          setShowPageSelect(false);
-                        }}
+                        onClick={() => handlePageChange(p)} // Sử dụng hàm xử lý mới
                         style={{
                           display: "flex",
                           alignItems: "center",

@@ -7,6 +7,7 @@ import {
   Users,
   ShoppingBag,
 } from "lucide-react";
+import { getAdsetDefaultsByObjective } from "../../../../constants/wizardConstants.js";
 import Image_1 from "../../../../assets/wizard/1.jpg";
 import Image_2 from "../../../../assets/wizard/2.jpg";
 import Image_3 from "../../../../assets/wizard/3.jpg";
@@ -49,6 +50,25 @@ function TargetStep({ campaign, setCampaign }) {
       label: "Doanh số",
     },
   ];
+
+  const handleObjectiveChange = (e) => {
+    const newObjective = e.target.value;
+    const adsetDefaults = getAdsetDefaultsByObjective(newObjective);
+
+    setCampaign((prev) => {
+      // Cập nhật tất cả adset hiện có với các giá trị mặc định mới
+      const updatedAdsets = prev.adsets.map((adset) => ({
+        ...adset,
+        ...adsetDefaults,
+      }));
+
+      return {
+        ...prev,
+        objective: newObjective,
+        adsets: updatedAdsets,
+      };
+    });
+  };
 
   const objectiveDetails = {
     AWARENESS: {
@@ -146,12 +166,7 @@ function TargetStep({ campaign, setCampaign }) {
                   name="objective"
                   value={item.key}
                   checked={campaign.objective === item.key}
-                  onChange={(e) =>
-                    setCampaign((prev) => ({
-                      ...prev,
-                      objective: e.target.value,
-                    }))
-                  }
+                  onChange={handleObjectiveChange}
                 />
                 <div className="objective-icon">{item.icon}</div>
                 <div className="objective-label">
