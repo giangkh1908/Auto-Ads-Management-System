@@ -1,0 +1,74 @@
+{
+    "objectives": {
+      "OUTCOME_AWARENESS": "Awareness",
+      "OUTCOME_TRAFFIC": "Traffic",
+      "OUTCOME_ENGAGEMENT": "Engagement",
+      "OUTCOME_LEADS": "Leads",
+      "OUTCOME_SALES": "Sales",
+      "OUTCOME_APP_PROMOTION": "App Promotion",
+      "AWARENESS": "Awareness",
+      "TRAFFIC": "Traffic",
+      "ENGAGEMENT": "Engagement",
+      "LEADS": "Leads",
+      "SALES": "Sales",
+      "APP_PROMOTION": "App Promotion",
+      "POST_ENGAGEMENT": "Post Engagement",
+      "CONVERSIONS": "Conversions",
+      "LINK_CLICKS": "Link Clicks",
+      "PAGE_LIKES": "Page Likes",
+      "VIDEO_VIEWS": "Video Views",
+      "MESSAGES": "Messages",
+      "REACH": "Reach"
+    },
+    "optimization_goals": {
+      "REACH": "Reach",
+      "POST_ENGAGEMENT": "Post Engagement",
+      "LINK_CLICKS": "Link Clicks",
+      "IMPRESSIONS": "Impressions",
+      "CONVERSIONS": "Conversions",
+      "LEAD_GENERATION": "Lead Generation",
+      "APP_INSTALLS": "App Installs",
+      "VIDEO_VIEWS": "Video Views",
+      "LANDING_PAGE_VIEWS": "Landing Page Views"
+    },
+    "genders": {
+      "male": "Male",
+      "female": "Female",
+      "1": "Male",
+      "2": "Female"
+    },
+    "countries": {
+      "VN": "Vietnam",
+      "US": "United States",
+      "JP": "Japan",
+      "KR": "South Korea",
+      "TH": "Thailand",
+      "CN": "China",
+      "SG": "Singapore",
+      "MY": "Malaysia",
+      "ID": "Indonesia",
+      "PH": "Philippines"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "DELETED": "Deleted",
+      "ARCHIVED": "Archived",
+      "DRAFT": "Draft"
+    },
+    "labels": {
+      "campaign": "Campaign",
+      "adset": "Ad Set",
+      "ad": "Ad",
+      "creative": "Creative",
+      "budget": "Budget",
+      "targeting": "Targeting",
+      "schedule": "Schedule",
+      "performance": "Performance",
+      "not_set": "Not Set",
+      "gender": "Gender",
+      "age": "Age",
+      "location": "Location",
+      "language": "Language"
+    }
+  }

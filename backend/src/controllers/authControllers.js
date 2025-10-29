@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import fetch from "node-fetch";
+import axios from "axios";
 import { generateTokens, verifyRefreshToken } from "../utils/jwt.js";
 import Shop from "../models/shops/shop.model.js";
 import {
@@ -9,10 +10,33 @@ import {
   sendPasswordResetEmail,
 } from "../services/emailService.js";
 
+// Hàm xác thực CAPTCHA bằng axios
+async function verifyCaptcha(token) {
+  try {
+    const secret = process.env.RECAPTCHA_SECRET_KEY;
+    if (!secret) {
+      throw new Error('RECAPTCHA_SECRET_KEY not configured');
+    }
+    
+    const response = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`
+    );
+    
+    return {
+      success: response.data.success,
+      errorCodes: response.data['error-codes'] || [],
+      hostname: response.data.hostname
+    };
+  } catch (error) {
+    console.error('CAPTCHA verification request failed:', error.message);
+    throw error;
+  }
+}
+
 // 🔹 Đăng ký tài khoản
 export const register = async (req, res) => {
   try {
-    const { full_name, email, password, phone } = req.body;
+    const { full_name, email, password, phone, captchaToken } = req.body;
 
     //Kiểm tra xem có điền đủ thông tin không
     if (!full_name || !email || !password || !phone)
@@ -20,6 +44,35 @@ export const register = async (req, res) => {
         success: false,
         message: "Vui lòng nhập đầy đủ thông tin.",
       });
+
+    // Kiểm tra CAPTCHA
+    if (!captchaToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng xác nhận CAPTCHA.",
+      });
+    }
+
+    // Xác thực CAPTCHA với Google
+    try {
+      const captchaResult = await verifyCaptcha(captchaToken);
+      
+      if (!captchaResult.success) {
+        console.log('❌ CAPTCHA verification failed:', captchaResult.errorCodes);
+        return res.status(400).json({
+          success: false,
+          message: "Xác thực CAPTCHA thất bại. Vui lòng thử lại.",
+        });
+      }
+      
+      console.log('✅ CAPTCHA verification successful for hostname:', captchaResult.hostname);
+    } catch (captchaError) {
+      console.error('❌ CAPTCHA verification error:', captchaError.message);
+      return res.status(400).json({
+        success: false,
+        message: "Lỗi xác thực CAPTCHA. Vui lòng thử lại.",
+      });
+    }
 
     const existing = await User.findOne({ email });
     if (existing)

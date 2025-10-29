@@ -95,6 +95,20 @@
   border-radius: 4px;
   cursor: pointer;
   margin-left: 20px;
+  transition: all 0.2s ease;
+}
+
+.btn-create-ads:hover:not(:disabled) {
+  background: #059669;
+  border-color: #059669;
+}
+
+.btn-create-ads:disabled,
+.btn-create-ads.disabled {
+  background: #6b7280;
+  border-color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .filters input {
@@ -142,16 +156,44 @@
   color: #374151;
 }
 
-.breadcrumb-item.active {
+/* .breadcrumb-item.active {
   color: #2563eb;
   font-weight: 600;
-}
+} */
 
 .breadcrumb-separator {
   color: #9ca3af;
   margin: 0 4px;
 }
 
+/* Style riêng cho tên trong breadcrumb */
+.breadcrumb-name {
+  font-weight: 600;
+  color: #1e40af;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  padding: 0 4px;
+  border-radius: 4px;
+  position: relative;
+}
+
+/* Hiệu ứng cho active breadcrumb name */
+.breadcrumb-item.active .breadcrumb-name {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+/* Hover effect cho breadcrumb name */
+.breadcrumb-item:hover .breadcrumb-name {
+  text-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+/* Ads Tabs */
 .ads-tabs {
   display: flex;
   gap: 8px;
@@ -261,16 +303,28 @@
 .name-text {
   flex: 1;
   cursor: default;
+  color: #111827;
 }
 
+/* Campaign & AdSet: Màu xanh, có thể click */
 .name-text.clickable {
   cursor: pointer;
   color: #2563eb;
-  text-decoration: underline;
+  text-decoration: none;
+  font-weight: 500;
 }
 
 .name-text.clickable:hover {
   color: #1d4ed8;
+  text-decoration: none;
+}
+
+/* Ad: Màu đen, không clickable */
+.name-text.ad-name {
+  color: #111827;
+  cursor: default;
+  text-decoration: none;
+  font-weight: 400;
 }
 
 .row-actions {

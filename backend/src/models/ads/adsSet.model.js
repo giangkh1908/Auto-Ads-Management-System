@@ -20,8 +20,8 @@ const adsSetSchema = new mongoose.Schema(
     // ⚙️ Trạng thái
     status: {
       type: String,
-      enum: ["PAUSED", "ACTIVE", "DELETED", "ARCHIVED", "IN_PROCESS"],
-      default: "IN_PROCESS",
+      enum: ["PAUSED", "ACTIVE", "DELETED", "ARCHIVED", "DRAFT", "FAILED"],
+      default: "DRAFT",
     },
     configured_status: { type: String },
     effective_status: { type: String },
@@ -31,6 +31,10 @@ const adsSetSchema = new mongoose.Schema(
     billing_event: { type: String, trim: true },
     bid_strategy: { type: String, trim: true },
     bid_amount: { type: Number, default: null },
+
+    // Sự kiện chuyển dổi
+    pixel_id: { type: String, trim: true, default: null },
+    conversion_event: { type: String, trim: true, default: null },
 
     // 🧭 Đối tượng mục tiêu
     promoted_object: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -45,6 +49,8 @@ const adsSetSchema = new mongoose.Schema(
     // Audit
     deleted_at: { type: Date, default: null },
     meta: { type: mongoose.Schema.Types.Mixed, default: {} },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    updated_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

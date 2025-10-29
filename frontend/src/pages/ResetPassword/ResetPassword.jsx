@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { ROUTES } from '../../constants/app.constants'
 import './ResetPassword.css'
 
 function ResetPassword() {
+    const { t } = useTranslation()
     const { token } = useParams()
     const navigate = useNavigate()
     const { resetPassword } = useAuth()
@@ -23,15 +25,15 @@ function ResetPassword() {
         const newErrors = {}
         
         if (!formData.password.trim()) {
-            newErrors.password = 'Mật khẩu là bắt buộc'
+            newErrors.password = t('validation.password_required')
         } else if (formData.password.length < 6) {
-            newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
+            newErrors.password = t('validation.password_min_length')
         }
         
         if (!formData.confirmPassword.trim()) {
-            newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu'
+            newErrors.confirmPassword = t('validation.confirm_password_required')
         } else if (formData.password !== formData.confirmPassword) {
-            newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
+            newErrors.confirmPassword = t('validation.password_mismatch')
         }
         
         setErrors(newErrors)
@@ -61,12 +63,12 @@ function ResetPassword() {
             }, 2000)
         } else if (result.error) {
             // Handle token-related errors
-            if (result.error.includes('hết hạn')) {
-                setTokenError('Liên kết đặt lại mật khẩu đã hết hạn. Vui lòng yêu cầu đặt lại mật khẩu mới.')
-            } else if (result.error.includes('đã được sử dụng')) {
-                setTokenError('Liên kết đặt lại mật khẩu đã được sử dụng. Vui lòng yêu cầu đặt lại mật khẩu mới nếu cần.')
+            if (result.error.includes('hết hạn') || result.error.includes('expired')) {
+                setTokenError(t('auth.reset_token_expired'))
+            } else if (result.error.includes('đã được sử dụng') || result.error.includes('used')) {
+                setTokenError(t('auth.reset_token_used'))
             } else {
-                setTokenError('Liên kết đặt lại mật khẩu không hợp lệ.')
+                setTokenError(t('auth.reset_token_invalid'))
             }
         }
     }
@@ -77,9 +79,9 @@ function ResetPassword() {
                 <div className="reset-password-container">
                     <div className="success-status">
                         <div className="success-icon">✅</div>
-                        <h2>Đặt lại mật khẩu thành công!</h2>
-                        <p>Mật khẩu của bạn đã được cập nhật.</p>
-                        <p>Bạn sẽ được chuyển hướng về trang chủ trong 2 giây...</p>
+                        <h2>{t('auth.reset_password_success')}</h2>
+                        <p>{t('auth.password_updated')}</p>
+                        <p>{t('auth.redirecting_home')}</p>
                     </div>
                 </div>
             </div>
@@ -93,13 +95,13 @@ function ResetPassword() {
                 <div className="reset-password-container">
                     <div className="error-status">
                         <div className="error-icon">❌</div>
-                        <h2>Liên kết không hợp lệ</h2>
+                        <h2>{t('auth.invalid_link')}</h2>
                         <p>{tokenError}</p>
                         <button 
                             className="btn-home"
                             onClick={() => navigate(ROUTES.HOME)}
                         >
-                            Về trang chủ
+                            {t('errors.go_home')}
                         </button>
                     </div>
                 </div>
@@ -111,8 +113,8 @@ function ResetPassword() {
         <div className="reset-password-page">
             <div className="reset-password-container">
                 <div className="form-header">
-                    <h2>Đặt lại mật khẩu</h2>
-                    <p>Nhập mật khẩu mới cho tài khoản của bạn</p>
+                    <h2>{t('auth.reset_password_title')}</h2>
+                    <p>{t('auth.enter_new_password')}</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="reset-form">
@@ -120,7 +122,7 @@ function ResetPassword() {
                         <div className="input-icon" aria-hidden="true">🔒</div>
                         <input
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="Mật khẩu mới"
+                            placeholder={t('auth.new_password')}
                             value={formData.password}
                             onChange={(e) => handleInputChange('password', e.target.value)}
                             className={errors.password ? 'error' : ''}
@@ -138,7 +140,7 @@ function ResetPassword() {
                         <div className="input-icon" aria-hidden="true">🔒</div>
                         <input
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="Xác nhận mật khẩu mới"
+                            placeholder={t('auth.confirm_password')}
                             value={formData.confirmPassword}
                             onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                             className={errors.confirmPassword ? 'error' : ''}
@@ -147,13 +149,13 @@ function ResetPassword() {
                     </div>
 
                     <button type="submit" className="btn-reset">
-                        Đặt lại mật khẩu
+                        {t('auth.reset_password_button')}
                     </button>
                 </form>
 
                 <div className="form-footer">
                     <span className="link" onClick={() => navigate('/')}>
-                        Quay lại trang chủ
+                        {t('auth.back_to_home')}
                     </span>
                 </div>
             </div>

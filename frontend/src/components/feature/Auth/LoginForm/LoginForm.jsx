@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Mail, Lock, Eye, EyeOff, Facebook } from 'lucide-react'
 import { useAuth } from '../../../../hooks/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
@@ -7,6 +8,7 @@ import { toast } from 'sonner'
 import './LoginForm.css'
 
 function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
+    const { t } = useTranslation()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPwd, setShowPwd] = useState(false)
@@ -25,15 +27,15 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
         const newErrors = {}
         
         if (!email.trim()) {
-            newErrors.email = 'Email là bắt buộc'
+            newErrors.email = t('validation.email_required')
         } else if (!/\S+@\S+\.\S+/.test(email)) {
-            newErrors.email = 'Email không hợp lệ'
+            newErrors.email = t('validation.email_invalid')
         }
         
         if (!password.trim()) {
-            newErrors.password = 'Mật khẩu là bắt buộc'
+            newErrors.password = t('validation.password_required')
         } else if (password.length < 6) {
-            newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
+            newErrors.password = t('validation.password_min_length')
         }
         
         setErrors(newErrors)
@@ -97,7 +99,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
         setFbLoading(true);
         
         if (!window.FB) {
-            toast.error('Facebook SDK chưa được tải');
+            toast.error(t('auth.facebook_sdk_error'));
             setFbLoading(false);
             return;
         }
@@ -127,7 +129,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
         try {
             const { authResponse } = response;
             if (!authResponse?.accessToken){
-                toast.error("Không lấy được access token từ Facebook");
+                toast.error(t('auth.login_failed'));
                 return;
             }
             console.log("🔵 Facebook Auth Response:", authResponse);
@@ -160,18 +162,18 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
                 if (result?.success && onSuccess) onSuccess();
               } else {
                 console.error("❌ Backend login failed:", loginResponse.data);
-                toast.error(loginResponse.data.message || "Đăng nhập thất bại");
+                toast.error(loginResponse.data.message || t('auth.login_failed'));
               }
             } catch (error) {
               console.error("❌ Backend login error:", error);
           
               if (error.code === "ECONNABORTED") {
-                toast.error("Kết nối tới server quá lâu, vui lòng thử lại");
+                toast.error(t('errors.network_error'));
               } else if (error.response?.status === 500) {
-                toast.error("Lỗi server, vui lòng thử lại sau");
+                toast.error(t('errors.server_error'));
               } else {
                 console.error("❌ Error response:", error.response?.data);
-                toast.error(error.response?.data?.message || "Có lỗi xảy ra khi đăng nhập");
+                toast.error(error.response?.data?.message || t('common.error'));
               }
             } finally {
               setFbLoading(false);
@@ -185,7 +187,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
             <EmailVerification 
                 email={userEmail}
                 onBack={handleBackToLogin}
-                title="Xác nhận email của bạn"
+                title={t('auth.email_verification_title')}
             />
         )
     }
@@ -194,16 +196,16 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
         <form className="auth-form" onSubmit={handleSubmit}>
             <button type="button" className="btn-fb" onClick={handleFacebookBusinessLogin} disabled={fbLoading}>
                 <span className="fb-icon" aria-hidden="true"><Facebook size={16} /></span>
-                {fbLoading ? 'Đang xử lý...' : 'Đăng nhập với Facebook'}
+                {fbLoading ? t('auth.processing') : t('auth.login_with_facebook')}
             </button>
 
-            <div className="form-sep">Hoặc</div>
+            <div className="form-sep">{t('auth.or')}</div>
 
             <div className="input-group-auth">
                 <div className="input-icon-auth"><Mail size={16} /></div>
                 <input 
                     type="email" 
-                    placeholder="Nhập email" 
+                    placeholder={t('auth.email_placeholder')} 
                     value={email} 
                     onChange={(e) => {
                         setEmail(e.target.value)
@@ -218,7 +220,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
                 <div className="input-icon-auth" aria-hidden="true"><Lock size={16} /></div>
                 <input 
                     type={showPwd ? 'text' : 'password'} 
-                    placeholder="Nhập mật khẩu" 
+                    placeholder={t('auth.password_placeholder')} 
                     value={password} 
                     onChange={(e) => {
                         setPassword(e.target.value)
@@ -233,13 +235,13 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
             </div>
 
             <button type="submit" className="btn-login-form" disabled={loading}>
-                {loading ? 'Đang xử lý...' : 'Đăng nhập'}
+                {loading ? t('auth.processing') : t('auth.login_button')}
             </button>
 
             <div className="form-switch">
-                Bạn chưa có tài khoản? <span className="link" onClick={onSwitchRegister}>Đăng ký ngay</span>
+                {t('auth.no_account')} <span className="link" onClick={onSwitchRegister}>{t('auth.register_now')}</span>
                 <br />
-                <span className="link" onClick={onSwitchReset}>Quên mật khẩu</span>
+                <span className="link" onClick={onSwitchReset}>{t('auth.forgot_password')}</span>
             </div>
         </form>
     )

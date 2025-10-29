@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Circle, DollarSign, Settings, Facebook, Edit2 } from "lucide-react";
-import no_avatar from "../../../assets/no-avatar.jpg";
+import no_avatar from "../../../../assets/no-avatar.jpg";
+import "./CampaignStep.css";
+import { useToast } from "../../../../hooks/useToast";
+import { validateNonEmpty } from "../../../../utils/validation";
 
-function CampaignStep({ campaign, setCampaign, facebookPages = [] }) {
+function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
   const [showPageSelect, setShowPageSelect] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     if (facebookPages.length > 0 && !campaign.facebookPageId) {
@@ -15,14 +19,25 @@ function CampaignStep({ campaign, setCampaign, facebookPages = [] }) {
         facebookPageAvatar: firstPage.avatar,
       }));
     }
-  }, [facebookPages]);
+  }, [facebookPages, campaign.facebookPageId, setCampaign]);
+
+  // Expose validate() to parent (CreateAdsWizard)
+  useImperativeHandle(ref, () => ({
+    validate: () => {
+      const okName = !!campaign?.name && String(campaign.name).trim() !== "";
+      const okPage = !!campaign?.facebookPageId;
+      if (!okName) validateNonEmpty(campaign.name, 'tên chiến dịch', toast);
+      if (!okPage) toast.warning('Vui lòng chọn Trang Facebook');
+      return okName && okPage;
+    }
+  }), [campaign, toast]);
 
   return (
     <div className="campaign-step">
       <div className="step-content">
         {/* Campaign Name Section */}
         <div className="config-section-ads">
-          <div className="section-header-ads">
+          <div className="section-header-campaign">
             <Circle size={8} fill="#2563eb" color="#2563eb" />
             <h3 className="section-title-ads">Tên chiến dịch</h3>
           </div>
@@ -31,13 +46,14 @@ function CampaignStep({ campaign, setCampaign, facebookPages = [] }) {
             className="campaign-name-input"
             value={campaign.name}
             onChange={(e) => setCampaign((prev) => ({ ...prev, name: e.target.value }))}
+            onBlur={() => validateNonEmpty(campaign.name, 'tên chiến dịch', toast)}
             placeholder="Nhập tên chiến dịch"
           />
         </div>
 
         {/* Campaign Details Section */}
         <div className="config-section-ads">
-          <div className="section-header-ads">
+          <div className="section-header-campaign">
             <Settings size={16} color="#2563eb" />
             <h3 className="section-title-ads">Chi tiết chiến dịch</h3>
           </div>
@@ -52,7 +68,7 @@ function CampaignStep({ campaign, setCampaign, facebookPages = [] }) {
 
         {/* Budget Section */}
         <div className="config-section-ads">
-          <div className="section-header-ads">
+          <div className="section-header-campaign">
             <DollarSign size={16} color="#2563eb" />
             <h3 className="section-title-ads">Ngân sách</h3>
           </div>
@@ -107,7 +123,7 @@ function CampaignStep({ campaign, setCampaign, facebookPages = [] }) {
             </label>
             {/* Facebook Page Section */}
             <div className="config-section">
-              <div className="section-header-ads">
+              <div className="section-header-campaign">
                 <Facebook size={16} color="#2563eb" />
                 <h3 className="section-title-ads">Trang Facebook</h3>
               </div>
@@ -197,4 +213,5 @@ function CampaignStep({ campaign, setCampaign, facebookPages = [] }) {
   );
 }
 
+const CampaignStep = forwardRef(CampaignStepInner);
 export default CampaignStep;

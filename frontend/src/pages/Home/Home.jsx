@@ -4,9 +4,10 @@ import { MessageCircle, Globe, Settings,ShoppingCart,DollarSign,Package,Trending
 } from "lucide-react";
 import "./Home.css";
 import laptop_white from "../../assets/macbook-white.png";
-
+import { useTranslation } from "react-i18next";
 function Home({ onLoginClick }) {
   const [email, setEmail] = useState("");
+  const { t } = useTranslation();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -21,14 +22,13 @@ function Home({ onLoginClick }) {
           <div className="hero-content">
             <div className="hero-text">
               <h1 className="hero-title">
-                AI Chatbot Messenger, Zalo, Website
+                {t("home.hero_title")}
               </h1>
               <p className="hero-description">
-                Tạo chatbot với khả năng tự động hóa doanh số, bán hàng và chăm
-                sóc khách hàng 24/7
+                {t("home.hero_description")}
               </p>
               <button className="cta-button-home" onClick={onLoginClick}>
-                <span>BẮT ĐẦU MIỄN PHÍ</span>
+                <span>{t("home.get_started")}</span>
                 <ArrowRight size={20} />
               </button>
             </div>
@@ -57,35 +57,34 @@ function Home({ onLoginClick }) {
       {/* Platform Integration Section */}
       <section className="platform-section">
         <div className="container">
-          <h2 className="section-title">Nền Tảng Chat và Chatbot Đa Kênh</h2>
+          <h2 className="section-title">{t("home.platform_title")}</h2>
           <p className="section-subtitle">
-            Quản lý tất cả các kênh liên lạc với khách hàng của bạn trên một nền
-            tảng duy nhất
+            {t("home.platform_subtitle")}
           </p>
           <div className="platform-grid">
             <div className="platform-card">
               <div className="platform-icon messenger">
                 <MessageCircle size={32} />
               </div>
-              <h3>Messenger</h3>
+              <h3>{t("home.messenger")}</h3>
             </div>
             <div className="platform-card">
               <div className="platform-icon zalo">
                 <MessageSquare size={32} />
               </div>
-              <h3>Zalo</h3>
+              <h3>{t("home.zalo")}</h3>
             </div>
             <div className="platform-card">
               <div className="platform-icon website">
                 <Globe size={32} />
               </div>
-              <h3>Website</h3>
+              <h3>{t("home.website")}</h3>
             </div>
             <div className="platform-card">
               <div className="platform-icon tryai">
                 <Settings size={32} />
               </div>
-              <h3>Try AI</h3>
+              <h3>{t("home.tryai")}</h3>
             </div>
           </div>
         </div>
@@ -94,76 +93,76 @@ function Home({ onLoginClick }) {
       {/* Chatbot Templates Section */}
       <section className="templates-section">
         <div className="container">
-          <h2 className="section-title">Một Số Kịch Bản Chatbot Mẫu</h2>
+          <h2 className="section-title">{t("home.templates_title")}</h2>
           <p className="section-subtitle">
-            Bắt đầu nhanh với các kịch bản chatbot đã được tối ưu hóa sẵn
+            {t("home.templates_subtitle")}
           </p>
           <div className="templates-grid">
             <div className="template-card">
               <div className="template-icon">
                 <ShoppingCart size={28} />
               </div>
-              <h4>Mua hàng</h4>
-              <p>Bán hàng</p>
+                <h4>{t("home.buy_product")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
             <div className="template-card">
               <div className="template-icon">
                 <DollarSign size={28} />
               </div>
-              <h4>Nạp tiền</h4>
-              <p>Bán hàng</p>
+              <h4>{t("home.recharge")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
             <div className="template-card">
               <div className="template-icon">
                 <Package size={28} />
               </div>
-              <h4>Tra cứu đơn hàng</h4>
-              <p>Bán hàng</p>
+              <h4>{t("home.order_tracking")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
             <div className="template-card">
               <div className="template-icon">
                 <TrendingUp size={28} />
               </div>
-              <h4>Khả năng bán hàng</h4>
-              <p>Bán hàng</p>
+              <h4>{t("home.sales_capability")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
             <div className="template-card">
               <div className="template-icon">
                 <Users size={28} />
               </div>
-              <h4>Tư vấn bán hàng</h4>
-              <p>Bán hàng</p>
+              <h4>{t("home.sales_consulting")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
             <div className="template-card">
               <div className="template-icon">
                 <Briefcase size={28} />
               </div>
-              <h4>Tuyển dụng nhân viên</h4>
-              <p>Bán hàng</p>
+              <h4>{t("home.recruitment")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
             <div className="template-card">
               <div className="template-icon">
                 <Calendar size={28} />
               </div>
-              <h4>Đặt hàng và đặt chỗ</h4>
-              <p>Bán hàng</p>
+              <h4>{t("home.booking")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
             <div className="template-card">
               <div className="template-icon">
                 <Sparkles size={28} />
               </div>
-              <h4>Viral</h4>
-              <p>Bán hàng</p>
+              <h4>{t("home.viral")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
             <div className="template-card">
               <div className="template-icon">
                 <ShoppingBag size={28} />
               </div>
-              <h4>Quản lý đơn hàng</h4>
-              <p>Bán hàng</p>
+              <h4>{t("home.order_management")}</h4>
+              <p>{t("home.sales")}</p>
             </div>
           </div>
-          <p className="templates-footer">Và nhiều kịch bản khác nữa tại...</p>
+          <p className="templates-footer">{t("home.templates_footer")}</p>
         </div>
       </section>
 
@@ -171,68 +170,67 @@ function Home({ onLoginClick }) {
       <section className="automation-section">
         <div className="container">
           <h2 className="section-title">
-            Chất 1.000+ Đơn Hàng Tự Động Với Chatbot
+            {t("home.automation_title")}
           </h2>
           <p className="section-subtitle">
-            Chatbot tự động hóa quy trình bán hàng và chăm sóc khách hàng của
-            bạn
+            {t("home.automation_subtitle")}
           </p>
           <div className="automation-grid">
             <div className="automation-card">
               <div className="automation-icon">
                 <Megaphone size={32} />
               </div>
-              <h4>Chiến dịch</h4>
-              <p>Tự động gửi tin nhắn đến khách hàng theo chiến dịch</p>
+              <h4>{t("home.campaign")}</h4>
+              <p>{t("home.campaign_desc")}</p>
             </div>
             <div className="automation-card">
               <div className="automation-icon">
                 <MessageSquare size={32} />
               </div>
-              <h4>LiveChat</h4>
-              <p>Chuyển đổi từ bot sang nhân viên khi cần thiết</p>
+              <h4>{t("home.livechat")}</h4>
+              <p>{t("home.livechat_desc")}</p>
             </div>
             <div className="automation-card">
               <div className="automation-icon">
                 <Reply size={32} />
               </div>
-              <h4>Auto Reply</h4>
-              <p>Tự động trả lời tin nhắn của khách hàng 24/7</p>
+              <h4>{t("home.auto_reply")}</h4>
+              <p>{t("home.auto_reply_desc")}</p>
             </div>
             <div className="automation-card">
               <div className="automation-icon">
                 <Bell size={32} />
               </div>
-              <h4>Nhắc hẹn</h4>
-              <p>Tự động nhắc nhở khách hàng về các sự kiện quan trọng</p>
+              <h4>{t("home.reminder")}</h4>
+              <p>{t("home.reminder_desc")}</p>
             </div>
             <div className="automation-card">
               <div className="automation-icon">
                 <Key size={32} />
               </div>
-              <h4>Keyword</h4>
-              <p>Tự động phản hồi dựa trên từ khóa trong tin nhắn</p>
+              <h4>{t("home.keyword")}</h4>
+              <p>{t("home.keyword_desc")}</p>
             </div>
             <div className="automation-card">
               <div className="automation-icon">
                 <List size={32} />
               </div>
-              <h4>Sequence</h4>
-              <p>Tạo chuỗi tin nhắn tự động theo kịch bản</p>
+              <h4>{t("home.sequence")}</h4>
+              <p>{t("home.sequence_desc")}</p>
             </div>
             <div className="automation-card">
               <div className="automation-icon">
                 <ShoppingBag size={32} />
               </div>
-              <h4>Đơn hàng</h4>
-              <p>Quản lý và theo dõi đơn hàng tự động</p>
+              <h4>{t("home.order")}</h4>
+              <p>{t("home.order_desc")}</p>
             </div>
             <div className="automation-card">
               <div className="automation-icon">
                 <Truck size={32} />
               </div>
-              <h4>Vận chuyển</h4>
-              <p>Tự động cập nhật trạng thái vận chuyển cho khách</p>
+              <h4>{t("home.shipping")}</h4>
+              <p>{t("home.shipping_desc")}</p>
             </div>
           </div>
         </div>
@@ -242,14 +240,41 @@ function Home({ onLoginClick }) {
       <section className="minigame-section">
         <div className="container">
           <h2 className="section-title">
-            Tăng 30% Khách Hàng Và Doanh Số Nhờ MiniGame
+            {t("home.minigame_title")}
           </h2>
           <p className="section-subtitle">
-            Mini game: Quay số vé số, Vòng quay may mắn, Lắc xì, Affiliate,
-            Viral...
+            {t("home.minigame_subtitle")}
           </p>
           <div className="minigame-carousel">
             <div className="carousel-track">
+              <div className="minigame-card">
+                <img
+                  src="https://images.unsplash.com/photo-1663153204573-1e6581da098f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHwyfHxzbWFydHBob25lJTIwbW9iaWxlJTIwZ2FtZSUyMGNvbG9yZnVsJTIwYXBwfGVufDB8MXx8fDE3NjAwMTEyMjN8MA&ixlib=rb-4.1.0&q=85"
+                  alt="Mobile game interface - Typerium App on Unsplash"
+                  className="minigame-image"
+                />
+              </div>
+              <div className="minigame-card">
+                <img
+                  src="https://images.unsplash.com/photo-1591783097660-037e0d08343b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHw1fHxtb2JpbGUlMjBwaG9uZSUyMGdhbWUlMjBjb2xvcmZ1bCUyMHByaXplfGVufDB8MXx8cmVkfDE3NjAwMTEyMjN8MA&ixlib=rb-4.1.0&q=85"
+                  alt="Colorful game screen - Rombo on Unsplash"
+                  className="minigame-image"
+                />
+              </div>
+              <div className="minigame-card">
+                <img
+                  src="https://images.unsplash.com/photo-1588889243484-2cacf85b9b87?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHw0fHxzbWFydHBob25lJTIwZ2FtZSUyMHJld2FyZHMlMjBnaWZ0cyUyMGNvbG9yZnVsfGVufDB8MXx8cHVycGxlfDE3NjAwMTEyMjJ8MA&ixlib=rb-4.1.0&q=85"
+                  alt="Game rewards interface - Batu Gezer on Unsplash"
+                  className="minigame-image"
+                />
+              </div>
+              <div className="minigame-card">
+                <img
+                  src="https://images.unsplash.com/photo-1619241638225-14d56e47ae64?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHw0fHxtb2JpbGUlMjBnYW1lJTIwd2hlZWwlMjBwcml6ZXMlMjBjZWxlYnJhdGlvbnxlbnwwfDF8fG9yYW5nZXwxNzYwMDExMjIyfDA&ixlib=rb-4.1.0&q=85"
+                  alt="Lucky wheel game - Tangerine Newt on Unsplash"
+                  className="minigame-image"
+                />
+              </div>
               <div className="minigame-card">
                 <img
                   src="https://images.unsplash.com/photo-1663153204573-1e6581da098f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTAwNDR8MHwxfHNlYXJjaHwyfHxzbWFydHBob25lJTIwbW9iaWxlJTIwZ2FtZSUyMGNvbG9yZnVsJTIwYXBwfGVufDB8MXx8fDE3NjAwMTEyMjN8MA&ixlib=rb-4.1.0&q=85"
@@ -286,10 +311,9 @@ function Home({ onLoginClick }) {
       {/* Tutorial Videos Section */}
       <section className="tutorial-section">
         <div className="container">
-          <h2 className="section-title">Hướng Dẫn Tạo Chatbot Với Fchat</h2>
+          <h2 className="section-title">{t("home.tutorial_title")}</h2>
           <p className="section-subtitle">
-            Chatbot là gì, Kịch bản mẫu và bán hàng tự động với Chatbot
-            Messenger
+            {t("home.tutorial_subtitle")}
           </p>
           <div className="tutorial-grid">
             <div className="tutorial-card">
@@ -344,25 +368,23 @@ function Home({ onLoginClick }) {
       <section className="registration-section">
         <div className="container">
           <h2 className="section-title">
-            ĐĂNG KÝ TƯ VẤN KỊCH BẢN CHATBOT BÁN HÀNG
+            {t("home.registration_title")}
           </h2>
           <p className="section-subtitle">
-            Tư vấn miễn phí về kịch bản chatbot phù hợp với doanh nghiệp của bạn
+            {t("home.registration_subtitle")}
           </p>
-          <form className="registration-form" onSubmit={handleSubmit}>
-            <div className="form-group">
+          <form className="home-registration-form" onSubmit={handleSubmit}>
+            <div className="home-form-group">
               <Mail className="input-icon" size={20} />
               <input
                 type="email"
-                placeholder="Nhập email của bạn"
+                placeholder= {t("home.email_placeholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
+                required={true}
               />
             </div>
-            <button type="submit" className="submit-button-home">
-              LIÊN HỆ CHO TÔI
-            </button>
+            <button type="submit" className="submit-button-home">{t("home.contact_me")}</button>
           </form>
         </div>
         <div className="wave-divider bottom">

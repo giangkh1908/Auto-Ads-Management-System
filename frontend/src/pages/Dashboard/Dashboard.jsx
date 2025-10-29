@@ -7,6 +7,7 @@ import { Edit3, Pause, PlugZap, RefreshCcw, Repeat, Bell, Users, MessageCircle, 
 import profileService from "../../services/profileService";
 import shopService from "../../services/shopService";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 function Dashboard() {
   const [filterValue, setFilterValue] = useState("all");
@@ -16,6 +17,7 @@ function Dashboard() {
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const [connectedPages, setConnectedPages] = useState([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const load = async () => {
@@ -60,19 +62,19 @@ function Dashboard() {
 
   // Menu items data
   const menuItems = [
-    { id: "rename", icon: <Edit3 size={16} />, text: "Đổi tên page" },
-    { id: "pause", icon: <Pause size={16} />, text: "Tạm dừng" },
-    { id: "disconnect", icon: <PlugZap size={16} />, text: "Ngắt kết nối" },
-    { id: "refresh", icon: <RefreshCcw size={16} />, text: "Làm mới kết nối" },
-    { id: "switch", icon: <Repeat size={16} />, text: "Chuyển shop" },
-    { id: "notifications", icon: <Bell size={16} />, text: "Thông báo" },
-    { id: "customers", icon: <Users size={16} />, text: "Khách hàng" },
-    { id: "livechat", icon: <MessageCircle size={16} />, text: "Livechat" },
-    { id: "chatbot", icon: <Bot size={16} />, text: "Chatbot" },
-    { id: "campaigns", icon: <Play size={16} />, text: "Chiến dịch" },
-    { id: "sequence", icon: <Calendar size={16} />, text: "Sequence" },
-    { id: "keywords", icon: <Key size={16} />, text: "Từ khóa" },
-    { id: "shop", icon: <Store size={16} />, text: "Shop" },
+    { id: "rename", icon: <Edit3 size={16} />, text: t("dashboard.rename_page") },
+    { id: "pause", icon: <Pause size={16} />, text: t("dashboard.pause_page") },
+    { id: "disconnect", icon: <PlugZap size={16} />, text: t("dashboard.disconnect_page") },
+    { id: "refresh", icon: <RefreshCcw size={16} />, text: t("dashboard.refresh_page") },
+    { id: "switch", icon: <Repeat size={16} />, text: t("dashboard.switch_shop") },
+    { id: "notifications", icon: <Bell size={16} />, text: t("dashboard.notifications") },
+    { id: "customers", icon: <Users size={16} />, text: t("dashboard.customers") },
+    { id: "livechat", icon: <MessageCircle size={16} />, text: t("dashboard.livechat") },
+    { id: "chatbot", icon: <Bot size={16} />, text: t("dashboard.chatbot") },
+    { id: "campaigns", icon: <Play size={16} />, text: t("dashboard.campaigns") },
+    { id: "sequence", icon: <Calendar size={16} />, text: t("dashboard.sequence") },
+    { id: "keywords", icon: <Key size={16} />, text: t("dashboard.keywords") },
+    { id: "shop", icon: <Store size={16} />, text: t("dashboard.shop") },
   ];
 
   const handlePageMenu = (pageId) => {
@@ -147,7 +149,7 @@ function Dashboard() {
                 }`}
                 onClick={() => setActiveTab("my-bots")}
               >
-                Page của tôi
+                {t("dashboard.my_page")}
               </button>
               {/* <button 
                                 className={`tab-button ${activeTab === 'template-bots' ? 'active' : ''}`}
@@ -169,16 +171,16 @@ function Dashboard() {
                 value={filterValue}
                 onChange={(e) => setFilterValue(e.target.value)}
               >
-                <option value="all">Tất cả</option>
-                <option value="active">Hoạt động</option>
-                <option value="inactive">Không hoạt động</option>
+                <option value="all">{t("dashboard.all")}</option>
+                <option value="active">{t("dashboard.active")}</option>
+                <option value="inactive">{t("dashboard.inactive")}</option>
               </select>
 
               <div className="search-box">
                 <input
                   type="text"
                   className="search-input-dashboard"
-                  placeholder="Tìm kiếm"
+                  placeholder={t("dashboard.search_placeholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -189,12 +191,12 @@ function Dashboard() {
 
               <button className="btn-refresh" onClick={handleRefresh}>
                 <RefreshCcw size={16} />
-                &nbsp;Refresh
+                &nbsp;{t("dashboard.refresh_page")}
               </button>
 
               <button className="btn-contribute" onClick={handleContribute}>
                 <Link2 size={16} />
-                &nbsp;Gộp Page
+                &nbsp;{t("dashboard.merge_page")}
               </button>
             </div>
           </div>
@@ -210,7 +212,7 @@ function Dashboard() {
                 <div className="add-page-content">
                   <div className="add-icon"><Plus size={30} /></div>
                   <div className="add-page-text">
-                    Kết nối page mới ({connectedPages.length}/10)
+                    {t("dashboard.connect_new_page")} ({connectedPages.length}/10)
                   </div>
                 </div>
               </div>
@@ -246,7 +248,7 @@ function Dashboard() {
                           </span>
                         </div>
                         <div className="page-stats-right">
-                          <span className="page-status active">Hoạt động</span>
+                          <span className="page-status active">{t("dashboard.active")}</span>
                           <div className="page-menu-container" ref={menuRef}>
                             <button
                               className="page-menu-button"

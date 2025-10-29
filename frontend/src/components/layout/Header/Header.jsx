@@ -1,18 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../hooks/useAuth";
+import shopService from "../../../services/shopService";
 import "./Header.css";
 import avatar from "../../../assets/home.jpg";
-import { LayoutDashboard, Megaphone, BarChart3, Store, Package, BookOpen, Gem } from "lucide-react";
+import {
+  LayoutDashboard,
+  Megaphone,
+  BarChart3,
+  Store,
+  Package,
+  BookOpen,
+  Gem,
+} from "lucide-react";
 import logo_1 from "../../../assets/Logo_Fchat.png";
 import logo_2 from "../../../assets/Logo_Fchat_2.png";
 
 function Header({ onLoginClick }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
   const [openMenu, setOpenMenu] = useState(null); //"avatar", "user" || null
+  const [shops, setShops] = useState([]);
+  const [selectedShop, setSelectedShop] = useState(null);
   const viFlag = "https://flagcdn.com/w40/vn.png";
   const enFlag = "https://flagcdn.com/w40/us.png";
 
@@ -56,6 +69,32 @@ function Header({ onLoginClick }) {
     }
   }, [openMenu]);
 
+  // Fetch danh sách shops
+  useEffect(() => {
+    const fetchShops = async () => {
+      if (isAuthenticated && user) {
+        try {
+          const response = await shopService.getMyShops();
+
+          if (response?.items && response.items.length > 0) {
+            setShops(response.items);
+            // Lấy shop đã lưu hoặc chọn shop đầu tiên
+            const savedShopId = localStorage.getItem("selectedShopId");
+            const shopToSelect = savedShopId
+              ? response.items.find((s) => s._id === savedShopId)
+              : response.items[0];
+            if (shopToSelect) {
+              setSelectedShop(shopToSelect);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching shops:", error);
+        }
+      }
+    };
+    fetchShops();
+  }, [isAuthenticated, user]);
+
   //Click để mở dropdown
   const toggleMenu = (menu) => {
     setOpenMenu(openMenu === menu ? null : menu);
@@ -63,7 +102,7 @@ function Header({ onLoginClick }) {
 
   //Click để đổi ngôn ngữ
   const handleLanguageChange = (language) => {
-    // setUser({ ...user, language });
+    i18n.changeLanguage(language);
     toggleMenu("language");
   };
 
@@ -73,7 +112,7 @@ function Header({ onLoginClick }) {
         {/* Logo */}
         <button onClick={() => navigate("/")}>
           <h1 className="app-title">
-          <img
+            <img
               className="app-name"
               src={isScrolled ? logo_2 : logo_1}
               alt="Logo"
@@ -88,7 +127,8 @@ function Header({ onLoginClick }) {
               className={`nav-btn ${pathname === "/dashboard" ? "active" : ""}`}
               onClick={() => navigate("/dashboard")}
             >
-              <LayoutDashboard size={18} />&nbsp;Dashboard
+              <LayoutDashboard size={18} />
+              &nbsp;{t("header.dashboard")}
             </button>
 
             <button
@@ -97,28 +137,34 @@ function Header({ onLoginClick }) {
               }`}
               onClick={() => navigate("/account-management")}
             >
-              <Megaphone size={18} />&nbsp;Facebook Ads
+              <Megaphone size={18} />
+              &nbsp;{t("header.facebook_ads")}
             </button>
 
             <button
               className={`nav-btn ${pathname === "/analytics" ? "active" : ""}`}
               onClick={() => navigate("/analytics")}
             >
-              <BarChart3 size={18} />&nbsp;Analytics
+              <BarChart3 size={18} />
+              &nbsp;{t("header.analytics")}
             </button>
 
             <button
-              className={`nav-btn ${pathname.startsWith("/shop") ? "active" : ""}`}
+              className={`nav-btn ${
+                pathname.startsWith("/shop") ? "active" : ""
+              }`}
               onClick={() => navigate("/shop")}
             >
-              <Store size={18} />&nbsp;Shop
+              <Store size={18} />
+              &nbsp;{t("header.shop")}
             </button>
 
             <button
               className={`nav-btn ${pathname === "/package" ? "active" : ""}`}
               onClick={() => navigate("/package")}
             >
-              <Package size={18} />&nbsp;Package Order
+              <Package size={18} />
+              &nbsp;{t("header.package")}
             </button>
           </div>
         )}
@@ -127,25 +173,32 @@ function Header({ onLoginClick }) {
         {pathname === "/" && (
           <div className="app-nav-2">
             <button
-              className={`nav-btn ${pathname === "/guide" ? "active" : ""}`}
+              className={`nav-btn-2 ${pathname === "/guide" ? "active" : ""}`}
               onClick={() => navigate("/guide")}
             >
-              <BookOpen size={20} />&nbsp;Hướng dẫn
+              <BookOpen size={20} />
+              &nbsp;{t("header.guide")}
             </button>
 
             <button
-              className={`nav-btn ${pathname === "/service" ? "active" : ""}`}
-              onClick={() => navigate("/service")}
+              className={`nav-btn-2 ${
+                pathname === "/service-package" ? "active" : ""
+              }`}
+              onClick={() => navigate("/service-package")}
             >
-              <Gem size={20} />&nbsp;Gói dịch vụ
+              <Gem size={20} />
+              &nbsp;{t("header.service")}
             </button>
 
             {isAuthenticated && (
               <button
-                className={`nav-btn ${pathname === "/dashboard" ? "active" : ""}`}
+                className={`nav-btn-2 ${
+                  pathname === "/dashboard" ? "active" : ""
+                }`}
                 onClick={() => navigate("/dashboard")}
               >
-                <LayoutDashboard size={20} />&nbsp;Dashboard
+                <LayoutDashboard size={20} />
+                &nbsp;{t("header.dashboard")}
               </button>
             )}
           </div>
@@ -159,15 +212,16 @@ function Header({ onLoginClick }) {
               className="btn-language"
               onClick={() => toggleMenu("language")}
             >
-              <img src={user?.language === "vi" ? viFlag : enFlag} alt="flag" />
+              <img src={i18n.language === "vi" ? viFlag : enFlag} alt="flag" />
             </button>
             {openMenu === "language" && (
               <ul className="dropdown-language">
                 <li onClick={() => handleLanguageChange("vi")}>
-                  <img src={viFlag} alt="Vietnamese" /> Tiếng Việt
+                  <img src={viFlag} alt="Vietnamese" />{" "}
+                  {t("header.languages.vi")}
                 </li>
                 <li onClick={() => handleLanguageChange("en")}>
-                  <img src={enFlag} alt="English" /> English
+                  <img src={enFlag} alt="English" /> {t("header.languages.en")}
                 </li>
               </ul>
             )}
@@ -177,12 +231,65 @@ function Header({ onLoginClick }) {
             <div className="user-menu">
               {/* Tên + Dropdown menu */}
               <div className="user-greeting-wrapper">
-                <span className="user-greeting" style={{ cursor: "default" }}>
+                <span
+                  className="user-greeting"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => toggleMenu("shop")}
+                >
                   <strong className="user-name-header">
                     {user?.full_name}
                   </strong>
-                  <p className="user-name-header-role">STARTER | Onwer{user?.role}</p>
+                  <p className="user-name-header-role">
+                    STARTER | Onwer{user?.role}
+                  </p>
                 </span>
+                {openMenu === "shop" && (
+                  <div className="dropdown-shop">
+                    <div className="dropdown-shop-header">
+                      <div className="dropdown-shop-list">
+                        {shops.length === 0 ? (
+                          <div className="dropdown-shop-empty">
+                            Chưa có shop
+                          </div>
+                        ) : (
+                          shops.map((shop) => (
+                            <div
+                              key={shop._id}
+                              className={`dropdown-shop-item ${
+                                selectedShop?._id === shop._id ? "active" : ""
+                              }`}
+                              onClick={() => {
+                                setSelectedShop(shop);
+                                localStorage.setItem(
+                                  "selectedShopId",
+                                  shop._id
+                                );
+                              }}
+                            >
+                              <div className="shop-item-info">
+                                <div className="shop-item-name">
+                                  {shop.shop_name}
+                                </div>
+                              </div>
+                              {selectedShop?._id === shop._id && (
+                                <span className="shop-item-check">✓</span>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      className="btn-manage-shop"
+                      onClick={() => {
+                        navigate("/shop");
+                        setOpenMenu(null);
+                      }}
+                    >
+                      Quản lý shop
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Avatar + dropdown */}
@@ -204,8 +311,10 @@ function Header({ onLoginClick }) {
                       </small>
                     </div>
                     <div className="dropdown-option-avatar">
-                      <li onClick={() => navigate("/profile")}>Hồ sơ</li>
-                      <li onClick={logout}>Đăng xuất</li>
+                      <li onClick={() => navigate("/profile")}>
+                        {t("header.profile")}
+                      </li>
+                      <li onClick={logout}>{t("header.logout")}</li>
                     </div>
                   </div>
                 )}
@@ -216,7 +325,7 @@ function Header({ onLoginClick }) {
           {/* Chỉ hiển thị nút Đăng nhập nếu CHƯA đăng nhập và ở Home */}
           {!isAuthenticated && pathname === "/" && (
             <button className="btn-login" onClick={onLoginClick}>
-              Đăng nhập
+              {t("header.login")}
             </button>
           )}
         </div>

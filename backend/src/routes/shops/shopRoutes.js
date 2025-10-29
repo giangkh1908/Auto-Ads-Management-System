@@ -2,6 +2,7 @@ import express from "express";
 import { 
     createShop, 
     getShops, 
+    getMyShops,
     getShopById, 
     getShopsByOwner,
     updateShop, 

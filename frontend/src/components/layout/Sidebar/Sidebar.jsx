@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Plus, FileText, BarChart3, ChartLine } from 'lucide-react'
 import './Sidebar.css'
 
 function Sidebar() {
+    const { t } = useTranslation()
     const [isHovered, setIsHovered] = useState(false)
     const navigate = useNavigate()
     const location = useLocation()
@@ -42,7 +44,7 @@ function Sidebar() {
                             onClick={() => navigate('/account-management')}
                         >
                             <span className="sidebar-icon"><FileText size={16} /></span>
-                            <span className="sidebar-label">Tài khoản</span>
+                            <span className="sidebar-label">{t('sidebar.account')}</span>
                         </button>
                     </li>
                     <li>
@@ -51,7 +53,7 @@ function Sidebar() {
                             onClick={() => navigate('/ads')}
                         >
                             <span className="sidebar-icon"><Plus size={16} /></span>
-                            <span className="sidebar-label">Quản lý quảng cáo</span>
+                            <span className="sidebar-label">{t('sidebar.ads_management')}</span>
                         </button>
                     </li>
                     <li>
@@ -60,7 +62,7 @@ function Sidebar() {
                             onClick={() => navigate('/reports')}
                         >
                             <span className="sidebar-icon"><BarChart3 size={16} /></span>
-                            <span className="sidebar-label">Báo cáo</span>
+                            <span className="sidebar-label">{t('sidebar.reports')}</span>
                         </button>
                     </li>
                     <li>
@@ -69,7 +71,7 @@ function Sidebar() {
                             onClick={() => navigate('/stats')}
                         >
                             <span className="sidebar-icon"><ChartLine size={16} /></span>
-                            <span className="sidebar-label">Thống kê</span>
+                            <span className="sidebar-label">{t('sidebar.statistics')}</span>
                         </button>
                     </li>
                 </ul>

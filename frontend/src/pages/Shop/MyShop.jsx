@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { Plus, Edit, Play, Pause, Star } from "lucide-react";
 import { ROUTES } from "../../constants/app.constants";
@@ -6,6 +7,7 @@ import "./Shop.css";
 import { STORAGE_KEYS } from '../../constants/app.constants';
 
 function MyShop() {
+  const { t } = useTranslation();
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab] = useState("info");
@@ -156,19 +158,19 @@ function MyShop() {
           to={ROUTES.SHOP}
           className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
         >
-          My Shop
+          {t('shop.my_shop')}
         </NavLink>
         <NavLink
           to={ROUTES.SHOP_EMPLOYEE}
           className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
         >
-          Employee
+          {t('shop.employee')}
         </NavLink>
         <NavLink
           to={ROUTES.SHOP_HISTORY}
           className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
         >
-          History
+          {t('shop.history')}
         </NavLink>
       </div>
 
@@ -177,7 +179,7 @@ function MyShop() {
         <div className="btn-add">
           <button className="btn-add-new-page" onClick={handleAddNewPage}>
             <Plus size={16} />
-            Add New Shop
+            {t('shop.add_new_shop')}
           </button>
         </div>
 
@@ -192,19 +194,19 @@ function MyShop() {
               ) : (
                 <div className="shops-table">
                   <div className="table-header-shop">
-                    <div className="table-cell">Shop Name</div>
-                    <div className="table-cell">Package</div>
-                    <div className="table-cell">Employee</div>
-                    <div className="table-cell">Page</div>
-                    <div className="table-cell">Role</div>
-                    <div className="table-cell">Expired</div>
-                    <div className="table-cell">Status</div>
-                    <div className="table-cell">Action</div>
+                    <div className="table-cell">{t('shop.shop_name')}</div>
+                    <div className="table-cell">{t('shop.package')}</div>
+                    <div className="table-cell">{t('shop.employee_count')}</div>
+                    <div className="table-cell">{t('shop.page_count')}</div>
+                    <div className="table-cell">{t('shop.role')}</div>
+                    <div className="table-cell">{t('shop.expired')}</div>
+                    <div className="table-cell">{t('shop.status')}</div>
+                    <div className="table-cell">{t('shop.action')}</div>
                   </div>
 
                   {shops.map((shop) => (
                     <div key={shop.id} className="table-row-shop">
-                      <div className="table-cell" data-label="Shop Name">
+                      <div className="table-cell" data-label={t('shop.shop_name')}>
                         <div className="shop-name">
                           <div className="shop-avatar">
                             {shop?.shopName?.charAt(0)?.toUpperCase() || "?"}
@@ -212,35 +214,35 @@ function MyShop() {
                           <span>{shop.shopName}</span>
                         </div>
                       </div>
-                      <div className="table-cell" data-label="Package">
+                      <div className="table-cell" data-label={t('shop.package')}>
                         <span
                           className={`package-badge package-${shop.package.toLowerCase()}`}
                         >
                           {shop.package}
                         </span>
                       </div>
-                      <div className="table-cell" data-label="Employee">
+                      <div className="table-cell" data-label={t('shop.employee_count')}>
                         <span className="employee-count">
                           {shop.employeeCount}
                         </span>
                       </div>
-                      <div className="table-cell" data-label="Page">
+                      <div className="table-cell" data-label={t('shop.page_count')}>
                         <span className="page-count-shop">{shop.pageCount}</span>
                       </div>
-                      <div className="table-cell" data-label="Role">
+                      <div className="table-cell" data-label={t('shop.role')}>
                         <span className="role-badge">{shop.role}</span>
                       </div>
-                      <div className="table-cell" data-label="Expired">
+                      <div className="table-cell" data-label={t('shop.expired')}>
                         <span className="expired-date">{shop.expired}</span>
                       </div>
-                      <div className="table-cell" data-label="Status">
+                      <div className="table-cell" data-label={t('shop.status')}>
                         <span
                           className={`status-badge status-${shop.status.toLowerCase()}`}
                         >
                           {shop.status}
                         </span>
                       </div>
-                      <div className="table-cell" data-label="Action">
+                      <div className="table-cell" data-label={t('shop.action')}>
                         <div className="action-buttons">
                           <button
                             className="shop-action-btn shop-update-btn"
@@ -282,7 +284,7 @@ function MyShop() {
                           <button
                             className="shop-action-btn shop-upgrade-btn"
                             onClick={() => handleAction(shop.id, "upgrade")}
-                            title="Upgrade"
+                            title={t('shop.upgrade')}
                           >
                             <Star size={14} />
                           </button>
@@ -302,7 +304,7 @@ function MyShop() {
         <div className="modal-overlay" onClick={() => setIsAddOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Add New Shop</h3>
+              <h3>{t('shop.add_shop')}</h3>
               <button
                 className="modal-close"
                 onClick={() => setIsAddOpen(false)}
@@ -312,7 +314,7 @@ function MyShop() {
             </div>
             <div className="modal-body">
               <div className="form-field">
-                <label htmlFor="add-shopName">Shop Name</label>
+                <label htmlFor="add-shopName">{t('shop.shop_name')}</label>
                 <input
                   id="add-shopName"
                   type="text"
@@ -325,7 +327,7 @@ function MyShop() {
               </div>
 
               <div className="form-field">
-                <label htmlFor="add-email">Email</label>
+                <label htmlFor="add-email">{t('shop.email')}</label>
                 <input
                   id="add-email"
                   type="email"
@@ -337,7 +339,7 @@ function MyShop() {
                 />
               </div>
               <div className="form-field">
-                <label htmlFor="add-phone">Phone Number</label>
+                <label htmlFor="add-phone">{t('shop.phone_number')}</label>
                 <input
                   id="add-phone"
                   type="tel"
@@ -350,7 +352,7 @@ function MyShop() {
               </div>
 
               <div className="form-field">
-                <label htmlFor="add-category">Category</label>
+                <label htmlFor="add-category">{t('shop.category')}</label>
                 <select
                   id="add-category"
                   className="modal-select-shop"
@@ -359,11 +361,11 @@ function MyShop() {
                     setAddForm({ ...addForm, category: e.target.value })
                   }
                 >
-                  <option value="other">Other</option>
-                  <option value="fashion">Fashion</option>
-                  <option value="food">Food</option>
-                  <option value="tech">Tech</option>
-                  <option value="beauty">Beauty</option>
+                  <option value="other">{t('shop.other')}</option>
+                  <option value="fashion">{t('shop.fashion')}</option>
+                  <option value="food">{t('shop.food')}</option>
+                  <option value="tech">{t('shop.tech')}</option>
+                  <option value="beauty">{t('shop.beauty')}</option>
                 </select>
               </div>
             </div>
@@ -372,7 +374,7 @@ function MyShop() {
                 className="btn-secondary-shop"
                 onClick={() => setIsAddOpen(false)}
               >
-                Cancel
+                {t('shop.cancel')}
               </button>
               <button
                 className="btn-primary-shop"
@@ -409,7 +411,7 @@ function MyShop() {
                   }
                 }}
               >
-                Create
+                {t('shop.create')}
               </button>
             </div>
           </div>
@@ -421,7 +423,7 @@ function MyShop() {
         <div className="modal-overlay" onClick={() => setIsUpdateOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Update Shop</h3>
+              <h3>{t('shop.update_shop')}</h3>
               <button
                 className="modal-close"
                 onClick={() => setIsUpdateOpen(false)}
@@ -431,7 +433,7 @@ function MyShop() {
             </div>
             <div className="modal-body">
               <div className="form-field">
-                <label htmlFor="upd-shopName">Shop Name</label>
+                <label htmlFor="upd-shopName">{t('shop.shop_name')}</label>
                 <input
                   id="upd-shopName"
                   type="text"
@@ -444,7 +446,7 @@ function MyShop() {
               </div>
 
               <div className="form-field">
-                <label htmlFor="upd-email">Email</label>
+                <label htmlFor="upd-email">{t('shop.email')}</label>
                 <input
                   id="upd-email"
                   type="email"
@@ -454,7 +456,7 @@ function MyShop() {
                 />
               </div>
               <div className="form-field">
-                <label htmlFor="upd-phone">Phone Number</label>
+                <label htmlFor="upd-phone">{t('shop.phone_number')}</label>
                 <input
                   id="upd-phone"
                   type="tel"
@@ -465,7 +467,7 @@ function MyShop() {
               </div>
 
               <div className="form-field">
-                <label htmlFor="upd-category">Category</label>
+                <label htmlFor="upd-category">{t('shop.category')}</label>
                 <select
                   id="upd-category"
                   className="modal-select-shop"
@@ -474,11 +476,11 @@ function MyShop() {
                     setUpdateForm({ ...updateForm, category: e.target.value })
                   }
                 >
-                  <option value="other">Other</option>
-                  <option value="fashion">Fashion</option>
-                  <option value="food">Food</option>
-                  <option value="tech">Tech</option>
-                  <option value="beauty">Beauty</option>
+                  <option value="other">{t('shop.other')}</option>
+                  <option value="fashion">{t('shop.fashion')}</option>
+                  <option value="food">{t('shop.food')}</option>
+                  <option value="tech">{t('shop.tech')}</option>
+                  <option value="beauty">{t('shop.beauty')}</option>
                 </select>
               </div>
             </div>
@@ -487,7 +489,7 @@ function MyShop() {
                 className="btn-secondary-shop"
                 onClick={() => setIsUpdateOpen(false)}
               >
-                Cancel
+                {t('shop.cancel')}
               </button>
               <button
                 className="btn-primary-shop"
@@ -523,7 +525,7 @@ function MyShop() {
                   }
                 }}
               >
-                Update
+                {t('shop.update')}
               </button>
             </div>
           </div>

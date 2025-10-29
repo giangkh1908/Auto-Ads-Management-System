@@ -20,8 +20,8 @@ const adsSchema = new mongoose.Schema(
     // Trạng thái
     status: {
       type: String,
-      enum: ["PAUSED", "ACTIVE", "DELETED", "ARCHIVED", "IN_PROCESS"],
-      default: "IN_PROCESS",
+      enum: ["PAUSED", "ACTIVE", "DELETED", "ARCHIVED", "DRAFT", "FAILED"],
+      default: "DRAFT",
     },
     configured_status: { type: String },
     effective_status: { type: String },
@@ -30,6 +30,8 @@ const adsSchema = new mongoose.Schema(
     delivery_info: { type: mongoose.Schema.Types.Mixed, default: {} },
     meta: { type: mongoose.Schema.Types.Mixed, default: {} },
     deleted_at: { type: Date, default: null },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    updated_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

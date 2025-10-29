@@ -57,10 +57,27 @@ export async function createCampaign(adAccountId, accessToken, body) {
 }
 
 export async function createAdSet(adAccountId, accessToken, body) {
+  // Clone body để tránh thay đổi dữ liệu gốc
+  const payload = { ...body };
+  
+  // Xử lý xung đột bid_strategy và bid_amount
+  if (payload.bid_strategy === 'LOWEST_COST_WITHOUT_CAP' && payload.bid_amount !== undefined) {
+    console.log("🛠️ fbAdsService: Phát hiện xung đột bid_strategy/bid_amount");
+    console.log(`🔧 Xóa bid_amount (${payload.bid_amount}) khi dùng LOWEST_COST_WITHOUT_CAP`);
+    delete payload.bid_amount;
+  }
+  
+  // Đảm bảo có bid_amount khi dùng LOWEST_COST_WITH_BID_CAP
+  if (payload.bid_strategy === 'LOWEST_COST_WITH_BID_CAP' && payload.bid_amount === undefined) {
+    console.log("⚠️ fbAdsService: Thiếu bid_amount cho LOWEST_COST_WITH_BID_CAP");
+    console.log("🔧 Thêm bid_amount mặc định (100) cho LOWEST_COST_WITH_BID_CAP");
+    payload.bid_amount = 100; // Giá trị mặc định
+  }
+  
   const { withPrefix } = normalizeAccountPair(adAccountId);
   const { data } = await axios.post(
     `${FB_API}/${withPrefix}/adsets`,
-    body,
+    payload, // Sử dụng payload đã được xử lý
     { params: buildFbAuthParams(accessToken) }
   );
   return data.id;
@@ -68,9 +85,34 @@ export async function createAdSet(adAccountId, accessToken, body) {
 
 export async function createCreative(adAccountId, accessToken, body) {
   const { withPrefix } = normalizeAccountPair(adAccountId);
+  
+  // ✅ Whitelist: Chỉ gửi các field Facebook chấp nhận
+  const allowedFields = [
+    'name',
+    'object_story_spec',
+    'image_hash',
+    'video_id',
+    'thumbnail_url',
+    'asset_feed_spec',
+    'url_tags',
+    'degrees_of_freedom_spec',
+    'instagram_actor_id',
+    'instagram_permalink_url',
+    'interactive_components_spec',
+  ];
+  
+  const filteredBody = Object.keys(body)
+    .filter(key => allowedFields.includes(key) && body[key] !== undefined)
+    .reduce((obj, key) => {
+      obj[key] = body[key];
+      return obj;
+    }, {});
+  
+  console.log('🎨 Creating creative with filtered fields:', Object.keys(filteredBody));
+  
   const { data } = await axios.post(
     `${FB_API}/${withPrefix}/adcreatives`,
-    body,
+    filteredBody,  // ✅ Gửi filtered body
     { params: buildFbAuthParams(accessToken) }
   );
   return data.id;
@@ -78,9 +120,30 @@ export async function createCreative(adAccountId, accessToken, body) {
 
 export async function createAd(adAccountId, accessToken, body) {
   const { withPrefix } = normalizeAccountPair(adAccountId);
+  
+  // ✅ Whitelist: Chỉ gửi các field Facebook chấp nhận cho Ad
+  const allowedFields = [
+    'name',
+    'adset_id',
+    'creative',
+    'status',
+    'tracking_specs',
+    'conversion_specs',
+    'destination_url',
+  ];
+  
+  const filteredBody = Object.keys(body)
+    .filter(key => allowedFields.includes(key) && body[key] !== undefined)
+    .reduce((obj, key) => {
+      obj[key] = body[key];
+      return obj;
+    }, {});
+  
+  console.log('📢 Creating ad with filtered fields:', Object.keys(filteredBody));
+  
   const { data } = await axios.post(
     `${FB_API}/${withPrefix}/ads`,
-    body,
+    filteredBody,  // ✅ Gửi filtered body
     { params: buildFbAuthParams(accessToken) }
   );
   return data.id;
@@ -151,6 +214,117 @@ export async function updateAdStatus(entityId, accessToken, status) {
   const { data } = await axios.post(
     `${FB_API}/${entityId}`,
     { status },
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
+}
+
+/**
+ * Update campaign với nhiều fields (không chỉ status)
+ * Whitelist: name, status, daily_budget, lifetime_budget, start_time, stop_time
+ */
+export async function updateCampaign(entityId, accessToken, updates) {
+  const payload = { ...updates };
+  
+  // Whitelist các fields có thể update cho Campaign
+  const allowedFields = ['name', 'status', 'daily_budget', 'lifetime_budget', 'start_time', 'stop_time'];
+  const filteredPayload = Object.keys(payload)
+    .filter(key => allowedFields.includes(key) && payload[key] !== undefined)
+    .reduce((obj, key) => {
+      obj[key] = payload[key];
+      return obj;
+    }, {});
+
+  // Nếu không có field nào để update, return ngay
+  if (Object.keys(filteredPayload).length === 0) {
+    console.log("⚠️ updateCampaign: Không có field nào để update");
+    return null;
+  }
+
+  console.log(`🔄 Updating campaign ${entityId} với fields:`, Object.keys(filteredPayload));
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    filteredPayload,
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
+}
+
+/**
+ * Update adset với nhiều fields
+ * Whitelist: name, status, daily_budget, lifetime_budget, start_time, end_time, 
+ *            targeting, optimization_goal, bid_strategy, bid_amount, billing_event, conversion_event
+ */
+export async function updateAdset(entityId, accessToken, updates) {
+  const payload = { ...updates };
+  
+  // ✅ Xử lý xung đột bid_strategy (giống createAdSet)
+  if (payload.bid_strategy === 'LOWEST_COST_WITHOUT_CAP' && payload.bid_amount !== undefined) {
+    console.log("🔧 updateAdset: Xóa bid_amount khi dùng LOWEST_COST_WITHOUT_CAP");
+    delete payload.bid_amount;
+  }
+  
+  // ✅ Đảm bảo có bid_amount khi dùng LOWEST_COST_WITH_BID_CAP
+  if (payload.bid_strategy === 'LOWEST_COST_WITH_BID_CAP' && payload.bid_amount === undefined) {
+    console.log("⚠️ updateAdset: Thiếu bid_amount cho LOWEST_COST_WITH_BID_CAP");
+    payload.bid_amount = 100; // Giá trị mặc định
+  }
+  
+  // Whitelist các fields có thể update cho AdSet
+  const allowedFields = [
+    'name', 'status', 'daily_budget', 'lifetime_budget', 
+    'start_time', 'end_time', 'targeting', 'optimization_goal',
+    'bid_strategy', 'bid_amount', 'billing_event', 'conversion_event'
+  ];
+  
+  const filteredPayload = Object.keys(payload)
+    .filter(key => allowedFields.includes(key) && payload[key] !== undefined)
+    .reduce((obj, key) => {
+      obj[key] = payload[key];
+      return obj;
+    }, {});
+
+  // Nếu không có field nào để update, return ngay
+  if (Object.keys(filteredPayload).length === 0) {
+    console.log("⚠️ updateAdset: Không có field nào để update");
+    return null;
+  }
+
+  console.log(`🔄 Updating Adset ${entityId} với fields:`, Object.keys(filteredPayload));
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    filteredPayload,
+    { params: buildFbAuthParams(accessToken) }
+  );
+  return data;
+}
+
+/**
+ * Update ad (chỉ name và status - Facebook không cho update creative)
+ * NOTE: Creative không thể update - phải tạo ad mới nếu muốn đổi creative
+ */
+export async function updateAd(entityId, accessToken, updates) {
+  const payload = { ...updates };
+  
+  // Ad chỉ update được name và status
+  const allowedFields = ['name', 'status'];
+  const filteredPayload = Object.keys(payload)
+    .filter(key => allowedFields.includes(key) && payload[key] !== undefined)
+    .reduce((obj, key) => {
+      obj[key] = payload[key];
+      return obj;
+    }, {});
+
+  // Nếu không có field nào để update, return ngay
+  if (Object.keys(filteredPayload).length === 0) {
+    console.log("⚠️ updateAd: Không có field nào để update");
+    return null;
+  }
+
+  console.log(`🔄 Updating Ad ${entityId} với fields:`, Object.keys(filteredPayload));
+  const { data } = await axios.post(
+    `${FB_API}/${entityId}`,
+    filteredPayload,
     { params: buildFbAuthParams(accessToken) }
   );
   return data;
@@ -236,7 +410,10 @@ export async function fetchAdsFromFacebook(accessToken, adAccountId) {
  */
 export async function syncCampaignsFromFacebook(accessToken, adAccountId) {
   try {
-    const campaigns = await fetchCampaignsFromFacebook(accessToken, adAccountId);
+    const campaigns = await fetchCampaignsFromFacebook(
+      accessToken,
+      adAccountId
+    );
     console.log(
       `Fetched ${campaigns.length} campaigns from Facebook for account ${adAccountId}`
     );
@@ -256,7 +433,7 @@ export async function syncCampaignsFromFacebook(accessToken, adAccountId) {
       try {
         const data = {
           shop_id: adsAccount.shop_id, // required by schema
-          account_id: adsAccount._id,  // required by schema
+          account_id: adsAccount._id, // required by schema
           name: c.name,
           status: c.status,
           objective: c.objective,
@@ -310,7 +487,9 @@ export async function syncAdSetsFromFacebook(accessToken, adAccountId) {
     for (const s of adsets) {
       try {
         // Map campaign external_id -> _id
-        const campaignDoc = await AdsCampaign.findOne({ external_id: s.campaign_id });
+        const campaignDoc = await AdsCampaign.findOne({
+          external_id: s.campaign_id,
+        });
         if (!campaignDoc) {
           console.warn(
             `⚠️ Bỏ qua adset ${s.id} vì chưa tìm thấy campaign external_id=${s.campaign_id} trong DB.`
@@ -347,7 +526,10 @@ export async function syncAdSetsFromFacebook(accessToken, adAccountId) {
 
     return results;
   } catch (err) {
-    console.error(`Error syncing adsets for account ${adAccountId}:`, err.message);
+    console.error(
+      `Error syncing adsets for account ${adAccountId}:`,
+      err.message
+    );
     throw err;
   }
 }
@@ -431,3 +613,6 @@ export async function fetchAdInsights(accessToken, adIds = []) {
     return [];
   }
 }
+
+// Tìm hàm createAdSet và thêm xử lý trước khi gọi API Facebook
+

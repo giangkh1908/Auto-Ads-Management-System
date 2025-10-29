@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../hooks/useToast'
 import profileService from '../../services/profileService'
@@ -9,6 +10,7 @@ import { validateRequired, validatePassword, validateEmail, validatePhone } from
 import no_avatar from '../../assets/home.jpg';
 
 function Profile() {
+  const { t } = useTranslation()
   const { user, updateUser, logout } = useAuth()
   const toast = useToast()
   const countries = getNames();
@@ -107,22 +109,22 @@ function Profile() {
     const phone = (formData.phone || '').trim()
 
     if (!validateRequired(name)) {
-      toast.error('Vui lòng nhập họ tên')
+      toast.error(t('profile.enter_full_name'))
       return
     }
 
     if (!validateRequired(email)) {
-      toast.error('Vui lòng nhập email')
+      toast.error(t('profile.enter_email'))
       return
     }
 
     if (!validateEmail(email)) {
-      toast.error('Email không hợp lệ')
+      toast.error(t('validation.email_invalid'))
       return
     }
 
     if (phone && !validatePhone(phone)) {
-      toast.error('Số điện thoại không hợp lệ (9-11 chữ số)')
+      toast.error(t('profile.invalid_phone'))
       return
     }
 
@@ -133,10 +135,10 @@ function Profile() {
       if (response.success) {
         // Cập nhật user data trong context
         updateUser(response.data.user)
-        toast.success(response.message || 'Cập nhật thông tin thành công!')
+        toast.success(response.message || t('profile.update_success'))
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Cập nhật thông tin thất bại'
+      const errorMessage = error.response?.data?.message || error.message || t('profile.update_failed')
       toast.error(errorMessage)
     } finally {
       setLoading(false)
@@ -149,27 +151,27 @@ function Profile() {
 
     // Validation (shared utils)
     if (!validateRequired(passwordData.currentPassword)) {
-      toast.error('Vui lòng nhập mật khẩu hiện tại')
+      toast.error(t('profile.enter_current_pwd'))
       return
     }
     if (!validateRequired(passwordData.newPassword)) {
-      toast.error('Vui lòng nhập mật khẩu mới')
+      toast.error(t('profile.enter_new_pwd'))
       return
     }
     if (!validateRequired(passwordData.confirmPassword)) {
-      toast.error('Vui lòng nhập lại mật khẩu mới')
+      toast.error(t('profile.reenter_new_pwd'))
       return
     }
     if (!validatePassword(passwordData.newPassword, { minLength: 6 })) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự')
+      toast.error(t('validation.password_min_length'))
       return
     }
     if (passwordData.newPassword === passwordData.currentPassword) {
-      toast.error('Mật khẩu mới không được trùng với mật khẩu hiện tại')
+      toast.error(t('profile.password_cannot_same'))
       return
     }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('Mật khẩu xác nhận không khớp')
+      toast.error(t('validation.password_mismatch'))
       return
     }
 
@@ -181,7 +183,7 @@ function Profile() {
       })
 
       if (response.success) {
-        toast.success(response.message || 'Đổi mật khẩu thành công!')
+        toast.success(response.message || t('profile.password_change_success'))
 
         // Reset form
         setPasswordData({
@@ -196,7 +198,7 @@ function Profile() {
         }, 1500)
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Đổi mật khẩu thất bại'
+      const errorMessage = error.response?.data?.message || error.message || t('profile.password_change_failed')
       toast.error(errorMessage)
     } finally {
       setLoading(false)
@@ -214,13 +216,13 @@ function Profile() {
               className={`tab-button ${activeTab === 'update' ? 'active' : ''}`}
               onClick={() => setActiveTab('update')}
             >
-              Cập nhật hồ sơ
+              {t('profile.update_profile')}
             </button>
             <button
               className={`tab-button ${activeTab === 'password' ? 'active' : ''}`}
               onClick={() => setActiveTab('password')}
             >
-              Đổi mật khẩu
+              {t('profile.change_password')}
             </button>
           </div>
 
@@ -240,31 +242,31 @@ function Profile() {
               {/* Profile Form */}
               <form className="profile-form" onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label htmlFor="full_name">Họ tên của bạn</label>
+                  <label htmlFor="full_name">{t('profile.full_name')}</label>
                   <div className="input-with-icon">
-                    <User className="input-icon" size={18} />
+                    <User className="input-icon-profile" size={18} />
                     <input
                       type="text"
                       id="full_name"
                       name="full_name"
                       value={formData.full_name}
                       onChange={handleInputChange}
-                      className="form-input"
+                      className="form-input-profile"
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="username">Username</label>
+                  <label htmlFor="username">{t('profile.username')}</label>
                   <div className="input-with-icon">
-                    <AtSign className="input-icon" size={18} />
+                    <AtSign className="input-icon-profile" size={18} />
                     <input
                       type="text"
                       id="username"
                       name="username"
                       value={formData.username}
                       onChange={handleInputChange}
-                      className="form-input"
+                      className="form-input-profile"
                       readOnly
                     />
                     <button type="button" className="edit-icon-btn">
@@ -273,37 +275,37 @@ function Profile() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="email">Email</label>
+                  <label htmlFor="email">{t('profile.email')}</label>
                   <div className="input-with-icon">
-                    <Mail className="input-icon" size={18} />
+                    <Mail className="input-icon-profile" size={18} />
                     <input
                       type="email"
                       id="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="form-input"
+                      className="form-input-profile"
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="phone">Số điện thoại</label>
+                  <label htmlFor="phone">{t('profile.phone')}</label>
                   <div className="input-with-icon">
-                    <Phone className="input-icon" size={18} />
+                    <Phone className="input-icon-profile" size={18} />
                     <input
                       type="tel"
                       id="phone"
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      className="form-input"
+                      className="form-input-profile"
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="country">Quốc gia</label>
+                  <label htmlFor="country">{t('profile.country')}</label>
                   <select
                     id="country"
                     name="country"
@@ -311,7 +313,7 @@ function Profile() {
                     onChange={handleInputChange}
                     className="form-select"
                   >
-                    <option value="">-- Chọn quốc gia --</option>
+                    <option value="">{t('profile.select_country')}</option>
                     {countries.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
@@ -343,7 +345,7 @@ function Profile() {
               </div> */}
 
                 <button type="submit" className="submit-button" disabled={loading}>
-                  {loading ? 'Đang lưu...' : 'Lưu'}
+                  {loading ? t('profile.saving') : t('profile.save')}
                 </button>
               </form>
             </div>
@@ -354,17 +356,17 @@ function Profile() {
             <div className="profile-content">
               <form className="profile-form password-form" onSubmit={handlePasswordSubmit}>
                 <div className="form-group">
-                  <label htmlFor="currentPassword">Mật khẩu hiện tại</label>
+                  <label htmlFor="currentPassword">{t('profile.current_password')}</label>
                   <div className="input-with-icon">
-                    <Lock className="input-icon" size={18} />
+                    <Lock className="input-icon-profile" size={18} />
                     <input
                       type={showPassword.currentPassword ? "text" : "password"}
                       id="currentPassword"
                       name="currentPassword"
                       value={passwordData.currentPassword}
                       onChange={handlePasswordChange}
-                      className="form-input"
-                      placeholder="Nhập mật khẩu hiện tại"
+                      className="form-input-profile"
+                      placeholder={t('profile.enter_current_password')}
                     />
                     <button
                       type="button"
@@ -377,17 +379,17 @@ function Profile() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="newPassword">Mật khẩu mới</label>
+                  <label htmlFor="newPassword">{t('profile.new_password')}</label>
                   <div className="input-with-icon">
-                    <Lock className="input-icon" size={18} />
+                    <Lock className="input-icon-profile" size={18} />
                     <input
                       type={showPassword.newPassword ? "text" : "password"}
                       id="newPassword"
                       name="newPassword"
                       value={passwordData.newPassword}
                       onChange={handlePasswordChange}
-                      className="form-input"
-                      placeholder="Mật khẩu mới"
+                      className="form-input-profile"
+                      placeholder={t('profile.enter_new_password')}
                     />
                     <button
                       type="button"
@@ -400,17 +402,17 @@ function Profile() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="confirmPassword">Nhập lại mật khẩu</label>
+                  <label htmlFor="confirmPassword">{t('profile.confirm_new_password')}</label>
                   <div className="input-with-icon">
-                    <Lock className="input-icon" size={18} />
+                    <Lock className="input-icon-profile" size={18} />
                     <input
                       type={showPassword.confirmPassword ? "text" : "password"}
                       id="confirmPassword"
                       name="confirmPassword"
                       value={passwordData.confirmPassword}
                       onChange={handlePasswordChange}
-                      className="form-input"
-                      placeholder="Nhập lại mật khẩu"
+                      className="form-input-profile"
+                      placeholder={t('profile.reenter_password')}
                     />
                     <button
                       type="button"
@@ -423,7 +425,7 @@ function Profile() {
                 </div>
 
                 <button type="submit" className="submit-button" disabled={loading}>
-                  {loading ? 'Đang đổi mật khẩu...' : 'Đổi mật khẩu'}
+                  {loading ? t('profile.changing_password') : t('profile.change_password')}
                 </button>
               </form>
             </div>

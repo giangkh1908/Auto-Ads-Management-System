@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "./ConnectPage.css";
 import { useToast } from "../../hooks/useToast";
 import profileService from "../../services/profileService";
@@ -9,6 +10,7 @@ import logo from "../../assets/Logo_Fchat.png";
 function ConnectPage() {
   const navigate = useNavigate();
   const toast = useToast();
+  const { t } = useTranslation();
   const [shopId, setShopId] = useState(null);
   const [connectedPageIds, setConnectedPageIds] = useState([]);
   const [fbPages, setFbPages] = useState([]);
@@ -36,11 +38,11 @@ function ConnectPage() {
         setFbPages(realPages);
       } catch (e) {
         console.error("Load facebook pages error:", e);
-        toast.error("Không tải được danh sách page từ Facebook");
+        toast.error(t('connect_page.toast_load_error'));
       }
     };
     load();
-  }, []);
+  }, [t]);
 
   // Chuẩn hóa dữ liệu page từ API
   const pages = useMemo(() => {
@@ -64,7 +66,7 @@ function ConnectPage() {
         p.picture || `https://graph.facebook.com/${p.id}/picture?type=square`,
       link: `https://www.facebook.com/${p.id}`,
       role: deriveRole(p.tasks),
-      status: connectedPageIds.includes(p.id) ? "Đã kết nối" : "Chưa kết nối",
+      status: connectedPageIds.includes(p.id) ? t('connect_page.status_connected') : t('connect_page.status_not_connected'),
       connectedBy: null,
       isSelected: false,
       pageAccessToken: p.pageAccessToken,
@@ -73,7 +75,7 @@ function ConnectPage() {
 
   //Đếm số page đã kết nối và còn lại
   const connectedCount = pages.filter(
-    (page) => page.status === "Đã kết nối"
+    (page) => page.status === t('connect_page.status_connected')
   ).length;
   const remainingCount = pages.length - connectedCount;
 
@@ -82,16 +84,16 @@ function ConnectPage() {
     setSelectedPages((prev) =>
       prev.filter((pageId) => {
         const page = pages.find((p) => p.id === pageId);
-        return page && page.status !== "Đã kết nối";
+        return page && page.status !== t('connect_page.status_connected');
       })
     );
-  }, [pages]);
+  }, [pages, t]);
 
   //Xử lý chọn page
   const handlePageSelect = (pageId) => {
     const page = pages.find((p) => p.id === pageId);
     // Không cho phép chọn page đã kết nối hoặc không có quyền ADMIN
-    if (page && (page.status === "Đã kết nối" || page.role !== "ADMIN")) {
+    if (page && (page.status === t('connect_page.status_connected') || page.role !== "ADMIN")) {
       return;
     }
     //Thêm page vào selectedPages
@@ -105,7 +107,7 @@ function ConnectPage() {
   //Xử lý chọn tất cả
   const handleSelectAll = () => {
     const selectablePages = filteredPages.filter(
-      (page) => page.status !== "Đã kết nối" && page.role === "ADMIN"
+      (page) => page.status !== t('connect_page.status_connected') && page.role === "ADMIN"
     );
 
     if (selectAll) {
@@ -122,7 +124,7 @@ function ConnectPage() {
     const selected = pages.filter((p) => selectedPages.includes(p.id));
     if (selected.length === 0) return;
     if (!shopId) {
-      toast.error("Không xác định được shop hiện tại");
+      toast.error(t('connect_page.toast_no_shop'));
       return;
     }
     try {
@@ -137,11 +139,11 @@ function ConnectPage() {
       setConnectedPageIds((prev) =>
         Array.from(new Set([...prev, ...selected.map((p) => p.id)]))
       );
-      toast.success(`Đã kết nối ${selected.length} page`);
+      toast.success(t('connect_page.toast_connect_success', { count: selected.length }));
       navigate("/dashboard");
     } catch (e) {
       console.error("Connect page error:", e);
-      toast.error("Kết nối thất bại, vui lòng thử lại");
+      toast.error(t('connect_page.toast_connect_error'));
     }
   };
 
@@ -150,17 +152,17 @@ function ConnectPage() {
     try {
       const response = await shopService.refreshFacebookToken();
       if (response.success) {
-        toast.success("Làm mới thành công!");
+        toast.success(t('connect_page.toast_refresh_success'));
         // Reload pages after successful token refresh
         const pagesRes = await shopService.fetchFacebookPages();
         const realPages = pagesRes?.data?.pages || [];
         setFbPages(realPages);
       } else {
-        toast.error(response.message || "Không thể làm mới.");
+        toast.error(response.message || t('connect_page.toast_refresh_error'));
       }
     } catch (error) {
       console.log("Refresh token error:", error);
-      toast.error("Lỗi khi làm mới: " + (error.message || "Unknown error"));
+      toast.error(t('connect_page.toast_refresh_error_detail', { error: error.message || "Unknown error" }));
     }
   };
 
@@ -176,21 +178,21 @@ function ConnectPage() {
       .includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "status" ||
-      (statusFilter === "connected" && page.status === "Đã kết nối") ||
-      (statusFilter === "not-connected" && page.status === "Chưa kết nối");
+      (statusFilter === "connected" && page.status === t('connect_page.status_connected')) ||
+      (statusFilter === "not-connected" && page.status === t('connect_page.status_not_connected'));
     return matchesSearch && matchesStatus;
   });
 
   // Cập nhật trạng thái selectAll khi selectedPages thay đổi
   useEffect(() => {
     const selectablePages = filteredPages.filter(
-      (page) => page.status !== "Đã kết nối" && page.role === "ADMIN"
+      (page) => page.status !== t('connect_page.status_connected') && page.role === "ADMIN"
     );
     setSelectAll(
       selectablePages.length > 0 &&
         selectedPages.length === selectablePages.length
     );
-  }, [selectedPages, filteredPages]);
+  }, [selectedPages, filteredPages, t]);
 
   return (
     <div className="connect-page">
@@ -204,8 +206,7 @@ function ConnectPage() {
 
         {/* Status Info */}
         <div className="status-info">
-          Shop đã kết nối {connectedCount} pages, còn lại: {remainingCount}{" "}
-          pages
+          {t('connect_page.status_info', { connected: connectedCount, remaining: remainingCount })}
         </div>
 
         {/* Page Management Section */}
@@ -213,8 +214,7 @@ function ConnectPage() {
           {pages.length === 0 ? (
             <div className="empty-state">
               <p>
-                Không có Page nào để hiển thị. Hãy đăng nhập Facebook và cấp
-                quyền phù hợp.
+                {t('connect_page.empty_state')}
               </p>
             </div>
           ) : (
@@ -225,7 +225,7 @@ function ConnectPage() {
                   <input
                     type="text"
                     className="search-input"
-                    placeholder="Tìm page"
+                    placeholder={t('connect_page.search_placeholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -237,12 +237,12 @@ function ConnectPage() {
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                   >
-                    <option value="status">Trạng thái</option>
-                    <option value="connected">Đã kết nối</option>
-                    <option value="not-connected">Chưa kết nối</option>
+                    <option value="status">{t('connect_page.filter_status')}</option>
+                    <option value="connected">{t('connect_page.filter_connected')}</option>
+                    <option value="not-connected">{t('connect_page.filter_not_connected')}</option>
                   </select>
                   <span className="page-count">
-                    {filteredPages.length} pages
+                    {t('connect_page.pages_count', { count: filteredPages.length })}
                   </span>
                 </div>
               </div>
@@ -250,9 +250,9 @@ function ConnectPage() {
               {/* Page List Table */}
               <div className="page-list-table">
                 <div className="table-header">
-                  <div className="col-page-name">Tên Page</div>
-                  <div className="col-role">Quyền</div>
-                  <div className="col-status">Trạng thái</div>
+                  <div className="col-page-name">{t('connect_page.table_page_name')}</div>
+                  <div className="col-role">{t('connect_page.table_role')}</div>
+                  <div className="col-status">{t('connect_page.table_status')}</div>
                   <div className="col-select">
                     <input
                       type="checkbox"
@@ -262,7 +262,7 @@ function ConnectPage() {
                       disabled={
                         // Disable khi không còn checkbox nào có thể chọn (không connected và phải là ADMIN)
                         filteredPages.filter(
-                          (page) => page.status !== "Đã kết nối" && page.role === "ADMIN"
+                          (page) => page.status !== t('connect_page.status_connected') && page.role === "ADMIN"
                         ).length === 0
                       }
                     />
@@ -295,7 +295,7 @@ function ConnectPage() {
                       </div>
                     </div>
                     <div className="col-role">
-                      <span className="role-badge">{page.role}</span>
+                      <span className="role-badge">{t(`connect_page.roles.${page.role}`)}</span>
                     </div>
                     <div className="col-status">
                       <div className="status-info">
@@ -312,7 +312,7 @@ function ConnectPage() {
                         checked={selectedPages.includes(page.id)}
                         onChange={() => handlePageSelect(page.id)}
                         className="page-checkbox"
-                        disabled={page.status === "Đã kết nối" || page.role !== "ADMIN"}
+                        disabled={page.status === t('connect_page.status_connected') || page.role !== "ADMIN"}
                       />
                     </div>
                   </div>
@@ -326,7 +326,7 @@ function ConnectPage() {
                   onClick={handleConnectSelected}
                   disabled={selectedPages.length === 0}
                 >
-                  Kết nối {selectedPages.length}
+                  {t('connect_page.connect_button', { count: selectedPages.length })}
                 </button>
               </div>
             </>
@@ -335,13 +335,13 @@ function ConnectPage() {
 
         {/* Help Section */}
         <div className="help-section">
-          <h3 className="help-title">Bạn không nhìn thấy Fanpage?</h3>
+          <h3 className="help-title">{t('connect_page.help_title')}</h3>
           <p className="help-text">
-            Vui lòng làm mới quyền để cập nhật danh sách Page được phân quyền.
+            {t('connect_page.help_text')}
           </p>
           <button className="refresh-btn" onClick={handleRefresh}>
-            <span className="refresh-icon">↻</span>
-            LÀM MỚI KẾT NỐI
+            <span className="refresh-icon">↻ </span>
+            {t('connect_page.refresh_button')}
           </button>
         </div>
 
@@ -359,7 +359,7 @@ function ConnectPage() {
         <div className="back-section">
           <button className="back-btn" onClick={handleBackToList}>
             <span className="back-icon">←</span>
-            Về trang trước
+            {t('connect_page.back_button')}
           </button>
         </div>
       </div>

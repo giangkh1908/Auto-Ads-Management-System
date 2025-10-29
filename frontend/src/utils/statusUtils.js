@@ -8,7 +8,8 @@ export const translateStatus = (status) => {
       'PAUSED': 'Tạm dừng',
       'DELETED': 'Đã xóa',
       'ARCHIVED': 'Đã lưu trữ',
-      'IN_PROCESS': 'Đang xử lý',
+      'DRAFT': 'Bản nháp',
+      'FAILED': 'Thất bại',
       'WITH_ISSUES': 'Có vấn đề',
       'CAMPAIGN_PAUSED': 'Tạm dừng',
       'CAMPAIGN_ACTIVE': 'Hoạt động',
@@ -19,6 +20,7 @@ export const translateStatus = (status) => {
       'ADSET_DELETED': 'Đã xóa',
       'ADSET_ARCHIVED': 'Đã lưu trữ',
       'ADSET_IN_PROCESS': 'Đang xử lý',
+      
   
       // Ad statuses
       'AD_ACTIVE': 'Hoạt động',

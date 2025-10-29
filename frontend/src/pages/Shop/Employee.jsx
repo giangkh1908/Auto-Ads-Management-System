@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router-dom";
 import { Plus, Edit, Play, Pause, Hand } from "lucide-react";
 import { ROUTES } from "../../constants/app.constants";
 import "./Shop.css";
 
 function Employee() {
+  const { t } = useTranslation();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchEmail, setSearchEmail] = useState("");
@@ -71,9 +73,9 @@ function Employee() {
     <div className="shop-border">
       {/* Tabs/end để active đúng tại shop, ko ăn vào cái khác */}
       <div className="shop-tabs">
-        <NavLink end to={ROUTES.SHOP} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>My Shop</NavLink>
-        <NavLink to={ROUTES.SHOP_EMPLOYEE} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>Employee</NavLink>
-        <NavLink to={ROUTES.SHOP_HISTORY} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>History</NavLink>
+        <NavLink end to={ROUTES.SHOP} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>{t('shop.my_shop')}</NavLink>
+        <NavLink to={ROUTES.SHOP_EMPLOYEE} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>{t('shop.employee')}</NavLink>
+        <NavLink to={ROUTES.SHOP_HISTORY} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>{t('shop.history')}</NavLink>
       </div>
 
       <div className="shop-page">
@@ -84,7 +86,7 @@ function Employee() {
             <input
               type="text"
               className="filter-input"
-              placeholder="Search email..."
+              placeholder={t('shop.search_email')}
               value={searchEmail}
               onChange={(e) => setSearchEmail(e.target.value)}
             />
@@ -93,16 +95,16 @@ function Employee() {
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
             >
-              <option value="all">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-              <option value="saler">Saler</option>
+              <option value="all">{t('shop.all_roles')}</option>
+              <option value="admin">{t('shop.admin')}</option>
+              <option value="manager">{t('shop.manager')}</option>
+              <option value="saler">{t('shop.saler')}</option>
             </select>
           </div>
 
           <button className="btn-add-new-page" onClick={handleAddNewPage}>
             <Plus size={16} />
-            Add New Employee
+            {t('shop.add_new_employee')}
           </button>
         </div>
 
@@ -111,22 +113,22 @@ function Employee() {
           <div className="shop-content">
             {loading ? (
               <div className="loading-state">
-                <p>Loading employees...</p>
+                <p>{t('shop.loading_employees')}</p>
               </div>
             ) : (
               <div className="shops-table">
                 <div className="table-header-employee">
-                  <div className="table-cell">Name</div>
-                  <div className="table-cell">Email</div>
-                  <div className="table-cell">Page</div>
-                  <div className="table-cell">Role</div>
-                  <div className="table-cell">Status</div>
-                  <div className="table-cell">Action</div>
+                  <div className="table-cell">{t('shop.name')}</div>
+                  <div className="table-cell">{t('shop.email')}</div>
+                  <div className="table-cell">{t('shop.page_count')}</div>
+                  <div className="table-cell">{t('shop.role')}</div>
+                  <div className="table-cell">{t('shop.status')}</div>
+                  <div className="table-cell">{t('shop.action')}</div>
                 </div>
 
                 {filteredEmployees.map((employee) => (
                   <div key={employee.id} className="table-row-employee">
-                    <div className="table-cell" data-label="Name">
+                    <div className="table-cell" data-label={t('shop.name')}>
                       <div className="shop-name">
                         <div className="shop-avatar">
                           {employee.name.charAt(0)}
@@ -134,49 +136,49 @@ function Employee() {
                         <span>{employee.name}</span>
                       </div>
                     </div>
-                    <div className="table-cell" data-label="Email">
+                    <div className="table-cell" data-label={t('shop.email')}>
                       <span>{employee.email}</span>
                     </div>
-                    <div className="table-cell" data-label="Page">
+                    <div className="table-cell" data-label={t('shop.page_count')}>
                       <span className="employee-count">{employee.page}</span>
                     </div>
-                    <div className="table-cell" data-label="Role">
+                    <div className="table-cell" data-label={t('shop.role')}>
                       <span className="role-badge">{employee.role}</span>
                     </div>
-                    <div className="table-cell" data-label="Status">
+                    <div className="table-cell" data-label={t('shop.status')}>
                       <span
                         className={`status-badge status-${employee.status.toLowerCase()}`}
                       >
                         {employee.status}
                       </span>
                     </div>
-                    <div className="table-cell" data-label="Action">
+                    <div className="table-cell" data-label={t('shop.action')}>
                       <div className="action-buttons">
                         <button
                           className="shop-action-btn shop-update-btn"
                           onClick={() => handleAction(employee.id, "update")}
-                          title="Update"
+                          title={t('shop.update')}
                         >
                           <Edit size={14} />
                         </button>
                         <button
                           className="shop-action-btn shop-activate-btn"
                           onClick={() => handleAction(employee.id, "activate")}
-                          title="Activate"
+                          title={t('shop.activate')}
                         >
                           <Play size={14} />
                         </button>
                         <button
                           className="shop-action-btn shop-deactivate-btn"
                           onClick={() => handleAction(employee.id, "deactivate")}
-                          title="Deactivate"
+                          title={t('shop.deactivate')}
                         >
                           <Pause size={14} />
                         </button>
                         <button
                           className="shop-action-btn shop-upgrade-btn"
                           onClick={() => handleAction(employee.id, "relinquish")}
-                          title="Relinquish"
+                          title={t('shop.relinquish')}
                         >
                           <Hand size={14} />
                         </button>

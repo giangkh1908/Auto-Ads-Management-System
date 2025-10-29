@@ -1,16 +1,18 @@
 import React from 'react';
-import { AlertTriangle, Trash2, Archive, X, Play, Pause } from 'lucide-react';
+import { AlertTriangle, Trash2, Archive, X, Play, Pause, Save } from 'lucide-react';
 import './ConfirmationPopup.css';
 
 const ConfirmationPopup = ({ 
   isOpen, 
   onClose, 
   onConfirm, 
+  onDiscard, // ✅ THÊM MỚI: Callback cho nút "Không lưu"
   title, 
   message, 
   confirmText = "Xác nhận", 
   cancelText = "Hủy",
-  type = "delete", // "delete" | "archive" | "activate" | "deactivate"
+  discardText = "Không lưu", // ✅ THÊM MỚI
+  type = "delete", // "delete" | "archive" | "activate" | "deactivate" | "save-draft"
   isLoading = false 
 }) => {
   if (!isOpen) return null;
@@ -31,6 +33,8 @@ const ConfirmationPopup = ({
         return <Play size={24} className="confirmation-icon activate-icon" />;
       case 'deactivate':
         return <Pause size={24} className="confirmation-icon deactivate-icon" />;
+      case 'save-draft': // ✅ THÊM MỚI
+        return <Save size={24} className="confirmation-icon save-draft-icon" />;
       default:
         return <AlertTriangle size={24} className="confirmation-icon warning-icon" />;
     }
@@ -46,10 +50,15 @@ const ConfirmationPopup = ({
         return 'btn-confirm-activate';
       case 'deactivate':
         return 'btn-confirm-deactivate';
+      case 'save-draft': // ✅ THÊM MỚI
+        return 'btn-confirm-save-draft';
       default:
         return 'btn-confirm-default';
     }
   };
+
+  // ✅ THÊM: Kiểm tra có hiển thị 3 buttons không
+  const hasThreeButtons = type === 'save-draft' && onDiscard;
 
   return (
     <div className="confirmation-overlay" onClick={handleBackdropClick}>
@@ -72,7 +81,18 @@ const ConfirmationPopup = ({
           <p className="confirmation-message">{message}</p>
         </div>
         
-        <div className="confirmation-footer">
+        <div className={`confirmation-footer ${hasThreeButtons ? 'three-buttons' : ''}`}>
+          {/* ✅ Button "Không lưu" (chỉ hiển thị khi type = save-draft) */}
+          {hasThreeButtons && (
+            <button 
+              className="btn-discard" 
+              onClick={onDiscard}
+              disabled={isLoading}
+            >
+              {discardText}
+            </button>
+          )}
+          
           <button 
             className="btn-cancel" 
             onClick={onClose}
@@ -80,14 +100,15 @@ const ConfirmationPopup = ({
           >
             {cancelText}
           </button>
+          
           <button 
             className={`btn-confirm ${getConfirmButtonClass()}`}
             onClick={onConfirm}
             disabled={isLoading}
           >
             {isLoading ? (
-              <div className="loading-spinner">
-                <div className="spinner"></div>
+              <div className="loading-spinner-popup">
+                <div className="spinner-popup"></div>
                 <span>Đang xử lý...</span>
               </div>
             ) : (
