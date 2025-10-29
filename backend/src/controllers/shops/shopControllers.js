@@ -1,13 +1,39 @@
 import Shop from "../../models/shops/shop.model.js";
 import User from "../../models/user.model.js";
 import fetch from "node-fetch";
+import Log from "../../models/log.model.js";
+import UserRole from "../../models/userRole.model.js";
 
 //  Tạo Shop
 export const createShop = async (req, res) => {
   try {
-    const shop = new Shop(req.body);
+    if (!req.body.shop_name) {
+      return res.status(400).json({ message: "Shop name is required" });
+    }
+    if (!req.body.industry) {
+      return res.status(400).json({ message: "Category is required" });
+    }
+    const ownerId = req.user._id;
+    const shop = new Shop({ ...req.body, owner_id: ownerId });
     await shop.save();
-    res.status(201).json(shop);
+    res.status(201).json({
+      success: true,
+      message: "Shop created successfully",
+      shop,
+    });
+    console.log("Creating shop:", req.body);
+    // Ghi log hành động
+    // await Log.create({
+    //   user_id: req.user?._id || null, // nếu có middleware auth
+    //   shop_id: shop._id,
+    //   action: "CREATE_SHOP",
+    //   target_type: "Shop",
+    //   target_id: shop._id.toString(),
+    //   request: req.body,
+    //   response: shop,
+    //   success: true,
+    //   ip_address: req.ip,
+    // });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -38,14 +64,75 @@ export const getShopById = async (req, res) => {
   }
 };
 
+// Lấy tất cả shop theo owner_id
+export const getShopsByOwner = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1️⃣ Lấy danh sách user_roles theo user
+    const userRoles = await UserRole.find({ user_id: userId })
+      .populate("role_id", "role_name permissions")
+      .select("shop_id role_id");
+
+    if (!userRoles.length) {
+      return res.status(403).json({
+        success: false,
+        message: "User must have at least one role in a shop.",
+      });
+    }
+
+    // 2️⃣ Lấy danh sách shop_id mà user có quyền
+    const shopIds = userRoles.map((ur) => ur.shop_id);
+
+    // 3️⃣ Lấy thông tin các shop này
+    const shops = await Shop.find({ _id: { $in: shopIds } })
+      .populate({
+        path: "owner_id",
+        select: "full_name email phone",
+      })
+      .populate({
+        path: "user_roles",
+        populate: { path: "role_id", select: "role_name" },
+      });
+
+    // 4️⃣ Gắn role tương ứng với user hiện tại
+    const shopsWithUserRole = shops.map((shop) => {
+      const roleEntry = userRoles.find(
+        (ur) => ur.shop_id.toString() === shop._id.toString()
+      );
+      return {
+        ...shop.toObject(),
+        user_role: roleEntry.role_id, // chỉ lấy role_id đã populate có role_name
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: shopsWithUserRole,
+    });
+  } catch (error) {
+    console.error("❌ Error in getShopsByOwner:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 //  Update Shop
 export const updateShop = async (req, res) => {
   try {
-    const shop = await Shop.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
+    const { id } = req.params;
+    const updatedShop = await Shop.findByIdAndUpdate(id, req.body, {
+      new: true, // trả về bản ghi đã cập nhật
+      runValidators: true,
     });
-    if (!shop) return res.status(404).json({ message: "Shop not found" });
-    res.json(shop);
+    if (!updatedShop) return res.status(404).json({ message: "Shop not found" });
+    res.status(200).json({
+      success: true,
+      message: "Shop updated successfully",
+      data: updatedShop,
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -155,7 +242,7 @@ export const connectFacebookPage = async (req, res) => {
           picture_url: infoData?.picture?.data?.url || null,
         };
       }
-    } catch {}
+    } catch { }
 
     // Tìm shop và upsert vào mảng facebook_pages
     const shop = await Shop.findById(shopId);
@@ -237,7 +324,7 @@ export const refreshFacebookToken = async (req, res) => {
 
     console.log('🔄 Attempting to refresh Facebook token...');
     const refreshUrl = `https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${user.facebookAccessToken}`;
-    
+
     console.log('🔄 Refresh URL:', refreshUrl.replace(appSecret, '***SECRET***'));
 
     const fbResp = await fetch(refreshUrl);

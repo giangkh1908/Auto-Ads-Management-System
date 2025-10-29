@@ -17,6 +17,13 @@ const userRoleSchema = new mongoose.Schema(
 // Index
 userRoleSchema.index({ user_id: 1, role_id: 1, shop_id: 1 }, { unique: true });
 
+userRoleSchema.virtual("roles", {
+  ref: "Role",
+  localField: "role_id",
+  foreignField: "_id",
+  justOne: true
+});
+
 // Static: check permission
 userRoleSchema.statics.hasPermission = async function (userId, shopId, module, action) {
   const roles = await this.find({

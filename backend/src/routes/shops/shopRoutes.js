@@ -3,6 +3,7 @@ import {
     createShop, 
     getShops, 
     getShopById, 
+    getShopsByOwner,
     updateShop, 
     deleteShop, 
     activateShop, 
@@ -12,23 +13,25 @@ import {
     disconnectFacebookPage, 
     refreshFacebookToken 
 } from "../../controllers/shops/shopControllers.js";
-import { authenticate } from "../../middlewares/auth.middleware.js";
+import { authenticate, authorizeInShop } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
+router.use(authenticate);
 
 router.get("/", getShops);
-router.get("/facebook/pages", authenticate, getFacebookPages);
+router.get("/facebook/pages", getFacebookPages);
+router.get("/owner", getShopsByOwner);
 router.get("/:id", getShopById);
 
 router.post("/", createShop);
 
-router.put("/:id", updateShop);
+router.put("/:id", authorizeInShop("shop", "update_details"), updateShop);
 
 router.delete("/:id", deleteShop);
 
-router.patch("/:id/activate", activateShop);
+router.patch("/:id/activate", authorizeInShop("shop", "activate"), activateShop);
 
-router.patch("/:id/deactivate", deactivateShop);
+router.patch("/:id/deactivate", authorizeInShop("shop", "deactivate"), deactivateShop);
 
 // Facebook integration helpers
 router.post("/facebook/connect", authenticate, connectFacebookPage);

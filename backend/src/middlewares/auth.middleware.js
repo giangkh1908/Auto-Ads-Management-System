@@ -95,3 +95,47 @@ export const authorize = (moduleName, action) => {
     }
   };
 };
+
+/**
+ * 🔒 Middleware kiểm tra quyền truy cập trong shop cụ thể
+ * @param {String} module - Tên module (ví dụ: "shop", "product")
+ * @param {String} action - Hành động cụ thể (ví dụ: "create", "update", "delete", "view")
+ */
+export const authorizeInShop = (module, action) => {
+  return async (req, res, next) => {
+    try {
+      const shopId = req.params.id || req.body.shop_id;
+
+      if (!shopId) {
+        return res.status(400).json({ message: "Shop ID is required for this action." });
+      }
+
+      // Kiểm tra user có trong shop không
+      const userRole = await UserRole.findOne({
+        user_id: req.user._id,
+        shop_id: shopId,
+      }).populate("role_id");
+
+      if (!userRole) {
+        return res.status(403).json({ message: "You are not part of this shop." + 'ShopId: ' + shopId + 'UserId: ' + req.user._id });
+      }
+
+      // Kiểm tra quyền
+      const role = userRole.role_id;
+      const hasPermission = role.permissions.some(
+        (perm) => perm.module === module && perm.actions.includes(action)
+      );
+
+      if (!hasPermission) {
+        return res.status(403).json({
+          message: `Permission denied: You need '${module}.${action}' for this shop.`,
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error("Authorization error:", error);
+      res.status(500).json({ message: "Internal authorization error." });
+    }
+  };
+};

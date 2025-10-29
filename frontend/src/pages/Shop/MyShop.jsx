@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { Plus, Edit, Play, Pause, Star } from "lucide-react";
 import { ROUTES } from "../../constants/app.constants";
 import "./Shop.css";
+import { STORAGE_KEYS } from '../../constants/app.constants';
 
 function MyShop() {
   const [shops, setShops] = useState([]);
@@ -31,56 +32,115 @@ function MyShop() {
   });
 
   useEffect(() => {
-    const loadShops = async () => {
-      try {
-        setLoading(true);
-        // Mock data - thay thế bằng API call thực tế
-        const mockShops = [
-          {
-            id: 1,
-            shopName: "Fashion Store",
-            package: "Premium",
-            employeeCount: 5,
-            pageCount: 3,
-            role: "Owner",
-            expired: "2024-12-31",
-            status: "Active",
-          },
-          {
-            id: 2,
-            shopName: "Tech Shop",
-            package: "Basic",
-            employeeCount: 2,
-            pageCount: 1,
-            role: "Admin",
-            expired: "2024-11-15",
-            status: "Inactive",
-          },
-          {
-            id: 3,
-            shopName: "Beauty Store",
-            package: "Pro",
-            employeeCount: 8,
-            pageCount: 5,
-            role: "Manager",
-            expired: "2025-01-20",
-            status: "Active",
-          },
-        ];
-        setShops(mockShops);
-      } catch (e) {
-        console.error("Load shops error:", e);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadShops();
   }, []);
+
+  const loadShops = async () => {
+    try {
+      setLoading(true);
+
+      const res = await fetch(`http://localhost:5001/api/shops/owner`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
+        },
+      });
+
+      const data = await res.json();
+
+      console.log("🔹 API response:", data);
+
+      if (data.success && Array.isArray(data.data)) {
+        const formatted = data.data.map((shop) => {
+          const permissions = shop.user_role.permissions;
+          const canUpdate = permissions.some(
+            (perm) =>
+              perm.module === "shop" && perm.actions.includes("update_details")
+          );
+
+          return {
+            id: shop._id,
+            shopName: shop.shop_name || "Unnamed Shop",
+            package: shop.package || "Basic",
+            employeeCount: shop.employee_count || 0,
+            pageCount: shop.page_count || 0,
+            role: shop.user_role.role_name || "Owner",
+            email: shop.owner_id?.email || "",
+            phone: shop.owner_id?.phone || "",
+            expired: shop.expired_at
+              ? new Date(shop.expired_at).toISOString().slice(0, 10)
+              : "N/A",
+            status: shop.status || "Active",
+            canUpdate,
+          };
+        });
+
+        setShops(formatted);
+      } else {
+        console.error("Failed to load shops:", data.message);
+        setShops([]); // fallback an toàn
+      }
+    } catch (e) {
+      console.error("Load shops error:", e);
+      setShops([]); // tránh lỗi map nếu lỗi API
+    } finally {
+      setLoading(false);
+    }
+  };
 
   //Hành động với page
   const handleAction = (shopId, action) => {
     console.log(`Action ${action} for shop ${shopId}`);
   };
+
+  // Hành động với shop (Activate / Deactivate)
+  // const handleAction = async (shopId, action) => {
+  //   try {
+  //     let endpoint = "";
+  //     let successMessage = "";
+
+  //     if (action === "activate") {
+  //       endpoint = `http://localhost:5001/api/shops/${shopId}/activate`;
+  //       successMessage = "Shop activated successfully!";
+  //     } else if (action === "deactivate") {
+  //       endpoint = `http://localhost:5001/api/shops/${shopId}/deactivate`;
+  //       successMessage = "Shop deactivated successfully!";
+  //     } else {
+  //       console.log(`Unknown action: ${action}`);
+  //       return;
+  //     }
+
+  //     const res = await fetch(endpoint, {
+  //       method: "PATCH",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${localStorage.getItem("token")}`,
+  //       },
+  //     });
+
+  //     const data = await res.json();
+  //     if (data.success) {
+  //       alert(successMessage);
+  //       // 🔁 Refresh danh sách shop
+  //       const refresh = await fetch(
+  //         `http://localhost:5001/api/shops/owner/68ed2a2d64097dc1c878e714`,
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${localStorage.getItem("token")}`,
+  //           },
+  //         }
+  //       );
+  //       const refreshedData = await refresh.json();
+  //       setShops(refreshedData.data || refreshedData);
+  //     } else {
+  //       alert(data.message || "Failed to perform action");
+  //     }
+  //   } catch (err) {
+  //     console.error("Action error:", err);
+  //     alert("Server error while performing action");
+  //   }
+  // };
 
   //Thêm page mới
   const handleAddNewPage = () => {
@@ -126,8 +186,8 @@ function MyShop() {
           {activeTab === "info" && (
             <div className="shop-content">
               {loading ? (
-                <div className="loading-state">
-                  <p>Loading shops...</p>
+                <div className="empty-state">
+                  <p>You don’t have any shops yet. Click “Add New Shop” to create one!</p>
                 </div>
               ) : (
                 <div className="shops-table">
@@ -147,7 +207,7 @@ function MyShop() {
                       <div className="table-cell" data-label="Shop Name">
                         <div className="shop-name">
                           <div className="shop-avatar">
-                            {shop.shopName.charAt(0)}
+                            {shop?.shopName?.charAt(0)?.toUpperCase() || "?"}
                           </div>
                           <span>{shop.shopName}</span>
                         </div>
@@ -188,10 +248,8 @@ function MyShop() {
                               setUpdateForm({
                                 id: shop.id,
                                 shopName: shop.shopName,
-                                email: `${shop.shopName
-                                  .toLowerCase()
-                                  .replace(/\s+/g, "")}@example.com`,
-                                phone: "",
+                                email: shop.email,
+                                phone: shop.phone,
                                 category: (
                                   shop.package || "other"
                                 ).toLowerCase(),
@@ -199,23 +257,28 @@ function MyShop() {
                               setIsUpdateOpen(true);
                             }}
                             title="Update"
+                            disabled={!shop.canUpdate}
+                            style={{
+                              opacity: shop.canUpdate ? 1 : 0.5,
+                              cursor: shop.canUpdate ? "pointer" : "not-allowed",
+                            }}
                           >
                             <Edit size={14} />
                           </button>
-                          <button
-                            className="shop-action-btn shop-activate-btn"
-                            onClick={() => handleAction(shop.id, "activate")}
-                            title="Activate"
-                          >
-                            <Play size={14} />
-                          </button>
-                          <button
-                            className="shop-action-btn shop-deactivate-btn"
-                            onClick={() => handleAction(shop.id, "deactivate")}
-                            title="Deactivate"
-                          >
-                            <Pause size={14} />
-                          </button>
+                          {/* <button
+                              className="shop-action-btn shop-activate-btn"
+                              onClick={() => handleAction(shop.id, "activate")}
+                              title="Activate"
+                            >
+                              <Play size={14} />
+                            </button>
+                            <button
+                              className="shop-action-btn shop-deactivate-btn"
+                              onClick={() => handleAction(shop.id, "deactivate")}
+                              title="Deactivate"
+                            > */}
+                          {/* <Pause size={14} />
+                            </button> */}
                           <button
                             className="shop-action-btn shop-upgrade-btn"
                             onClick={() => handleAction(shop.id, "upgrade")}
@@ -313,9 +376,37 @@ function MyShop() {
               </button>
               <button
                 className="btn-primary-shop"
-                onClick={() => {
-                  console.log("Submit Add:", addForm);
-                  setIsAddOpen(false);
+                onClick={async () => {
+                  try {
+                    const payload = {
+                      shop_name: addForm.shopName,
+                      industry: addForm.category,
+                    };
+
+                    console.log("Submit Add:", payload);
+
+                    const res = await fetch("http://localhost:5001/api/shops/", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
+                      },
+                      body: JSON.stringify(payload),
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                      alert("Shop created successfully!");
+                      setIsAddOpen(false);
+                      // 👉 Gọi lại API để refresh danh sách
+                      await loadShops();
+                    } else {
+                      alert(data.message || "Failed to create shop");
+                    }
+                  } catch (err) {
+                    console.error("Error:", err);
+                    alert("Server error");
+                  }
                 }}
               >
                 Create
@@ -359,9 +450,7 @@ function MyShop() {
                   type="email"
                   className="modal-input"
                   value={updateForm.email}
-                  onChange={(e) =>
-                    setUpdateForm({ ...updateForm, email: e.target.value })
-                  }
+                  readOnly
                 />
               </div>
               <div className="form-field">
@@ -371,9 +460,7 @@ function MyShop() {
                   type="tel"
                   className="modal-input"
                   value={updateForm.phone}
-                  onChange={(e) =>
-                    setUpdateForm({ ...updateForm, phone: e.target.value })
-                  }
+                  readOnly
                 />
               </div>
 
@@ -404,9 +491,36 @@ function MyShop() {
               </button>
               <button
                 className="btn-primary-shop"
-                onClick={() => {
-                  console.log("Submit Update:", updateForm);
-                  setIsUpdateOpen(false);
+                onClick={async () => {
+                  try {
+                    const payload = {
+                      shop_name: updateForm.shopName,
+                      industry: updateForm.category,
+                    };
+
+                    const res = await fetch(`http://localhost:5001/api/shops/${updateForm.id}`, {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
+                      },
+                      body: JSON.stringify(payload),
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                      alert("Shop updated successfully!");
+                      setIsUpdateOpen(false);
+
+                      // 🔁 Refresh danh sách shop
+                      await loadShops();
+                    } else {
+                      alert(data.message || "Failed to update shop");
+                    }
+                  } catch (err) {
+                    console.error("Error updating shop:", err);
+                    alert("Server error while updating shop");
+                  }
                 }}
               >
                 Update
