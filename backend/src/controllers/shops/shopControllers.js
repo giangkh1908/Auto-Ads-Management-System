@@ -51,26 +51,6 @@ export const getShops = async (req, res) => {
   }
 };
 
-//  Lấy các shop của user hiện tại
-export const getMyShops = async (req, res) => {
-  try {
-    const shops = await Shop.find({ owner_id: req.user._id })
-      .populate("owner_id", "name email")
-      .populate("salesman_id", "name email");
-    
-    res.json({
-      success: true,
-      items: shops,
-      total: shops.length
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    });
-  }
-};
-
 //  Lấy Shop theo ID
 export const getShopById = async (req, res) => {
   try {
@@ -89,7 +69,7 @@ export const getShopsByOwner = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // 1️⃣ Lấy danh sách user_roles theo user
+    // Lấy danh sách user_roles theo user
     const userRoles = await UserRole.find({ user_id: userId })
       .populate("role_id", "role_name permissions")
       .select("shop_id role_id");
@@ -101,10 +81,10 @@ export const getShopsByOwner = async (req, res) => {
       });
     }
 
-    // 2️⃣ Lấy danh sách shop_id mà user có quyền
+    // Lấy danh sách shop_id mà user có quyền
     const shopIds = userRoles.map((ur) => ur.shop_id);
 
-    // 3️⃣ Lấy thông tin các shop này
+    // Lấy thông tin các shop này
     const shops = await Shop.find({ _id: { $in: shopIds } })
       .populate({
         path: "owner_id",
@@ -115,7 +95,7 @@ export const getShopsByOwner = async (req, res) => {
         populate: { path: "role_id", select: "role_name" },
       });
 
-    // 4️⃣ Gắn role tương ứng với user hiện tại
+    // Gắn role tương ứng với user hiện tại
     const shopsWithUserRole = shops.map((shop) => {
       const roleEntry = userRoles.find(
         (ur) => ur.shop_id.toString() === shop._id.toString()
@@ -131,7 +111,7 @@ export const getShopsByOwner = async (req, res) => {
       data: shopsWithUserRole,
     });
   } catch (error) {
-    console.error("❌ Error in getShopsByOwner:", error);
+    console.error("Error in getShopsByOwner:", error);
     res.status(500).json({
       success: false,
       message: error.message,
