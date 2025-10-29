@@ -254,7 +254,7 @@ export function useFlexibleWizardPublish() {
               ...buildAdsetPayload(adset, campaign),
               ads: filteredAds.map((ad) => ({
                 ...buildAdPayload(ad),
-                creative: buildCreativePayload(ad, campaign),
+                creative: buildCreativePayload(ad, campaign, adset),
               })),
             };
           }),
@@ -386,7 +386,7 @@ export function useFlexibleWizardPublish() {
             const adPayload = {
               ad_account_id: selectedAccountId,
               adsetId: adsetResult.adsetId,
-              creative: buildCreativePayload(ad, campaign),
+              creative: buildCreativePayload(ad, campaign, adset),
               ad: buildAdPayload(ad),
               dry_run: false,
             };
@@ -501,7 +501,7 @@ export function useFlexibleWizardPublish() {
                 external_id: ad.external_id,
                 draftId: ad.draftId,
                 ...buildAdPayload(ad),
-                creative: buildCreativePayload(ad, campaign),
+                creative: buildCreativePayload(ad, campaign, adset),
               })),
             };
           }),
@@ -629,17 +629,35 @@ function buildAdsetPayload(adset, campaign) {
     billing_event: adset.billing_event,
     bid_strategy: adset.bid_strategy,
     bid_amount: adset.bid_amount,
+    ...(adset.promoted_object && { promoted_object: adset.promoted_object }),
+    ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
+    ...(adset.destination_type && { destination_type: adset.destination_type }),
   };
 }
 
 /**
  * Xây dựng payload cho Creative
  */
-function buildCreativePayload(ad, campaign) {
+function buildCreativePayload(ad, campaign, adset) {
+  // Ưu tiên page_id từ sources khác nhau:
+  // 1. adset.facebookPageId (từ ENGAGEMENT/LEADS/AWARENESS/SALES page selector)
+  // 2. adset.promoted_object.page_id (từ TRAFFIC MESSAGING hoặc SALES)
+  // 3. campaign.facebookPageId (fallback từ campaign, nếu có)
+  let pageId = adset?.facebookPageId || 
+               adset?.promoted_object?.page_id || 
+               campaign?.facebookPageId;
+  
+  if (!pageId) {
+    console.warn(
+      "⚠️ WARNING: Creative payload thiếu page_id! " +
+      "Đảm bảo rằng user đã chọn Facebook Page (AdsetStep) hoặc điền Messaging Page ID."
+    );
+  }
+  
   return {
     name: ad.name,
     object_story_spec: {
-      page_id: campaign.facebookPageId || "fb_page_id_placeholder",
+      page_id: pageId,
       link_data: {
         message: ad.primaryText,
         link: ad.destinationUrl || "https://fchat.vn",

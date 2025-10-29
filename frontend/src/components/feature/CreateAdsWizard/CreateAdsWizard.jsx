@@ -319,7 +319,6 @@ function CreateAdsWizard({
                 setCampaignsList={setCampaignsList}
                 selectedCampaignIndex={selectedCampaignIndex}
                 setSelectedCampaignIndex={setSelectedCampaignIndex}
-                facebookPages={facebookPages}
               />
             )}
 
@@ -333,6 +332,8 @@ function CreateAdsWizard({
                 objective={campaign.objective}
                 adsetsList={adsetsList}
                 setAdsetsList={setAdsetsList}
+                facebookPages={facebookPages}
+                campaign={campaign}
               />
             )}
 
@@ -342,6 +343,7 @@ function CreateAdsWizard({
                 ref={adRef}
                 ad={ad}
                 setAd={setAd}
+                adset={adset}
                 mode={mode}
                 campaign={campaign}
                 adsList={adsList}

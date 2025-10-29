@@ -462,6 +462,21 @@ export async function syncCampaignsFromFacebook(accessToken, adAccountId) {
         console.error(`Error upserting campaign ${c.id}:`, err.message);
       }
     }
+    // Reconcile: soft-delete campaigns that no longer exist on Facebook for this account
+    try {
+      const fetchedIds = new Set(campaigns.map((c) => c.id));
+      const now = new Date();
+      await AdsCampaign.updateMany(
+        {
+          external_account_id: withoutPrefix,
+          external_id: { $nin: Array.from(fetchedIds) },
+          status: { $ne: "DELETED" },
+        },
+        { $set: { status: "DELETED", deleted_at: now } }
+      );
+    } catch (reconcileErr) {
+      console.warn("⚠️ Reconcile campaigns failed:", reconcileErr?.message || reconcileErr);
+    }
 
     return results;
   } catch (err) {
@@ -527,6 +542,21 @@ export async function syncAdSetsFromFacebook(accessToken, adAccountId) {
         console.error(`Error upserting adset ${s.id}:`, err.message);
       }
     }
+    // Reconcile: soft-delete adsets that no longer exist on Facebook for this account
+    try {
+      const fetchedIds = new Set(adsets.map((s) => s.id));
+      const now = new Date();
+      await AdsSet.updateMany(
+        {
+          external_account_id: withoutPrefix,
+          external_id: { $nin: Array.from(fetchedIds) },
+          status: { $ne: "DELETED" },
+        },
+        { $set: { status: "DELETED", deleted_at: now } }
+      );
+    } catch (reconcileErr) {
+      console.warn("⚠️ Reconcile adsets failed:", reconcileErr?.message || reconcileErr);
+    }
 
     return results;
   } catch (err) {
@@ -584,6 +614,21 @@ export async function syncAdsFromFacebook(accessToken, adAccountId) {
       } catch (err) {
         console.error(`Error upserting ad ${a.id}:`, err.message);
       }
+    }
+    // Reconcile: soft-delete ads that no longer exist on Facebook for this account
+    try {
+      const fetchedIds = new Set(ads.map((a) => a.id));
+      const now = new Date();
+      await Ads.updateMany(
+        {
+          external_account_id: withoutPrefix,
+          external_id: { $nin: Array.from(fetchedIds) },
+          status: { $ne: "DELETED" },
+        },
+        { $set: { status: "DELETED", deleted_at: now } }
+      );
+    } catch (reconcileErr) {
+      console.warn("⚠️ Reconcile ads failed:", reconcileErr?.message || reconcileErr);
     }
 
     return results;

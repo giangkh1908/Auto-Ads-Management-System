@@ -67,9 +67,7 @@ function FooterWizard({
               }
               disabled={
                 (wizardStep === 1 &&
-                  (!campaign?.name ||
-                    campaign.name.trim() === "" ||
-                    !campaign?.facebookPageId)) ||
+                  (!campaign?.name || campaign.name.trim() === "")) ||
                 (wizardStep === 2 &&
                   (!adset?.name || adset.name.trim() === "")) ||
                 (wizardStep === 3 &&
@@ -81,10 +79,8 @@ function FooterWizard({
               }
               title={
                 wizardStep === 1
-                  ? !campaign?.name ||
-                    campaign.name.trim() === "" ||
-                    !campaign?.facebookPageId
-                    ? "Vui lòng nhập tên chiến dịch và chọn Trang Facebook"
+                  ? !campaign?.name || campaign.name.trim() === ""
+                    ? "Vui lòng nhập tên chiến dịch"
                     : undefined
                   : wizardStep === 2
                   ? !adset?.name || adset.name.trim() === ""
