@@ -160,8 +160,8 @@ function Header({ onLoginClick }) {
             </button>
 
             <button
-              className={`nav-btn ${pathname === "/package" ? "active" : ""}`}
-              onClick={() => navigate("/package")}
+              className={`nav-btn ${pathname === "/service-package" ? "active" : ""}`}
+              onClick={() => navigate("/service-package")}
             >
               <Package size={18} />
               &nbsp;{t("header.package")}
