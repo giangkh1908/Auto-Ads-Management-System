@@ -1,7 +1,6 @@
-
 // controllers/ads/adsSet.controller.js
 import AdsSet from "../../models/ads/adsSet.model.js";
-import { syncAdSetsFromFacebook, fetchAdsetsFromFacebook, updateAdsetStatus, deleteEntity } from "../../services/fbAdsService.js";
+import { syncAdSetsFromFacebook, fetchAdsetsFromFacebook, updateAdsetStatus, deleteEntity, fetchInsightsForEntities } from "../../services/fbAdsService.js";
 import User from "../../models/user.model.js";
 import Ads from "../../models/ads/ads.model.js";
 
@@ -335,5 +334,45 @@ export async function copyAdsetCascadeCtrl(req, res) {
   } catch (err) {
     console.error("❌ Copy AdSet cascade lỗi:", err);
     return res.status(500).json({ message: "Copy thất bại", error: err.message });
+  }
+}
+
+/**
+ * GET /api/adsets/insights
+ * Lấy insights cho nhiều adsets từ Facebook
+ */
+export async function getAdsetInsightsCtrl(req, res) {
+  try {
+    const { ids } = req.query;
+    if (!ids) {
+      return res.status(400).json({ message: "Thiếu danh sách IDs" });
+    }
+
+    const adsetIds = ids.split(',');
+
+    // Lấy token người dùng hiện tại
+    const user = await User.findById(req.user?._id).select("+facebookAccessToken");
+    const accessToken = user?.facebookAccessToken;
+    if (!accessToken) {
+      return res.status(401).json({ message: "Thiếu access token Facebook" });
+    }
+
+    // Gọi service để lấy insights
+    const insightsData = await fetchInsightsForEntities(adsetIds, accessToken);
+
+    // Map lại data để FE dễ xử lý: { id: '...', insights: {...} }
+    const items = insightsData.map(item => ({
+      id: item.id,
+      insights: item.insights?.data?.[0] || {}
+    }));
+
+    return res.status(200).json({ items });
+
+  } catch (err) {
+    console.error("GET Adset Insights error:", err.response?.data || err.message);
+    return res.status(500).json({ 
+      message: "Không thể lấy dữ liệu insights", 
+      detail: err.response?.data || err.message 
+    });
   }
 }

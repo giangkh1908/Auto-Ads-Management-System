@@ -99,14 +99,15 @@ export async function listAdsCtrl(req, res) {
     // Xây dựng filter
     const filter = {};
 
-    // ✅ Luôn loại bỏ items đã DELETED ở backend
     filter.status = { $ne: "DELETED" };
-    
     if (account_id) {
       // Hỗ trợ cả định dạng có act_ và không có act_
       const normalizedId = account_id.startsWith("act_")
         ? account_id.substring(4)
         : account_id;
+      filter.external_account_id = {
+        $in: [normalizedId, `act_${normalizedId}`],
+      };
       filter.external_account_id = {
         $in: [normalizedId, `act_${normalizedId}`],
       };
@@ -165,6 +166,8 @@ export async function syncAdsCtrl(req, res) {
 
     if (!accessToken) {
       return res.status(400).json({
+        message:
+          "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
         message:
           "Không tìm thấy Facebook access_token. Vui lòng đăng nhập lại.",
         missingToken: true,

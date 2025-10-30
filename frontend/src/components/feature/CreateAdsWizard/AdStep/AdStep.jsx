@@ -1,4 +1,4 @@
-import { useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import {
   Circle,
   Image,
@@ -16,7 +16,7 @@ import "./AdStep.css";
 import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
 
-function AdStepInner({ ad, setAd }, ref) {
+function AdStepInner({ ad, setAd, adset }, ref) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [showAIGeneration, setShowAIGeneration] = useState(false);
@@ -26,7 +26,119 @@ function AdStepInner({ ad, setAd }, ref) {
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const toast = useToast();
 
+  // Get detailed requirements and guidance based on destination_type
+  const getDestinationGuidance = () => {
+    const destType = adset?.destination_type;
+    const optimizationGoal = adset?.optimization_goal;
+    
+    switch(destType) {
+      case 'ON_VIDEO':
+        return {
+          title: '🎬 Mục tiêu: Lượt xem video',
+          mediaType: 'video',
+          mediaLabel: 'Video',
+          mediaAccept: 'video/*',
+          mediaDescription: '⚠️ BẮT BUỘC upload video',
+          requirements: [
+            '✅ Video phải hấp dẫn trong 3 giây đầu',
+            '✅ Độ dài khuyến nghị: 15-60 giây',
+            '✅ Định dạng: MP4, MOV (tối đa 4GB)',
+            '✅ Tỷ lệ: 9:16 (Stories), 1:1 (Feed), 16:9 (Landscape)',
+          ],
+          ctaRecommendations: ['Xem thêm', 'Tìm hiểu thêm', 'Xem ngay'],
+          destinationNote: 'URL đích sẽ hiển thị khi người dùng nhấp vào video hoặc CTA'
+        };
+        
+      case 'ON_POST':
+        return {
+          title: '💬 Mục tiêu: Tương tác bài viết',
+          mediaType: 'image-or-video',
+          mediaLabel: 'Ảnh hoặc Video',
+          mediaAccept: 'image/*,video/*',
+          mediaDescription: '📸 Ảnh hoặc video để tăng tương tác',
+          requirements: [
+            '✅ Nội dung văn bản phải khuyến khích tương tác (like, comment, share)',
+            '✅ Ảnh: Độ phân giải tối thiểu 1080x1080px',
+            '✅ Video: Độ dài 15-30 giây cho tương tác tốt nhất',
+            '✅ Sử dụng câu hỏi hoặc call-to-action trong văn bản',
+          ],
+          ctaRecommendations: ['Tìm hiểu thêm', 'Xem thêm', 'Liên hệ ngay'],
+          destinationNote: 'Tập trung vào engagement, URL đích là phụ (có thể dẫn đến trang fanpage hoặc website)'
+        };
+        
+      case 'ON_PAGE':
+        return {
+          title: '👍 Mục tiêu: Lượt thích trang',
+          mediaType: 'image-or-video',
+          mediaLabel: 'Ảnh hoặc Video',
+          mediaAccept: 'image/*,video/*',
+          mediaDescription: '📸 Ảnh/video giới thiệu trang của bạn',
+          requirements: [
+            '✅ Nội dung phải thể hiện rõ giá trị của trang Facebook',
+            '✅ Highlight những lợi ích khi like trang (cập nhật, ưu đãi...)',
+            '✅ Ảnh cover hoặc logo trang nên xuất hiện',
+            '✅ Văn bản chính: Mô tả ngắn gọn về trang',
+          ],
+          ctaRecommendations: ['Thích trang', 'Theo dõi', 'Tìm hiểu thêm'],
+          destinationNote: '🎯 Quảng cáo sẽ hiển thị nút "Thích trang" trực tiếp, URL đích thường là link trang Facebook'
+        };
+        
+      case 'ON_EVENT':
+        return {
+          title: '📅 Mục tiêu: Phản hồi sự kiện',
+          mediaType: 'image-or-video',
+          mediaLabel: 'Ảnh hoặc Video',
+          mediaAccept: 'image/*,video/*',
+          mediaDescription: '🎉 Ảnh/video về sự kiện',
+          requirements: [
+            '✅ Hiển thị rõ thông tin sự kiện (ngày, giờ, địa điểm)',
+            '✅ Sử dụng ảnh chất lượng cao về venue hoặc sự kiện tương tự',
+            '✅ Văn bản chính: Mô tả highlights của sự kiện',
+            '✅ Tạo cảm giác FOMO (Fear of Missing Out)',
+          ],
+          ctaRecommendations: ['Quan tâm', 'Tham gia', 'Xem sự kiện'],
+          destinationNote: '🎯 Quảng cáo sẽ hiển thị nút phản hồi sự kiện (Quan tâm/Tham gia), URL đích thường là link sự kiện Facebook'
+        };
+        
+      case 'MESSAGING_APPS':
+        return {
+          title: '💬 Mục tiêu: Bắt đầu hội thoại',
+          mediaType: 'image-or-video',
+          mediaLabel: 'Ảnh hoặc Video',
+          mediaAccept: 'image/*,video/*',
+          mediaDescription: '💬 Ảnh/video khuyến khích nhắn tin',
+          requirements: [
+            '✅ Nội dung phải khuyến khích người dùng nhắn tin (Hỏi, Tư vấn, Hỗ trợ...)',
+            '✅ Văn bản chính: Đề cập rõ lợi ích khi nhắn tin (tư vấn miễn phí, ưu đãi...)',
+            '✅ Ảnh nên thể hiện sự thân thiện, sẵn sàng hỗ trợ',
+            '✅ Chuẩn bị auto-reply hoặc chatbot để phản hồi nhanh',
+          ],
+          ctaRecommendations: ['Nhắn tin', 'Liên hệ ngay', 'Chat ngay'],
+          destinationNote: '🎯 Quảng cáo sẽ có nút "Nhắn tin" mở Messenger, URL đích không quan trọng (có thể để link fanpage)'
+        };
+        
+      default:
+        return {
+          title: '📢 Tạo quảng cáo',
+          mediaType: 'image-or-video',
+          mediaLabel: 'Ảnh hoặc Video',
+          mediaAccept: 'image/*,video/*',
+          mediaDescription: 'Hỗ trợ ảnh hoặc video',
+          requirements: [
+            '✅ Nội dung phải rõ ràng, hấp dẫn',
+            '✅ Ảnh: Độ phân giải tối thiểu 1080x1080px',
+            '✅ Video: Độ dài 15-60 giây',
+          ],
+          ctaRecommendations: ['Tìm hiểu thêm', 'Xem thêm'],
+          destinationNote: 'URL đích là trang bạn muốn người dùng truy cập'
+        };
+    }
+  };
+
+  const guidance = getDestinationGuidance();
+
   // AI context tracking
+  const [aiProvider, setAiProvider] = useState('openai');
   const [contextId, setContextId] = useState(null);
   const [isGenerating, setIsGenerating] = useState({
     headline: false,
@@ -90,11 +202,13 @@ function AdStepInner({ ad, setAd }, ref) {
       setIsGenerating(prev => ({ ...prev, [field]: true }));
 
       const target = field === 'primaryText' ? 'body' : field;
-
+      const model =
+        aiProvider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini';
       const response = await axiosInstance.post('/api/ai/generate-text', {
         context_id: contextId,
         target,
-        constraints: { max_len: maxLength }
+        constraints: { max_len: maxLength },
+        model
       });
 
       if (response.data && response.data.success) {
@@ -129,12 +243,14 @@ function AdStepInner({ ad, setAd }, ref) {
     try {
       setIsGeneratingImages(true);
       setShowAIGeneration(true);
-
+      const model =
+        aiProvider === 'gemini' ? 'gemini-2.5-flash-image' : 'dall-e-2';
       // Gọi API để tạo hình ảnh dựa trên context_id sẵn có
       const response = await axiosInstance.post('/api/ai/images/generate', {
         context_id: contextId,
         count: 4, // Số lượng ảnh cần tạo
-        aspect_ratio: '1:1' // Tỉ lệ khung hình
+        aspect_ratio: '1:1', // Tỉ lệ khung hình
+        model
       }, {
         timeout: 60000 // 60 giây
       }
@@ -245,18 +361,58 @@ function AdStepInner({ ad, setAd }, ref) {
         const okMedia = !!ad?.mediaUrl;
         const okUrl =
           !!ad?.destinationUrl && String(ad.destinationUrl).trim() !== "";
+        
+        // Validate media type matches destination_type requirements
+        let okMediaType = true;
+        if (okMedia && guidance.mediaType === 'video' && ad.media !== 'video') {
+          toast.warning("Mục tiêu xem video yêu cầu upload file video");
+          okMediaType = false;
+        }
+        
         if (!okName) validateNonEmpty(ad.name, "tên quảng cáo", toast);
         if (!okMedia) toast.warning("Vui lòng chọn file phương tiện");
         if (!okUrl) validateNonEmpty(ad.destinationUrl, "URL đích", toast);
-        return okName && okMedia && okUrl;
+        return okName && okMedia && okMediaType && okUrl;
       },
     }),
-    [ad, toast]
+    [ad, toast, guidance]
   );
 
   return (
     <div className="ad-step">
       <div className="config-scroll-container">
+        {/* Guidance Banner */}
+        {adset?.destination_type && (
+          <div style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '24px',
+            color: 'white',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>
+              {guidance.title}
+            </h3>
+            <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', opacity: 0.9 }}>
+                📋 Yêu cầu nội dung:
+              </h4>
+              {guidance.requirements.map((req, idx) => (
+                <div key={idx} style={{ fontSize: '13px', marginBottom: '6px', lineHeight: '1.6' }}>
+                  {req}
+                </div>
+              ))}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '12px', fontSize: '13px' }}>
+              <strong>💡 Gợi ý CTA:</strong> {guidance.ctaRecommendations.join(', ')}
+            </div>
+            <div style={{ marginTop: '12px', fontSize: '12px', fontStyle: 'italic', opacity: 0.85 }}>
+              ℹ️ {guidance.destinationNote}
+            </div>
+          </div>
+        )}
+
         <div className="btn-generate-ai-container">
           <button
             className="btn-generate-ai"
@@ -278,16 +434,24 @@ function AdStepInner({ ad, setAd }, ref) {
                 "English": "en",
                 "中文": "zh"
               };
-
-              const mainKeywords = config.mainKeywords.split(',')
-                .map(kw => kw.trim())
-                .filter(kw => kw.length > 0);
+              const toArray = (v) =>
+                Array.isArray(v)
+                  ? v
+                  : String(v || '')
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean);
+              const mainKeywords = [
+                ...toArray(config.mainKeywords),
+                ...toArray(config.synonymousKeywords),
+                ...toArray(config.main_keywords),           // phòng trường hợp FE đã gửi dạng array
+              ];
 
               if (mainKeywords.length === 0) {
                 toast.warning("Vui lòng nhập ít nhất một từ khóa chính");
                 return;
               }
-
+              setAiProvider(config.ai_provider || 'openai');
               // Gọi API để xác nhận context
               axiosInstance.post('/api/ai/context/confirm', {
                 language: languageMap[config.language] || "vi",
@@ -492,7 +656,10 @@ function AdStepInner({ ad, setAd }, ref) {
 
             {/* Media File */}
             <div className="field-group">
-              <label className="field-label">* File phương tiện</label>
+              <label className="field-label">* File phương tiện ({guidance.mediaLabel})</label>
+              <small style={{ display: 'block', marginBottom: '8px', color: '#6b7280', fontSize: '13px' }}>
+                {guidance.mediaDescription}
+              </small>
               <div className="media-buttons-container">
                 <button
                   className="media-button upload-button"
@@ -505,26 +672,28 @@ function AdStepInner({ ad, setAd }, ref) {
                     ? "Đang tải lên..."
                     : ad.mediaUrl
                       ? "Đã chọn file"
-                      : "Thêm file phương tiện"}
+                      : `Thêm ${guidance.mediaLabel.toLowerCase()}`}
                 </button>
-                <button
-                  className="media-button ai-button"
-                  onClick={() => {
-                    if (!contextId) {
-                      toast.warning("Vui lòng thiết lập AI trước", {
-                        description: "Hãy nhấn 'Tạo bằng AI' để thiết lập tham số AI",
-                      });
-                      return;
-                    }
+                {guidance.mediaType !== 'video' && (
+                  <button
+                    className="media-button ai-button"
+                    onClick={() => {
+                      if (!contextId) {
+                        toast.warning("Vui lòng thiết lập AI trước", {
+                          description: "Hãy nhấn 'Tạo bằng AI' để thiết lập tham số AI",
+                        });
+                        return;
+                      }
 
-                    // Gọi hàm tạo ảnh ngay lập tức
-                    generateAIImages();
-                  }}
-                  disabled={uploading || isGeneratingImages}
-                >
-                  <Image size={18} className="button-icon" />
-                  {isGeneratingImages ? "Đang tạo ảnh..." : "AI tạo ảnh"}
-                </button>
+                      // Gọi hàm tạo ảnh ngay lập tức
+                      generateAIImages();
+                    }}
+                    disabled={uploading || isGeneratingImages}
+                  >
+                    <Image size={18} className="button-icon" />
+                    {isGeneratingImages ? "Đang tạo ảnh..." : "AI tạo ảnh"}
+                  </button>
+                )}
               </div>
 
               {/* AI Generation Section */}
@@ -532,12 +701,16 @@ function AdStepInner({ ad, setAd }, ref) {
                 <div className="ai-generation-section">
                   <div className="ai-images-grid">
                     {isGeneratingImages ? (
-                      // Loading placeholders
-                      Array.from({ length: 4 }, (_, i) => (
-                        <div key={`loading-${i}`} className="ai-image-cell loading">
-                          <div className="loading-spinner"></div>
+                      // Loading text with wave effect
+                      <div className="loading-wave-container">
+                        <div className="loading-wave-text">
+                          {'Vui lòng chờ đợi...'.split('').map((char, index) => (
+                            <span key={index} style={{ animationDelay: `${index * 0.1}s` }}>
+                              {char === ' ' ? '\u00A0' : char}
+                            </span>
+                          ))}
                         </div>
-                      ))
+                      </div>
                     ) : (
                       // Rendered images
                       aiImages.map((image) => (
@@ -586,7 +759,7 @@ function AdStepInner({ ad, setAd }, ref) {
               <input
                 className="image-input"
                 type="file"
-                accept="image/*,video/*"
+                accept={guidance.mediaAccept}
                 ref={fileInputRef}
                 onChange={handleFileSelect}
               />

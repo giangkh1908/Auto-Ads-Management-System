@@ -275,22 +275,8 @@ export function useFlexibleWizardPublish() {
               external_id: adset.external_id,
               ...buildAdsetPayload(adset, campaign, user?._id),
               ads: filteredAds.map((ad) => ({
-                // ✅ CHỈ gửi _id và draftId nếu là ObjectId hợp lệ (không phải temp_xxx)
-                ...(isValidMongoId(ad._id) && { _id: ad._id }),
-                ...(isValidMongoId(ad.draftId) && { draftId: ad.draftId }),
-                external_id: ad.external_id,
-                ...buildAdPayload(ad, user?._id),
-                creative: {
-                  // ✅ CHỈ gửi các ID hợp lệ
-                  ...(isValidMongoId(ad.creative_id || ad.creative?._id) && {
-                    _id: ad.creative_id || ad.creative?._id
-                  }),
-                  ...(isValidMongoId(ad.creativeDraftId || ad.creative?.draftId) && {
-                    draftId: ad.creativeDraftId || ad.creative?.draftId
-                  }),
-                  external_id: ad.creative?.external_id,
-                  ...buildCreativePayload(ad, campaign, user?._id),
-                },
+                ...buildAdPayload(ad),
+                creative: buildCreativePayload(ad, campaign, adset),
               })),
             };
           }),
@@ -491,8 +477,8 @@ export function useFlexibleWizardPublish() {
             const adPayload = {
               ad_account_id: selectedAccountId,
               adsetId: adsetResult.adsetId,
-              creative: buildCreativePayload(ad, campaign, user?._id),
-              ad: buildAdPayload(ad, user?._id),
+              creative: buildCreativePayload(ad, campaign, adset),
+              ad: buildAdPayload(ad),
               dry_run: false,
             };
 
@@ -609,18 +595,9 @@ export function useFlexibleWizardPublish() {
                 ...(isValidMongoId(ad._id) && { _id: ad._id }),
                 ...(isValidMongoId(ad.draftId) && { draftId: ad.draftId }),
                 external_id: ad.external_id,
-                ...buildAdPayload(ad, user?._id),
-                creative: {
-                  // ✅ CHỈ gửi các ID hợp lệ
-                  ...(isValidMongoId(ad.creative_id || ad.creative?._id) && {
-                    _id: ad.creative_id || ad.creative?._id
-                  }),
-                  ...(isValidMongoId(ad.creativeDraftId || ad.creative?.draftId) && {
-                    draftId: ad.creativeDraftId || ad.creative?.draftId
-                  }),
-                  external_id: ad.creative?.external_id,
-                  ...buildCreativePayload(ad, campaign, user?._id),
-                },
+                draftId: ad.draftId,
+                ...buildAdPayload(ad),
+                creative: buildCreativePayload(ad, campaign, adset),
               })),
             };
           }),
@@ -817,18 +794,35 @@ function buildAdsetPayload(adset, campaign, userId) {
     billing_event: adset.billing_event,
     bid_strategy: adset.bid_strategy,
     bid_amount: adset.bid_amount,
-    created_by: userId,
+    ...(adset.promoted_object && { promoted_object: adset.promoted_object }),
+    ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
+    ...(adset.destination_type && { destination_type: adset.destination_type }),
   };
 }
 
 /**
  * Xây dựng payload cho Creative
  */
-function buildCreativePayload(ad, campaign, userId) {
+function buildCreativePayload(ad, campaign, adset) {
+  // Ưu tiên page_id từ sources khác nhau:
+  // 1. adset.facebookPageId (từ ENGAGEMENT/LEADS/AWARENESS/SALES page selector)
+  // 2. adset.promoted_object.page_id (từ TRAFFIC MESSAGING hoặc SALES)
+  // 3. campaign.facebookPageId (fallback từ campaign, nếu có)
+  let pageId = adset?.facebookPageId || 
+               adset?.promoted_object?.page_id || 
+               campaign?.facebookPageId;
+  
+  if (!pageId) {
+    console.warn(
+      "⚠️ WARNING: Creative payload thiếu page_id! " +
+      "Đảm bảo rằng user đã chọn Facebook Page (AdsetStep) hoặc điền Messaging Page ID."
+    );
+  }
+  
   return {
     name: ad.name,
     object_story_spec: {
-      page_id: campaign.facebookPageId || "fb_page_id_placeholder",
+      page_id: pageId,
       link_data: {
         message: ad.primaryText,
         link: ad.destinationUrl || "https://fchat.vn",

@@ -460,43 +460,45 @@ function CreateAdsWizard({
 
                 {/* Campaign Details Panel */}
                 {wizardStep === WIZARD_STEPS.CAMPAIGN && (
-                  <CampaignStep
-                    ref={campaignRef}
-                    campaign={campaign}
-                    setCampaign={setCampaign}
-                    campaignsList={campaignsList}
-                    setCampaignsList={setCampaignsList}
-                    selectedCampaignIndex={selectedCampaignIndex}
-                    setSelectedCampaignIndex={setSelectedCampaignIndex}
-                    facebookPages={facebookPages}
-                  />
-                )}
+              <CampaignStep
+                ref={campaignRef}
+                campaign={campaign}
+                setCampaign={setCampaign}
+                campaignsList={campaignsList}
+                setCampaignsList={setCampaignsList}
+                selectedCampaignIndex={selectedCampaignIndex}
+                setSelectedCampaignIndex={setSelectedCampaignIndex}
+              />
+            )}
 
                 {/* Adset Details Panel */}
                 {wizardStep === WIZARD_STEPS.ADSET && (
-                  <AdsetStep
-                    ref={adsetRef}
-                    adset={adset}
-                    setAdset={setAdset}
-                    mode={mode}
-                    objective={campaign.objective}
-                    adsetsList={adsetsList}
-                    setAdsetsList={setAdsetsList}
-                  />
-                )}
+              <AdsetStep
+                ref={adsetRef}
+                adset={adset}
+                setAdset={setAdset}
+                mode={mode}
+                objective={campaign.objective}
+                adsetsList={adsetsList}
+                setAdsetsList={setAdsetsList}
+                facebookPages={facebookPages}
+                campaign={campaign}
+              />
+            )}
 
                 {/* Ad Details Panel */}
                 {wizardStep === WIZARD_STEPS.AD && (
-                  <AdStep
-                    ref={adRef}
-                    ad={ad}
-                    setAd={setAd}
-                    mode={mode}
-                    campaign={campaign}
-                    adsList={adsList}
-                    setAdsList={setAdsList}
-                  />
-                )}
+              <AdStep
+                ref={adRef}
+                ad={ad}
+                setAd={setAd}
+                adset={adset}
+                mode={mode}
+                campaign={campaign}
+                adsList={adsList}
+                setAdsList={setAdsList}
+              />
+            )}
 
                 {/* Creative Preview Panel */}
                 {wizardStep === WIZARD_STEPS.CREATIVE && (

@@ -250,11 +250,430 @@ const getFilteredRows = () => {
   const handleAdsetClick = useCallback((adset) => {
     selectAdset(adset);
     setActiveTab("ads");
-    setPagination(prev => ({ ...prev, page: 1 })); // Reset về page 1
-  }, [selectAdset]);
+    fetchAdsForAdset(adset.id || adset._id || adset.external_id);
+  };
 
-  // ❌ REMOVED: Tất cả wrapper functions không còn dùng
-  // Lý do: CLIENT-SIDE PAGINATION - chỉ fetch 1 lần khi chọn account hoặc refresh
+  // 🔹 Reset selections
+  const resetSelection = () => {
+    setSelectedCampaign(null);
+    setSelectedAdset(null);
+    setCheckAll(false);
+    setHasSelectedItems(false);
+  };
+
+  // 🔹 Sync data từ Facebook (chỉ gọi khi cần thiết)
+  const syncData = useCallback(async (accountId, forceSync = false) => {
+    if (!accountId) return;
+    
+    // Kiểm tra cache - chỉ sync nếu chưa sync trong 30 giây hoặc force sync
+    const now = Date.now();
+    const lastSync = cache.lastSync;
+    const cacheKey = `${accountId}_${activeTab}`;
+    
+    if (!forceSync && lastSync && (now - lastSync) < 30000) {
+      console.log("⏭️ Skip sync - cached recently");
+      return;
+    }
+    
+    try {
+      await Promise.all([
+        axiosInstance.get(`/api/campaigns/sync?account_id=${accountId}`),
+        axiosInstance.get(`/api/adsets/sync?account_id=${accountId}`),
+        axiosInstance.get(`/api/ads/sync?account_id=${accountId}`)
+      ]);
+      
+      // Cập nhật cache
+      setCache(prev => ({
+        ...prev,
+        lastSync: now,
+        lastFetch: { ...prev.lastFetch, [cacheKey]: now }
+      }));
+    } catch (error) {
+      console.error("Sync error:", error);
+    }
+  }, [cache.lastSync, activeTab]);
+
+  // 🔹 Fetch campaigns (không sync)
+  const fetchCampaignsForAccount = useCallback(async (accountId) => {
+    if (!accountId) return;
+    try {
+      const response = await axiosInstance.get(`/api/campaigns`, {
+        params: {
+          account_id: accountId,
+          page: pagination.page,
+          limit: pagination.limit
+        }
+      });
+      if (response.data) {
+        const { items, total, pages } = response.data;
+        
+        // Cập nhật thông tin phân trang từ response
+        setPagination(prev => ({
+          ...prev,
+          total,
+          totalPages: pages
+        }));
+
+        // ✅ Không cần filter thêm - backend đã filter DELETED
+        const mapped = items.map((campaign) => ({
+          ...campaign,
+          id: campaign._id || campaign.id || campaign.external_id,
+          external_id: campaign.external_id,
+          isChecked: false,
+          enabled:
+            campaign.status === "ACTIVE" ||
+            campaign.effective_status === "ACTIVE",
+          budget: campaign.daily_budget || campaign.lifetime_budget || 0,
+          start_time: campaign.start_time,
+          end_time: campaign.stop_time,
+          objective: campaign.objective,
+          buying_type: campaign.buying_type,
+          updated_at: campaign.updated_at || campaign.updatedAt,
+        }));
+
+        // Fetch insights for these campaigns
+        const campaignIds = mapped.map((c) => c.external_id).filter(Boolean);
+        let insightsMap = {};
+        if (campaignIds.length) {
+          try {
+            const { data: ins } = await axiosInstance.get(`/api/campaigns/insights?ids=${campaignIds.join(',')}`);
+            if (ins?.items?.length) {
+              insightsMap = ins.items.reduce((acc, it) => {
+                acc[it.id] = it.insights || {};
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('Campaign insights fetch failed', e);
+          }
+        }
+
+        const merged = mapped.map((c) => {
+          const ins = insightsMap[c.external_id] || {};
+          const actions = Array.isArray(ins.actions) ? ins.actions : [];
+          const results = actions.reduce((sum, act) => sum + (Number(act.value) || 0), 0);
+          return {
+            ...c,
+            impressions: ins.impressions || 0,
+            reach: ins.reach || 0,
+            results,
+            quality: ins.quality_ranking || '-',
+          };
+        });
+
+        setDatasets((prev) => ({
+          ...prev,
+          campaigns: merged,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+    }
+  }, [pagination.page, pagination.limit]);
+
+  // 🔹 Fetch AdSets for campaign (không sync)
+  const fetchAdsetsForCampaign = useCallback(async (campaignId, accountId) => {
+    if (!campaignId || !accountId) return;
+    try {
+      const response = await axiosInstance.get(`/api/adsets`, {
+        params: {
+          campaign_id: campaignId,
+          page: pagination.page,
+          limit: pagination.limit
+        }
+      });
+      if (response.data) {
+        const { items, total, pages } = response.data;
+        
+        // Cập nhật thông tin phân trang từ response
+        setPagination(prev => ({
+          ...prev,
+          total,
+          totalPages: pages
+        }));
+
+        // ✅ Không cần filter thêm - backend đã filter DELETED
+        const mapped = items.map((adset) => ({
+          ...adset,
+          id: adset._id || adset.id || adset.external_id,
+          external_id: adset.external_id,
+          campaignId,
+          isChecked: false,
+          enabled:
+            adset.status === "ACTIVE" ||
+            adset.effective_status === "ACTIVE",
+          budget: adset.daily_budget || adset.lifetime_budget || 0,
+          start_time: adset.start_time,
+          end_time: adset.end_time,
+          targeting: adset.targeting || {},
+          optimization_goal: adset.optimization_goal,
+          bid_strategy: adset.bid_strategy,
+          bid_amount: adset.bid_amount,
+          updated_at: adset.updated_at || adset.updatedAt,
+        }));
+
+        // Fetch insights for these adsets
+        const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
+        let insightsMap = {};
+        if (adsetIds.length) {
+          try {
+            const { data: ins } = await axiosInstance.get(`/api/adsets/insights?ids=${adsetIds.join(',')}`);
+            if (ins?.items?.length) {
+              insightsMap = ins.items.reduce((acc, it) => {
+                acc[it.id] = it.insights || {};
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('Adset insights fetch failed', e);
+          }
+        }
+
+        const merged = mapped.map((a) => {
+          const ins = insightsMap[a.external_id] || {};
+          const actions = Array.isArray(ins.actions) ? ins.actions : [];
+          const results = actions.reduce((sum, act) => sum + (Number(act.value) || 0), 0);
+          return {
+            ...a,
+            impressions: ins.impressions || 0,
+            reach: ins.reach || 0,
+            results,
+            quality: ins.quality_ranking || '-',
+          };
+        });
+
+        setDatasets((prev) => ({
+          ...prev,
+          adsets: merged,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching adsets:", error);
+    }
+  }, [pagination.page, pagination.limit]);
+
+  // 🔹 Fetch Ads for AdSet (không sync)
+  const fetchAdsForAdset = useCallback(async (adsetId) => {
+    if (!adsetId) return;
+    try {
+      const response = await axiosInstance.get(`/api/ads`, {
+        params: {
+          adset_id: adsetId,
+          page: pagination.page,
+          limit: pagination.limit
+        }
+      });
+      if (response.data) {
+        const { items, total, pages } = response.data;
+        
+        // Cập nhật thông tin phân trang từ response
+        setPagination(prev => ({
+          ...prev,
+          total,
+          totalPages: pages
+        }));
+
+        // ✅ Không cần filter thêm - backend đã filter DELETED
+        const mapped = items.map((ad) => ({
+          ...ad,
+          id: ad._id || ad.id || ad.external_id,
+          external_id: ad.external_id,
+          adsetId,
+          isChecked: false,
+          enabled: ad.status === "ACTIVE" || ad.effective_status === "ACTIVE",
+          budget: 0, // Ads don't have budget, it's inherited from adset
+          updated_at: ad.updated_at || ad.updatedAt,
+        }));
+
+        // Fetch insights for these ads
+        const adIds = mapped.map((a) => a.external_id).filter(Boolean);
+        let insightsMap = {};
+        if (adIds.length) {
+          try {
+            const { data: ins } = await axiosInstance.get(`/api/ads/insights?ids=${adIds.join(',')}`);
+            if (ins?.items?.length) {
+              insightsMap = ins.items.reduce((acc, it) => {
+                acc[it.id] = it.insights || {};
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('Insights fetch failed', e);
+          }
+        }
+
+        const merged = mapped.map((a) => {
+          const ins = insightsMap[a.external_id] || {};
+          // derive fields for UI columns
+          const actions = Array.isArray(ins.actions) ? ins.actions : [];
+          const results = actions.reduce((sum, act) => sum + (Number(act.value) || 0), 0);
+          return {
+            ...a,
+            impressions: ins.impressions || 0,
+            reach: ins.reach || 0,
+            results,
+            quality: ins.quality_ranking || '-',
+            updated_at: a.updated_at || a.updatedAt,
+          };
+        });
+
+        setDatasets((prev) => ({ ...prev, ads: merged }));
+      }
+    } catch (error) {
+      console.error("Error fetching ads:", error);
+    }
+  }, [pagination.page, pagination.limit]);
+
+  // 🔹 Fetch all Adsets & Ads by account (không sync)
+  const fetchAllAdsetsForAccount = useCallback(async (accountId) => {
+    if (!accountId) return;
+    try {
+      const response = await axiosInstance.get(`/api/adsets`, {
+        params: {
+          account_id: accountId,
+          page: pagination.page,
+          limit: pagination.limit
+        }
+      });
+      if (response.data) {
+        const { items, total, pages } = response.data;
+        
+        // Cập nhật thông tin phân trang từ response
+        setPagination(prev => ({
+          ...prev,
+          total,
+          totalPages: pages
+        }));
+
+        // ✅ Không cần filter thêm - backend đã filter DELETED
+        const mapped = items.map((adset) => ({
+          ...adset,
+          id: adset._id || adset.id || adset.external_id,
+          external_id: adset.external_id,
+          campaignId: adset.campaign_id,
+          isChecked: false,
+          enabled:
+            adset.status === "ACTIVE" ||
+            adset.effective_status === "ACTIVE",
+          budget: adset.daily_budget || adset.lifetime_budget || 0,
+          start_time: adset.start_time,
+          end_time: adset.end_time,
+          targeting: adset.targeting || {},
+          optimization_goal: adset.optimization_goal,
+          bid_strategy: adset.bid_strategy,
+          bid_amount: adset.bid_amount,
+          updated_at: adset.updated_at || adset.updatedAt,
+        }));
+
+        // Fetch insights for these adsets
+        const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
+        let insightsMap = {};
+        if (adsetIds.length) {
+          try {
+            const { data: ins } = await axiosInstance.get(`/api/adsets/insights?ids=${adsetIds.join(',')}`);
+            if (ins?.items?.length) {
+              insightsMap = ins.items.reduce((acc, it) => {
+                acc[it.id] = it.insights || {};
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('Adset insights fetch failed', e);
+          }
+        }
+
+        const merged = mapped.map((a) => {
+          const ins = insightsMap[a.external_id] || {};
+          const actions = Array.isArray(ins.actions) ? ins.actions : [];
+          const results = actions.reduce((sum, act) => sum + (Number(act.value) || 0), 0);
+          return {
+            ...a,
+            impressions: ins.impressions || 0,
+            reach: ins.reach || 0,
+            results,
+            quality: ins.quality_ranking || '-',
+          };
+        });
+
+        setDatasets((prev) => ({
+          ...prev,
+          adsets: merged,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching adsets:", error);
+    }
+  }, [pagination.page, pagination.limit]);
+
+  const fetchAllAdsForAccount = useCallback(async (accountId) => {
+    if (!accountId) return;
+    try {
+      const response = await axiosInstance.get(`/api/ads`, {
+        params: {
+          account_id: accountId,
+          page: pagination.page,
+          limit: pagination.limit
+        }
+      });
+      if (response.data) {
+        const { items, total, pages } = response.data;
+        
+        // Cập nhật thông tin phân trang từ response
+        setPagination(prev => ({
+          ...prev,
+          total,
+          totalPages: pages
+        }));
+
+        // ✅ Không cần filter thêm - backend đã filter DELETED
+        const mapped = items.map((ad) => ({
+          ...ad,
+          id: ad._id || ad.id || ad.external_id,
+          external_id: ad.external_id,
+          adsetId: ad.adset_id || ad.set_id,
+          isChecked: false,
+          enabled: ad.status === "ACTIVE" || ad.effective_status === "ACTIVE",
+          budget: 0, // Ads don't have budget, it's inherited from adset
+          updated_at: ad.updated_at || ad.updatedAt,
+        }));
+
+        // Fetch insights in batch
+        const adIds = mapped.map((a) => a.external_id).filter(Boolean);
+        let insightsMap = {};
+        if (adIds.length) {
+          try {
+            const { data: ins } = await axiosInstance.get(`/api/ads/insights?ids=${adIds.join(',')}`);
+            if (ins?.items?.length) {
+              insightsMap = ins.items.reduce((acc, it) => {
+                acc[it.id] = it.insights || {};
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('Insights fetch failed', e);
+          }
+        }
+
+        const merged = mapped.map((a) => {
+          const ins = insightsMap[a.external_id] || {};
+          const actions = Array.isArray(ins.actions) ? ins.actions : [];
+          const results = actions.reduce((sum, act) => sum + (Number(act.value) || 0), 0);
+          return {
+            ...a,
+            impressions: ins.impressions || 0,
+            reach: ins.reach || 0,
+            results,
+            quality: ins.quality_ranking || '-',
+            updated_at: a.updated_at || a.updatedAt,
+          };
+        });
+
+        setDatasets((prev) => ({ ...prev, ads: merged }));
+      }
+    } catch (error) {
+      console.error("Error fetching ads:", error);
+    }
+  }, [pagination.page, pagination.limit]);
 
   // 🔹 Fetch Ad Accounts
   useEffect(() => {

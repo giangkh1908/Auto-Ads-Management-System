@@ -458,6 +458,21 @@ export async function syncCampaignsFromFacebook(accessToken, adAccountId) {
         console.error(`Error upserting campaign ${c.id}:`, err.message);
       }
     }
+    // Reconcile: soft-delete campaigns that no longer exist on Facebook for this account
+    try {
+      const fetchedIds = new Set(campaigns.map((c) => c.id));
+      const now = new Date();
+      await AdsCampaign.updateMany(
+        {
+          external_account_id: withoutPrefix,
+          external_id: { $nin: Array.from(fetchedIds) },
+          status: { $ne: "DELETED" },
+        },
+        { $set: { status: "DELETED", deleted_at: now } }
+      );
+    } catch (reconcileErr) {
+      console.warn("⚠️ Reconcile campaigns failed:", reconcileErr?.message || reconcileErr);
+    }
 
     return results;
   } catch (err) {
@@ -523,6 +538,21 @@ export async function syncAdSetsFromFacebook(accessToken, adAccountId) {
         console.error(`Error upserting adset ${s.id}:`, err.message);
       }
     }
+    // Reconcile: soft-delete adsets that no longer exist on Facebook for this account
+    try {
+      const fetchedIds = new Set(adsets.map((s) => s.id));
+      const now = new Date();
+      await AdsSet.updateMany(
+        {
+          external_account_id: withoutPrefix,
+          external_id: { $nin: Array.from(fetchedIds) },
+          status: { $ne: "DELETED" },
+        },
+        { $set: { status: "DELETED", deleted_at: now } }
+      );
+    } catch (reconcileErr) {
+      console.warn("⚠️ Reconcile adsets failed:", reconcileErr?.message || reconcileErr);
+    }
 
     return results;
   } catch (err) {
@@ -581,6 +611,21 @@ export async function syncAdsFromFacebook(accessToken, adAccountId) {
         console.error(`Error upserting ad ${a.id}:`, err.message);
       }
     }
+    // Reconcile: soft-delete ads that no longer exist on Facebook for this account
+    try {
+      const fetchedIds = new Set(ads.map((a) => a.id));
+      const now = new Date();
+      await Ads.updateMany(
+        {
+          external_account_id: withoutPrefix,
+          external_id: { $nin: Array.from(fetchedIds) },
+          status: { $ne: "DELETED" },
+        },
+        { $set: { status: "DELETED", deleted_at: now } }
+      );
+    } catch (reconcileErr) {
+      console.warn("⚠️ Reconcile ads failed:", reconcileErr?.message || reconcileErr);
+    }
 
     return results;
   } catch (err) {
@@ -614,5 +659,69 @@ export async function fetchAdInsights(accessToken, adIds = []) {
   }
 }
 
-// Tìm hàm createAdSet và thêm xử lý trước khi gọi API Facebook
+/**
+ * Lấy insights cho nhiều thực thể (campaigns, adsets, ads) bằng batch request.
+ * @param {string[]} entityIds - Mảng các ID của Facebook.
+ * @param {string} accessToken - Access token của người dùng.
+ * @returns {Promise<Array<{id: string, insights: object}>>}
+ */
+export async function fetchInsightsForEntities(entityIds, accessToken) {
+  if (!entityIds || entityIds.length === 0) {
+    return [];
+  }
+
+  const fields = [
+    'impressions',
+    'reach',
+    'spend',
+    'clicks',
+    'actions',
+    'quality_ranking',
+  ].join(',');
+
+  // Tạo mảng batch request
+  const batch = entityIds.map(id => ({
+    method: 'GET',
+    relative_url: `${id}/insights?fields=${fields}`
+  }));
+
+  try {
+    const response = await axios.post(
+      `${FB_API}/`, // Sửa FB_GRAPH_API_URL thành FB_API
+      {
+        batch: JSON.stringify(batch),
+        include_headers: false
+      },
+      {
+        params: {
+          access_token: accessToken
+        }
+      }
+    );
+
+    // Xử lý kết quả trả về từ batch request
+    const results = response.data.map((res, index) => {
+      const originalId = entityIds[index];
+      if (res.code === 200) {
+        const body = JSON.parse(res.body);
+        return {
+          id: originalId,
+          insights: body // body chính là object insights { data: [...] }
+        };
+      } else {
+        console.warn(`Lỗi khi lấy insights cho ID ${originalId}:`, JSON.parse(res.body).error);
+        return {
+          id: originalId,
+          insights: { data: [] } // Trả về rỗng nếu có lỗi
+        };
+      }
+    });
+
+    return results;
+
+  } catch (error) {
+    console.error("Lỗi batch insights request từ Facebook:", error.response?.data || error.message);
+    throw error; // Ném lỗi để controller xử lý
+  }
+}
 

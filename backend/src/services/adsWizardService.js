@@ -868,6 +868,7 @@ export async function publishCampaignService({
         ...(campaign.stop_time && { stop_time: campaign.stop_time }),
       };
 
+      console.log(`📤 Campaign Payload gửi Facebook:`, JSON.stringify(campaignPayload, null, 2));
       fbCampaignId = await createCampaign(
         ad_account_id,
         access_token,
@@ -958,7 +959,27 @@ export async function publishAdsetService({
       console.log(`[DRY RUN] AdSet giả: ${adset.name}`);
     } else {
       console.log(`🚀 Tạo AdSet trên Facebook: ${adset.name}`);
-      // Chỉ gửi các field cần thiết cho Facebook AdSet API
+      
+      // Build promoted_object theo bảng ODAX v23.0
+      // Các trường: page_id, pixel_id, custom_event_type, application_id, object_store_url, event_id
+      let promotedObject = null;
+      
+      if (adset.promoted_object) {
+        const obj = { ...adset.promoted_object };
+        
+        // Xóa các field null/undefined để tránh gửi lên Facebook
+        Object.keys(obj).forEach(key => {
+          if (obj[key] === null || obj[key] === undefined) {
+            delete obj[key];
+          }
+        });
+        
+        // Chỉ gửi promoted_object nếu có ít nhất 1 field hợp lệ
+        if (Object.keys(obj).length > 0) {
+          promotedObject = obj;
+        }
+      }
+      
       // Chỉ gửi các field cần thiết cho Facebook AdSet API
       const adsetPayload = {
         name: adset.name,
@@ -974,8 +995,14 @@ export async function publishAdsetService({
         ...(adset.targeting && { targeting: adset.targeting }),
         ...(adset.start_time && { start_time: adset.start_time }),
         ...(adset.end_time && { end_time: adset.end_time }),
+        ...(promotedObject && { promoted_object: promotedObject }),
+        ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
+        ...(adset.conversion_event && { conversion_event: adset.conversion_event }),
+        // ODAX: destination_type cho OUTCOME_ENGAGEMENT
+        ...(adset.destination_type && { destination_type: adset.destination_type }),
       };
 
+      console.log(`📤 Payload gửi Facebook:`, JSON.stringify(adsetPayload, null, 2));
       fbAdSetId = await createAdSet(ad_account_id, access_token, adsetPayload);
     }
 
@@ -1001,6 +1028,9 @@ export async function publishAdsetService({
     };
   } catch (error) {
     console.error("❌ Lỗi tạo AdSet:", error);
+    if (error.response?.data) {
+      console.error("📋 Facebook API Error Details:", JSON.stringify(error.response.data, null, 2));
+    }
     throw error;
   }
 }
@@ -1089,6 +1119,15 @@ export async function publishAdService({
       fbCreativeId = "dry_" + (Date.now() + 2);
       console.log(`[DRY RUN] Creative giả: ${creative.name}`);
     } else {
+      // Validate: Creative PHẢI CÓ page_id hợp lệ (không phải placeholder)
+      const creativePageId = creative?.object_story_spec?.page_id;
+      if (!creativePageId || creativePageId === "fb_page_id_placeholder") {
+        throw new Error(
+          `❌ Creative không có page_id hợp lệ. Nhận được: "${creativePageId}". ` +
+          `Vui lòng chọn Facebook Page trước khi tạo Ad.`
+        );
+      }
+      
       // Tạo Creative trước
       fbCreativeId = await createCreative(
         ad_account_id,
@@ -1279,7 +1318,7 @@ export async function publishFlexibleService({
                   } catch (adError) {
                     console.error(
                       `   Lỗi tạo Ad "${ad.name}":`,
-                      adError.message
+                      adError.response?.data || adError.message
                     );
                     results.totalErrors++;
                     results.errors.push({
@@ -1287,7 +1326,8 @@ export async function publishFlexibleService({
                       campaignIndex,
                       adsetIndex,
                       adIndex,
-                      error: adError.message,
+                      error: adError.response?.data?.error?.message || adError.message,
+                      errorDetails: adError.response?.data,
                       name: ad.name,
                       adsetName: adset.name,
                     });
@@ -1313,6 +1353,9 @@ export async function publishFlexibleService({
                 `Lỗi tạo AdSet "${adset.name}" sau ${duration}s:`,
                 adsetError.message
               );
+              if (adsetError.response?.data) {
+                console.error("📋 Facebook API Error:", JSON.stringify(adsetError.response.data, null, 2));
+              }
               results.totalErrors++;
               results.errors.push({
                 type: "adset",
