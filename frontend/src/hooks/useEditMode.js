@@ -115,6 +115,7 @@ export function useEditMode({
           params: { campaign_id: campaignId },
         });
         campaignData = campaignRes.data.data;
+        console.log('[DEBUG objective-outcome]', campaignData.objective);
         console.log("📋 Campaign loaded:", campaignData?.name);
 
         // Step 2: Fetch ALL adsets của campaign
@@ -187,12 +188,19 @@ export function useEditMode({
               };
             });
 
+          const promotedObject = adsetDbData.promoted_object || {};
           return {
             id: adsetDbData._id,
             _id: adsetDbData._id,
             external_id: adsetDbData.external_id,
             name: adsetDbData.name || "Nhóm quảng cáo mới",
             status: adsetDbData.status,
+            // Prefill Facebook Page info (for AdsetStep selector)
+            facebookPage: campaignData?.page_name || null,
+            facebookPageId: campaignData?.page_id || null,
+            facebookPageAvatar: campaignData?.page_id
+              ? `https://graph.facebook.com/${campaignData.page_id}/picture?type=square`
+              : null,
             budgetType: adsetDbData.daily_budget ? "daily" : "lifetime",
             budgetAmount: adsetDbData.daily_budget || adsetDbData.lifetime_budget,
             daily_budget: adsetDbData.daily_budget,
@@ -213,9 +221,18 @@ export function useEditMode({
               ageMin: 18,
               ageMax: 65,
             },
+            // Optimization / Billing / Conversion settings
             optimization_goal: adsetDbData.optimization_goal,
             conversion_event: adsetDbData.conversion_event,
             billing_event: adsetDbData.billing_event,
+            traffic_destination: adsetDbData.traffic_destination || adsetDbData.destination_type || null,
+            promoted_object: {
+              page_id: promotedObject.page_id ?? campaignData?.page_id ?? null,
+              pixel_id: promotedObject.pixel_id ?? null,
+              custom_event_type: promotedObject.custom_event_type ?? null,
+              application_id: promotedObject.application_id ?? null,
+              object_store_url: promotedObject.object_store_url ?? null,
+            },
             bid_strategy: adsetDbData.bid_strategy,
             bid_amount: adsetDbData.bid_amount,
             ads: adsetAds, // ✅ Nested ads

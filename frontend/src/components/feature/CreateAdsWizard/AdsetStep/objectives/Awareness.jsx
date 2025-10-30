@@ -6,7 +6,7 @@ const BILLING_EVENT_LABELS = {
   APP_INSTALLS: "Cài đặt ứng dụng",
 };
 
-export const AwarenessSchema = {
+ const AwarenessSchema = {
   objective: "AWARENESS",
   sections: [
     {

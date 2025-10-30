@@ -274,7 +274,8 @@ export async function updateAdset(entityId, accessToken, updates) {
   const allowedFields = [
     'name', 'status', 'daily_budget', 'lifetime_budget', 
     'start_time', 'end_time', 'targeting', 'optimization_goal',
-    'bid_strategy', 'bid_amount', 'billing_event', 'conversion_event'
+    'bid_strategy', 'bid_amount', 'billing_event', 'conversion_event',
+    'promoted_object', 'destination_type', 'pixel_id'
   ];
   
   const filteredPayload = Object.keys(payload)

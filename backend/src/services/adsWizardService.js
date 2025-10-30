@@ -308,6 +308,7 @@ export async function publishWizard({
         bid_strategy: adset?.bid_strategy,
         bid_amount: adset?.bid_amount,
         targeting: adset?.targeting,
+        traffic_destination: adset?.traffic_destination || adset?.destination_type || null,
         daily_budget: adset?.daily_budget,
         lifetime_budget: adset?.lifetime_budget,
         start_time: adset?.start_time,
@@ -618,7 +619,13 @@ export async function updateWizard({
   // ✅ AdSet
   if (adset) {
     const { external_id, draftId, ...rawFields } = adset;
-    // Whitelist updateable fields for AdSet
+    // Prepare promoted_object merge (ensure page_id if provided separately)
+    const mergedPromotedObject = {
+      ...(rawFields?.promoted_object || {}),
+      ...(rawFields?.facebookPageId ? { page_id: rawFields.facebookPageId } : {}),
+    };
+
+    // Whitelist updateable fields for AdSet (DB fields only)
     const fields = {
       ...(rawFields?.name ? { name: rawFields.name } : {}),
       ...(rawFields?.status ? { status: rawFields.status } : {}),
@@ -644,6 +651,13 @@ export async function updateWizard({
         ? { bid_strategy: rawFields.bid_strategy }
         : {}),
       ...(rawFields?.bid_amount ? { bid_amount: rawFields.bid_amount } : {}),
+      ...(Object.keys(mergedPromotedObject).length
+        ? { promoted_object: mergedPromotedObject }
+        : {}),
+      ...(rawFields?.pixel_id ? { pixel_id: rawFields.pixel_id } : {}),
+      ...(rawFields?.traffic_destination
+        ? { traffic_destination: rawFields.traffic_destination }
+        : {}),
     };
     let fbAdSetId = external_id;
 
@@ -669,7 +683,14 @@ export async function updateWizard({
     }
 
     if (fbAdSetId && Object.keys(fields).length > 0) {
-      const ok = await fbUpdate(fbAdSetId, fields, "adset");
+      // Facebook payload may include destination_type derived from traffic_destination
+      const fbFields = {
+        ...fields,
+        ...(rawFields?.traffic_destination
+          ? { destination_type: rawFields.traffic_destination }
+          : {}),
+      };
+      const ok = await fbUpdate(fbAdSetId, fbFields, "adset");
       if (!ok) {
         console.log("⚠️ Update adset thất bại → thử tạo mới lại...");
         const newAdSet = await createAdSet(ad_account_id, access_token, {
@@ -1327,6 +1348,10 @@ export async function publishFlexibleService({
                       adsetIndex,
                       adIndex,
                       error: adError.response?.data?.error?.message || adError.message,
+                      error_user_msg: adError.response?.data?.error?.error_user_msg || 
+                                     adError.response?.data?.error_user_msg || 
+                                     adError.response?.data?.error?.message || 
+                                     adError.message,
                       errorDetails: adError.response?.data,
                       name: ad.name,
                       adsetName: adset.name,
@@ -1362,6 +1387,11 @@ export async function publishFlexibleService({
                 campaignIndex,
                 adsetIndex,
                 error: adsetError.message,
+                error_user_msg: adsetError.response?.data?.error?.error_user_msg || 
+                               adsetError.response?.data?.error_user_msg || 
+                               adsetError.response?.data?.error?.message || 
+                               adsetError.message,
+                errorDetails: adsetError.response?.data,
                 name: adset.name,
                 campaignName: campaign.name,
               });
@@ -1403,6 +1433,11 @@ export async function publishFlexibleService({
           type: "campaign",
           campaignIndex,
           error: campaignError.message,
+          error_user_msg: campaignError.response?.data?.error?.error_user_msg || 
+                         campaignError.response?.data?.error_user_msg || 
+                         campaignError.response?.data?.error?.message || 
+                         campaignError.message,
+          errorDetails: campaignError.response?.data,
           name: campaign.name,
         });
       }
@@ -1557,6 +1592,11 @@ export async function updateFlexibleService({
                       adsetIndex,
                       adIndex,
                       error: adError.message,
+                      error_user_msg: adError.response?.data?.error?.error_user_msg || 
+                                     adError.response?.data?.error_user_msg || 
+                                     adError.response?.data?.error?.message || 
+                                     adError.message,
+                      errorDetails: adError.response?.data,
                       name: ad.name,
                       adsetName: adset.name,
                     });
@@ -1588,6 +1628,11 @@ export async function updateFlexibleService({
                 campaignIndex,
                 adsetIndex,
                 error: adsetError.message,
+                error_user_msg: adsetError.response?.data?.error?.error_user_msg || 
+                               adsetError.response?.data?.error_user_msg || 
+                               adsetError.response?.data?.error?.message || 
+                               adsetError.message,
+                errorDetails: adsetError.response?.data,
                 name: adset.name,
                 campaignName: campaign.name,
               });
@@ -1629,6 +1674,11 @@ export async function updateFlexibleService({
           type: "campaign",
           campaignIndex,
           error: campaignError.message,
+          error_user_msg: campaignError.response?.data?.error?.error_user_msg || 
+                         campaignError.response?.data?.error_user_msg || 
+                         campaignError.response?.data?.error?.message || 
+                         campaignError.message,
+          errorDetails: campaignError.response?.data,
           name: campaign.name,
         });
       }

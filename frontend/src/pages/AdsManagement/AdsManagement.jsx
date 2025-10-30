@@ -4,6 +4,7 @@ import Pagination from "../../components/common/Pagination/Pagination";
 import "./AdsManagement.css";
 import CreateAdsWizard from "../../components/feature/CreateAdsWizard/CreateAdsWizard";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
+import ProgressPopup from "../../components/common/ProgressPopup/Progress";
 import { handleSelectAll, handleSelectItem } from "../../utils/selectionUtils";
 import {
   deleteCampaign,
@@ -14,8 +15,12 @@ import { toggleEntityStatus } from "../../services/toggleStatusService";
 import axiosInstance from "../../utils/axios";
 import { useToast } from "../../hooks/useToast";
 import { translateStatus, getStatusClass } from "../../utils/statusUtils";
+import { useProgressState } from "../../hooks/useProgressState";
+import { useTranslation } from "react-i18next";
+import { translateObjective, translateOptimizationGoal, formatTargetingVN } from "../../utils/translationUtils";
 
 function AdsManagement() {
+  const { t } = useTranslation(['ads']);
   const toast = useToast();
   const [activeTab, setActiveTab] = useState("campaigns");
   const [showWizard, setShowWizard] = useState(false);
@@ -60,6 +65,14 @@ function AdsManagement() {
     onConfirm: null,
     isLoading: false,
   });
+
+  // Progress popup state
+  const { progressState, openProgress, updateProgress, closeProgress } = useProgressState();
+
+  // Helper function to get entity name
+  const getEntityName = (key) => {
+    return t(`entity_names.${key}`, { defaultValue: key });
+  };
 
   // 🔹 Filter data for active tab
   const getFilteredRows = () => {
@@ -133,14 +146,14 @@ function AdsManagement() {
     const row = datasets[key].find((r) => r.id === id);
 
     if (!row) {
-      toast.error("Không tìm thấy item để toggle");
+      toast.error(t('toasts.item_not_found'));
       return;
     }
 
     // Kiểm tra có external_id không (cần để gọi Facebook API)
     if (!row.external_id) {
-      toast.warning("Không thể đồng bộ với Facebook", {
-        description: "Item chưa có external_id từ Facebook",
+      toast.warning(t('toasts.cannot_sync_facebook'), {
+        description: t('toasts.no_external_id'),
       });
       return;
     }
@@ -168,11 +181,10 @@ function AdsManagement() {
 
     try {
       await toggleEntityStatus(entityType, row.external_id, facebookStatus);
+      const entityLabel = getEntityName(entityType);
+      const action = newStatus ? t('toasts.toggle_on') : t('toasts.toggle_off');
       toast.success(
-        `${entityType.charAt(0).toUpperCase() + entityType.slice(1)} đã ${
-          newStatus ? "bật" : "tắt"
-        }`,
-        {}
+        `${entityLabel.charAt(0).toUpperCase() + entityLabel.slice(1)} ${t('toasts.toggle_success')} ${action}`
       );
     } catch (error) {
       // Revert UI nếu API call thất bại
@@ -189,7 +201,8 @@ function AdsManagement() {
         ),
       }));
 
-      toast.error(`Lỗi ${newStatus ? "bật" : "tắt"} ${entityType}`, {
+      const action = newStatus ? t('toasts.toggle_on') : t('toasts.toggle_off');
+      toast.error(`${t('toasts.toggle_error')} ${action} ${getEntityName(entityType)}`, {
         description: error.message,
       });
     } finally {
@@ -294,22 +307,17 @@ function AdsManagement() {
       : datasets[key].filter((item) => item.isChecked).map((item) => item.id);
 
     if (idsToArchive.length === 0) {
-      toast.warning("Vui lòng chọn ít nhất một mục để lưu trữ.");
+      toast.warning(t('toasts.select_item_archive_warning'));
       return;
     }
 
-    const entityName =
-      key === "campaigns"
-        ? "chiến dịch"
-        : key === "adsets"
-        ? "nhóm quảng cáo"
-        : "quảng cáo";
+    const entityName = getEntityName(key);
 
     setConfirmationPopup({
       isOpen: true,
       type: "archive",
-      title: `Lưu trữ ${idsToArchive.length} ${entityName}`,
-      message: `Bạn có chắc muốn lưu trữ ${idsToArchive.length} ${entityName}? Hành động này có thể được hoàn tác.`,
+      title: t('confirmations.archive_title', { count: idsToArchive.length, entity: entityName }),
+      message: t('confirmations.archive_message', { count: idsToArchive.length, entity: entityName }),
       onConfirm: () => executeArchive(idsToArchive),
       isLoading: false,
     });
@@ -325,15 +333,14 @@ function AdsManagement() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      toast.success(
-        `Đã lưu trữ ${idsToArchive.length} ${activeTab} thành công!`
-      );
+      const entityName = getEntityName(activeTab);
+      toast.success(t('toasts.archive_success', { count: idsToArchive.length, entity: entityName }));
 
       // Refresh data
       handleRefresh();
     } catch (error) {
       console.error("❌ Lỗi khi lưu trữ:", error);
-      toast.error("Lưu trữ thất bại, vui lòng thử lại!");
+      toast.error(t('toasts.archive_failed'));
     } finally {
       setConfirmationPopup((prev) => ({
         ...prev,
@@ -357,78 +364,142 @@ function AdsManagement() {
       : datasets[key].filter((item) => item.isChecked).map((item) => item.id);
 
     if (idsToDelete.length === 0) {
-      toast.warning("Vui lòng chọn ít nhất một mục để xóa.");
+      toast.warning(t('toasts.select_item_warning'));
       return;
     }
 
-    const entityName =
-      key === "campaigns"
-        ? "chiến dịch"
-        : key === "adsets"
-        ? "nhóm quảng cáo"
-        : "quảng cáo";
+    const entityName = getEntityName(key);
 
     setConfirmationPopup({
       isOpen: true,
       type: "delete",
-      title: `Xóa ${idsToDelete.length} ${entityName}`,
-      message: `Bạn có chắc muốn xóa ${idsToDelete.length} ${entityName}? Hành động này không thể hoàn tác.`,
+      title: t('confirmations.delete_title', { count: idsToDelete.length, entity: entityName }),
+      message: t('confirmations.delete_message', { count: idsToDelete.length, entity: entityName }),
       onConfirm: () => executeDelete(idsToDelete),
       isLoading: false,
     });
   };
 
   const executeDelete = async (idsToDelete) => {
-    setConfirmationPopup((prev) => ({ ...prev, isLoading: true }));
+    // Đóng confirmation popup
+    setConfirmationPopup((prev) => ({
+      ...prev,
+      isOpen: false,
+    }));
+
+    const key =
+      activeTab === "campaigns"
+        ? "campaigns"
+        : activeTab === "adsets"
+        ? "adsets"
+        : "ads";
+
+    const entityName = getEntityName(key);
+
+    // Mở progress popup
+    openProgress({
+      type: 'delete',
+      title: t('progress.deleting', { entity: entityName }),
+      total: idsToDelete.length,
+    });
 
     try {
-      const key =
-        activeTab === "campaigns"
-          ? "campaigns"
-          : activeTab === "adsets"
-          ? "adsets"
-          : "ads";
-
       // 🧩 Lấy token FB từ localStorage
       const fbToken = localStorage.getItem("fb_access_token") || null;
 
-      // 🔹 Gọi đúng service cho từng loại
-      for (const delId of idsToDelete) {
-        if (key === "campaigns") await deleteCampaign(delId, fbToken);
-        else if (key === "adsets") await deleteAdSet(delId, fbToken);
-        else await deleteAd(delId, fbToken);
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
+
+      // 🔹 Gọi đúng service cho từng loại và cập nhật progress
+      for (let i = 0; i < idsToDelete.length; i++) {
+        const delId = idsToDelete[i];
+        
+        try {
+          updateProgress({
+            current: i,
+            message: t('progress.deleting_progress', { entity: entityName, current: i + 1, total: idsToDelete.length }),
+          });
+
+          if (key === "campaigns") {
+            await deleteCampaign(delId, fbToken);
+          } else if (key === "adsets") {
+            await deleteAdSet(delId, fbToken);
+          } else {
+            await deleteAd(delId, fbToken);
+          }
+
+          successCount++;
+          
+          updateProgress({
+            current: i + 1,
+            message: t('progress.deleted', { current: i + 1, total: idsToDelete.length, entity: entityName }),
+          });
+        } catch (itemError) {
+          errorCount++;
+          errors.push({
+            id: delId,
+            error: itemError?.response?.data?.message || itemError.message,
+          });
+          console.error(`❌ Lỗi khi xóa ${delId}:`, itemError);
+        }
       }
 
-      // 🔹 Cập nhật UI
+      // 🔹 Cập nhật UI - xóa tất cả items đã được xử lý (bao gồm cả success)
+      const processedIds = idsToDelete.slice(0, successCount);
+      
       setDatasets((prev) => ({
         ...prev,
-        [key]: prev[key].filter((item) => !idsToDelete.includes(item.id)),
+        [key]: prev[key].filter((item) => !processedIds.includes(item.id)),
       }));
       setCheckAll(false);
       setHasSelectedItems(false);
 
-      const entityName =
-        key === "campaigns"
-          ? "chiến dịch"
-          : key === "adsets"
-          ? "nhóm quảng cáo"
-          : "quảng cáo";
+      // Cập nhật trạng thái cuối cùng
+      if (errorCount === 0) {
+        updateProgress({
+          status: 'success',
+          current: idsToDelete.length,
+          message: t('progress.completed'),
+          successCount,
+          errorCount: 0,
+        });
+        toast.success(t('toasts.delete_success', { count: successCount, entity: entityName }));
+      } else if (successCount > 0) {
+        updateProgress({
+          status: 'partial',
+          current: idsToDelete.length,
+          message: t('progress.completed_with_errors', { errorCount }),
+          successCount,
+          errorCount,
+          errors,
+        });
+        toast.warning(t('toasts.delete_partial', { successCount, total: idsToDelete.length, entity: entityName, errorCount }));
+      } else {
+        updateProgress({
+          status: 'error',
+          message: t('progress.delete_failed'),
+          errorCount,
+          errors,
+        });
+        toast.error(t('toasts.delete_failed'));
+      }
 
-      toast.success(`Đã xóa ${idsToDelete.length} ${entityName} thành công!`);
-
-      // Refresh data after successful deletion
-      handleRefresh();
+      // Refresh data after deletion
+      if (successCount > 0) {
+        handleRefresh();
+      }
     } catch (error) {
       console.error("❌ Lỗi khi xóa:", error);
+      
+      updateProgress({
+        status: 'error',
+        message: error?.response?.data?.message || t('toasts.delete_failed'),
+      });
+      
       toast.error(
-        error?.response?.data?.message || "Xóa thất bại, vui lòng thử lại!"
+        error?.response?.data?.message || t('toasts.delete_failed')
       );
-    } finally {
-      setConfirmationPopup((prev) => ({
-        ...prev,
-        isLoading: false,
-        isOpen: false,
-      }));
     }
   };
 
@@ -524,7 +595,7 @@ function AdsManagement() {
           end_time: campaign.stop_time,
           objective: campaign.objective,
           buying_type: campaign.buying_type,
-          updated_at: campaign.updated_at || campaign.updatedAt,
+          created_by: campaign.created_by,
         }));
 
         // Fetch insights for these campaigns
@@ -605,7 +676,7 @@ function AdsManagement() {
           optimization_goal: adset.optimization_goal,
           bid_strategy: adset.bid_strategy,
           bid_amount: adset.bid_amount,
-          updated_at: adset.updated_at || adset.updatedAt,
+          created_by: adset.created_by,
         }));
 
         // Fetch insights for these adsets
@@ -678,7 +749,7 @@ function AdsManagement() {
           isChecked: false,
           enabled: ad.status === "ACTIVE" || ad.effective_status === "ACTIVE",
           budget: 0, // Ads don't have budget, it's inherited from adset
-          updated_at: ad.updated_at || ad.updatedAt,
+          created_by: ad.created_by,
         }));
 
         // Fetch insights for these ads
@@ -758,7 +829,7 @@ function AdsManagement() {
           optimization_goal: adset.optimization_goal,
           bid_strategy: adset.bid_strategy,
           bid_amount: adset.bid_amount,
-          updated_at: adset.updated_at || adset.updatedAt,
+          created_by: adset.created_by,
         }));
 
         // Fetch insights for these adsets
@@ -830,7 +901,7 @@ function AdsManagement() {
           isChecked: false,
           enabled: ad.status === "ACTIVE" || ad.effective_status === "ACTIVE",
           budget: 0, // Ads don't have budget, it's inherited from adset
-          updated_at: ad.updated_at || ad.updatedAt,
+          created_by: ad.created_by,
         }));
 
         // Fetch insights in batch
@@ -960,8 +1031,8 @@ function AdsManagement() {
   // 🔹 Handle refresh data (tối ưu - chỉ sync và fetch tab hiện tại)
   const handleRefresh = useCallback(async () => {
     if (!selectedAccountId) {
-      toast.warning("Vui lòng chọn tài khoản quảng cáo", {
-        description: "Chọn tài khoản quảng cáo trước khi làm mới dữ liệu",
+      toast.warning(t('toasts.select_account_warning'), {
+        description: t('toasts.select_account_description'),
       });
       return;
     }
@@ -990,15 +1061,15 @@ function AdsManagement() {
       }
 
       console.log("✅ Data refreshed successfully");
-      toast.success("Làm mới dữ liệu thành công!");
+      toast.success(t('toasts.refresh_success'));
     } catch (error) {
       console.error("❌ Error refreshing data:", error);
-      toast.error("Lỗi khi làm mới dữ liệu");
+      toast.error(t('toasts.refresh_error'));
     } finally {
       setRefreshing(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccountId, activeTab, selectedCampaign?.id, selectedAdset?.id, syncData, fetchCampaignsForAccount, fetchAdsetsForCampaign, fetchAllAdsetsForAccount, fetchAdsForAdset, fetchAllAdsForAccount, toast]);
+  }, [selectedAccountId, activeTab, selectedCampaign?.id, selectedAdset?.id, syncData, fetchCampaignsForAccount, fetchAdsetsForCampaign, fetchAllAdsetsForAccount, fetchAdsForAdset, fetchAllAdsForAccount, toast, t]);
 
   return (
     <div className="ads-management-layout">
@@ -1012,15 +1083,15 @@ function AdsManagement() {
                   onChange={handleAccountChange}
                   disabled={loadingAccounts}
                 >
-                  <option value="">Chọn tài khoản quảng cáo</option>
+                  <option value="">{t('management.select_account')}</option>
                   {loadingAccounts ? (
-                    <option disabled>Đang tải tài khoản...</option>
+                    <option disabled>{t('management.loading_accounts')}</option>
                   ) : adAccounts.length === 0 ? (
-                    <option disabled>Không có tài khoản nào</option>
+                    <option disabled>{t('management.no_accounts')}</option>
                   ) : (
                     adAccounts.map((account) => (
                       <option key={account._id} value={account.external_id}>
-                        {account.name || "Tài khoản"} ({account.external_id})
+                        {account.name || t('management.account')} ({account.external_id})
                       </option>
                     ))
                   )}
@@ -1037,16 +1108,16 @@ function AdsManagement() {
                   }}
                   disabled={!selectedAccountId}
                 >
-                  + Tạo chiến dịch
+                  + {t('management.create_campaign')}
                 </button>
               </div>
 
               <div className="filters">
-                <span>Từ</span>
+                <span>{t('management.from')}</span>
                 <input type="date" />
-                <span>đến</span>
+                <span>{t('management.to')}</span>
                 <input type="date" />
-                <button className="btn-filter">Tìm</button>
+                <button className="btn-filter">{t('management.search')}</button>
               </div>
             </div>
 
@@ -1060,7 +1131,7 @@ function AdsManagement() {
                     setActiveTab("campaigns");
                   }}
                 >
-                  Tất cả chiến dịch
+                  {t('management.all_campaigns')}
                 </button>
                 {selectedCampaign && (
                   <>
@@ -1099,7 +1170,7 @@ function AdsManagement() {
                   resetSelection();
                 }}
               >
-                <span className="tab-icon">▦</span> Chiến dịch
+                <span className="tab-icon">▦</span> {t('management.campaigns_tab')}
               </button>
               <button
                 className={`tab ${activeTab === "adsets" ? "active" : ""}`}
@@ -1110,7 +1181,7 @@ function AdsManagement() {
                     fetchAllAdsetsForAccount(selectedAccountId);
                 }}
               >
-                <span className="tab-icon">▣</span> Nhóm quảng cáo
+                <span className="tab-icon">▣</span> {t('management.adsets_tab')}
               </button>
               <button
                 className={`tab ${activeTab === "ads" ? "active" : ""}`}
@@ -1121,7 +1192,7 @@ function AdsManagement() {
                     fetchAllAdsForAccount(selectedAccountId);
                 }}
               >
-                <span className="tab-icon">▥</span> Quảng cáo
+                <span className="tab-icon">▥</span> {t('management.ads_tab')}
               </button>
 
               {hasSelectedItems && (
@@ -1146,10 +1217,10 @@ function AdsManagement() {
                 className="btn-refresh-ads"
                 onClick={handleRefresh}
                 disabled={refreshing || !selectedAccountId}
-                title="Làm mới dữ liệu"
+                title={t('management.refresh')}
               >
                 <RefreshCw size={16} className={refreshing ? "spinning" : ""} />
-                {refreshing ? "Đang tải..." : "Làm mới"}
+                {refreshing ? t('management.refreshing') : t('management.refresh')}
               </button>
             </div>
 
@@ -1165,26 +1236,26 @@ function AdsManagement() {
                         onChange={handleCheckAll}
                       />
                     </th>
-                    <th>Tắt/Bật</th>
-                    <th>Tên</th>
-                    <th>Trạng thái</th>
-                    <th>Ngân sách</th>
-                    {activeTab === "adsets" && <th>Thời gian chạy</th>}
-                    {activeTab === "adsets" && <th>Nhắm mục tiêu</th>}
-                    {activeTab === "campaigns" && <th>Mục tiêu</th>}
-                    <th>Hiển thị</th>
-                    <th>Tiếp cận</th>
-                    <th>Kết quả</th>
-                    <th>Chất lượng</th>
-                    <th>Cập nhật lần cuối</th>
-                    <th>Hành động</th>
+                    <th>{t('management.toggle_on_off')}</th>
+                    <th>{t('management.name')}</th>
+                    <th>{t('management.status')}</th>
+                    <th>{t('management.budget')}</th>
+                    {activeTab === "adsets" && <th>{t('management.runtime')}</th>}
+                    {activeTab === "adsets" && <th>{t('management.targeting')}</th>}
+                    {activeTab === "campaigns" && <th>{t('management.objective')}</th>}
+                    <th>{t('management.impressions')}</th>
+                    <th>{t('management.reach')}</th>
+                    <th>{t('management.results')}</th>
+                    <th>{t('management.quality')}</th>
+                    <th>{t('management.creator')}</th>
+                    <th>{t('management.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(activeTab === "ads" || activeTab === "adsets" || activeTab === "campaigns") && rows.length === 0 && (
                     <tr>
                       <td colSpan={activeTab === "adsets" ? 13 : activeTab === "campaigns" ? 12 : 11} style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
-                        Chưa có quảng cáo nào để hiển thị. Hãy chọn tài khoản quảng cáo khác hoặc tạo mới.
+                        {t('management.no_data')}
                       </td>
                     </tr>
                   )}
@@ -1230,49 +1301,39 @@ function AdsManagement() {
                           {row.start_time && row.end_time ? (
                             <div style={{ fontSize: '12px' }}>
                               <div>{new Date(row.start_time).toLocaleDateString('vi-VN')}</div>
-                              <div>đến</div>
+                              <div>{t('management.to')}</div>
                               <div>{new Date(row.end_time).toLocaleDateString('vi-VN')}</div>
                             </div>
                           ) : row.start_time ? (
                             <div style={{ fontSize: '12px' }}>
-                              <div>Từ: {new Date(row.start_time).toLocaleDateString('vi-VN')}</div>
-                              <div>Không giới hạn</div>
+                              <div>{t('management.from')}: {new Date(row.start_time).toLocaleDateString('vi-VN')}</div>
+                              <div>{t('management.no_limit')}</div>
                             </div>
                           ) : (
-                            "Chưa thiết lập"
+                            t('labels.not_set')
                           )}
                         </td>
                       )}
                       {activeTab === "adsets" && (
                         <td className="text-center">
                           <div style={{ fontSize: '12px', textAlign: 'left' }}>
-                            {row.targeting && (
-                              <>
-                                {row.targeting.genders && (
-                                  <div>Giới tính: {row.targeting.genders.join(', ')}</div>
-                                )}
-                                {row.targeting.age_min && row.targeting.age_max && (
-                                  <div>Tuổi: {row.targeting.age_min}-{row.targeting.age_max}</div>
-                                )}
-                                {row.targeting.geo_locations && row.targeting.geo_locations.countries && (
-                                  <div>Vị trí: {row.targeting.geo_locations.countries.join(', ')}</div>
-                                )}
-                                {row.targeting.languages && (
-                                  <div>Ngôn ngữ: {row.targeting.languages.join(', ')}</div>
-                                )}
-                                {row.optimization_goal && (
-                                  <div>Mục tiêu: {row.optimization_goal}</div>
-                                )}
-                              </>
+                            {row.targeting && Object.keys(row.targeting).length > 0 ? (
+                              formatTargetingVN(row.targeting).map((line, idx) => (
+                                <div key={idx}>{line}</div>
+                              ))
+                            ) : (
+                              t('labels.not_set')
                             )}
-                            {(!row.targeting || Object.keys(row.targeting).length === 0) && "Chưa thiết lập"}
+                            {row.optimization_goal && (
+                              <div>{t('management.goal_label')}: {translateOptimizationGoal(row.optimization_goal)}</div>
+                            )}
                           </div>
                         </td>
                       )}
                       {activeTab === "campaigns" && (
                         <td className="text-center">
                           <div style={{ fontSize: '12px' }}>
-                            {row.objective || "Chưa thiết lập"}
+                            {row.objective ? translateObjective(row.objective) : t('labels.not_set')}
                           </div>
                         </td>
                       )}
@@ -1281,33 +1342,28 @@ function AdsManagement() {
                       <td className="text-center">{row.results || "0"}</td>
                       <td className="text-center">{row.quality || "0"}</td>
                       <td className="text-center">
-                        {row.updated_at
-                          ? new Date(row.updated_at).toLocaleString("vi-VN", {
-                              timeZone: "Asia/Ho_Chi_Minh",
-                              hour12: false,
-                            })
-                          : "Chưa cập nhật"}
+                        {row.created_by?.full_name || row.created_by?.email || t('labels.not_set')}
                       </td>
                       <td>
                         <div className="action-buttons">
                           <button
                             className="ads-action-btn ads-update-btn"
                             onClick={() => handleUpdate(row.id)}
-                            title="Cập nhật"
+                            title={t('management.update')}
                           >
                             <Edit size={14} />
                           </button>
                           <button
                             className="ads-action-btn ads-archive-btn"
                             onClick={() => handleArchive(row.id)}
-                            title="Lưu trữ"
+                            title={t('management.archive')}
                           >
                             <Archive size={14} />
                           </button>
                           <button
                             className="ads-action-btn ads-delete-btn"
                             onClick={() => handleDelete(row.id)}
-                            title="Xóa"
+                            title={t('management.delete')}
                           >
                             <Trash size={14} />
                           </button>
@@ -1372,6 +1428,15 @@ function AdsManagement() {
         message={confirmationPopup.message}
         type={confirmationPopup.type}
         isLoading={confirmationPopup.isLoading}
+      />
+
+      {/* Progress Popup */}
+      <ProgressPopup
+        isOpen={progressState.isOpen}
+        type={progressState.type}
+        title={progressState.title}
+        progress={progressState.progress}
+        onClose={closeProgress}
       />
     </div>
   );

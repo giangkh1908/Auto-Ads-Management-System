@@ -83,3 +83,46 @@ export const validateCampaignStep = (campaign, toast) => {
 }
 
 
+// ===== Datetime helpers for adset scheduling =====
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+export const getOneDayAfter = (isoString) => {
+  if (!isoString) return null;
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Date(d.getTime() + ONE_DAY_MS).toISOString();
+};
+
+export const toInputDateTimeLocal = (isoString) => {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const MM = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const HH = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  return `${yyyy}-${MM}-${dd}T${HH}:${mm}`;
+};
+
+export const isEndAtLeastOneDayAfterStart = (startIso, endIso) => {
+  if (!startIso || !endIso) return true; // let other validators handle nulls
+  const s = new Date(startIso);
+  const e = new Date(endIso);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return true;
+  return e.getTime() >= s.getTime() + ONE_DAY_MS;
+};
+
+export const ensureEndAfterStartPlusOneDay = (startIso, endIso) => {
+  if (!startIso) return endIso || null;
+  const s = new Date(startIso);
+  if (Number.isNaN(s.getTime())) return endIso || null;
+  const minEnd = new Date(s.getTime() + ONE_DAY_MS).toISOString();
+  if (!endIso) return minEnd;
+  const e = new Date(endIso);
+  if (Number.isNaN(e.getTime())) return minEnd;
+  return e.getTime() < s.getTime() + ONE_DAY_MS ? minEnd : endIso;
+};
+
+

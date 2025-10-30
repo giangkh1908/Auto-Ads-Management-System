@@ -1,4 +1,4 @@
-import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
+import { useRef, useState, forwardRef, useImperativeHandle } from "react";
 import {
   Circle,
   Image,
@@ -29,7 +29,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
   // Get detailed requirements and guidance based on destination_type
   const getDestinationGuidance = () => {
     const destType = adset?.destination_type;
-    const optimizationGoal = adset?.optimization_goal;
+    // const optimizationGoal = adset?.optimization_goal;
     
     switch(destType) {
       case 'ON_VIDEO':

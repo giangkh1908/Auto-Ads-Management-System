@@ -138,12 +138,14 @@ function TargetStep({ campaign, setCampaign }) {
     },
   };
 
-  const currentObjective = objectiveDetails[campaign.objective] || {
-    title: "Chọn mục tiêu",
-    description: "Mục tiêu chiến dịch là mục tiêu kinh doanh mà bạn mong muốn đạt được khi chạy quảng cáo. Hãy di chuột qua từng mục tiêu để biết thêm thông tin.",
-    image: target,
-    suitableFor: ['...'],
-  };
+  const currentObjective = campaign.objective && objectiveDetails[campaign.objective] 
+    ? objectiveDetails[campaign.objective]
+    : {
+        title: "Chọn mục tiêu chiến dịch",
+        description: "Mục tiêu chiến dịch là mục tiêu kinh doanh mà bạn mong muốn đạt được khi chạy quảng cáo. Hãy chọn một mục tiêu từ danh sách bên trái để tiếp tục.",
+        image: target,
+        suitableFor: ['Chọn mục tiêu để xem chi tiết'],
+      };
 
   return (
     <div className="panel objectives-panel">

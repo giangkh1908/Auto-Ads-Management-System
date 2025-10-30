@@ -141,11 +141,11 @@ export function buildPayload({
           advantage_audience: 0,
         },
       },
-      start_time: adset.schedule?.start
-        ? new Date(adset.schedule.start).toISOString()
+      start_time: adset.start_time
+        ? new Date(adset.start_time).toISOString()
         : new Date().toISOString(),
-      end_time: adset.schedule?.end
-        ? new Date(adset.schedule.end).toISOString()
+      end_time: adset.end_time
+        ? new Date(adset.end_time).toISOString()
         : null,
       optimization_goal: adset.optimization_goal,
       conversion_event: adset.conversion_event,
@@ -162,6 +162,13 @@ export function buildPayload({
             },
           }
         : {}),
+      // Vị trí chuyển đổi/lưu lượng (prefill & update BE/FB)
+      ...(adset.traffic_destination && {
+        traffic_destination: adset.traffic_destination,
+      }),
+      ...(adset.destination_type && {
+        destination_type: adset.destination_type,
+      }),
     },
     ad: {
       draftId: ad.id || null,

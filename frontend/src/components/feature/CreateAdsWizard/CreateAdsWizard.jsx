@@ -30,6 +30,7 @@ import {
   TAB_TYPES,
 } from "../../../constants/wizardConstants.js";
 import { saveDraft } from "../../../services/adsWizardService.js";
+import { FB_OBJECTIVE_MAP, ADSET_CONFIG_BY_OBJECTIVE } from "../../../constants/wizardConstants.js";
 
 function CreateAdsWizard({
   onClose,
@@ -40,6 +41,13 @@ function CreateAdsWizard({
   selectedCampaign: _selectedCampaign = null, // eslint-disable-line no-unused-vars
   setDatasets: _setDatasets = null, // eslint-disable-line no-unused-vars
 }) {
+  // Normalize backend outcome objective to UI key (AWARENESS, TRAFFIC, ...)
+  const toUiObjective = (obj) => {
+    if (!obj) return obj;
+    if (ADSET_CONFIG_BY_OBJECTIVE[obj]) return obj; // already UI key
+    const entry = Object.entries(FB_OBJECTIVE_MAP).find(([ui, fb]) => fb === obj);
+    return entry ? entry[0] : obj;
+  };
   const contentRef = useRef(null);
 
   // Refs for step validation
@@ -478,7 +486,7 @@ function CreateAdsWizard({
                 adset={adset}
                 setAdset={setAdset}
                 mode={mode}
-                objective={campaign.objective}
+                objective={toUiObjective(campaign.objective)}
                 adsetsList={adsetsList}
                 setAdsetsList={setAdsetsList}
                 facebookPages={facebookPages}

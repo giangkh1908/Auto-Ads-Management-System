@@ -40,6 +40,9 @@ const adsSetSchema = new mongoose.Schema(
     promoted_object: { type: mongoose.Schema.Types.Mixed, default: {} },
     targeting: { type: mongoose.Schema.Types.Mixed, default: {} },
 
+    // Vị trí chuyển đổi/Lưu lượng (WEBSITE/APP/MESSAGING/CALLS/ON_POST/ON_PAGE/ON_EVENT...)
+    traffic_destination: { type: String, trim: true, default: null },
+
     // 💰 Ngân sách & thời gian
     daily_budget: { type: Number },
     lifetime_budget: { type: Number },
