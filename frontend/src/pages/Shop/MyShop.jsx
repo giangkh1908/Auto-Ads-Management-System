@@ -200,7 +200,7 @@ function MyShop() {
                     <div className="table-cell">{t('shop.page_count')}</div>
                     <div className="table-cell">{t('shop.role')}</div>
                     <div className="table-cell">{t('shop.expired')}</div>
-                    <div className="table-cell">{t('shop.status')}</div>
+                    {/* <div className="table-cell">{t('shop.status')}</div> */}
                     <div className="table-cell">{t('shop.action')}</div>
                   </div>
 
@@ -235,13 +235,13 @@ function MyShop() {
                       <div className="table-cell" data-label={t('shop.expired')}>
                         <span className="expired-date">{shop.expired}</span>
                       </div>
-                      <div className="table-cell" data-label={t('shop.status')}>
+                      {/* <div className="table-cell" data-label={t('shop.status')}>
                         <span
                           className={`status-badge status-${shop.status.toLowerCase()}`}
                         >
                           {shop.status}
                         </span>
-                      </div>
+                      </div> */}
                       <div className="table-cell" data-label={t('shop.action')}>
                         <div className="action-buttons">
                           <button
@@ -452,6 +452,8 @@ function MyShop() {
                   type="email"
                   className="modal-input"
                   value={updateForm.email}
+                  style={{ backgroundColor: "#dddbdbff" }}
+                  disabled
                   readOnly
                 />
               </div>
@@ -462,6 +464,8 @@ function MyShop() {
                   type="tel"
                   className="modal-input"
                   value={updateForm.phone}
+                  style={{ backgroundColor: "#dddbdbff" }}
+                  disabled
                   readOnly
                 />
               </div>

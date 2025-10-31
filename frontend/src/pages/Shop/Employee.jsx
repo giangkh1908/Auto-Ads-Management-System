@@ -4,6 +4,8 @@ import { NavLink } from "react-router-dom";
 import { Plus, Edit, Play, Pause, Hand } from "lucide-react";
 import { ROUTES } from "../../constants/app.constants";
 import "./Shop.css";
+import { toast } from "react-toastify";
+import { STORAGE_KEYS } from '../../constants/app.constants';
 
 function Employee() {
   const { t } = useTranslation();
@@ -12,38 +14,29 @@ function Employee() {
   const [searchEmail, setSearchEmail] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
+  const shopId = "68ed2a2d64097dc1c878e716"; // Ví dụ
+  const currentUserId = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN); // sau này lấy từ AuthContext
+
   useEffect(() => {
     const loadShops = async () => {
       try {
         setLoading(true);
-        // Mock data - thay thế bằng API call thực tế
-        const mockEmployees = [
-          {
-            id: 1,
-            name: "User_1",
-            email: "user1@gmail.com",
-            page: 1,
-            role: "Admin",
-            status: "Active",
-          },
-          {
-            id: 2,
-            name: "User_2",
-            email: "user2@gmail.com",
-            page: 2,
-            role: "Manager",
-            status: "Inactive",
-          },
-          {
-            id: 3,
-            name: "User_3",
-            email: "user3@gmail.com",
-            page: 3,
-            role: "Saler",
-            status: "Active",
-          },
-        ];
-        setEmployees(mockEmployees);
+        const res = await fetch(`http://localhost:5001/api/shop-users/${shopId}`);
+        const data = await res.json();
+
+        if (data.success) {
+          const safeEmployees = data.data.map(emp => ({
+            id: emp.user_id,
+            name: emp.full_name || "Unknown",
+            email: emp.email || "No email",
+            role: emp.role_name || "N/A",
+            status: emp.status || "Inactive",
+            page: emp.page || 0,
+          }));
+          setEmployees(safeEmployees);
+        } else {
+          console.error("Fetch employees failed:", data.message);
+        }
       } catch (e) {
         console.error("Load shops error:", e);
       } finally {
@@ -53,9 +46,69 @@ function Employee() {
     loadShops();
   }, []);
 
+  const handleRoleChange = async (userId, newRoleName) => {
+    try {
+      const roleMap = {
+        "Shop Owner": "68ff6cab6ef1d167ed39c6fa",
+        "Marketing Admin": "68ff6cab6ef1d167ed39c6f9",
+        "Marketer": "68ff6cab6ef1d167ed39c6f8",
+      };
+      const newRoleId = roleMap[newRoleName];
+
+      const res = await fetch(`http://localhost:5001/api/shop-users/${shopId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, newRoleId, currentUserId }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Cập nhật vai trò thành công!");
+        setEmployees((prev) =>
+          prev.map((emp) =>
+            emp.id === userId ? { ...emp, role: newRoleName } : emp
+          )
+        );
+      } else {
+        toast.error(data.message || "Không thể cập nhật vai trò");
+      }
+    } catch (err) {
+      console.error("Update role error:", err);
+      toast.error("Lỗi khi cập nhật vai trò");
+    }
+  };
+
   //Hành động với page
-  const handleAction = (shopId, action) => {
-    console.log(`Action ${action} for shop ${shopId}`);
+  const handleAction = async (userId, action) => {
+    try {
+      let newStatus = "";
+      if (action === "activate") newStatus = "active";
+      else if (action === "deactivate") newStatus = "inactive";
+      else if (action === "remove") newStatus = "removed";
+
+      const res = await fetch(`http://localhost:5001/api/shop-users/status/${shopId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, newStatus, currentUserId }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success(data.message);
+        setEmployees((prev) =>
+          prev.map((emp) =>
+            emp.user_id === userId ? { ...emp, status: newStatus } : emp
+          )
+        );
+        window.location.reload(); // ✅ Reload lại toàn trang sau khi đổi trạng thái
+      } else {
+        toast.error(data.message || "Không thể cập nhật trạng thái");
+      }
+    } catch (error) {
+      console.error("Update status error:", error);
+      toast.error("Lỗi khi cập nhật trạng thái");
+    }
   };
 
   //Thêm page mới
@@ -64,8 +117,12 @@ function Employee() {
   };
 
   const filteredEmployees = employees.filter((emp) => {
-    const matchesEmail = emp.email.toLowerCase().includes(searchEmail.toLowerCase());
-    const matchesRole = roleFilter === 'all' ? true : emp.role.toLowerCase() === roleFilter;
+    const matchesEmail = emp.email?.toLowerCase().includes(searchEmail.toLowerCase());
+    const matchesRole =
+      roleFilter === "all"
+        ? true
+        : emp.role?.toLowerCase() === roleFilter.toLowerCase();
+
     return matchesEmail && matchesRole;
   });
 
@@ -96,9 +153,9 @@ function Employee() {
               onChange={(e) => setRoleFilter(e.target.value)}
             >
               <option value="all">{t('shop.all_roles')}</option>
-              <option value="admin">{t('shop.admin')}</option>
-              <option value="manager">{t('shop.manager')}</option>
-              <option value="saler">{t('shop.saler')}</option>
+              <option value="Shop Owner">Shop Owner</option>
+              <option value="Marketing Admin">Marketing Admin</option>
+              <option value="Marketer">Marketer</option>
             </select>
           </div>
 
@@ -131,7 +188,7 @@ function Employee() {
                     <div className="table-cell" data-label={t('shop.name')}>
                       <div className="shop-name">
                         <div className="shop-avatar">
-                          {employee.name.charAt(0)}
+                          {employee.name ? employee.name.charAt(0) : "?"}
                         </div>
                         <span>{employee.name}</span>
                       </div>
@@ -143,7 +200,16 @@ function Employee() {
                       <span className="employee-count">{employee.page}</span>
                     </div>
                     <div className="table-cell" data-label={t('shop.role')}>
-                      <span className="role-badge">{employee.role}</span>
+                      <select
+                        className="role-select"
+                        value={employee.role}
+                        onChange={(e) => handleRoleChange(employee.id, e.target.value)}
+                        disabled={employee.role === "Shop Owner"} // không cho sửa owner
+                      >
+                        <option value="Shop Owner">Shop Owner</option>
+                        <option value="Marketing Admin">Marketing Admin</option>
+                        <option value="Marketer">Marketer</option>
+                      </select>
                     </div>
                     <div className="table-cell" data-label={t('shop.status')}>
                       <span
@@ -154,13 +220,13 @@ function Employee() {
                     </div>
                     <div className="table-cell" data-label={t('shop.action')}>
                       <div className="action-buttons">
-                        <button
+                        {/* <button
                           className="shop-action-btn shop-update-btn"
                           onClick={() => handleAction(employee.id, "update")}
                           title={t('shop.update')}
                         >
                           <Edit size={14} />
-                        </button>
+                        </button> */}
                         <button
                           className="shop-action-btn shop-activate-btn"
                           onClick={() => handleAction(employee.id, "activate")}

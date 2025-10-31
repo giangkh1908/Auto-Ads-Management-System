@@ -4,12 +4,8 @@ const shopUserSchema = new mongoose.Schema(
   {
     shop_id: { type: mongoose.Schema.Types.ObjectId, ref: "Shop", required: true },
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    role_in_shop: {
-      type: String,
-      enum: ["owner", "manager", "marketing", "analyst", "staff"],
-      default: "staff",
-    },
     is_manager: { type: Boolean, default: false },
+    is_current: { type: Boolean, default: false },
     status: {
       type: String,
       enum: ["active", "inactive", "removed"],

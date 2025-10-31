@@ -1,17 +1,17 @@
 import express from "express";
-import { createShopUser, getShopUsers, getShopUserById, getShopsByUser, updateShopUser, deleteShopUser } from "../../controllers/shops/shopUserControllers.js";
+import { createShopUser, getShopUsers, getShopUserById, getShopsByUser, getUsersByShop, updateShopUser, updateUserRole, updateUserStatus, deleteShopUser } from "../../controllers/shops/shopUserControllers.js";
 
 const router = express.Router();
 
 router.get("/", getShopUsers);
 
-router.get("/:id", getShopUserById);
-
-router.get("/:user_id", getShopsByUser);
+router.get("/:shopId", getUsersByShop);
 
 router.post("/", createShopUser);
 
-router.put("/:id", updateShopUser);
+router.put("/status/:shopId", updateUserStatus);
+
+router.put("/:shopId", updateUserRole);
 
 router.delete("/:id", deleteShopUser);
 
