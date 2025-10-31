@@ -616,9 +616,10 @@ export function useFlexibleWizardPublish() {
       const payload = {
         ad_account_id: selectedAccountId,
         campaignsList: campaignsList.map((campaign) => ({
-          _id: campaign._id, // MongoDB _id để update
-          external_id: campaign.external_id, // Facebook ID để update
-          draftId: campaign.draftId,
+          // ✅ CHỈ GỬI _id NẾU LÀ MongoDB ObjectId HỢP LỆ (không phải temp ID)
+          ...(campaign._id && !isTempId(campaign._id) && isValidMongoId(campaign._id) && { _id: campaign._id }),
+          ...(campaign.external_id && { external_id: campaign.external_id }),
+          // ✅ buildCampaignPayload đã filter draftId (temp ID)
           ...buildCampaignPayload(campaign, selectedAccountId),
           adsets: (campaign.adsets || []).map((adset) => {
             console.log(
@@ -636,14 +637,14 @@ export function useFlexibleWizardPublish() {
             console.log(`  ✅ Filtered ads count: ${filteredAds.length}`);
 
             return {
-              _id: adset._id,
-              external_id: adset.external_id,
-              draftId: adset.draftId,
+              // ✅ CHỈ GỬI external_id NẾU CÓ (buildAdsetPayload đã handle _id và draftId)
+              ...(adset.external_id && { external_id: adset.external_id }),
+              // ✅ buildAdsetPayload đã filter _id và draftId (temp ID)
               ...buildAdsetPayload(adset, campaign),
               ads: filteredAds.map((ad) => ({
-                _id: ad._id,
-                external_id: ad.external_id,
-                draftId: ad.draftId,
+                // ✅ CHỈ GỬI external_id NẾU CÓ (buildAdPayload đã handle _id và draftId)
+                ...(ad.external_id && { external_id: ad.external_id }),
+                // ✅ buildAdPayload đã filter _id và draftId (temp ID)
                 ...buildAdPayload(ad),
                 creative: buildCreativePayload(ad, campaign, adset),
               })),
@@ -811,6 +812,45 @@ export function useFlexibleWizardPublish() {
 // 🛠️ HELPER FUNCTIONS FOR PAYLOAD BUILDING
 // ========================================
 
+// Helper function để check xem ID có phải temp ID không
+function isTempId(id) {
+  if (!id || typeof id !== 'string') return false;
+  return id.startsWith('temp_');
+}
+
+// Helper function để check xem ID có phải MongoDB ObjectId hợp lệ không
+function isValidMongoId(id) {
+  if (!id) return false;
+  // MongoDB ObjectId là chuỗi 24 ký tự hex
+  if (typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id)) return true;
+  // Nếu là ObjectId object
+  if (typeof id === 'object' && id.toString) return true;
+  return false;
+}
+
+// Helper function để lấy draftId hợp lệ
+// ✅ CHỈ SET draftId KHI:
+// 1. Đã có external_id (đã publish) → có thể update draft
+// 2. HOẶC _id là MongoDB ObjectId hợp lệ (đã lưu trong DB)
+function getValidDraftId(entity) {
+  if (!entity) return null;
+  
+  // ✅ Item đã publish → có thể có draftId để update
+  const hasExternalId = entity.external_id != null && entity.external_id !== '';
+  
+  // ✅ Item đã lưu trong DB (có MongoDB ObjectId hợp lệ)
+  const validId = entity._id && !isTempId(entity._id) && isValidMongoId(entity._id);
+  const validIdAlt = entity.id && !isTempId(entity.id) && isValidMongoId(entity.id);
+  
+  // ✅ CHỈ SET draftId NẾU item đã publish HOẶC đã lưu trong DB
+  if (hasExternalId || validId || validIdAlt) {
+    return entity._id || entity.id || null;
+  }
+  
+  // ❌ Item mới (temp ID) → không set draftId → backend sẽ tạo mới
+  return null;
+}
+
 /**
  * Xây dựng payload cho Campaign
  */
@@ -819,7 +859,7 @@ function buildCampaignPayload(campaign) {
     FB_OBJECTIVE_MAP[campaign.objective] || "OUTCOME_ENGAGEMENT";
 
   return {
-    draftId: campaign._id || campaign.id || null, // ✅ Ưu tiên _id (MongoDB _id)
+    draftId: getValidDraftId(campaign), // ✅ FILTER TEMP ID
     name: campaign.name,
     objective: fbObjective,
     status: campaign.status,
@@ -847,8 +887,9 @@ function buildAdsetPayload(adset, campaign) {
   };
 
   return {
-    _id: adset._id,
-    draftId: adset._id || adset.id || null, // ✅ Ưu tiên _id (MongoDB _id)
+    // ✅ CHỈ SET _id NẾU LÀ MongoDB ObjectId HỢP LỆ (không phải temp ID)
+    ...(adset._id && !isTempId(adset._id) && isValidMongoId(adset._id) && { _id: adset._id }),
+    draftId: getValidDraftId(adset), // ✅ FILTER TEMP ID
     name: adset.name,
     daily_budget: adset.budgetAmount,
     status: "PAUSED",
@@ -936,7 +977,7 @@ function buildCreativePayload(ad, campaign, adset) {
  */
 function buildAdPayload(ad) {
   return {
-    draftId: ad._id || ad.id || null, // ✅ Ưu tiên _id (MongoDB _id)
+    draftId: getValidDraftId(ad), // ✅ FILTER TEMP ID
     adset_id: ad.adset_id,
     name: ad.name,
     status: "PAUSED",

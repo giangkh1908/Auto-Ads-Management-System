@@ -66,7 +66,7 @@ const BILLING_EVENT_LABELS = {
             return events.map(e => ({ value: e, label: BILLING_EVENT_LABELS[e] || e }));
           },
           default: "IMPRESSIONS",
-          disabled: (adset) => !adset.optimization_goal,
+          // disabled: (adset) => !adset.optimization_goal,
           hint: (adset) => !adset.optimization_goal ? "Vui lòng chọn mục tiêu tối ưu hóa trước" : null,
           validate: (value) => {
             if (!value) return "Thiếu sự kiện tính phí";
