@@ -319,12 +319,13 @@
   text-decoration: none;
 }
 
-/* Ad: Màu đen, không clickable */
+/* Ad: Màu đen, không clickable - Cải thiện hiển thị nội dung vì là bước cuối */
 .name-text.ad-name {
-  color: #111827;
+  color: #000000; /* ✅ Màu đen để nội dung rõ ràng hơn */
   cursor: default;
   text-decoration: none;
-  font-weight: 400;
+  font-weight: 600; /* ✅ Tăng độ đậm để nổi bật */
+  line-height: 1.5; /* ✅ Tăng line-height để dễ đọc */
 }
 
 .row-actions {

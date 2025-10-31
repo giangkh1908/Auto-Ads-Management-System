@@ -30,16 +30,25 @@ import {
   TAB_TYPES,
 } from "../../../constants/wizardConstants.js";
 import { saveDraft } from "../../../services/adsWizardService.js";
+import { FB_OBJECTIVE_MAP, ADSET_CONFIG_BY_OBJECTIVE } from "../../../constants/wizardConstants.js";
 
 function CreateAdsWizard({
   onClose,
   onSuccess = null,
+  onDraftSaved = null, // ✅ Callback cho draft (chỉ fetch từ DB, không sync Facebook)
   mode = "create",
   editingItem = null,
   selectedAccountId = null,
   selectedCampaign: _selectedCampaign = null, // eslint-disable-line no-unused-vars
   setDatasets: _setDatasets = null, // eslint-disable-line no-unused-vars
 }) {
+  // Normalize backend outcome objective to UI key (AWARENESS, TRAFFIC, ...)
+  const toUiObjective = (obj) => {
+    if (!obj) return obj;
+    if (ADSET_CONFIG_BY_OBJECTIVE[obj]) return obj; // already UI key
+    const entry = Object.entries(FB_OBJECTIVE_MAP).find(([ui, fb]) => fb === obj);
+    return entry ? entry[0] : obj;
+  };
   const contentRef = useRef(null);
 
   // Refs for step validation
@@ -351,6 +360,12 @@ function CreateAdsWizard({
 
       toast.success("Đã lưu nháp thành công!");
       setShowSaveDraftPopup(false);
+      
+      // ✅ GỌI onDraftSaved() ĐỂ CHỈ FETCH LẠI TỪ DB (KHÔNG SYNC FACEBOOK)
+      if (onDraftSaved) {
+        onDraftSaved();
+      }
+      
       onClose();
     } catch (error) {
       console.error("Error saving draft:", error);
@@ -460,43 +475,45 @@ function CreateAdsWizard({
 
                 {/* Campaign Details Panel */}
                 {wizardStep === WIZARD_STEPS.CAMPAIGN && (
-                  <CampaignStep
-                    ref={campaignRef}
-                    campaign={campaign}
-                    setCampaign={setCampaign}
-                    campaignsList={campaignsList}
-                    setCampaignsList={setCampaignsList}
-                    selectedCampaignIndex={selectedCampaignIndex}
-                    setSelectedCampaignIndex={setSelectedCampaignIndex}
-                    facebookPages={facebookPages}
-                  />
-                )}
+              <CampaignStep
+                ref={campaignRef}
+                campaign={campaign}
+                setCampaign={setCampaign}
+                campaignsList={campaignsList}
+                setCampaignsList={setCampaignsList}
+                selectedCampaignIndex={selectedCampaignIndex}
+                setSelectedCampaignIndex={setSelectedCampaignIndex}
+              />
+            )}
 
                 {/* Adset Details Panel */}
                 {wizardStep === WIZARD_STEPS.ADSET && (
-                  <AdsetStep
-                    ref={adsetRef}
-                    adset={adset}
-                    setAdset={setAdset}
-                    mode={mode}
-                    objective={campaign.objective}
-                    adsetsList={adsetsList}
-                    setAdsetsList={setAdsetsList}
-                  />
-                )}
+              <AdsetStep
+                ref={adsetRef}
+                adset={adset}
+                setAdset={setAdset}
+                mode={mode}
+                objective={toUiObjective(campaign.objective)}
+                adsetsList={adsetsList}
+                setAdsetsList={setAdsetsList}
+                facebookPages={facebookPages}
+                campaign={campaign}
+              />
+            )}
 
                 {/* Ad Details Panel */}
                 {wizardStep === WIZARD_STEPS.AD && (
-                  <AdStep
-                    ref={adRef}
-                    ad={ad}
-                    setAd={setAd}
-                    mode={mode}
-                    campaign={campaign}
-                    adsList={adsList}
-                    setAdsList={setAdsList}
-                  />
-                )}
+              <AdStep
+                ref={adRef}
+                ad={ad}
+                setAd={setAd}
+                adset={adset}
+                mode={mode}
+                campaign={campaign}
+                adsList={adsList}
+                setAdsList={setAdsList}
+              />
+            )}
 
                 {/* Creative Preview Panel */}
                 {wizardStep === WIZARD_STEPS.CREATIVE && (

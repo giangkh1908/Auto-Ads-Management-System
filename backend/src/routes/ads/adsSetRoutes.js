@@ -1,27 +1,30 @@
 // src/routes/ads/adsSetRoutes.js
 import express from "express";
-import { listAdSetsCtrl, syncAdSetsCtrl, getAdSetsLiveCtrl, toggleAdsetStatusCtrl, deleteAdsetCascadeCtrl, getAdsetFromDatabase, copyAdsetCascadeCtrl } from "../../controllers/ads/adsSet.controller.js";
+import {
+  listAdSetsCtrl,
+  syncAdSetsCtrl,
+  getAdSetsLiveCtrl,
+  toggleAdsetStatusCtrl,
+  deleteAdsetCascadeCtrl,
+  getAdsetFromDatabase,
+  copyAdsetCascadeCtrl,
+  getAdsetInsightsCtrl,
+} from "../../controllers/ads/adsSet.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 router.use(authenticate);
 
-// Thêm route đặc biệt để xử lý yêu cầu cũ đến /count
-router.get("/count", (req, res) => {
-  return res.status(200).json({ count: 0 });
-});
-
-// NEW: lấy adsets trực tiếp từ Facebook
+// Đặt các routes cụ thể TRƯỚC route có tham số /:id
 router.get("/live", getAdSetsLiveCtrl);
-// Database endpoints
 router.get("/database", getAdsetFromDatabase);
-router.post("/:id/copy", copyAdsetCascadeCtrl);
-// Đồng bộ adsets từ Facebook
 router.get("/sync", syncAdSetsCtrl);
-
-// List adsets
+router.get("/insights", getAdsetInsightsCtrl);
 router.get("/", listAdSetsCtrl);
+
+// Routes với tham số động
+router.post("/:id/copy", copyAdsetCascadeCtrl);
 router.patch("/:id/status", toggleAdsetStatusCtrl);
 router.delete("/:id", deleteAdsetCascadeCtrl);
 

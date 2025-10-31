@@ -1,14 +1,60 @@
 import {
-  useState,
-  useRef,
   forwardRef,
   useImperativeHandle,
+  useRef,
+  useState,
   useEffect,
+  useCallback,
 } from "react";
+import { getNames } from "country-list";
+import {
+  MapPin,
+  Users,
+  Calendar,
+  DollarSign,
+  Target,
+  Circle,
+  Search,
+  Globe,
+  Smartphone,
+  MessageSquare,
+  Phone,
+  Facebook,
+} from "lucide-react";
 import { useOnClickOutside } from "../../../../utils/useOnClickOutside";
 import { useToast } from "../../../../hooks/useToast";
-import { validateNonEmpty } from "../../../../utils/validation";
 import {
+  getOneDayAfter,
+  toInputDateTimeLocal,
+  isEndAtLeastOneDayAfterStart,
+  ensureEndAfterStartPlusOneDay,
+} from "../../../../utils/validation";
+// import { validateNonEmpty } from "../../../../utils/validation";
+import { getAdsetDefaultsByObjective } from "../../../../constants/wizardConstants";
+import {
+  getOptimizationGoals,
+  getCompatibleBillingEvents,
+} from "../../../../constants/wizardConstants";
+import no_avatar from "../../../../assets/no-avatar.jpg";
+import "./AdsetStep.css";
+
+import AwarenessSchema from "./objectives/Awareness";
+import TrafficSchema from "./objectives/Traffic";
+import EngagementSchema from "./objectives/Engagement";
+import LeadsSchema from "./objectives/Leads";
+import SalesSchema from "./objectives/Sales";
+import AppPromotionSchema from "./objectives/AppPromotion";
+
+const SCHEMA_MAP = {
+  AWARENESS: AwarenessSchema,
+  TRAFFIC: TrafficSchema,
+  ENGAGEMENT: EngagementSchema,
+  LEADS: LeadsSchema,
+  SALES: SalesSchema,
+  APP_PROMOTION: AppPromotionSchema,
+};
+
+const ICON_MAP = {
   Circle,
   Target,
   DollarSign,
@@ -16,776 +62,432 @@ import {
   Users,
   MapPin,
   Search,
-} from "lucide-react";
-import "./AdsetStep.css";
-import { getNames } from "country-list";
-
-// Mapping các optimization_goal và billing_event theo mục tiêu chiến dịch
-const CAMPAIGN_OBJECTIVE_MAPPING = {
-  AWARENESS: {
-    optimization_goals: [
-      { value: "IMPRESSIONS", label: "Số lần hiển thị" },
-      { value: "REACH", label: "Tiếp cận" },
-    ],
-    billing_events: ["IMPRESSIONS", "REACH"],
-  },
-  TRAFFIC: {
-    optimization_goals: [
-      { value: "LINK_CLICKS", label: "Lượt nhấp link" },
-      { value: "LANDING_PAGE_VIEWS", label: "Lượt xem trang đích" },
-    ],
-    billing_events: ["IMPRESSIONS", "LINK_CLICKS"],
-  },
-  ENGAGEMENT: {
-    optimization_goals: [
-      { value: "REACH", label: "Tiếp cận" },
-      { value: "POST_ENGAGEMENT", label: "Tương tác bài viết" },
-      { value: "THRUPLAY", label: "Lượt xem video" },
-      { value: "PAGE_LIKES", label: "Lượt thích trang" },
-    ],
-    billing_events: ["IMPRESSIONS", "POST_ENGAGEMENT"],
-  },
-  APP_PROMOTION: {
-    optimization_goals: [
-      { value: "APP_INSTALLS", label: "Lượt cài đặt ứng dụng" },
-    ],
-    billing_events: ["IMPRESSIONS", "APP_INSTALLS"],
-  },
-  LEADS: {
-    optimization_goals: [
-      { value: "LEAD_GENERATION", label: "Khách hàng tiềm năng" },
-      { value: "QUALITY_LEAD", label: "Chuyển đổi" },
-    ],
-    conversion_events: [
-      { value: "LEAD", label: "Khách hàng tiềm năng" },
-      { value: "COMPLETE_REGISTRATION", label: "Hoàn tất đăng ký" },
-    ],
-    billing_events: ["IMPRESSIONS", "LEAD_GENERATION", "CONVERSIONS"],
-  },
-  CONVERSIONS: {
-    optimization_goals: [{ value: "OFFSITE_CONVERSIONS", label: "Chuyển đổi" }],
-    conversion_events: [
-      { value: "PURCHASE", label: "Mua hàng" },
-      { value: "ADD_TO_CART", label: "Thêm vào giỏ hàng" },
-      { value: "VIEW_CONTENT", label: "Xem nội dung" },
-    ],
-    billing_events: ["IMPRESSIONS", "LINK_CLICKS", "CONVERSIONS"],
-  },
+  Globe,
+  Smartphone,
+  MessageSquare,
+  Phone,
+  Facebook,
 };
 
-// Labels cho billing_event
-const BILLING_EVENT_LABELS = {
-  IMPRESSIONS: "Hiển thị (lượt xem quảng cáo)",
-  LINK_CLICKS: "Nhấp vào liên kết",
-  APP_INSTALLS: "Cài đặt ứng dụng",
-  VIDEO_VIEWS: "Lượt xem video",
-  POST_ENGAGEMENT: "Tương tác bài viết",
-  PAGE_LIKES: "Lượt thích trang",
-  CONVERSIONS: "Chuyển đổi",
-  LEAD_GENERATION: "Khách hàng tiềm năng",
-  REACH: "Tiếp cận",
+function getValue(obj, path) {
+  if (!path || typeof path !== "string") return undefined;
+  return path.split(".").reduce((o, k) => (o ? o[k] : undefined), obj);
+}
+
+function setValue(obj, path, val) {
+  if (!path || typeof path !== "string") return obj;
+  const keys = path.split(".");
+  const copy = { ...obj };
+  let cur = copy;
+  keys.forEach((k, i) => {
+    if (i === keys.length - 1) {
+      cur[k] = val;
+    } else {
+      cur[k] = { ...(cur[k] || {}) };
+      cur = cur[k];
+    }
+  });
+  return copy;
+}
+
+const toInputDateTime = (value) => {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const MM = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const HH = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  return `${yyyy}-${MM}-${dd}T${HH}:${mm}`;
 };
 
-function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
-  const [selectedTags, setSelectedTags] = useState(
-    adset.targeting?.location ? [adset.targeting.location] : ["Viet Nam"]
-  );
+const formatDisplay = (value) => {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  const dd = pad(d.getDate());
+  const MM = pad(d.getMonth() + 1);
+  const yyyy = d.getFullYear();
+  const HH = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  return `${dd}/${MM}/${yyyy} ${HH}:${mm}`;
+};
 
-  // Lấy các options dựa trên mục tiêu chiến dịch
-  const getObjectiveOptions = () => {
-    const mapping =
-      CAMPAIGN_OBJECTIVE_MAPPING[objective] ||
-      CAMPAIGN_OBJECTIVE_MAPPING.AWARENESS;
-    return mapping;
-  };
-
-  // Lấy các billing_event tương thích với mục tiêu chiến dịch
-  const getCompatibleBillingEvents = () => {
-    const mapping = getObjectiveOptions();
-    return mapping.billing_events || ["IMPRESSIONS"];
-  };
-
-  // Cập nhật billing_event khi optimization_goal thay đổi
-  const handleOptimizationGoalChange = (newOptimizationGoal) => {
-    const compatibleEvents = getCompatibleBillingEvents();
-    const currentBillingEvent = adset.billing_event;
-
-    // Nếu billing_event hiện tại không tương thích, chọn billing_event đầu tiên
-    const newBillingEvent = compatibleEvents.includes(currentBillingEvent)
-      ? currentBillingEvent
-      : compatibleEvents[0];
-
-    setAdset((prev) => ({
-      ...prev,
-      optimization_goal: newOptimizationGoal,
-      billing_event: newBillingEvent,
-    }));
-  };
-  const [selectedInterests, setSelectedInterests] = useState(
-    adset.targeting?.interests || ["E-commerce"]
-  );
+function FieldRenderer({ field, adset, setAdset, objective, mode }) {
   const toast = useToast();
-
-  // Suggest countries for tags (using country-list)
+  const value = getValue(adset, field.name || field.nameMin);
   const countries = getNames() || [];
+
   const [locationInput, setLocationInput] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestionsWrapperRef = useRef(null);
-  useOnClickOutside(suggestionsWrapperRef, () => setShowSuggestions(false));
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const locationRef = useRef(null);
+  useOnClickOutside(locationRef, () => setShowLocationSuggestions(false));
 
-  const filteredCountrySuggestions = countries
-    .filter((c) => c.toLowerCase().includes(locationInput.trim().toLowerCase()))
-    .slice(0, 8);
-
-  const addTag = (tag) => {
-    if (!tag) return;
-    const trimmed = tag.trim();
-    if (!trimmed) return;
-    // If input matches a country name ignoring case, normalize to proper case from list
-    const normalized =
-      countries.find((c) => c.toLowerCase() === trimmed.toLowerCase()) ||
-      trimmed;
-    setSelectedTags((prev) =>
-      Array.from(new Set([...(prev || []), normalized]))
-    );
-    setLocationInput("");
-    setShowSuggestions(false);
-  };
-
-  const removeTag = (idx) => {
-    setSelectedTags((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  // ===== Interests (detailed targeting) suggestions & tags =====
-  const DEFAULT_INTERESTS = [
-    "E-commerce",
-    "Online shopping",
-    "Digital marketing",
-    "Technology",
-    "Mobile apps",
-    "Gaming",
-    "Travel",
-    "Food & beverage",
-    "Fashion",
-    "Beauty",
-    "Fitness",
-    "Finance",
-    "Education",
-  ];
   const [interestInput, setInterestInput] = useState("");
   const [showInterestSuggestions, setShowInterestSuggestions] = useState(false);
-  const interestsWrapperRef = useRef(null);
-  useOnClickOutside(interestsWrapperRef, () =>
-    setShowInterestSuggestions(false)
+  const interestRef = useRef(null);
+  useOnClickOutside(interestRef, () => setShowInterestSuggestions(false));
+
+  const handleChange = useCallback(
+    (newValue) => {
+      setAdset((prev) => setValue(prev, field.name, newValue));
+    },
+    [field.name, setAdset]
   );
 
-  const filteredInterestSuggestions = DEFAULT_INTERESTS.filter((it) =>
-    it.toLowerCase().includes(interestInput.trim().toLowerCase())
-  ).slice(0, 8);
-
-  const addInterest = (val) => {
-    if (!val) return;
-    const trimmed = val.trim();
-    if (!trimmed) return;
-    setSelectedInterests((prev) =>
-      Array.from(new Set([...(prev || []), trimmed]))
-    );
-    setInterestInput("");
-    setShowInterestSuggestions(false);
-  };
-
-  const removeInterest = (idx) => {
-    setSelectedInterests((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  // 🕒 Helper: convert date to input[type=datetime-local] value (YYYY-MM-DDTHH:mm)
-  const toInputDateTime = (value) => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "";
-    const pad = (n) => String(n).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    const MM = pad(d.getMonth() + 1);
-    const dd = pad(d.getDate());
-    const HH = pad(d.getHours());
-    const mm = pad(d.getMinutes());
-    return `${yyyy}-${MM}-${dd}T${HH}:${mm}`;
-  };
-
-  // 🕒 Helper: format display dd/MM/yyyy HH:mm
-  const formatDisplay = (value) => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "";
-    const pad = (n) => String(n).padStart(2, "0");
-    const dd = pad(d.getDate());
-    const MM = pad(d.getMonth() + 1);
-    const yyyy = d.getFullYear();
-    const HH = pad(d.getHours());
-    const mm = pad(d.getMinutes());
-    return `${dd}/${MM}/${yyyy} ${HH}:${mm}`;
-  };
-
-  function getAllLanguages() {
-    return [
-      { code: "all", name: "Tất cả ngôn ngữ" },
-      { code: "vi", name: "Tiếng Việt" },
-      { code: "en", name: "English" },
-      { code: "zh", name: "中文 (Chinese)" },
-      { code: "ja", name: "日本語 (Japanese)" },
-      { code: "ko", name: "한국어 (Korean)" },
-      { code: "fr", name: "Français (French)" },
-      { code: "de", name: "Deutsch (German)" },
-      { code: "es", name: "Español (Spanish)" },
-      { code: "ru", name: "Русский (Russian)" },
-      { code: "th", name: "ไทย (Thai)" },
-      { code: "id", name: "Bahasa Indonesia" },
-      { code: "ms", name: "Bahasa Melayu" },
-      { code: "hi", name: "हिन्दी (Hindi)" },
-      { code: "pt", name: "Português (Portuguese)" },
-      { code: "it", name: "Italiano (Italian)" },
-      { code: "ar", name: "العربية (Arabic)" },
-    ];
+  if (field.visibleIf && !field.visibleIf(adset)) {
+    return null;
   }
 
-  // Expose validate() to parent
-  useImperativeHandle(
-    ref,
-    () => ({
-      validate: () => {
-        let isValid = true;
+  const isDisabled =
+  typeof field.disabled === "function"
+    ? field.disabled.length === 2 
+      ? field.disabled(adset, mode)
+      : field.disabled(mode)
+    : field.disabled; 
+  const hint =
+    typeof field.hint === "function" ? field.hint(adset) : field.hint;
 
-        // Kiểm tra tên adset
-        if (!adset?.name || adset.name.trim() === "") {
-          toast.warning("Vui lòng nhập tên nhóm quảng cáo");
-          isValid = false;
-        }
-
-        // Kiểm tra bid_amount khi chiến lược là LOWEST_COST_WITH_BID_CAP
-        if (
-          adset.bid_strategy === "LOWEST_COST_WITH_BID_CAP" &&
-          (!adset.bid_amount || adset.bid_amount <= 0)
-        ) {
-          toast.warning("Vui lòng nhập giới hạn giá thầu hợp lệ");
-          isValid = false;
-        }
-
-        // Đảm bảo có optimization_goal
-        const okOptimization = !!adset?.optimization_goal;
-        if (!okOptimization) {
-          toast.error("Thiếu mục tiêu tối ưu hóa");
-          // Tự động thiết lập giá trị mặc định nếu chưa có
-          setAdset((prev) => ({
-            ...prev,
-            optimization_goal:
-              getObjectiveOptions().optimization_goals[0]?.value || "REACH",
-            billing_event: getCompatibleBillingEvents()[0] || "IMPRESSIONS",
-          }));
-        }
-
-        // Đảm bảo có billing_event
-        const okBillingEvent = !!adset?.billing_event;
-        if (!okBillingEvent) {
-          toast.error("Thiếu sự kiện tính phí");
-        }
-
-        return isValid && okOptimization && okBillingEvent;
-      },
-    }),
-    [adset, toast, getObjectiveOptions, getCompatibleBillingEvents]
-  );
-
-  // Thêm useEffect để đảm bảo các giá trị mặc định khi component mount
-  useEffect(() => {
-    // Nếu optimization_goal chưa được thiết lập
-    if (!adset.optimization_goal) {
-      const defaultOptimizationGoal =
-        getObjectiveOptions().optimization_goals[0]?.value;
-      const defaultBillingEvent = getCompatibleBillingEvents()[0];
-
-      setAdset((prev) => ({
-        ...prev,
-        optimization_goal: defaultOptimizationGoal,
-        billing_event: defaultBillingEvent,
-        bid_strategy: prev.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
-        bid_amount: prev.bid_amount || 100,
-      }));
-    }
-  }, [objective]); // Re-run khi objective thay đổi
-
-  // Thêm useEffect để theo dõi thay đổi của bid_strategy
-  useEffect(() => {
-    // Khi bid_strategy thay đổi thành LOWEST_COST_WITHOUT_CAP, xóa bid_amount
-    if (
-      adset.bid_strategy === "LOWEST_COST_WITHOUT_CAP" &&
-      adset.bid_amount !== undefined
-    ) {
-      setAdset((prev) => {
-        const updated = { ...prev };
-        delete updated.bid_amount;
-        return updated;
-      });
-    }
-  }, [adset.bid_strategy]);
-
-  // Thêm hàm xử lý thay đổi bid strategy
-  const handleBidStrategyChange = (value) => {
-    if (value === "LOWEST_COST_WITHOUT_CAP") {
-      // Khi chọn LOWEST_COST_WITHOUT_CAP, xóa bid_amount
-      setAdset((prev) => {
-        const updated = { ...prev, bid_strategy: value };
-        delete updated.bid_amount;
-        return updated;
-      });
-
-      // Thông báo người dùng (optional)
-      toast?.info("Đã tắt giới hạn giá thầu theo chính sách của Facebook");
-    } else if (value === "LOWEST_COST_WITH_BID_CAP") {
-      // Khi chọn LOWEST_COST_WITH_BID_CAP, cần có bid_amount
-      setAdset((prev) => ({
-        ...prev,
-        bid_strategy: value,
-        bid_amount: prev.bid_amount || 100, // Giá trị mặc định nếu chưa có
-      }));
-    } else {
-      // Các loại khác
-      setAdset((prev) => ({ ...prev, bid_strategy: value }));
-    }
-  };
-
-  return (
-    <div className="adset-step">
-      <div className="config-scroll-container">
-        {/* --- Adset Name --- */}
-        <div className="config-section">
-          <div className="section-header-adset">
-            <Circle size={8} fill="#2563eb" color="#2563eb" />
-            <h3 className="section-title-ads">Tên nhóm quảng cáo</h3>
-          </div>
+  switch (field.type) {
+    case "input":
+      return (
+        <div className="field-group" key={field.name}>
+          {field.label && <label className="field-label">{field.label}</label>}
           <input
             type="text"
-            className="adset-name-input"
-            value={adset.name}
-            onChange={(e) =>
-              setAdset((prev) => ({ ...prev, name: e.target.value }))
-            }
-            onBlur={() =>
-              validateNonEmpty(adset.name, "tên nhóm quảng cáo", toast)
-            }
-            placeholder="Chiến dịch nhóm quảng cáo Lượt tương tác mới"
+            className={field.label ? "form-input" : "adset-name-input"}
+            value={value || ""}
+            onChange={(e) => handleChange(e.target.value)}
+            placeholder={field.placeholder}
+            onBlur={() => {
+              if (field.validate) {
+                const result = field.validate(value, adset);
+                if (result !== true) toast.warning(result);
+              }
+            }}
           />
         </div>
-        {/* Conversion Section */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <Target size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Lượt chuyển đổi</h3>
-          </div>
+      );
+
+    case "select": {
+      const options =
+        typeof field.options === "function"
+          ? field.options(objective, adset)
+          : field.options || [];
+      const selectedOption = options.find((opt) => opt.value === value);
+      const showDescription = selectedOption?.description;
+
+      return (
+        <div className="field-group" key={field.name}>
+          {field.label && <label className="field-label">{field.label}</label>}
           <select
-            className="conversion-select"
-            value={adset.conversion || "destination"}
-            onChange={(e) =>
-              setAdset((prev) => ({ ...prev, conversion: e.target.value }))
+            className={
+              field.name === "budgetType"
+                ? "budget-type"
+                : field.label === "Loại tương tác"
+                ? "performance-select"
+                : "conversion-event-select"
             }
-          >
-            <option value="destination">Đích đến của tin nhắn</option>
-            <option value="website">Trang web</option>
-          </select>
-        </div>
+            value={value || field.default || ""}
+            onChange={(e) => {
+              const selectedValue = e.target.value;
+              handleChange(selectedValue);
 
-        {/* Performance Goal Section */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <Target size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Mục tiêu hiệu quả</h3>
-          </div>
-          <select
-            className="performance-select"
-            value={adset.performanceGoal || "purchase"}
-            onChange={(e) =>
-              setAdset((prev) => ({ ...prev, performanceGoal: e.target.value }))
-            }
-          >
-            <option value="purchase">
-              Tối đa hóa số lượt mua qua tin nhắn
-            </option>
-            <option value="chat">Tối đa hóa số cuộc trò chuyện</option>
-            <option value="potential">
-              Tối đa hóa số khách hàng tiềm năng qua tin nhắn
-            </option>
-          </select>
-        </div>
-
-        {/* Optimization & Billing */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <Target size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Tối ưu hóa & Thanh toán</h3>
-          </div>
-          <div className="field-group">
-            <label className="field-label">Mục tiêu tối ưu hóa</label>
-            <select
-              className="optimization-select"
-              value={
-                adset?.optimization_goal ||
-                getObjectiveOptions().optimization_goals[0]?.value ||
-                "REACH"
+              // For optimization_goal: also set destination_type if exists
+              if (field.name === "optimization_goal") {
+                const selectedOpt = options.find(
+                  (opt) => opt.value === selectedValue
+                );
+                if (selectedOpt?.destination_type) {
+                  setAdset((prev) => ({
+                    ...prev,
+                    destination_type: selectedOpt.destination_type,
+                  }));
+                }
               }
-              onChange={(e) => handleOptimizationGoalChange(e.target.value)}
-            >
-              {getObjectiveOptions().optimization_goals.map((goal) => (
-                <option key={goal.value} value={goal.value}>
-                  {goal.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* billing_event = "Facebook thu tiền bạn theo sự kiện nào?" */}
-          <div className="field-group">
-            <label
-              className="field-label"
-              title="Facebook thu tiền bạn theo sự kiện nào?"
-            >
-              Sự kiện tính phí ?
-            </label>
-            <select
-              className="conversion-event-select"
-              value={adset.billing_event || "IMPRESSIONS"}
-              onChange={(e) =>
-                setAdset((prev) => ({
-                  ...prev,
-                  billing_event: e.target.value,
-                }))
-              }
-              disabled={!adset.optimization_goal}
-            >
-              {getCompatibleBillingEvents().map((event) => (
-                <option key={event} value={event}>
-                  {BILLING_EVENT_LABELS[event]}
-                </option>
-              ))}
-            </select>
-            {!adset.optimization_goal && (
-              <small
-                className="field-hint"
-                style={{ color: "#3275db", fontSize: "12px" }}
+            }}
+            disabled={isDisabled}
+          >
+            {options.map((opt, index) => (
+              <option
+                key={`${field.name}-${opt.value}-${index}`}
+                value={opt.value}
               >
-                Vui lòng chọn mục tiêu tối ưu hóa trước
-              </small>
-            )}
-          </div>
-
-          {/* conversion_event = "Facebook nên tối ưu quảng cáo hướng tới hành vi nào?" - chỉ hiển thị cho LEADS và CONVERSIONS */}
-          {(objective === "LEADS" || objective === "CONVERSIONS") &&
-            getObjectiveOptions().conversion_events && (
-              <div className="field-group">
-                <label
-                  className="field-label"
-                  title="Facebook nên tối ưu quảng cáo hướng tới hành vi nào?"
-                >
-                  Sự kiện chuyển đổi ?
-                </label>
-                <select
-                  className="conversion-event-select"
-                  value={
-                    adset.conversion_event ||
-                    getObjectiveOptions().conversion_events[0]?.value
-                  }
-                  onChange={(e) =>
-                    setAdset((prev) => ({
-                      ...prev,
-                      conversion_event: e.target.value,
-                    }))
-                  }
-                >
-                  {getObjectiveOptions().conversion_events.map((event) => (
-                    <option key={event.value} value={event.value}>
-                      {event.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          {/* Pixel ID chỉ hiển thị cho CONVERSIONS */}
-          {objective === "CONVERSIONS" && (
-            <div className="field-group">
-              <label className="field-label">Pixel ID</label>
-              <input
-                type="text"
-                className="text-input-pixel"
-                value={adset.pixel_id || ""}
-                onChange={(e) =>
-                  setAdset((prev) => ({ ...prev, pixel_id: e.target.value }))
-                }
-                onBlur={() =>
-                  validateNonEmpty(adset.pixel_id, "Pixel ID", toast)
-                }
-                placeholder="Nhập Pixel ID"
-              />
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {showDescription && (
+            <div
+              style={{
+                marginTop: "8px",
+                padding: "10px 12px",
+                background: "#f0f9ff",
+                border: "1px solid #bae6fd",
+                borderRadius: "6px",
+                fontSize: "13px",
+                color: "#0369a1",
+                lineHeight: "1.5",
+              }}
+            >
+              💡 {showDescription}
             </div>
           )}
-        </div>
-
-        {/* --- Budget Section --- */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <DollarSign size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Ngân sách</h3>
-          </div>
-          <div className="budget-row">
-            <select
-              className="budget-type"
-              value={adset.budgetType || "daily"}
-              onChange={(e) =>
-                setAdset((prev) => ({ ...prev, budgetType: e.target.value }))
-              }
+          {hint && (
+            <small
+              className="field-hint"
+              style={{ color: "#3275db", fontSize: "12px" }}
             >
-              <option value="daily">Ngân sách hàng ngày</option>
-              <option value="lifetime">Ngân sách tổng</option>
-            </select>
-            <div className="budget-input-group">
-              <input
-                type="text"
-                className="budget-input-text"
-                value={adset.budgetAmount?.toLocaleString("vi-VN") || 0}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^\d]/g, "");
-                  setAdset((p) => ({ ...p, budgetAmount: raw }));
-                }}
-                onBlur={(e) => {
-                  const num = parseInt(e.target.value.replace(/[^\d]/g, ""));
-                  setAdset((p) => ({ ...p, budgetAmount: num }));
-                }}
-              />
-              <div className="money-currency">VND</div>
-            </div>
+              {hint}
+            </small>
+          )}
+        </div>
+      );
+    }
+    case "radio-group": {
+      const radioOptions =
+        typeof field.options === "function"
+          ? field.options(objective, adset)
+          : field.options || [];
+      return (
+        <div className="field-group" key={field.name}>
+          {field.label && <label className="field-label">{field.label}</label>}
+          <div className="traffic-destination-options">
+            {radioOptions.map((opt) => {
+              const IconComp = opt.icon ? ICON_MAP[opt.icon] : null;
+              return (
+                <label
+                  key={opt.value}
+                  className={`traffic-option ${
+                    value === opt.value ? "selected" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={field.name}
+                    value={opt.value}
+                    checked={value === opt.value}
+                    onChange={(e) => handleChange(e.target.value)}
+                  />
+                  <div className="traffic-option-content">
+                    {IconComp && <IconComp size={20} />}
+                    <span>{opt.label}</span>
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </div>
+      );
+    }
 
-        {/* --- Date Range Section --- */}
-        <div className="config-section-datetime">
-          <div className="left-custom">
-            <div className="section-header-ads">
-              <Calendar size={16} color="#2563eb" />
-              <h3 className="section-title-ads">Ngày bắt đầu</h3>
-              {mode === "edit" && (
-                <span className="field-locked-badge">🔒 Không thể sửa</span>
-              )}
-            </div>
-            <div className="datetime-overlay-wrapper">
-              <input
-                type="datetime-local"
-                className="datetime-input-ads datetime-input-ads--masked"
-                value={toInputDateTime(adset.start_time || adset.startDate)}
-                onChange={(e) =>
-                  setAdset((prev) => ({
-                    ...prev,
-                    start_time: e.target.value,
-                    startDate: e.target.value,
-                    schedule: {
-                      ...prev.schedule,
-                      start: e.target.value,
-                    },
-                  }))
-                }
-                disabled={mode === "edit"} // ✅ DISABLE khi edit
-                title={
-                  mode === "edit"
-                    ? "Bạn không thể sửa thời gian bắt đầu của AdSet đã tạo"
-                    : ""
-                }
-              />
-              <span className="datetime-overlay">
-                {formatDisplay(adset.start_time || adset.startDate) ||
-                  new Date().toISOString().split("T")[0] + " 00:00"}
-              </span>
-            </div>
-          </div>
-
-          <div className="right-custom">
-            <div className="section-header-ads">
-              <Calendar size={16} color="#2563eb" />
-              <h3 className="section-title-ads">Ngày kết thúc</h3>
-            </div>
-            <div className="datetime-overlay-wrapper">
-              <input
-                type="datetime-local"
-                className="datetime-input-ads datetime-input-ads--masked"
-                value={toInputDateTime(adset.end_time || adset.endDate)}
-                onChange={(e) =>
-                  setAdset((prev) => ({
-                    ...prev,
-                    end_time: e.target.value,
-                    endDate: e.target.value,
-                    schedule: {
-                      ...prev.schedule,
-                      end: e.target.value, // ✅ THÊM: Cập nhật schedule.end
-                    },
-                  }))
-                }
-              />
-              <span className="datetime-overlay">
-                {formatDisplay(adset.end_time || adset.endDate) ||
-                  new Date().toISOString().split("T")[0] + " 00:00"}
-              </span>
-            </div>
+    case "money": {
+      return (
+        <div className="field-group" key={field.name}>
+          {field.label && <label className="field-label">{field.label}</label>}
+          <div className="budget-input-group">
+            <input
+              type="text"
+              className="budget-input-text"
+              value={value ? Number(value).toLocaleString("vi-VN") : 0}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^\d]/g, "");
+                handleChange(raw);
+              }}
+              onBlur={(e) => {
+                const num = parseInt(e.target.value.replace(/[^\d]/g, ""));
+                handleChange(num);
+              }}
+            />
+            <div className="money-currency">{field.currency || "VND"}</div>
           </div>
         </div>
-
-        {/* --- Targeting Section --- */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <Users size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Đối tượng tùy chỉnh</h3>
-          </div>
-          <div className="audience-fields">
-            <div className="field-group">
-              <label className="field-label">Tuổi</label>
-              <div className="age-inputs">
-                <input
-                  type="number"
-                  className="age-input-adset"
-                  placeholder="18"
-                  min={13}
-                  max={65}
-                  value={adset.targeting?.ageMin ?? 18}
-                  onChange={(e) => {
-                    const value =
-                      e.target.value === "" ? "" : parseInt(e.target.value);
-                    setAdset((prev) => ({
-                      ...prev,
-                      targeting: {
-                        ...prev.targeting,
-                        ageMin: value,
-                      },
-                    }));
-                  }}
-                  onBlur={(e) => {
-                    // Nếu để trống thì gán mặc định là 18
-                    if (e.target.value === "") {
-                      setAdset((prev) => ({
-                        ...prev,
-                        targeting: { ...prev.targeting, ageMin: 18 },
-                      }));
-                    }
-                  }}
-                />
-                <span>--</span>
-                <input
-                  type="number"
-                  className="age-input-adset"
-                  placeholder="65+"
-                  min={13}
-                  max={65}
-                  value={adset.targeting?.ageMax ?? 65}
-                  onChange={(e) => {
-                    const value =
-                      e.target.value === "" ? "" : parseInt(e.target.value);
-                    setAdset((prev) => ({
-                      ...prev,
-                      targeting: {
-                        ...prev.targeting,
-                        ageMax: value,
-                      },
-                    }));
-                  }}
-                  onBlur={(e) => {
-                    // Nếu để trống thì gán mặc định là 65
-                    if (e.target.value === "") {
-                      setAdset((prev) => ({
-                        ...prev,
-                        targeting: { ...prev.targeting, ageMax: 65 },
-                      }));
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            <div className="field-group">
-              <label className="field-label">Giới tính</label>
-              <select
-                className="gender-select"
-                value={adset.targeting?.gender || "all"}
-                onChange={(e) =>
-                  setAdset((prev) => ({
-                    ...prev,
-                    targeting: {
-                      ...prev.targeting,
-                      gender: e.target.value,
-                    },
-                  }))
-                }
-              >
-                <option value="all">Tất cả</option>
-                <option value="male">Nam</option>
-                <option value="female">Nữ</option>
-              </select>
-            </div>
-
-            <div className="field-group">
-              <label className="field-label">Ngôn ngữ</label>
-              <select
-                className="language-select"
-                value={adset.targeting?.language || "vi"}
-                onChange={(e) =>
-                  setAdset((prev) => ({
-                    ...prev,
-                    targeting: {
-                      ...(prev.targeting || {}),
-                      language: e.target.value,
-                    },
-                  }))
-                }
-              >
-                {getAllLanguages().map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      );
+    }
+    case "number": {
+      return (
+        <div className="field-group" key={field.name}>
+          {field.label && <label className="field-label">{field.label}</label>}
+          <div className="bid-amount-container">
+            <input
+              type="number"
+              className="bid-strategy-input"
+              value={value || ""}
+              onChange={(e) => handleChange(parseInt(e.target.value) || 0)}
+              min={field.min}
+              max={field.max}
+              placeholder={field.placeholder}
+            />
+            {field.suffix && (
+              <span className="currency-suffix">{field.suffix}</span>
+            )}
           </div>
         </div>
+      );
+    }
+    case "datetime": {
+      const isStartField = String(field.name || "").endsWith("start_time");
+      const isEndField = String(field.name || "").endsWith("end_time");
+      const startIso = adset.start_time || null;
+      const endIso = adset.end_time || null;
 
-        {/* Location Section */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <MapPin size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Vị trí</h3>
+      const handleDateChange = (newIsoString) => {
+        if (isEndField) {
+          if (!isEndAtLeastOneDayAfterStart(startIso, newIsoString)) {
+            toast.warning(
+              "Thời gian kết thúc phải lớn hơn thời gian bắt đầu ít nhất 1 ngày"
+            );
+            return;
+          }
+          handleChange(newIsoString);
+          return;
+        }
+
+        if (isStartField) {
+          // set start_time and coerce end_time if needed
+          handleChange(newIsoString);
+          const coercedEnd = ensureEndAfterStartPlusOneDay(
+            newIsoString,
+            endIso
+          );
+          if (coercedEnd !== endIso) {
+            setAdset((prev) => ({ ...prev, end_time: coercedEnd }));
+            // toast.info("Đã tự động cập nhật thời gian kết thúc (+1 ngày)");
+          }
+          return;
+        }
+
+        handleChange(newIsoString);
+      };
+
+      // Min for end_time input (start_time + 1 day)
+      const minForEnd =
+        isEndField && startIso
+          ? toInputDateTimeLocal(getOneDayAfter(startIso))
+          : undefined;
+
+      return (
+        <div className="datetime-overlay-wrapper" key={field.name}>
+          <input
+            type="datetime-local"
+            className="datetime-input-ads datetime-input-ads--masked"
+            value={toInputDateTime(value)}
+            onChange={(e) => handleDateChange(e.target.value)}
+            min={minForEnd}
+            disabled={isDisabled}
+          />
+          <span className="datetime-overlay">
+            {formatDisplay(value) || formatDisplay(new Date().toISOString())}
+          </span>
+        </div>
+      );
+    }
+    case "age-range": {
+      const minVal = getValue(adset, field.nameMin) ?? field.defaultMin;
+      const maxVal = getValue(adset, field.nameMax) ?? field.defaultMax;
+      return (
+        <div className="field-group" key={`${field.nameMin}-${field.nameMax}`}>
+          {field.label && <label className="field-label">{field.label}</label>}
+          <div className="age-inputs">
+            <input
+              type="number"
+              className="age-input-adset"
+              placeholder={String(field.defaultMin)}
+              min={field.min}
+              max={field.max}
+              value={minVal}
+              onChange={(e) => {
+                const val =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                setAdset((prev) => setValue(prev, field.nameMin, val));
+              }}
+              onBlur={(e) => {
+                if (e.target.value === "") {
+                  setAdset((prev) =>
+                    setValue(prev, field.nameMin, field.defaultMin)
+                  );
+                }
+              }}
+            />
+            <span>-</span>
+            <input
+              type="number"
+              className="age-input-adset"
+              placeholder={String(field.defaultMax) + "+"}
+              min={field.min}
+              max={field.max}
+              value={maxVal}
+              onChange={(e) => {
+                const val =
+                  e.target.value === "" ? "" : parseInt(e.target.value);
+                setAdset((prev) => setValue(prev, field.nameMax, val));
+              }}
+              onBlur={(e) => {
+                if (e.target.value === "") {
+                  setAdset((prev) =>
+                    setValue(prev, field.nameMax, field.defaultMax)
+                  );
+                }
+              }}
+            />
           </div>
-          <div className="location-input-wrapper" ref={suggestionsWrapperRef}>
+        </div>
+      );
+    }
+    case "tags-country": {
+      const selectedTags = value || field.default || [];
+      const filteredCountries = countries
+        .filter((c) =>
+          c.toLowerCase().includes(locationInput.trim().toLowerCase())
+        )
+        .slice(0, 8);
+      return (
+        <div key={field.name}>
+          <div className="location-input-wrapper" ref={locationRef}>
             <input
               type="text"
               className="location-input"
-              placeholder="Tìm kiếm vị trí (quốc gia)"
+              placeholder={field.placeholder}
               value={locationInput}
               onChange={(e) => {
                 setLocationInput(e.target.value);
-                setShowSuggestions(true);
+                setShowLocationSuggestions(true);
               }}
-              onFocus={() => setShowSuggestions(true)}
+              onFocus={() => setShowLocationSuggestions(true)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" || e.key === ",") {
                   e.preventDefault();
-                  addTag(locationInput);
+                  const trimmed = locationInput.replace(/,$/, "").trim();
+                  if (trimmed) {
+                    const normalized =
+                      countries.find(
+                        (c) => c.toLowerCase() === trimmed.toLowerCase()
+                      ) || trimmed;
+                    handleChange(
+                      Array.from(new Set([...selectedTags, normalized]))
+                    );
+                    setLocationInput("");
+                  }
                 }
-                if (e.key === ",") {
-                  e.preventDefault();
-                  addTag(locationInput.replace(/,$/, ""));
-                }
-                if (e.key === "Escape") setShowSuggestions(false);
+                if (e.key === "Escape") setShowLocationSuggestions(false);
               }}
             />
-            {showSuggestions && filteredCountrySuggestions.length > 0 && (
+            {showLocationSuggestions && filteredCountries.length > 0 && (
               <div className="location-suggestions">
-                {filteredCountrySuggestions.map((item) => (
+                {filteredCountries.map((item) => (
                   <div
                     key={item}
                     className="location-suggestion-item"
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      addTag(item);
+                      handleChange(
+                        Array.from(new Set([...selectedTags, item]))
+                      );
+                      setLocationInput("");
+                      setShowLocationSuggestions(false);
                     }}
                   >
                     {item}
@@ -795,13 +497,15 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
             )}
           </div>
           <div className="location-tags">
-            {selectedTags.map((tag, index) => (
-              <span key={index} className="tag">
+            {selectedTags.map((tag, idx) => (
+              <span key={idx} className="tag">
                 {tag}
                 <button
                   type="button"
                   className="tag-remove-btn"
-                  onClick={() => removeTag(index)}
+                  onClick={() =>
+                    handleChange(selectedTags.filter((_, i) => i !== idx))
+                  }
                   aria-label="Remove tag"
                 >
                   ×
@@ -810,18 +514,22 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
             ))}
           </div>
         </div>
-
-        {/* Detailed Targeting Section */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <Search size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Nhắm mục tiêu chi tiết</h3>
-          </div>
-          <div className="targeting-input-wrapper" ref={interestsWrapperRef}>
+      );
+    }
+    case "tags": {
+      const selectedInterests = value || field.default || [];
+      const filteredInterests = (field.suggestions || [])
+        .filter((it) =>
+          it.toLowerCase().includes(interestInput.trim().toLowerCase())
+        )
+        .slice(0, 8);
+      return (
+        <div key={field.name}>
+          <div className="targeting-input-wrapper" ref={interestRef}>
             <input
               type="text"
               className="targeting-input"
-              placeholder="Thêm sở thích hoặc hành vi"
+              placeholder={field.placeholder}
               value={interestInput}
               onChange={(e) => {
                 setInterestInput(e.target.value);
@@ -829,43 +537,50 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
               }}
               onFocus={() => setShowInterestSuggestions(true)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" || e.key === ",") {
                   e.preventDefault();
-                  addInterest(interestInput);
-                }
-                if (e.key === ",") {
-                  e.preventDefault();
-                  addInterest(interestInput.replace(/,$/, ""));
+                  const trimmed = interestInput.replace(/,$/, "").trim();
+                  if (trimmed) {
+                    handleChange(
+                      Array.from(new Set([...selectedInterests, trimmed]))
+                    );
+                    setInterestInput("");
+                  }
                 }
                 if (e.key === "Escape") setShowInterestSuggestions(false);
               }}
             />
-            {showInterestSuggestions &&
-              filteredInterestSuggestions.length > 0 && (
-                <div className="targeting-suggestions">
-                  {filteredInterestSuggestions.map((item) => (
-                    <div
-                      key={item}
-                      className="targeting-suggestion-item"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        addInterest(item);
-                      }}
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              )}
+            {showInterestSuggestions && filteredInterests.length > 0 && (
+              <div className="targeting-suggestions">
+                {filteredInterests.map((item) => (
+                  <div
+                    key={item}
+                    className="targeting-suggestion-item"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleChange(
+                        Array.from(new Set([...selectedInterests, item]))
+                      );
+                      setInterestInput("");
+                      setShowInterestSuggestions(false);
+                    }}
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="targeting-tags">
-            {selectedInterests.map((interest, index) => (
-              <span key={index} className="tag">
+            {selectedInterests.map((interest, idx) => (
+              <span key={idx} className="tag">
                 {interest}
                 <button
                   type="button"
                   className="tag-remove-btn"
-                  onClick={() => removeInterest(index)}
+                  onClick={() =>
+                    handleChange(selectedInterests.filter((_, i) => i !== idx))
+                  }
                   aria-label="Remove interest"
                 >
                   ×
@@ -874,77 +589,340 @@ function AdsetStepInner({ adset, setAdset, objective, mode }, ref) {
             ))}
           </div>
         </div>
-
-        {/* --- Bid Strategy Section --- */}
-        <div className="config-section">
-          <div className="section-header-ads">
-            <Target size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Chiến lược giá thầu</h3>
+      );
+    }
+    case "info": {
+      const content =
+        typeof field.content === "function"
+          ? field.content(adset)
+          : field.content;
+      if (!content) return null;
+      return (
+        <div className="bid-strategy-info" key={`info-${field.content}`}>
+          <div className="info-box">
+            <i className="info-icon"></i>
+            <span> {content}</span>
           </div>
-          <div className="field-group">
-            <select
-              className="bid-strategy-select"
-              value={adset.bid_strategy || "LOWEST_COST_WITHOUT_CAP"}
-              onChange={(e) => handleBidStrategyChange(e.target.value)}
-            >
-              <option value="LOWEST_COST_WITHOUT_CAP">
-                Giá thầu tối thiểu
-              </option>
-              <option value="LOWEST_COST_WITH_BID_CAP">
-                Giá thầu tối thiểu có giới hạn
-              </option>
-            </select>
-          </div>
+        </div>
+      );
+    }
+    default: {
+      return null;
+    }
+  }
+}
+const AdsetStepInner = forwardRef(
+  ({ adset, setAdset, objective, mode, facebookPages = [] }, ref) => {
+    const toast = useToast();
+    const schema = SCHEMA_MAP[objective] || SCHEMA_MAP.AWARENESS;
+    const [showPageSelect, setShowPageSelect] = useState(false);
 
-          {/* Chỉ hiển thị trường bid_amount khi bid_strategy là LOWEST_COST_WITH_BID_CAP */}
-          {adset.bid_strategy === "LOWEST_COST_WITH_BID_CAP" && (
-            <div className="field-group">
-              <label>Giới hạn giá thầu</label>
-              <div className="bid-amount-container">
-                <input
-                  type="number"
-                  value={adset.bid_amount || ""}
-                  onChange={(e) =>
-                    setAdset((prev) => ({
-                      ...prev,
-                      bid_amount: parseInt(e.target.value) || 0,
-                    }))
-                  }
-                  min="1000"
-                  className="bid-strategy-input"
-                  placeholder="1000"
-                />
-                <span className="currency-suffix">VNĐ</span>
+    useEffect(() => {
+      const defaults = getAdsetDefaultsByObjective(objective);
+      if (defaults) {
+        setAdset((prev) => ({
+          ...prev,
+          optimization_goal:
+            prev.optimization_goal || defaults.optimization_goal,
+          billing_event: prev.billing_event || defaults.billing_event,
+        }));
+      }
+    }, [objective, setAdset]);
+
+    // Handler for changing Facebook Page (defined BEFORE useEffect that uses it)
+    const handlePageChange = useCallback(
+      (selectedPage) => {
+        setAdset((prev) => ({
+          ...prev,
+          facebookPageId: selectedPage.id,
+          facebookPage: selectedPage.name,
+          promoted_object: {
+            ...prev.promoted_object,
+            page_id: selectedPage.id,
+          },
+        }));
+        setShowPageSelect(false);
+      },
+      [setAdset]
+    );
+
+    // Auto-select first Facebook Page if none selected for ENGAGEMENT/LEADS/AWARENESS/SALES
+    useEffect(() => {
+      const needsPage =
+        objective === "ENGAGEMENT" ||
+        objective === "LEADS" ||
+        objective === "AWARENESS" ||
+        objective === "TRAFFIC" ||
+        objective === "APP_PROMOTION" ||
+        objective === "SALES";
+
+      if (needsPage && facebookPages.length > 0 && !adset.facebookPageId) {
+        handlePageChange(facebookPages[0]);
+      }
+    }, [objective, facebookPages, adset.facebookPageId, handlePageChange]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        validate: () => {
+          let isValid = true;
+          schema.sections.forEach((section) => {
+            section.fields.forEach((field) => {
+              if (field.visibleIf && !field.visibleIf(adset)) return;
+              if (typeof field.validate === "function") {
+                const val = getValue(adset, field.name || field.nameMin);
+                const result = field.validate(val, adset);
+                if (result !== true) {
+                  toast.warning(result);
+                  isValid = false;
+                }
+              }
+            });
+          });
+          return isValid;
+        },
+      }),
+      [adset, schema, toast]
+    );
+
+    // Show Facebook Page selector for objectives that need it
+    // Tất cả objectives đều cần page_id cho Creative, vì Facebook API luôn yêu cầu object_story_spec.page_id
+    const needsFacebookPage =
+      objective === "ENGAGEMENT" ||
+      objective === "LEADS" ||
+      objective === "AWARENESS" ||
+      objective === "SALES" ||
+      objective === "TRAFFIC" ||
+      objective === "APP_PROMOTION";
+
+    // Guard: ensure optimization_goal compatible with current objective
+    useEffect(() => {
+      const goals = getOptimizationGoals(objective);
+      const allowedValues = goals.map((g) => g.value);
+      if (!allowedValues.length) return;
+      if (
+        !adset.optimization_goal ||
+        !allowedValues.includes(adset.optimization_goal)
+      ) {
+        const newGoal = goals[0].value;
+        const newBilling =
+          getCompatibleBillingEvents(objective, newGoal)[0] || "IMPRESSIONS";
+        setAdset((prev) => ({
+          ...prev,
+          optimization_goal: newGoal,
+          billing_event: newBilling,
+        }));
+        toast?.info(
+          "Đã tự động đặt lại mục tiêu hiệu quả phù hợp với mục tiêu chiến dịch."
+        );
+      }
+    }, [objective]);
+
+    return (
+      <div className="adset-step">
+        <div className="step-content">
+          {/* Facebook Page Selector for ENGAGEMENT/LEADS/AWARENESS/SALES */}
+          {needsFacebookPage && (
+            <div className="config-section">
+              <div className="section-header-ads">
+                <Facebook size={16} color="#2563eb" />
+                <h3 className="section-title-ads">Trang Facebook</h3>
+              </div>
+              <div
+                className="facebook-page-selector"
+                style={{ cursor: "pointer", position: "relative" }}
+                onClick={() => setShowPageSelect((prev) => !prev)}
+              >
+                {facebookPages.length > 0 ? (
+                  (() => {
+                    const current = facebookPages.find(
+                      (p) => p.id === adset.facebookPageId
+                    );
+                    return (
+                      <>
+                        <img
+                          src={current?.avatar || no_avatar}
+                          alt={current?.name || "Facebook Page"}
+                          className="page-logo"
+                        />
+                        <div className="page-info">
+                          <div className="page-type">Trang Facebook</div>
+                          <div className="page-name">
+                            {current?.name || "Chưa chọn Page"}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()
+                ) : (
+                  <div className="page-info">
+                    <div className="page-type">Trang Facebook</div>
+                    <div className="page-name">Chưa có Page nào</div>
+                  </div>
+                )}
+
+                {showPageSelect && facebookPages.length > 0 && (
+                  <div
+                    className="dropdown-list"
+                    onClick={(ev) => ev.stopPropagation()}
+                  >
+                    {facebookPages.map((p) => (
+                      <div
+                        key={p.id}
+                        className="dropdown-item-campaign"
+                        onClick={() => handlePageChange(p)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "8px 10px",
+                          cursor: "pointer",
+                          background:
+                            adset.facebookPageId === p.id ? "#f3f4f6" : "white",
+                          zIndex: 9999,
+                        }}
+                      >
+                        <img
+                          src={p.avatar}
+                          alt={p.name}
+                          style={{ width: 28, height: 28, borderRadius: "50%" }}
+                        />
+                        <span>{p.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Thêm thông báo giải thích cho từng loại bid strategy */}
-          <div className="bid-strategy-info">
-            {adset.bid_strategy === "LOWEST_COST_WITHOUT_CAP" && (
-              <div className="info-box">
-                <i className="info-icon"></i>
-                <span>
-                  {" "}
-                  Facebook sẽ tự động tối ưu hóa giá thầu để đạt chi phí thấp
-                  nhất.
-                </span>
+          {/* Schema-driven sections */}
+          {schema.sections.map((section) => {
+            const IconComp = section.icon ? ICON_MAP[section.icon] : null;
+            const isHorizontal = section.layout === "horizontal";
+            const visibleFields = (section.fields || []).filter(
+              (f) => !f.visibleIf || f.visibleIf(adset)
+            );
+
+            if (visibleFields.length === 0) return null;
+
+            return (
+              <div
+                key={section.id}
+                className={
+                  isHorizontal ? "config-section-datetime" : "config-section"
+                }
+              >
+                {isHorizontal ? (
+                  <>
+                    {section.fields[0] &&
+                      (!section.fields[0].visibleIf ||
+                        section.fields[0].visibleIf(adset)) && (
+                        <div className="left-custom">
+                          <div className="section-header-ads">
+                            {IconComp && <IconComp size={16} color="#2563eb" />}
+                            <h3 className="section-title-ads">
+                              {section.fields[0]?.label || section.title}
+                            </h3>
+                          </div>
+                          <FieldRenderer
+                            field={section.fields[0]}
+                            adset={adset}
+                            setAdset={setAdset}
+                            objective={objective}
+                            mode={mode}
+                          />
+                        </div>
+                      )}
+                    {section.fields[1] &&
+                      (!section.fields[1].visibleIf ||
+                        section.fields[1].visibleIf(adset)) && (
+                        <div className="right-custom">
+                          <div className="section-header-ads">
+                            {IconComp && <IconComp size={16} color="#2563eb" />}
+                            <h3 className="section-title-ads">
+                              {section.fields[1]?.label || ""}
+                            </h3>
+                          </div>
+                          <FieldRenderer
+                            field={section.fields[1]}
+                            adset={adset}
+                            setAdset={setAdset}
+                            objective={objective}
+                            mode={mode}
+                          />
+                        </div>
+                      )}
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className={
+                        section.id === "name"
+                          ? "section-header-adset"
+                          : "section-header-ads"
+                      }
+                    >
+                      {IconComp && (
+                        <IconComp
+                          size={section.id === "name" ? 8 : 16}
+                          fill={section.id === "name" ? "#2563eb" : "none"}
+                          color="#2563eb"
+                        />
+                      )}
+                      <h3 className="section-title-ads">{section.title}</h3>
+                    </div>
+                    {section.id === "budget" ? (
+                      <div className="budget-row">
+                        {section.fields.map((field, idx) => (
+                          <FieldRenderer
+                            key={idx}
+                            field={field}
+                            adset={adset}
+                            setAdset={setAdset}
+                            objective={objective}
+                            mode={mode}
+                          />
+                        ))}
+                      </div>
+                    ) : section.id === "targeting" ? (
+                      <div className="audience-fields">
+                        {section.fields.map((field, idx) => (
+                          <FieldRenderer
+                            key={idx}
+                            field={field}
+                            adset={adset}
+                            setAdset={setAdset}
+                            objective={objective}
+                            mode={mode}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      section.fields.map((field, idx) => (
+                        <FieldRenderer
+                          key={idx}
+                          field={field}
+                          adset={adset}
+                          setAdset={setAdset}
+                          objective={objective}
+                          mode={mode}
+                        />
+                      ))
+                    )}
+                  </>
+                )}
               </div>
-            )}
-            {adset.bid_strategy === "LOWEST_COST_WITH_BID_CAP" && (
-              <div className="info-box">
-                <i className="info-icon"></i>
-                <span>
-                  Bạn cần đặt giới hạn giá thầu tối đa Facebook có thể sử dụng.
-                </span>
-              </div>
-            )}
-          </div>
+            );
+          })}
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);
 
-const AdsetStep = forwardRef(AdsetStepInner);
+const AdsetStep = forwardRef((props, ref) => {
+  return <AdsetStepInner ref={ref} {...props} />;
+});
+
 export default AdsetStep;

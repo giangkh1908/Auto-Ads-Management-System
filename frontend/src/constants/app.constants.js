@@ -35,6 +35,9 @@ export const ROUTES = {
   CONNECT_PAGE: '/connect-page',
   CONNECT_AD_ACCOUNT: '/connect-ad-account',
   SERVICE_PACKAGE: '/service-package',
+  ORDER: '/order',
+  CHECKOUT: '/checkout',
+  CHECKOUT_BANK: '/checkout/bank',
   VERIFY_EMAIL: '/verify-email/:token',
   RESET_PASSWORD: '/reset-password/:token',
   NOT_FOUND: '*',
@@ -53,7 +56,10 @@ export const HEADER_ROUTES = [
   ROUTES.SHOP,
   ROUTES.SHOP_EMPLOYEE,
   ROUTES.SHOP_HISTORY,
-  ROUTES.SERVICE_PACKAGE
+  ROUTES.SERVICE_PACKAGE,
+  ROUTES.ORDER,
+  ROUTES.CHECKOUT,
+  ROUTES.CHECKOUT_BANK
 ]
 
 // Auth modes

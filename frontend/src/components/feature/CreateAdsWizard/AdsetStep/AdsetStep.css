@@ -19,7 +19,7 @@
 
 .field-label { color: #19212e; font-size: 16px; font-weight: 500; }
 .adset-name-input { width: 94%; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: #fff; }
-.conversion-select, .performance-select, .budget-type, .gender-select, .language-select { width: 100%; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: #fff; }
+.conversion-select, .performance-select, .gender-select, .language-select { width: 100%; padding: 12px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: #fff; }
 
 .budget-row { display: flex; gap: 12px; align-items: center; }
 .budget-input-group { display: flex; align-items: center; border: 2px solid #d1d5db; border-radius: 4px; overflow: hidden; }
@@ -31,7 +31,7 @@
 .field-group { display: flex; flex-direction: column; gap: 8px; }
 .age-inputs { display: flex; align-items: center; gap: 2px; }
 .age-input-adset { width: 65px; height: 43px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; text-align: center; }
-.location-input, .targeting-input { width: 94%; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 8px; }
+.location-input, .targeting-input { width: 100%; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 8px; }
 .location-tags, .targeting-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag { background: #f3f4f6; color: #374151; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
 
@@ -42,7 +42,7 @@
 .datetime-overlay { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #111; font-size: 14px; width: 90%}
 
 /* Suggestions dropdown for locations */
-.location-input-wrapper { position: relative; width: 94%; }
+.location-input-wrapper { position: relative; width: 100%; }
 .location-suggestions {
   position: absolute;
   z-index: 20;
@@ -166,16 +166,6 @@
 
 /* File: frontend/src/components/feature/CreateAdsWizard/AdsetStep/AdsetStep.css */
 
-.field-locked-badge {
-  margin-left: 8px;
-  padding: 2px 8px;
-  font-size: 11px;
-  color: #dc2626;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 4px;
-  font-weight: 500;
-}
 
 .datetime-input-ads:disabled {
   background-color: #f3f4f6;
@@ -186,3 +176,78 @@
 .datetime-overlay-wrapper:has(input:disabled) {
   opacity: 0.7;
 }
+
+/* Styles for Traffic Destination Options */
+.traffic-destination-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.traffic-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.traffic-option:hover {
+  border-color: #9ca3af;
+}
+
+.traffic-option.selected {
+  border-color: #2563eb;
+  background-color: #eff6ff; /* ✅ Background color khi selected */
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+/* ✅ Checkmark icon khi selected */
+.traffic-option.selected::after {
+  content: "✓";
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: #2563eb;
+  font-size: 1rem;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #dbeafe;
+  border-radius: 50%;
+  line-height: 1;
+}
+
+.traffic-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.traffic-option-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 500;
+  color: #374151;
+  flex: 1; /* ✅ Để checkmark ở bên phải */
+}
+
+.traffic-option.selected .traffic-option-content {
+  color: #1e40af;
+}
+
+.app-details-fields {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+

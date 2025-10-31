@@ -16,6 +16,9 @@ import AdsManagement from './pages/AdsManagement/AdsManagement.jsx'
 import ConnectPage from './pages/ConnectPage/ConnectPage.jsx'
 import ConnectAdAccount from './pages/ConnectAdAccount/ConnectAdAccount.jsx'
 import ServicePackage from './pages/ServicePackage/ServicePackage.jsx'
+import Order from './pages/Order/Order.jsx'
+import CheckOut from './pages/CheckOut/CheckOut.jsx'
+import Bank from './pages/CheckOut/Bank/Bank.jsx'
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail.jsx'
 import ResetPassword from './pages/ResetPassword/ResetPassword.jsx'
 import Profile from './pages/Profile/Profile.jsx'
@@ -208,6 +211,42 @@ function AppContent() {
               </main>
               <Footer />
             </>
+          }
+        />
+
+        {/* Route cho Order */}
+        <Route 
+          path={ROUTES.ORDER}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <Order />
+              </main>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Route cho CheckOut */}
+        <Route 
+          path={ROUTES.CHECKOUT}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <CheckOut />
+              </main>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Route cho CheckOut Bank */}
+        <Route 
+          path={ROUTES.CHECKOUT_BANK}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <Bank />
+              </main>
+            </ProtectedRoute>
           }
         />
 

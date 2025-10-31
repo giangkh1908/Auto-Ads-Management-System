@@ -1,34 +1,18 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
-import { Circle, DollarSign, Settings, Facebook, Edit2 } from "lucide-react";
-import no_avatar from "../../../../assets/no-avatar.jpg";
+import { forwardRef, useImperativeHandle } from "react";
+import { Circle, DollarSign, Settings } from "lucide-react";
 import "./CampaignStep.css";
 import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
 
-function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
-  const [showPageSelect, setShowPageSelect] = useState(false);
+function CampaignStepInner({ campaign, setCampaign }, ref) {
   const toast = useToast();
-
-  useEffect(() => {
-    if (facebookPages.length > 0 && !campaign.facebookPageId) {
-      const firstPage = facebookPages[0];
-      setCampaign(prev => ({
-        ...prev,
-        facebookPageId: firstPage.id,
-        facebookPage: firstPage.name,
-        facebookPageAvatar: firstPage.avatar,
-      }));
-    }
-  }, [facebookPages, campaign.facebookPageId, setCampaign]);
 
   // Expose validate() to parent (CreateAdsWizard)
   useImperativeHandle(ref, () => ({
     validate: () => {
       const okName = !!campaign?.name && String(campaign.name).trim() !== "";
-      const okPage = !!campaign?.facebookPageId;
       if (!okName) validateNonEmpty(campaign.name, 'tên chiến dịch', toast);
-      if (!okPage) toast.warning('Vui lòng chọn Trang Facebook');
-      return okName && okPage;
+      return okName;
     }
   }), [campaign, toast]);
 
@@ -74,9 +58,8 @@ function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
           </div>
           <div className="budget-options">
             <label
-              className={`budget-option ${
-                campaign.budgetType === "CAMPAIGN" ? "selected" : ""
-              }`}
+              className={`budget-option ${campaign.budgetType === "CAMPAIGN" ? "selected" : ""
+                }`}
             >
               <input
                 type="radio"
@@ -100,7 +83,7 @@ function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
               </div>
             </label>
 
-            <label className={`budget-option ${ campaign.budgetType === "ADSET" ? "selected" : ""}`}>
+            <label className={`budget-option ${campaign.budgetType === "ADSET" ? "selected" : ""}`}>
               <input
                 type="radio"
                 name="budgetType"
@@ -121,91 +104,6 @@ function CampaignStepInner({ campaign, setCampaign, facebookPages = [] }, ref) {
                 </div>
               </div>
             </label>
-            {/* Facebook Page Section */}
-            <div className="config-section">
-              <div className="section-header-campaign">
-                <Facebook size={16} color="#2563eb" />
-                <h3 className="section-title-ads">Trang Facebook</h3>
-              </div>
-
-              <div
-                className="facebook-page-selector"
-                style={{ cursor: "pointer", position: "relative" }}
-                onClick={() => setShowPageSelect((prev) => !prev)}
-              >
-                {/* Nội dung hiển thị chính */}
-                {facebookPages.length > 0 ? (
-                  (() => {
-                    const current = facebookPages.find(
-                      (p) => p.id === campaign.facebookPageId
-                    );
-                    return (
-                      <>
-                        <img
-                          src={current?.avatar || no_avatar}
-                          alt={current?.name || "Facebook Page"}
-                          className="page-logo"
-                        />
-                        <div className="page-info">
-                          <div className="page-type">Trang Facebook</div>
-                          <div className="page-name">
-                            {current?.name || "Chưa chọn Page"}
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()
-                ) : (
-                  <div className="page-info">
-                    <div className="page-type">Trang Facebook</div>
-                    <div className="page-name">Chưa có Page nào</div>
-                  </div>
-                )}
-
-                {/* Dropdown list khi click */}
-                {showPageSelect && facebookPages.length > 0 && (
-                  <div
-                    className="dropdown-list"
-                    onClick={(ev) => ev.stopPropagation()}
-                  >
-                    {facebookPages.map((p) => (
-                      <div
-                        key={p.id}
-                        className="dropdown-item-campaign"
-                        onClick={() => {
-                          setCampaign((prev) => ({
-                            ...prev,
-                            facebookPage: p.name,
-                            facebookPageId: p.id,
-                            facebookPageAvatar: p.avatar,
-                          }));
-                          setShowPageSelect(false);
-                        }}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "8px 10px",
-                          cursor: "pointer",
-                          background:
-                            campaign.facebookPageId === p.id
-                              ? "#f3f4f6"
-                              : "white",
-                          zIndex: 9999,
-                        }}
-                      >
-                        <img
-                          src={p.avatar}
-                          alt={p.name}
-                          style={{ width: 28, height: 28, borderRadius: "50%" }}
-                        />
-                        <span>{p.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>

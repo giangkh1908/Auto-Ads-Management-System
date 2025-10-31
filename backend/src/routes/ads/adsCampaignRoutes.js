@@ -7,7 +7,8 @@ import {
   toggleCampaignStatusCtrl,
   deleteCampaignCascadeCtrl,
   getCampaignFromDatabase,
-  copyCampaignCascadeCtrl
+  copyCampaignCascadeCtrl,
+  getCampaignInsightsCtrl,
 } from "../../controllers/ads/adsCampaign.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
@@ -24,12 +25,13 @@ router.get("/count", (req, res) => {
 // Đặt các routes cụ thể TRƯỚC route có tham số /:id
 router.get("/live", getCampaignsLiveCtrl);
 router.get("/database", getCampaignFromDatabase);
-router.post("/:id/copy", copyCampaignCascadeCtrl);
-router.patch("/:id/status", toggleCampaignStatusCtrl);
 router.get("/sync", syncCampaignsCtrl);
+router.get("/insights", getCampaignInsightsCtrl);
 router.get("/", listCampaignsCtrl);
 
-// Route với tham số động phải đặt SAU CÙNG
+// Routes với tham số động
+router.post("/:id/copy", copyCampaignCascadeCtrl);
+router.patch("/:id/status", toggleCampaignStatusCtrl);
 router.get("/:id", getCampaignCtrl);
 router.delete("/:id", deleteCampaignCascadeCtrl);
 

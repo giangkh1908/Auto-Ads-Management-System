@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate } from '../../middlewares/auth.middleware.js';
+import { authenticate, authenticateSSE } from '../../middlewares/auth.middleware.js';
 import { 
   suggestKeywords, 
   confirmContext, 

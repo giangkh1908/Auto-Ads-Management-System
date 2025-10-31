@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 import './ServicePackage.css';
 
 function ServicePackage() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('3months');
 
   const pricingPlans = {
@@ -152,6 +156,25 @@ function ServicePackage() {
     { name: '+1,000 Aura', duration: 'Thêm', price: '80K', period: 'Tháng' },
   ];
 
+  // Handle buy button click
+  const handleBuyClick = (plan) => {
+    if (!isAuthenticated) {
+      alert('Vui lòng đăng nhập để mua gói dịch vụ');
+      return;
+    }
+
+    // Map plan data to order format
+    const orderData = {
+      name: plan.badge,
+      pages: plan.pages === '∞' ? 999 : parseInt(plan.pages),
+      customers: parseInt(plan.conversations.replace(/,/g, '')),
+      duration: plan.period
+    };
+
+    // Navigate to order page with selected package data
+    navigate('/order', { state: { selectedPackage: orderData } });
+  };
+
   return (
     <div className="sp-page-wrapper">
       {/* Hero Section */}
@@ -229,7 +252,10 @@ function ServicePackage() {
                   ))}
                 </div>
 
-                <button className={`sp-card-btn sp-btn-${plan.buttonVariant}`}>
+                <button 
+                  className={`sp-card-btn sp-btn-${plan.buttonVariant}`}
+                  onClick={() => plan.buttonVariant === 'primary' ? handleBuyClick(plan) : null}
+                >
                   {plan.buttonText}
                 </button>
               </div>
