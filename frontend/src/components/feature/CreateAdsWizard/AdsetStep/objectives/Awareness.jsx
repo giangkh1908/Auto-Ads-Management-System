@@ -85,6 +85,7 @@ const BILLING_EVENT_LABELS = {
             { value: "lifetime", label: "Ngân sách tổng" },
           ],
           default: "daily",
+          disabled: (adset, mode) => mode === "edit",
         },
         {
           type: "money",

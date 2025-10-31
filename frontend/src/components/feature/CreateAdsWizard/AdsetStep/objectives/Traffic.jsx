@@ -87,8 +87,8 @@ const BILLING_EVENT_LABELS = {
           options: [
             { value: "WEBSITE", label: "Trang web", icon: "Globe" },
             { value: "APP", label: "Ứng dụng", icon: "Smartphone" },
-            { value: "MESSAGING", label: "Ứng dụng nhắn tin", icon: "MessageSquare" },
-            { value: "CALLS", label: "Cuộc gọi", icon: "Phone" },
+            { value: "MESSENGER", label: "Messenger", icon: "MessageSquare" },
+            { value: "FACEBOOK_PAGE", label: "Trang Facebook", icon: "Facebook" },
           ],
           default: "WEBSITE",
         },
@@ -111,7 +111,7 @@ const BILLING_EVENT_LABELS = {
           name: "promoted_object.page_id",
           label: "Page ID",
           placeholder: "Nhập Page ID",
-          visibleIf: (adset) => adset.traffic_destination === "MESSAGING",
+          visibleIf: (adset) => adset.traffic_destination === "MESSENGER",
         },
         {
           type: "input",
@@ -136,6 +136,7 @@ const BILLING_EVENT_LABELS = {
             { value: "lifetime", label: "Ngân sách tổng" },
           ],
           default: "daily",
+          disabled: (adset, mode) => mode === "edit",
         },
         {
           type: "money",

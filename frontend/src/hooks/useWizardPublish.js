@@ -9,6 +9,7 @@ import {
   FB_OBJECTIVE_MAP,
   FB_ADSET_DEFAULTS_BY_OBJECTIVE,
 } from "../constants/wizardConstants";
+import { convertCountryNamesToCodes, convertLanguageCodeToLocaleId } from "../utils/locationUtils";
 import axiosInstance from "../utils/axios";
 
 /**
@@ -818,6 +819,7 @@ function buildCampaignPayload(campaign) {
     FB_OBJECTIVE_MAP[campaign.objective] || "OUTCOME_ENGAGEMENT";
 
   return {
+    draftId: campaign._id || campaign.id || null, // ✅ Ưu tiên _id (MongoDB _id)
     name: campaign.name,
     objective: fbObjective,
     status: campaign.status,
@@ -846,6 +848,7 @@ function buildAdsetPayload(adset, campaign) {
 
   return {
     _id: adset._id,
+    draftId: adset._id || adset.id || null, // ✅ Ưu tiên _id (MongoDB _id)
     name: adset.name,
     daily_budget: adset.budgetAmount,
     status: "PAUSED",
@@ -853,7 +856,20 @@ function buildAdsetPayload(adset, campaign) {
     targeting: {
       age_min: adset.targeting.ageMin || 18,
       age_max: adset.targeting.ageMax || 65,
-      geo_locations: { countries: ["VN"] },
+      // ✅ Lấy location từ adset.targeting.locations và convert sang country codes
+      geo_locations: {
+        countries: convertCountryNamesToCodes(
+          adset.targeting?.locations || ["Viet Nam"]
+        ),
+      },
+      // ✅ THÊM: Gender và language
+      ...(adset.targeting?.gender && adset.targeting.gender !== "all" && {
+        genders: adset.targeting.gender === "male" ? [1] : adset.targeting.gender === "female" ? [2] : [],
+      }),
+      ...(adset.targeting?.language && adset.targeting.language !== "all" && (() => {
+        const localeId = convertLanguageCodeToLocaleId(adset.targeting.language);
+        return localeId ? { locales: [localeId] } : {};
+      })()),
       targeting_automation: {
         advantage_audience: 0,
       },
@@ -871,7 +887,8 @@ function buildAdsetPayload(adset, campaign) {
     bid_amount: adset.bid_amount,
     ...(adset.promoted_object && { promoted_object: adset.promoted_object }),
     ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
-    ...(adset.destination_type && { destination_type: adset.destination_type }),
+    ...(adset.traffic_destination && { traffic_destination: adset.traffic_destination }),
+    ...(adset.destination_type && !adset.traffic_destination && { destination_type: adset.destination_type }),
   };
 }
 
@@ -919,6 +936,7 @@ function buildCreativePayload(ad, campaign, adset) {
  */
 function buildAdPayload(ad) {
   return {
+    draftId: ad._id || ad.id || null, // ✅ Ưu tiên _id (MongoDB _id)
     adset_id: ad.adset_id,
     name: ad.name,
     status: "PAUSED",

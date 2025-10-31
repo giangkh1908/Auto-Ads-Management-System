@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import axiosInstance from "../utils/axios";
 import { useToast } from "./useToast";
 import { extractObjectId, findIdInObject } from "../utils/wizardUtils";
+import { convertCountryCodesToNames, convertLocaleIdToLanguageCode } from "../utils/locationUtils";
 
 /**
  * Custom hook để xử lý logic edit mode
@@ -216,10 +217,24 @@ export function useEditMode({
                 : "",
             },
             placement: "AUTOMATIC",
-            targeting: adsetDbData.targeting || {
-              location: "Việt Nam",
-              ageMin: 18,
-              ageMax: 65,
+            targeting: {
+              // ✅ Map geo_locations.countries từ DB (country codes) sang locations (country names) cho FE
+              locations: adsetDbData.targeting?.geo_locations?.countries
+                ? convertCountryCodesToNames(adsetDbData.targeting.geo_locations.countries)
+                : ["Viet Nam"],
+              ageMin: adsetDbData.targeting?.age_min || 18,
+              ageMax: adsetDbData.targeting?.age_max || 65,
+              // ✅ THÊM: Map gender và language từ DB
+              gender: adsetDbData.targeting?.genders?.[0] === 1 
+                    ? "male" 
+                    : adsetDbData.targeting?.genders?.[0] === 2 
+                    ? "female" 
+                    : adsetDbData.targeting?.gender || "all",
+              language: adsetDbData.targeting?.locales?.[0] 
+                    ? (convertLocaleIdToLanguageCode(adsetDbData.targeting.locales[0]) || adsetDbData.targeting.locales[0])
+                    : adsetDbData.targeting?.language || "vi",
+              // Preserve other targeting fields if any
+              ...(adsetDbData.targeting || {}),
             },
             // Optimization / Billing / Conversion settings
             optimization_goal: adsetDbData.optimization_goal,

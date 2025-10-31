@@ -35,6 +35,7 @@ import { FB_OBJECTIVE_MAP, ADSET_CONFIG_BY_OBJECTIVE } from "../../../constants/
 function CreateAdsWizard({
   onClose,
   onSuccess = null,
+  onDraftSaved = null, // ✅ Callback cho draft (chỉ fetch từ DB, không sync Facebook)
   mode = "create",
   editingItem = null,
   selectedAccountId = null,
@@ -359,6 +360,12 @@ function CreateAdsWizard({
 
       toast.success("Đã lưu nháp thành công!");
       setShowSaveDraftPopup(false);
+      
+      // ✅ GỌI onDraftSaved() ĐỂ CHỈ FETCH LẠI TỪ DB (KHÔNG SYNC FACEBOOK)
+      if (onDraftSaved) {
+        onDraftSaved();
+      }
+      
       onClose();
     } catch (error) {
       console.error("Error saving draft:", error);

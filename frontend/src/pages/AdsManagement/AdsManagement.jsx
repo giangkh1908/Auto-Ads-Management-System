@@ -1071,6 +1071,37 @@ function AdsManagement() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccountId, activeTab, selectedCampaign?.id, selectedAdset?.id, syncData, fetchCampaignsForAccount, fetchAdsetsForCampaign, fetchAllAdsetsForAccount, fetchAdsForAdset, fetchAllAdsForAccount, toast, t]);
 
+  // ✅ Chỉ fetch từ DB, không sync Facebook (dùng cho draft)
+  const handleFetchOnly = useCallback(async () => {
+    if (!selectedAccountId) {
+      return;
+    }
+
+    try {
+      // Chỉ fetch data cho tab hiện tại (KHÔNG sync Facebook)
+      if (activeTab === "campaigns") {
+        await fetchCampaignsForAccount(selectedAccountId);
+      } else if (activeTab === "adsets") {
+        if (selectedCampaign) {
+          await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId);
+        } else {
+          await fetchAllAdsetsForAccount(selectedAccountId);
+        }
+      } else if (activeTab === "ads") {
+        if (selectedAdset) {
+          await fetchAdsForAdset(selectedAdset.id);
+        } else {
+          await fetchAllAdsForAccount(selectedAccountId);
+        }
+      }
+
+      console.log("✅ Data fetched successfully");
+    } catch (error) {
+      console.error("❌ Error fetching data:", error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccountId, activeTab, selectedCampaign?.id, selectedAdset?.id, fetchCampaignsForAccount, fetchAdsetsForCampaign, fetchAllAdsetsForAccount, fetchAdsForAdset, fetchAllAdsForAccount]);
+
   return (
     <div className="ads-management-layout">
       <div className="ads-management-content">
@@ -1405,8 +1436,12 @@ function AdsManagement() {
             setWizardMode("create");
           }}
           onSuccess={() => {
-            // Refresh data after successful create/update
+            // Refresh data after successful create/update (sync Facebook)
             handleRefresh();
+          }}
+          onDraftSaved={() => {
+            // ✅ CHỈ FETCH LẠI TỪ DB (KHÔNG SYNC FACEBOOK)
+            handleFetchOnly();
           }}
           mode={wizardMode}
           editingItem={editingItem}
