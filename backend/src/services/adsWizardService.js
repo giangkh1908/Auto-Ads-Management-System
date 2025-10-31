@@ -161,6 +161,8 @@ async function updateOrCreateAdset({
       ...(adset.bid_amount !== undefined && { bid_amount: adset.bid_amount }),
       ...(adset.billing_event && { billing_event: adset.billing_event }),
       ...(adset.conversion_event && { conversion_event: adset.conversion_event }),
+      ...(adset.page_id && { page_id: adset.page_id }),
+      ...(adset.page_name && { page_name: adset.page_name }),
       updated_at: now,
     };
     
@@ -855,8 +857,8 @@ export async function publishCampaignService({
       ...(campaign.lifetime_budget && { lifetime_budget: campaign.lifetime_budget }),
       ...(campaign.start_time && { start_time: campaign.start_time }),
       ...(campaign.stop_time && { stop_time: campaign.stop_time }),
-      ...(campaign.page_id && { page_id: campaign.page_id }),
-      ...(campaign.page_name && { page_name: campaign.page_name }),
+      // ...(campaign.page_id && { page_id: campaign.page_id }),
+      // ...(campaign.page_name && { page_name: campaign.page_name }),
       updated_at: new Date(),
     });
   } else {
@@ -867,8 +869,8 @@ export async function publishCampaignService({
       status: "DRAFT",
       account_id: campaign?.account_id,
       shop_id: campaign?.shop_id,
-      page_id: campaign?.page_id,
-      page_name: campaign?.page_name,
+      // page_id: campaign?.page_id,
+      // page_name: campaign?.page_name,
       daily_budget: campaign?.daily_budget,
       lifetime_budget: campaign?.lifetime_budget,
       start_time: campaign?.start_time,
@@ -983,6 +985,9 @@ export async function publishAdsetService({
       ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
       traffic_destination: adset.traffic_destination || adset.destination_type || null,
       promoted_object: adset.promoted_object || null,
+      // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
+      ...(adset.page_id && { page_id: adset.page_id }),
+      ...(adset.page_name && { page_name: adset.page_name }),
       updated_at: new Date(),
     });
   } else {
@@ -1004,6 +1009,9 @@ export async function publishAdsetService({
       pixel_id: adset?.pixel_id,
       traffic_destination: adset?.traffic_destination || adset?.destination_type || null,
       promoted_object: adset?.promoted_object || null,
+      // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
+      ...(adset.page_id && { page_id: adset.page_id }),
+      ...(adset.page_name && { page_name: adset.page_name }),
       created_by: adset?.created_by,
     });
   }
@@ -1088,6 +1096,9 @@ export async function publishAdsetService({
       billing_event: adset.billing_event,
       traffic_destination: adset.traffic_destination || adset.destination_type || null,
       promoted_object: adset.promoted_object || null,
+      // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
+      ...(adset.page_id && { page_id: adset.page_id }),
+      ...(adset.page_name && { page_name: adset.page_name }),
       synced_at: now,
       updated_at: now,
     });

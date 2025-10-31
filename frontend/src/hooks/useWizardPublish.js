@@ -864,8 +864,9 @@ function buildCampaignPayload(campaign) {
     objective: fbObjective,
     status: campaign.status,
     special_ad_categories: ["NONE"],
-    page_id: campaign.facebookPageId,
-    page_name: campaign.facebookPage,
+    // ✅ XÓA page_id và page_name từ campaign (đã di chuyển sang adset)
+    // page_id: campaign.facebookPageId,
+    // page_name: campaign.facebookPage,
     daily_budget: campaign.daily_budget,
     lifetime_budget: campaign.lifetime_budget,
     start_time: campaign.start_time,
@@ -930,6 +931,9 @@ function buildAdsetPayload(adset, campaign) {
     ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
     ...(adset.traffic_destination && { traffic_destination: adset.traffic_destination }),
     ...(adset.destination_type && !adset.traffic_destination && { destination_type: adset.destination_type }),
+    // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
+    ...(adset.facebookPageId && { page_id: adset.facebookPageId }),
+    ...(adset.facebookPage && { page_name: adset.facebookPage }),
   };
 }
 

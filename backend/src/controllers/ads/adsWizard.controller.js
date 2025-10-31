@@ -858,25 +858,27 @@ export async function saveDraftController(req, res) {
               daily_budget: campaignData.daily_budget,
               lifetime_budget: campaignData.lifetime_budget,
               external_account_id: ad_account_id,
-              page_id: campaignData.facebookPageId,
-              page_name: campaignData.facebookPage,
+              // ✅ XÓA page_id và page_name từ campaign (đã di chuyển sang adset)
+              // page_id: campaignData.facebookPageId,
+              // page_name: campaignData.facebookPage,
               updated_at: new Date()
             },
             { new: true }
           )
-        : await AdsCampaign.create({
-            name: campaignData.name,
-            objective: campaignData.objective,
-            status: 'DRAFT',
-            daily_budget: campaignData.daily_budget,
-            lifetime_budget: campaignData.lifetime_budget,
-            external_account_id: ad_account_id,
-            page_id: campaignData.facebookPageId,
-            page_name: campaignData.facebookPage,
-            account_id: account._id,
-            shop_id: account.shop_id,
-            created_by: req.user._id,
-          });
+        :             await AdsCampaign.create({
+              name: campaignData.name,
+              objective: campaignData.objective,
+              status: 'DRAFT',
+              daily_budget: campaignData.daily_budget,
+              lifetime_budget: campaignData.lifetime_budget,
+              external_account_id: ad_account_id,
+              // ✅ XÓA page_id và page_name từ campaign (đã di chuyển sang adset)
+              // page_id: campaignData.facebookPageId,
+              // page_name: campaignData.facebookPage,
+              account_id: account._id,
+              shop_id: account.shop_id,
+              created_by: req.user._id,
+            });
 
       savedItems.campaigns.push(campaignDoc);
 
@@ -896,6 +898,9 @@ export async function saveDraftController(req, res) {
                   optimization_goal: adsetData.optimization_goal,
                   billing_event: adsetData.billing_event,
                   bid_strategy: adsetData.bid_strategy,
+                  // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
+                  ...(adsetData.facebookPageId && { page_id: adsetData.facebookPageId }),
+                  ...(adsetData.facebookPage && { page_name: adsetData.facebookPage }),
                   updated_at: new Date()
                 },
                 { new: true }
@@ -910,6 +915,10 @@ export async function saveDraftController(req, res) {
                 optimization_goal: adsetData.optimization_goal,
                 billing_event: adsetData.billing_event,
                 bid_strategy: adsetData.bid_strategy,
+                // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
+                ...(adsetData.facebookPageId && { page_id: adsetData.facebookPageId }),
+                ...(adsetData.facebookPage && { page_name: adsetData.facebookPage }),
+                created_by: req.user._id, 
               });
 
           savedItems.adsets.push(adsetDoc);
@@ -934,6 +943,7 @@ export async function saveDraftController(req, res) {
                     status: 'DRAFT',
                     set_id: adsetDoc._id,
                     external_account_id: ad_account_id,
+                    created_by: req.user._id,
                   });
 
               savedItems.ads.push(adDoc);
@@ -947,9 +957,10 @@ export async function saveDraftController(req, res) {
                   const creativeData = {
                     name: adData.name + ' Creative',
                     ads_id: adDoc._id,
-                    page_id: campaignData.facebookPageId,
+                    // ✅ LẤY page_id TỪ ADSET THAY VÌ CAMPAIGN
+                    page_id: adsetData.facebookPageId || campaignData.facebookPageId,
                     object_story_spec: {
-                      page_id: campaignData.facebookPageId,
+                      page_id: adsetData.facebookPageId || campaignData.facebookPageId,
                       link_data: {
                         message: adData.primaryText || '',
                         link: adData.destinationUrl || 'https://fchat.vn',

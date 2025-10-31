@@ -706,6 +706,7 @@ function AdsManagement() {
             reach: ins.reach || 0,
             results,
             quality: ins.quality_ranking || '-',
+            created_by: a.created_by,
           };
         });
 
@@ -781,6 +782,7 @@ function AdsManagement() {
             results,
             quality: ins.quality_ranking || '-',
             updated_at: a.updated_at || a.updatedAt,
+            created_by: a.created_by,
           };
         });
 
@@ -859,6 +861,7 @@ function AdsManagement() {
             reach: ins.reach || 0,
             results,
             quality: ins.quality_ranking || '-',
+            created_by: a.created_by,
           };
         });
 
@@ -932,6 +935,7 @@ function AdsManagement() {
             results,
             quality: ins.quality_ranking || '-',
             updated_at: a.updated_at || a.updatedAt,
+            created_by: a.created_by,
           };
         });
 
@@ -1312,12 +1316,17 @@ function AdsManagement() {
                       </td>
                       <td>
                         <span
-                          className="name-text clickable"
+                          className={`name-text ${
+                            activeTab === "ads" 
+                              ? "ad-name" 
+                              : "clickable"
+                          }`}
                           onClick={() => {
                             if (activeTab === "campaigns")
                               handleCampaignClick(row);
                             else if (activeTab === "adsets")
                               handleAdsetClick(row);
+                            // Ad không có onClick vì là bước cuối
                           }}
                         >
                           {row.name}

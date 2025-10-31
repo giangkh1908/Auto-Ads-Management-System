@@ -166,16 +166,6 @@
 
 /* File: frontend/src/components/feature/CreateAdsWizard/AdsetStep/AdsetStep.css */
 
-.field-locked-badge {
-  margin-left: 8px;
-  padding: 2px 8px;
-  font-size: 11px;
-  color: #dc2626;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 4px;
-  font-weight: 500;
-}
 
 .datetime-input-ads:disabled {
   background-color: #f3f4f6;

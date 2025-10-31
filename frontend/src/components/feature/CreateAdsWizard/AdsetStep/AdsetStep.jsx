@@ -147,7 +147,7 @@ function FieldRenderer({ field, adset, setAdset, objective, mode }) {
     ? field.disabled.length === 2 
       ? field.disabled(adset, mode)
       : field.disabled(mode)
-    : field.disabled;
+    : field.disabled; 
   const hint =
     typeof field.hint === "function" ? field.hint(adset) : field.hint;
 
@@ -329,9 +329,6 @@ function FieldRenderer({ field, adset, setAdset, objective, mode }) {
       );
     }
     case "datetime": {
-      const lockMsg =
-        typeof field.lockMessage === "string" ? field.lockMessage : null;
-
       const isStartField = String(field.name || "").endsWith("start_time");
       const isEndField = String(field.name || "").endsWith("end_time");
       const startIso = adset.start_time || null;
@@ -381,7 +378,6 @@ function FieldRenderer({ field, adset, setAdset, objective, mode }) {
             onChange={(e) => handleDateChange(e.target.value)}
             min={minForEnd}
             disabled={isDisabled}
-            title={isDisabled && lockMsg ? lockMsg : ""}
           />
           <span className="datetime-overlay">
             {formatDisplay(value) || formatDisplay(new Date().toISOString())}
@@ -828,12 +824,6 @@ const AdsetStepInner = forwardRef(
                             <h3 className="section-title-ads">
                               {section.fields[0]?.label || section.title}
                             </h3>
-                            {mode === "edit" &&
-                              section.fields[0]?.lockMessage && (
-                                <span className="field-locked-badge">
-                                  {section.fields[0].lockMessage}
-                                </span>
-                              )}
                           </div>
                           <FieldRenderer
                             field={section.fields[0]}

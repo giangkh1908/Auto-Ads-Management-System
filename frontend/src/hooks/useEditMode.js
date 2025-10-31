@@ -197,10 +197,11 @@ export function useEditMode({
             name: adsetDbData.name || "Nhóm quảng cáo mới",
             status: adsetDbData.status,
             // Prefill Facebook Page info (for AdsetStep selector)
-            facebookPage: campaignData?.page_name || null,
-            facebookPageId: campaignData?.page_id || null,
-            facebookPageAvatar: campaignData?.page_id
-              ? `https://graph.facebook.com/${campaignData.page_id}/picture?type=square`
+            // ✅ LẤY TỪ ADSET THAY VÌ CAMPAIGN (ưu tiên adset, fallback campaign để backward compatibility)
+            facebookPage: adsetDbData?.page_name || campaignData?.page_name || null,
+            facebookPageId: adsetDbData?.page_id || promotedObject.page_id || campaignData?.page_id || null,
+            facebookPageAvatar: (adsetDbData?.page_id || promotedObject.page_id || campaignData?.page_id)
+              ? `https://graph.facebook.com/${adsetDbData?.page_id || promotedObject.page_id || campaignData?.page_id}/picture?type=square`
               : null,
             budgetType: adsetDbData.daily_budget ? "daily" : "lifetime",
             budgetAmount: adsetDbData.daily_budget || adsetDbData.lifetime_budget,
@@ -242,7 +243,8 @@ export function useEditMode({
             billing_event: adsetDbData.billing_event,
             traffic_destination: adsetDbData.traffic_destination || adsetDbData.destination_type || null,
             promoted_object: {
-              page_id: promotedObject.page_id ?? campaignData?.page_id ?? null,
+              // ✅ ƯU TIÊN: Lấy từ adset.page_id trước, sau đó promoted_object.page_id, cuối cùng campaign.page_id
+              page_id: adsetDbData?.page_id || promotedObject.page_id || campaignData?.page_id || null,
               pixel_id: promotedObject.pixel_id ?? null,
               custom_event_type: promotedObject.custom_event_type ?? null,
               application_id: promotedObject.application_id ?? null,

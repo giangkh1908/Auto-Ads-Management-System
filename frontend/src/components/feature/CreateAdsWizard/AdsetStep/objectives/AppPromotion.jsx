@@ -120,7 +120,7 @@ const BILLING_EVENT_LABELS = {
             { value: "lifetime", label: "Ngân sách tổng" },
           ],
           default: "daily",
-          disabled: (adset, mode) => mode === "edit",
+          disabled: (adset, mode) => mode === "edit" && adset.external_id,
         },
         {
           type: "money",
@@ -144,8 +144,7 @@ const BILLING_EVENT_LABELS = {
           type: "datetime",
           name: "start_time",
           label: "Ngày bắt đầu",
-          disabled: (mode) => mode === "edit",
-          lockMessage: "🔒 Không thể sửa",
+          disabled: (adset, mode) => mode === "edit" && adset?.external_id
         },
         {
           type: "datetime",
