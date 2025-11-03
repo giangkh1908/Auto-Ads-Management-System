@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import NotFound from './pages/NotFound/NotFound.jsx'
 import AccountManagement from './pages/AccountManagement/AccountManagement.jsx'
 import AdsManagement from './pages/AdsManagement/AdsManagement.jsx'
+import ArchiveAds from './pages/ArchiveAds/ArchiveAds.jsx'
 import ConnectPage from './pages/ConnectPage/ConnectPage.jsx'
 import ConnectAdAccount from './pages/ConnectAdAccount/ConnectAdAccount.jsx'
 import ServicePackage from './pages/ServicePackage/ServicePackage.jsx'
@@ -94,6 +95,21 @@ function AppContent() {
               <>
                 <main className="page-with-sidebar">
                   <AdsManagement />
+                </main>
+                <Sidebar />
+              </>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Route cho Archive Ads */}
+        <Route 
+          path={ROUTES.ARCHIVE_ADS}
+          element={
+            <ProtectedRoute>
+              <>
+                <main className="page-with-sidebar">
+                  <ArchiveAds />
                 </main>
                 <Sidebar />
               </>

@@ -1,41 +1,41 @@
 /* Layout container - sidebar is now global */
-.ads-management-layout {
+.archive-ads-layout {
   display: block;
   margin-top: -15px;
 }
 
 /* Content area */
-.ads-management-content {
+.archive-ads-content {
   /* leave room for fixed sidebar, center the remaining content */
   padding: 16px 20px;
   margin-left: 240px; /* expanded width sync with sidebar */
   transition: margin-left 0.25s ease;
 }
-.sidebar-collapsed .ads-management-content {
+.sidebar-collapsed .archive-ads-content {
   margin-left: 84px;
 }
 
 /* center content area within remaining space */
-.ads-management-center {
+.archive-ads-center {
   max-width: 1500px;
   margin: 0 auto;
   background-color: #dddddd;
 }
 
-.ads-card {
+.archive-ads-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 4px;
 }
 
-.ads-toolbar {
+.archive-ads-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px;
 }
 
-.ads-main-tool {
+.archive-ads-main-tool {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -87,30 +87,6 @@
   }
 }
 
-.btn-create-ads {
-  background: #10b981;
-  color: #fff;
-  border: 1px solid #10b981;
-  padding: 9px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-left: 20px;
-  transition: all 0.2s ease;
-}
-
-.btn-create-ads:hover:not(:disabled) {
-  background: #059669;
-  border-color: #059669;
-}
-
-.btn-create-ads:disabled,
-.btn-create-ads.disabled {
-  background: #6b7280;
-  border-color: #6b7280;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
 .filters input {
   padding: 8px 10px;
   border: 1px solid #e5e7eb;
@@ -156,11 +132,6 @@
   color: #374151;
 }
 
-/* .breadcrumb-item.active {
-  color: #2563eb;
-  font-weight: 600;
-} */
-
 .breadcrumb-separator {
   color: #9ca3af;
   margin: 0 4px;
@@ -193,18 +164,18 @@
   text-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
-/* Ads Tabs */
-.ads-tabs {
+/* Archive Ads Tabs */
+.archive-ads-tabs {
   display: flex;
   gap: 8px;
   padding: 0 10px;
 }
 
-.ads-tabs .icon-beside-tab {
+.archive-ads-tabs .icon-beside-tab {
   display: flex;
-  align-items: center; /* căn giữa theo trục dọc */
-  justify-content: center; /* căn giữa theo trục ngang (tùy bạn muốn giữa hay không) */
-  gap: 8px; /* khoảng cách giữa 2 button, có thể chỉnh 8 → 12px tùy mắt nhìn */
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin-left: 10px;
 }
 
@@ -226,64 +197,44 @@
   font-weight: 600;
 }
 
-.ads-table-wrapper {
+.archive-ads-table-wrapper {
   padding: 0 10px 10px;
 }
-.ads-table {
+.archive-ads-table {
   width: 100%;
   border-collapse: collapse;
 }
-.ads-table td {
+.archive-ads-table td {
   border-bottom: 1px solid #eee;
   padding: 10px;
   font-size: 13px;
   text-align: center;
 }
-.ads-table th {
+.archive-ads-table th {
   border-bottom: 1px solid #eee;
   padding: 10px;
   background: #d3d3d3;
   font-size: 15px;
   text-align: center;
 }
-/* Alignments: first two data cols (2-3) left, middle two (4-5) center, last two (6-7) right */
-.ads-table th:nth-child(1),
-.ads-table td:nth-child(1) {
-  text-align: left;
-}
-.ads-table th:nth-child(2),
-.ads-table td:nth-child(2),
-.ads-table th:nth-child(3),
-.ads-table td:nth-child(3) {
+
+.archive-ads-table th:nth-child(1),
+.archive-ads-table td:nth-child(1),
+.archive-ads-table td:nth-child(2),
+.archive-ads-table th:nth-child(2) {
   text-align: left;
 }
 
-/* .ads-table th:nth-child(4),
-.ads-table td:nth-child(4),
-.ads-table th:nth-child(5),
-.ads-table td:nth-child(5) {
+.archive-ads-table th:nth-child(3),
+.archive-ads-table td:nth-child(3) {
   text-align: center;
 }
 
-.ads-table th:nth-child(6),
-.ads-table td:nth-child(6),
-.ads-table th:nth-child(7),
-.ads-table td:nth-child(7) {
-  text-align: right;
-}
-
-.ads-table th:nth-child(8),
-.ads-table td:nth-child(8),
-.ads-table th:nth-child(9),
-.ads-table td:nth-child(9) {
-  text-align: right;
-} */
-
 /* Utility classes */
-.ads-table .text-right {
+.archive-ads-table .text-right {
   text-align: right;
 }
-.ads-table .text-center {
+.archive-ads-table .text-center {
   text-align: center;
 }
 
@@ -321,11 +272,11 @@
 
 /* Ad: Màu đen, không clickable - Cải thiện hiển thị nội dung vì là bước cuối */
 .name-text.ad-name {
-  color: #000000; /* ✅ Màu đen để nội dung rõ ràng hơn */
+  color: #000000;
   cursor: default;
   text-decoration: none;
-  font-weight: 600; /* ✅ Tăng độ đậm để nổi bật */
-  line-height: 1.5; /* ✅ Tăng line-height để dễ đọc */
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .row-actions {
@@ -338,15 +289,6 @@
 
 .name-cell:hover .row-actions {
   opacity: 1;
-}
-
-.status-active-ads {
-  color: #059669;
-  text-align: center;
-}
-.status-inactive-ads {
-  color: #6b7280;
-  text-align: center;
 }
 
 .action-btn {
@@ -484,49 +426,14 @@
   }
 }
 
-.status-active {
-  color: #059669;
-  font-weight: 500;
-}
-
-.status-inactive {
-  color: #6b7280;
-  font-weight: 500;
-}
-
 /* Additional status colors */
-.status-paused {
-  color: #d97706;
+
+.status-archived {
+  color: #ffffff;
   font-weight: 500;
-  background-color: #fff7ed;
+  background-color: #a17edc;
 }
 
-.status-deleted {
-  color: #dc2626;
-  font-weight: 500;
-}
-
-.status-pending {
-  color: #f59e0b;
-  font-weight: 500;
-}
-
-.status-disapproved {
-  color: #dc2626;
-  font-weight: 500;
-}
-
-.status-failed {
-  color: #dc2626;
-  font-weight: 500; 
-  background-color: #fee2e2;
-}
-
-.status-draft {
-  color: #000000;
-  font-weight: 500;
-  background-color: #c6c6c6;
-}
 /* Action buttons */
 .action-buttons {
   display: flex;
@@ -534,7 +441,7 @@
   justify-content: center;
 }
 
-.ads-action-btn {
+.archive-ads-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -547,32 +454,32 @@
   font-size: 12px;
 }
 
-.ads-update-btn {
+.archive-ads-update-btn {
   background-color: #f3f4f6;
   color: #374151;
 }
 
-.ads-update-btn:hover {
+.archive-ads-update-btn:hover {
   background-color: #e5e7eb;
   color: #111827;
 }
 
-.ads-archive-btn {
-  background-color: #fef3c7;
-  color: #92400e;
+.archive-ads-restore-btn {
+  background-color: #dbeafe;
+  color: #1e40af;
 }
 
-.ads-archive-btn:hover {
-  background-color: #fde68a;
-  color: #78350f;
+.archive-ads-restore-btn:hover {
+  background-color: #bfdbfe;
+  color: #1e3a8a;
 }
 
-.ads-delete-btn {
+.archive-ads-delete-btn {
   background-color: #fa6f60;
   color: #ffffff;
 }
 
-.ads-delete-btn:hover {
+.archive-ads-delete-btn:hover {
   background-color: #4794f3;
   color: #ffffff;
 }
@@ -623,3 +530,4 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+

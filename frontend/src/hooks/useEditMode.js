@@ -3,6 +3,7 @@ import axiosInstance from "../utils/axios";
 import { useToast } from "./useToast";
 import { extractObjectId, findIdInObject } from "../utils/wizardUtils";
 import { convertCountryCodesToNames, convertLocaleIdToLanguageCode } from "../utils/locationUtils";
+import { convertFacebookTypeToCTA } from "../utils/ctaUtils";
 
 /**
  * Custom hook để xử lý logic edit mode
@@ -180,7 +181,9 @@ export function useEditMode({
                 primaryText: creative?.object_story_spec?.link_data?.message || "Hãy giới thiệu về nội dung quảng cáo của bạn",
                 headline: creative?.object_story_spec?.link_data?.name || "Chat trong Messenger",
                 description: creative?.object_story_spec?.link_data?.description || "Khám phá dịch vụ của chúng tôi ngay!",
-                cta: creative?.object_story_spec?.link_data?.call_to_action?.type || "Gửi tin nhắn",
+                cta: creative?.object_story_spec?.link_data?.call_to_action?.type 
+                  ? convertFacebookTypeToCTA(creative.object_story_spec.link_data.call_to_action.type)
+                  : "Tìm hiểu thêm",
                 destinationUrl: creative?.object_story_spec?.link_data?.link || "https://fchat.vn",
                 creative: creative ? {
                   name: creative.name,

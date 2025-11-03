@@ -1,5 +1,6 @@
 // Utility functions cho CreateAdsWizard
 import { convertCountryNamesToCodes, convertLanguageCodeToLocaleId } from "./locationUtils";
+import { convertCTAToFacebookType } from "./ctaUtils";
 
 /**
  * Helper function để extract string ID từ ObjectId format
@@ -103,7 +104,7 @@ export function buildPayload({
         name: ad.headline,
         description: ad.description,
         call_to_action: {
-          type: "MESSAGE_PAGE",
+          type: convertCTAToFacebookType(ad.cta),
           value: { link: ad.destinationUrl || "https://fchat.vn" },
         },
         ...(ad.mediaUrl && { picture: ad.mediaUrl }),

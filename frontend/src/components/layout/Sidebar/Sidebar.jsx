@@ -76,8 +76,8 @@ function Sidebar() {
                     </li>
                     <li>
                         <button 
-                            className={`sidebar-item ${currentRoute === 'stats' ? 'active' : ''}`} 
-                            onClick={() => navigate('/')}
+                            className={`sidebar-item ${currentRoute === 'archive-ads' ? 'active' : ''}`} 
+                            onClick={() => navigate('/archive-ads')}
                         >
                             <span className="sidebar-icon"><Archive size={16} /></span>
                             <span className="sidebar-label">Lưu trữ</span>
