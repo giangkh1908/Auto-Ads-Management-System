@@ -1,4 +1,4 @@
-import { useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import {
   Circle,
   Image,
@@ -8,14 +8,18 @@ import {
   Bot,
   MousePointer,
   X,
+  Settings,
 } from "lucide-react";
 import AiPopup from "../AiPopup/AiPopup";
+import AiPromptConfig from "../AiPromptConfig/AiPromptConfig";
+import AiConfigManager from "../AiConfigManager/AiConfigManager";
 import "../AiPopup/AiPopup.css";
 import axiosInstance from "../../../../utils/axios";
 import "./AdStep.css";
 import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
 import { CTA_OPTIONS } from "../../../../constants/ctaConstants";
+import { aiConfigService } from "../../../../services/aiConfigService";
 
 function AdStepInner({ ad, setAd, adset }, ref) {
   const fileInputRef = useRef(null);
@@ -24,7 +28,11 @@ function AdStepInner({ ad, setAd, adset }, ref) {
   const [aiImages, setAiImages] = useState([]);
   const [selectedAiImages, setSelectedAiImages] = useState([]);
   const [showAIConfig, setShowAIConfig] = useState(false);
+  const [showAiPromptConfig, setShowAiPromptConfig] = useState(false);
+  const [showAiConfigManager, setShowAiConfigManager] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [aiPromptConfig, setAiPromptConfig] = useState(null);
+  const [defaultConfigId, setDefaultConfigId] = useState(null);
   const toast = useToast();
 
   // Get detailed requirements and guidance based on destination_type
@@ -141,11 +149,30 @@ function AdStepInner({ ad, setAd, adset }, ref) {
   // AI context tracking
   const [aiProvider, setAiProvider] = useState('openai');
   const [contextId, setContextId] = useState(null);
+  const [selectedConfigId, setSelectedConfigId] = useState(null);
   const [isGenerating, setIsGenerating] = useState({
     headline: false,
     primaryText: false,
     description: false,
   });
+
+  useEffect(() => {
+    loadDefaultConfig();
+  }, []);
+
+  const loadDefaultConfig = async () => {
+    try {
+      const response = await aiConfigService.getConfigs('own');
+      if (response.success && response.configs) {
+        const defaultConfig = response.configs.find(c => c.is_default);
+        if (defaultConfig) {
+          setDefaultConfigId(defaultConfig._id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading default config:', error);
+    }
+  };
 
   // Function to handle file upload
   const handleFileSelect = async (e) => {
@@ -417,17 +444,20 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             Tạo bằng AI
           </button>
 
+          <button
+            className="btn-ai-settings"
+            onClick={() => setShowAiConfigManager(true)}
+            title="Quản lý AI Configs"
+          >
+            <Settings size={18} />
+          </button>
+
           {/* AI Config Modal */}
           <AiPopup
             isOpen={showAIConfig}
             onClose={() => setShowAIConfig(false)}
+            defaultConfigId={defaultConfigId}
             onConfirm={(config) => {
-              // Xử lý config và gọi API để lấy context_id
-              const languageMap = {
-                "Tiếng Việt": "vi",
-                "English": "en",
-                "中文": "zh"
-              };
               const toArray = (v) =>
                 Array.isArray(v)
                   ? v
@@ -435,37 +465,76 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                     .split(',')
                     .map(s => s.trim())
                     .filter(Boolean);
+              
               const mainKeywords = [
                 ...toArray(config.mainKeywords),
                 ...toArray(config.synonymousKeywords),
-                ...toArray(config.main_keywords),           // phòng trường hợp FE đã gửi dạng array
+                ...toArray(config.main_keywords),
               ];
 
-              if (mainKeywords.length === 0) {
+              if (mainKeywords.length === 0 && !config.config_id) {
                 toast.warning("Vui lòng nhập ít nhất một từ khóa chính");
                 return;
               }
-              setAiProvider(config.ai_provider || 'openai');
-              // Gọi API để xác nhận context
+
+              if (config.config_id) {
+                setSelectedConfigId(config.config_id);
+              } else {
+                setSelectedConfigId(null);
+              }
+
+              const modelToSend = config.config_id 
+                ? null 
+                : (config.ai_provider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini');
+
               axiosInstance.post('/api/ai/context/confirm', {
-                language: languageMap[config.language] || "vi",
-                tone: config.tone,
-                personalization: config.personalization,
-                main_keywords: mainKeywords
+                ...config,
+                main_keywords: mainKeywords.length > 0 ? mainKeywords : undefined,
+                model: modelToSend
               })
                 .then(response => {
                   if (response.data && response.data.success) {
                     setContextId(response.data.context_id);
+                    
+                    if (response.data.model) {
+                      const provider = response.data.model.includes('gemini') ? 'gemini' : 'openai';
+                      setAiProvider(provider);
+                    } else if (config.ai_provider) {
+                      setAiProvider(config.ai_provider);
+                    }
+                    
                     toast.success("Đã thiết lập AI thành công");
                   }
                 })
                 .catch(error => {
                   console.error("Error confirming AI context:", error);
                   toast.error("Không thể thiết lập AI", {
-                    description: error.message
+                    description: error.response?.data?.message || error.message
                   });
                 });
             }}
+          />
+
+          {/* AI Config Manager Modal */}
+          <AiConfigManager
+            isOpen={showAiConfigManager}
+            onClose={() => setShowAiConfigManager(false)}
+            onConfigSelect={(config) => {
+              setDefaultConfigId(config._id);
+              loadDefaultConfig();
+              toast.success(`Đã chọn config: ${config.name}`);
+            }}
+          />
+
+          {/* AI Prompt Config Modal */}
+          <AiPromptConfig
+            isOpen={showAiPromptConfig}
+            onClose={() => setShowAiPromptConfig(false)}
+            onSave={(config) => {
+              setAiPromptConfig(config);
+              toast.success("Đã lưu cấu hình AI Prompt");
+            }}
+            initialConfig={aiPromptConfig || {}}
           />
         </div>
 
