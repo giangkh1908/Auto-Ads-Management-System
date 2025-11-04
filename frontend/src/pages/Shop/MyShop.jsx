@@ -146,6 +146,13 @@ function MyShop() {
 
   //Thêm page mới
   const handleAddNewPage = () => {
+    onClick = {() => {
+    setAddForm({
+      shopName: "",
+      email: "",
+      phone: "",
+      category: "other",
+    });
     setIsAddOpen(true);
   };
 
