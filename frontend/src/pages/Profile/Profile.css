@@ -142,13 +142,47 @@
 /* Input with Icon */
 .input-with-icon {
   position: relative;
-  display: flex;
+  display: block;
   align-items: center;
 }
 
 .input-with-icon .form-input {
   padding-right: 48px;
   width: 100%;
+}
+
+.input-icon-profile {
+  position: absolute; /* Thêm position absolute */
+  left: 16px; /* Khoảng cách từ bên trái */
+  top: 50%; /* Căn giữa theo chiều dọc */
+  transform: translateY(-50%); /* Điều chỉnh để căn giữa hoàn hảo */
+  color: #6b7280; /* Màu icon */
+  pointer-events: none; /* Icon không cản trỏ chuột */
+  z-index: 1;
+}
+
+.form-input-profile {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  font-size: 15px;
+  border: 1px solid #ffffff;
+  border-radius: 30px;
+  background: #f9fafb;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  font-family: 'Roboto', sans-serif;
+}
+
+.form-input-profile:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #daecff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-input-profile[readonly] {
+  background: #f3f4f6;
+  cursor: not-allowed;
 }
 
 .edit-icon-btn {
@@ -172,6 +206,7 @@
 .eye-icon-btn {
   position: absolute;
   right: 12px;
+  top: 25%;
   background: none;
   border: none;
   cursor: pointer;

@@ -4,18 +4,26 @@ import Pagination from "../../components/common/Pagination/Pagination";
 import "./AdsManagement.css";
 import CreateAdsWizard from "../../components/feature/CreateAdsWizard/CreateAdsWizard";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
+import ProgressPopup from "../../components/common/ProgressPopup/Progress";
 import { handleSelectAll, handleSelectItem } from "../../utils/selectionUtils";
 import {
   deleteCampaign,
   deleteAdSet,
   deleteAd,
+  archiveCampaign,
+  archiveAdSet,
+  archiveAd,
 } from "../../services/adService";
 import { toggleEntityStatus } from "../../services/toggleStatusService";
 import axiosInstance from "../../utils/axios";
 import { useToast } from "../../hooks/useToast";
 import { translateStatus, getStatusClass } from "../../utils/statusUtils";
+import { useProgressState } from "../../hooks/useProgressState";
+import { useTranslation } from "react-i18next";
+import { translateObjective, translateOptimizationGoal, formatTargetingVN } from "../../utils/translationUtils";
 
 function AdsManagement() {
+  const { t } = useTranslation(['ads']);
   const toast = useToast();
   const [activeTab, setActiveTab] = useState("campaigns");
   const [showWizard, setShowWizard] = useState(false);
@@ -30,7 +38,8 @@ function AdsManagement() {
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
-  // Data
+  // Data - lưu TẤT CẢ data đã fetch từ BE (chưa phân trang ở FE)
+  // Dùng cho việc sort và phân trang ở Frontend
   const [datasets, setDatasets] = useState({
     campaigns: [],
     adsets: [],
@@ -45,6 +54,14 @@ function AdsManagement() {
 
   // Track tab trước đó để tránh xung đột logic
   const prevActiveTabRef = useRef(activeTab);
+
+  // 🔹 Pagination state (phải khai báo trước getFilteredRows)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1
+  });
 
   const [checkAll, setCheckAll] = useState(false);
   const [hasSelectedItems, setHasSelectedItems] = useState(false);
@@ -61,21 +78,36 @@ function AdsManagement() {
     isLoading: false,
   });
 
-  // 🔹 Filter data for active tab
+  // Progress popup state
+  const { progressState, openProgress, updateProgress, closeProgress } = useProgressState();
+
+  // Helper function to get entity name
+  const getEntityName = (key) => {
+    return t(`entity_names.${key}`, { defaultValue: key });
+  };
+
+  // Helper function để sort theo created_at (newest first)
+  const sortByCreatedAtDesc = (array) => {
+    return [...array].sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      return dateB - dateA; // Newest first
+    });
+  };
+
+  // 🔹 Filter data for active tab, sort và phân trang ở FE
+  // ✅ Backend trả về TẤT CẢ items (bao gồm cả DELETED), Frontend sẽ filter DELETED
   const getFilteredRows = () => {
+    let result = [];
+    
     if (activeTab === "campaigns") {
-      // Filter out campaigns with DELETE status
-      return datasets.campaigns.filter(
-        (campaign) =>
-          campaign.status !== "DELETED" &&
-          campaign.effective_status !== "DELETED"
+      // Filter DELETED ở Frontend và filter theo context nếu cần
+      result = datasets.campaigns.filter(
+        (campaign) => campaign.status !== "DELETED" && campaign.status !== "ARCHIVED"
       );
-    }
-    if (activeTab === "adsets") {
-      // Filter out adsets with DELETE status
+    } else if (activeTab === "adsets") {
       let filteredAdsets = datasets.adsets.filter(
-        (adset) =>
-          adset.status !== "DELETED" && adset.effective_status !== "DELETED"
+        (adset) => adset.status !== "DELETED" && adset.status !== "ARCHIVED"
       );
 
       if (selectedCampaign) {
@@ -83,19 +115,16 @@ function AdsManagement() {
           (a) => a.campaignId === selectedCampaign.id
         );
       }
-      return filteredAdsets;
-    }
-    if (activeTab === "ads") {
-      // Filter out ads with DELETE status
+      result = filteredAdsets;
+    } else if (activeTab === "ads") {
       let filteredAds = datasets.ads.filter(
-        (ad) => ad.status !== "DELETED" && ad.effective_status !== "DELETED"
+        (ad) => ad.status !== "DELETED" && ad.status !== "ARCHIVED"
       );
 
       if (selectedAdset) {
         filteredAds = filteredAds.filter((a) => String(a.adsetId) === String(selectedAdset.id));
       } else if (selectedCampaign) {
         // Filter ads thông qua adset relationship
-        // Lấy tất cả adsets thuộc campaign này
         const campaignAdsets = datasets.adsets.filter(
           (adset) => adset.campaignId === selectedCampaign.id
         );
@@ -106,19 +135,31 @@ function AdsManagement() {
           campaignAdsetIds.includes(String(ad.adsetId))
         );
       }
-      return filteredAds;
+      result = filteredAds;
     }
-    return [];
+    
+    // Sort tất cả data trước khi phân trang
+    const sortedResult = sortByCreatedAtDesc(result);
+    
+    // Cập nhật pagination info dựa trên sorted data
+    const total = sortedResult.length;
+    const totalPages = Math.ceil(total / pagination.limit) || 1;
+    
+    // Cập nhật pagination state (chỉ khi thay đổi)
+    if (pagination.total !== total || pagination.totalPages !== totalPages) {
+      setPagination(prev => ({
+        ...prev,
+        total,
+        totalPages
+      }));
+    }
+    
+    // Phân trang ở Frontend sau khi sort
+    const startIndex = (pagination.page - 1) * pagination.limit;
+    const endIndex = startIndex + pagination.limit;
+    return sortedResult.slice(startIndex, endIndex);
   };
   const rows = getFilteredRows();
-
-  // 🔹 Pagination state
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1
-  });
 
   // 🔹 Toggle ON/OFF với đồng bộ Facebook API
   const toggleRow = async (id) => {
@@ -133,14 +174,14 @@ function AdsManagement() {
     const row = datasets[key].find((r) => r.id === id);
 
     if (!row) {
-      toast.error("Không tìm thấy item để toggle");
+      toast.error(t('toasts.item_not_found'));
       return;
     }
 
     // Kiểm tra có external_id không (cần để gọi Facebook API)
     if (!row.external_id) {
-      toast.warning("Không thể đồng bộ với Facebook", {
-        description: "Item chưa có external_id từ Facebook",
+      toast.warning(t('toasts.cannot_sync_facebook'), {
+        description: t('toasts.no_external_id'),
       });
       return;
     }
@@ -168,11 +209,10 @@ function AdsManagement() {
 
     try {
       await toggleEntityStatus(entityType, row.external_id, facebookStatus);
+      const entityLabel = getEntityName(entityType);
+      const action = newStatus ? t('toasts.toggle_on') : t('toasts.toggle_off');
       toast.success(
-        `${entityType.charAt(0).toUpperCase() + entityType.slice(1)} đã ${
-          newStatus ? "bật" : "tắt"
-        }`,
-        {}
+        `${entityLabel.charAt(0).toUpperCase() + entityLabel.slice(1)} ${t('toasts.toggle_success')} ${action}`
       );
     } catch (error) {
       // Revert UI nếu API call thất bại
@@ -189,7 +229,8 @@ function AdsManagement() {
         ),
       }));
 
-      toast.error(`Lỗi ${newStatus ? "bật" : "tắt"} ${entityType}`, {
+      const action = newStatus ? t('toasts.toggle_on') : t('toasts.toggle_off');
+      toast.error(`${t('toasts.toggle_error')} ${action} ${getEntityName(entityType)}`, {
         description: error.message,
       });
     } finally {
@@ -294,52 +335,142 @@ function AdsManagement() {
       : datasets[key].filter((item) => item.isChecked).map((item) => item.id);
 
     if (idsToArchive.length === 0) {
-      toast.warning("Vui lòng chọn ít nhất một mục để lưu trữ.");
+      toast.warning(t('toasts.select_item_archive_warning'));
       return;
     }
 
-    const entityName =
-      key === "campaigns"
-        ? "chiến dịch"
-        : key === "adsets"
-        ? "nhóm quảng cáo"
-        : "quảng cáo";
+    const entityName = getEntityName(key);
 
     setConfirmationPopup({
       isOpen: true,
       type: "archive",
-      title: `Lưu trữ ${idsToArchive.length} ${entityName}`,
-      message: `Bạn có chắc muốn lưu trữ ${idsToArchive.length} ${entityName}? Hành động này có thể được hoàn tác.`,
+      title: t('confirmations.archive_title', { count: idsToArchive.length, entity: entityName }),
+      message: t('confirmations.archive_message', { count: idsToArchive.length, entity: entityName }),
       onConfirm: () => executeArchive(idsToArchive),
       isLoading: false,
     });
   };
 
   const executeArchive = async (idsToArchive) => {
-    setConfirmationPopup((prev) => ({ ...prev, isLoading: true }));
+    // Đóng confirmation popup
+    setConfirmationPopup((prev) => ({
+      ...prev,
+      isOpen: false,
+    }));
+
+    const key =
+      activeTab === "campaigns"
+        ? "campaigns"
+        : activeTab === "adsets"
+        ? "adsets"
+        : "ads";
+
+    const entityName = getEntityName(key);
+
+    // Mở progress popup
+    openProgress({
+      type: 'archive',
+      title: t('progress.archiving', { entity: entityName }),
+      total: idsToArchive.length,
+    });
 
     try {
-      // TODO: Implement archive API calls
-      console.log(`Lưu trữ ${idsToArchive.length} items:`, idsToArchive);
+      // 🧩 Lấy token FB từ localStorage
+      const fbToken = localStorage.getItem("fb_access_token") || null;
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
 
-      toast.success(
-        `Đã lưu trữ ${idsToArchive.length} ${activeTab} thành công!`
-      );
+      // 🔹 Gọi đúng service cho từng loại và cập nhật progress
+      for (let i = 0; i < idsToArchive.length; i++) {
+        const archiveId = idsToArchive[i];
+        
+        try {
+          updateProgress({
+            current: i,
+            message: t('progress.archiving_progress', { entity: entityName, current: i + 1, total: idsToArchive.length }),
+          });
 
-      // Refresh data
-      handleRefresh();
-    } catch (error) {
-      console.error("❌ Lỗi khi lưu trữ:", error);
-      toast.error("Lưu trữ thất bại, vui lòng thử lại!");
-    } finally {
-      setConfirmationPopup((prev) => ({
+          if (key === "campaigns") {
+            await archiveCampaign(archiveId, fbToken);
+          } else if (key === "adsets") {
+            await archiveAdSet(archiveId, fbToken);
+          } else {
+            await archiveAd(archiveId, fbToken);
+          }
+
+          successCount++;
+          
+          updateProgress({
+            current: i + 1,
+            message: t('progress.archived', { current: i + 1, total: idsToArchive.length, entity: entityName }),
+          });
+        } catch (itemError) {
+          errorCount++;
+          errors.push({
+            id: archiveId,
+            error: itemError?.response?.data?.message || itemError.message,
+          });
+          console.error(`❌ Lỗi khi archive ${archiveId}:`, itemError);
+        }
+      }
+
+      // 🔹 Cập nhật UI - xóa tất cả items đã được archive (chúng sẽ chuyển sang trang Archive)
+      const processedIds = idsToArchive.slice(0, successCount);
+      
+      setDatasets((prev) => ({
         ...prev,
-        isLoading: false,
-        isOpen: false,
+        [key]: prev[key].filter((item) => !processedIds.includes(item.id)),
       }));
+      setCheckAll(false);
+      setHasSelectedItems(false);
+
+      // Cập nhật trạng thái cuối cùng
+      if (errorCount === 0) {
+        updateProgress({
+          status: 'success',
+          current: idsToArchive.length,
+          message: t('progress.completed'),
+          successCount,
+          errorCount: 0,
+        });
+        toast.success(t('toasts.archive_success', { count: successCount, entity: entityName }));
+      } else if (successCount > 0) {
+        updateProgress({
+          status: 'partial',
+          current: idsToArchive.length,
+          message: t('progress.completed_with_errors', { errorCount }),
+          successCount,
+          errorCount,
+          errors,
+        });
+        toast.warning(t('toasts.archive_partial', { successCount, total: idsToArchive.length, entity: entityName, errorCount }));
+      } else {
+        updateProgress({
+          status: 'error',
+          message: t('progress.archive_failed'),
+          errorCount,
+          errors,
+        });
+        toast.error(t('toasts.archive_failed'));
+      }
+
+      // Refresh data after archiving
+      if (successCount > 0) {
+        handleRefresh();
+      }
+    } catch (error) {
+      console.error("❌ Lỗi khi archive:", error);
+      
+      updateProgress({
+        status: 'error',
+        message: error?.response?.data?.message || t('toasts.archive_failed'),
+      });
+      
+      toast.error(
+        error?.response?.data?.message || t('toasts.archive_failed')
+      );
     }
   };
 
@@ -357,78 +488,142 @@ function AdsManagement() {
       : datasets[key].filter((item) => item.isChecked).map((item) => item.id);
 
     if (idsToDelete.length === 0) {
-      toast.warning("Vui lòng chọn ít nhất một mục để xóa.");
+      toast.warning(t('toasts.select_item_warning'));
       return;
     }
 
-    const entityName =
-      key === "campaigns"
-        ? "chiến dịch"
-        : key === "adsets"
-        ? "nhóm quảng cáo"
-        : "quảng cáo";
+    const entityName = getEntityName(key);
 
     setConfirmationPopup({
       isOpen: true,
       type: "delete",
-      title: `Xóa ${idsToDelete.length} ${entityName}`,
-      message: `Bạn có chắc muốn xóa ${idsToDelete.length} ${entityName}? Hành động này không thể hoàn tác.`,
+      title: t('confirmations.delete_title', { count: idsToDelete.length, entity: entityName }),
+      message: t('confirmations.delete_message', { count: idsToDelete.length, entity: entityName }),
       onConfirm: () => executeDelete(idsToDelete),
       isLoading: false,
     });
   };
 
   const executeDelete = async (idsToDelete) => {
-    setConfirmationPopup((prev) => ({ ...prev, isLoading: true }));
+    // Đóng confirmation popup
+    setConfirmationPopup((prev) => ({
+      ...prev,
+      isOpen: false,
+    }));
+
+    const key =
+      activeTab === "campaigns"
+        ? "campaigns"
+        : activeTab === "adsets"
+        ? "adsets"
+        : "ads";
+
+    const entityName = getEntityName(key);
+
+    // Mở progress popup
+    openProgress({
+      type: 'delete',
+      title: t('progress.deleting', { entity: entityName }),
+      total: idsToDelete.length,
+    });
 
     try {
-      const key =
-        activeTab === "campaigns"
-          ? "campaigns"
-          : activeTab === "adsets"
-          ? "adsets"
-          : "ads";
-
       // 🧩 Lấy token FB từ localStorage
       const fbToken = localStorage.getItem("fb_access_token") || null;
 
-      // 🔹 Gọi đúng service cho từng loại
-      for (const delId of idsToDelete) {
-        if (key === "campaigns") await deleteCampaign(delId, fbToken);
-        else if (key === "adsets") await deleteAdSet(delId, fbToken);
-        else await deleteAd(delId, fbToken);
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
+
+      // 🔹 Gọi đúng service cho từng loại và cập nhật progress
+      for (let i = 0; i < idsToDelete.length; i++) {
+        const delId = idsToDelete[i];
+        
+        try {
+          updateProgress({
+            current: i,
+            message: t('progress.deleting_progress', { entity: entityName, current: i + 1, total: idsToDelete.length }),
+          });
+
+          if (key === "campaigns") {
+            await deleteCampaign(delId, fbToken);
+          } else if (key === "adsets") {
+            await deleteAdSet(delId, fbToken);
+          } else {
+            await deleteAd(delId, fbToken);
+          }
+
+          successCount++;
+          
+          updateProgress({
+            current: i + 1,
+            message: t('progress.deleted', { current: i + 1, total: idsToDelete.length, entity: entityName }),
+          });
+        } catch (itemError) {
+          errorCount++;
+          errors.push({
+            id: delId,
+            error: itemError?.response?.data?.message || itemError.message,
+          });
+          console.error(`❌ Lỗi khi xóa ${delId}:`, itemError);
+        }
       }
 
-      // 🔹 Cập nhật UI
+      // 🔹 Cập nhật UI - xóa tất cả items đã được xử lý (bao gồm cả success)
+      const processedIds = idsToDelete.slice(0, successCount);
+      
       setDatasets((prev) => ({
         ...prev,
-        [key]: prev[key].filter((item) => !idsToDelete.includes(item.id)),
+        [key]: prev[key].filter((item) => !processedIds.includes(item.id)),
       }));
       setCheckAll(false);
       setHasSelectedItems(false);
 
-      const entityName =
-        key === "campaigns"
-          ? "chiến dịch"
-          : key === "adsets"
-          ? "nhóm quảng cáo"
-          : "quảng cáo";
+      // Cập nhật trạng thái cuối cùng
+      if (errorCount === 0) {
+        updateProgress({
+          status: 'success',
+          current: idsToDelete.length,
+          message: t('progress.completed'),
+          successCount,
+          errorCount: 0,
+        });
+        toast.success(t('toasts.delete_success', { count: successCount, entity: entityName }));
+      } else if (successCount > 0) {
+        updateProgress({
+          status: 'partial',
+          current: idsToDelete.length,
+          message: t('progress.completed_with_errors', { errorCount }),
+          successCount,
+          errorCount,
+          errors,
+        });
+        toast.warning(t('toasts.delete_partial', { successCount, total: idsToDelete.length, entity: entityName, errorCount }));
+      } else {
+        updateProgress({
+          status: 'error',
+          message: t('progress.delete_failed'),
+          errorCount,
+          errors,
+        });
+        toast.error(t('toasts.delete_failed'));
+      }
 
-      toast.success(`Đã xóa ${idsToDelete.length} ${entityName} thành công!`);
-
-      // Refresh data after successful deletion
-      handleRefresh();
+      // Refresh data after deletion
+      if (successCount > 0) {
+        handleRefresh();
+      }
     } catch (error) {
       console.error("❌ Lỗi khi xóa:", error);
+      
+      updateProgress({
+        status: 'error',
+        message: error?.response?.data?.message || t('toasts.delete_failed'),
+      });
+      
       toast.error(
-        error?.response?.data?.message || "Xóa thất bại, vui lòng thử lại!"
+        error?.response?.data?.message || t('toasts.delete_failed')
       );
-    } finally {
-      setConfirmationPopup((prev) => ({
-        ...prev,
-        isLoading: false,
-        isOpen: false,
-      }));
     }
   };
 
@@ -458,73 +653,110 @@ function AdsManagement() {
   };
 
   // 🔹 Sync data từ Facebook (chỉ gọi khi cần thiết)
-  const syncData = useCallback(async (accountId, forceSync = false) => {
+  // ✅ Tối ưu: Sử dụng batch sync endpoint và lazy sync (chỉ sync entity cần thiết)
+  const syncData = useCallback(async (accountId, forceSync = false, syncTypes = null) => {
     if (!accountId) return;
     
-    // Kiểm tra cache - chỉ sync nếu chưa sync trong 30 giây hoặc force sync
     const now = Date.now();
-    const lastSync = cache.lastSync;
-    const cacheKey = `${accountId}_${activeTab}`;
+    const CACHE_TTL = 120000; // 120 giây (tăng từ 30s để giảm sync calls)
     
-    if (!forceSync && lastSync && (now - lastSync) < 30000) {
-      console.log("⏭️ Skip sync - cached recently");
+    // ✅ Nếu không chỉ định syncTypes, tự động xác định dựa trên activeTab
+    if (!syncTypes) {
+      if (activeTab === "campaigns") {
+        syncTypes = ['campaigns'];
+      } else if (activeTab === "adsets") {
+        syncTypes = ['campaigns', 'adsets']; // Cần campaigns để map relationship
+      } else if (activeTab === "ads") {
+        syncTypes = ['campaigns', 'adsets', 'ads']; // Cần cả 3 để map relationships
+      } else {
+        syncTypes = ['campaigns', 'adsets', 'ads'];
+      }
+    }
+    
+    // ✅ Kiểm tra cache cho từng entity type
+    const needsSync = syncTypes.filter(type => {
+      if (forceSync) return true;
+      const cacheKey = `${accountId}_${type}`;
+      const lastSync = cache.lastFetch?.[cacheKey];
+      return !lastSync || (now - lastSync) > CACHE_TTL;
+    });
+    
+    if (needsSync.length === 0) {
+      console.log("⏭️ Skip sync - all entities cached");
       return;
     }
     
     try {
-      await Promise.all([
-        axiosInstance.get(`/api/campaigns/sync?account_id=${accountId}`),
-        axiosInstance.get(`/api/adsets/sync?account_id=${accountId}`),
-        axiosInstance.get(`/api/ads/sync?account_id=${accountId}`)
-      ]);
+      // ✅ Chỉ sync những entity cần thiết
+      if (needsSync.length === 3) {
+        // Sync tất cả → dùng batch endpoint (1 request thay vì 3)
+        await axiosInstance.get(`/api/campaigns/sync-all?account_id=${accountId}`);
+        console.log("✅ Batch sync completed");
+      } else {
+        // Sync từng phần riêng (khi chỉ cần 1-2 entities)
+        const syncPromises = needsSync.map(type => {
+          const endpointMap = {
+            campaigns: 'campaigns',
+            adsets: 'adsets',
+            ads: 'ads'
+          };
+          return axiosInstance.get(`/api/${endpointMap[type]}/sync?account_id=${accountId}`);
+        });
+        await Promise.all(syncPromises);
+        console.log(`✅ Synced ${needsSync.length} entities:`, needsSync);
+      }
       
       // Cập nhật cache
+      const updatedCache = { ...cache.lastFetch };
+      needsSync.forEach(type => {
+        updatedCache[`${accountId}_${type}`] = now;
+      });
+      
       setCache(prev => ({
         ...prev,
         lastSync: now,
-        lastFetch: { ...prev.lastFetch, [cacheKey]: now }
+        lastFetch: updatedCache
       }));
     } catch (error) {
       console.error("Sync error:", error);
     }
-  }, [cache.lastSync, activeTab]);
+  }, [cache, activeTab]);
 
-  // 🔹 Fetch campaigns (không sync)
+  // 🔹 Fetch campaigns (fetch tất cả để sort và phân trang ở FE)
   const fetchCampaignsForAccount = useCallback(async (accountId) => {
     if (!accountId) return;
     try {
       const response = await axiosInstance.get(`/api/campaigns`, {
         params: {
           account_id: accountId,
-          page: pagination.page,
-          limit: pagination.limit
+          fetch_all: true // Fetch tất cả để FE sort và phân trang
         }
       });
       if (response.data) {
-        const { items, total, pages } = response.data;
-        
-        // Cập nhật thông tin phân trang từ response
-        setPagination(prev => ({
-          ...prev,
-          total,
-          totalPages: pages
-        }));
+        const { items } = response.data; // Không cần total, pages từ BE nữa (FE sẽ tính)
 
-        // ✅ Không cần filter thêm - backend đã filter DELETED
+        // ✅ Backend trả về tất cả items (bao gồm cả DELETED), Frontend sẽ filter
+        // Log để debug: thống kê items theo status
+        if (import.meta.env.DEV) {
+          const statusCount = items.reduce((acc, item) => {
+            acc[item.status] = (acc[item.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log(`📊 Backend returned campaigns by status:`, statusCount);
+        }
+        
         const mapped = items.map((campaign) => ({
           ...campaign,
           id: campaign._id || campaign.id || campaign.external_id,
           external_id: campaign.external_id,
           isChecked: false,
-          enabled:
-            campaign.status === "ACTIVE" ||
-            campaign.effective_status === "ACTIVE",
+          enabled: campaign.status === "ACTIVE",
           budget: campaign.daily_budget || campaign.lifetime_budget || 0,
           start_time: campaign.start_time,
           end_time: campaign.stop_time,
           objective: campaign.objective,
           buying_type: campaign.buying_type,
-          updated_at: campaign.updated_at || campaign.updatedAt,
+          created_by: campaign.created_by,
         }));
 
         // Fetch insights for these campaigns
@@ -557,7 +789,8 @@ function AdsManagement() {
           };
         });
 
-        setDatasets((prev) => ({
+        // Lưu TẤT CẢ data để sort và phân trang ở FE
+        setDatasets(prev => ({
           ...prev,
           campaigns: merged,
         }));
@@ -565,39 +798,57 @@ function AdsManagement() {
     } catch (error) {
       console.error("Error fetching campaigns:", error);
     }
-  }, [pagination.page, pagination.limit]);
+  }, []); // BỎ pagination.page, pagination.limit khỏi dependencies
 
-  // 🔹 Fetch AdSets for campaign (không sync)
+  // 🔹 Fetch AdSets for campaign (fetch tất cả để sort và phân trang ở FE)
+  // ✅ Tối ưu: Kiểm tra cache trước khi fetch, merge thông minh
   const fetchAdsetsForCampaign = useCallback(async (campaignId, accountId) => {
     if (!campaignId || !accountId) return;
+    
+    // ✅ Kiểm tra cache: Nếu đã có adsets của campaign này trong datasets, không fetch lại
+    const cachedAdsets = datasets.adsets.filter(
+      a => String(a.campaignId) === String(campaignId) && 
+           a.status !== "DELETED" && 
+           a.status !== "ARCHIVED"
+    );
+    
+    // Nếu đã có cache và còn fresh (< 2 phút), dùng cache
+    if (cachedAdsets.length > 0) {
+      const cacheKey = `adsets_${campaignId}_${accountId}`;
+      const lastFetch = cache.lastFetch?.[cacheKey];
+      if (lastFetch && (Date.now() - lastFetch) < 120000) {
+        console.log(`✅ Using ${cachedAdsets.length} cached adsets for campaign ${campaignId}`);
+        // Chỉ fetch insights nếu cần (có thể thêm logic refresh insights riêng)
+        return;
+      }
+    }
+    
     try {
       const response = await axiosInstance.get(`/api/adsets`, {
         params: {
           campaign_id: campaignId,
-          page: pagination.page,
-          limit: pagination.limit
+          fetch_all: true // Fetch tất cả để FE sort và phân trang
         }
       });
       if (response.data) {
-        const { items, total, pages } = response.data;
-        
-        // Cập nhật thông tin phân trang từ response
-        setPagination(prev => ({
-          ...prev,
-          total,
-          totalPages: pages
-        }));
+        const { items } = response.data;
 
-        // ✅ Không cần filter thêm - backend đã filter DELETED
+        // ✅ Backend trả về tất cả items (bao gồm cả DELETED), Frontend sẽ filter
+        if (import.meta.env.DEV) {
+          const statusCount = items.reduce((acc, item) => {
+            acc[item.status] = (acc[item.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log(`📊 Backend returned adsets by status:`, statusCount);
+        }
+        
         const mapped = items.map((adset) => ({
           ...adset,
           id: adset._id || adset.id || adset.external_id,
           external_id: adset.external_id,
           campaignId,
           isChecked: false,
-          enabled:
-            adset.status === "ACTIVE" ||
-            adset.effective_status === "ACTIVE",
+          enabled: adset.status === "ACTIVE",
           budget: adset.daily_budget || adset.lifetime_budget || 0,
           start_time: adset.start_time,
           end_time: adset.end_time,
@@ -605,20 +856,29 @@ function AdsManagement() {
           optimization_goal: adset.optimization_goal,
           bid_strategy: adset.bid_strategy,
           bid_amount: adset.bid_amount,
-          updated_at: adset.updated_at || adset.updatedAt,
+          created_by: adset.created_by,
         }));
 
-        // Fetch insights for these adsets
+        // ✅ Fetch insights theo batch nhỏ (50 items/lần) để tránh quá tải và rate limit
         const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
         let insightsMap = {};
         if (adsetIds.length) {
           try {
-            const { data: ins } = await axiosInstance.get(`/api/adsets/insights?ids=${adsetIds.join(',')}`);
-            if (ins?.items?.length) {
-              insightsMap = ins.items.reduce((acc, it) => {
-                acc[it.id] = it.insights || {};
-                return acc;
-              }, {});
+            const BATCH_SIZE = 50; // Chia nhỏ thành batch 50 items
+            for (let i = 0; i < adsetIds.length; i += BATCH_SIZE) {
+              const batch = adsetIds.slice(i, i + BATCH_SIZE);
+              const { data: ins } = await axiosInstance.get(
+                `/api/adsets/insights?ids=${batch.join(',')}`
+              );
+              if (ins?.items?.length) {
+                ins.items.forEach(it => {
+                  insightsMap[it.id] = it.insights || {};
+                });
+              }
+              // Thêm delay nhỏ giữa các batch để tránh rate limit (100ms)
+              if (i + BATCH_SIZE < adsetIds.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
             }
           } catch (e) {
             console.warn('Adset insights fetch failed', e);
@@ -635,50 +895,67 @@ function AdsManagement() {
             reach: ins.reach || 0,
             results,
             quality: ins.quality_ranking || '-',
+            created_by: a.created_by,
           };
         });
 
-        setDatasets((prev) => ({
+        // ✅ Merge thông minh: Giữ adsets của campaigns khác, chỉ update campaign này
+        setDatasets((prev) => {
+          const otherAdsets = prev.adsets.filter(
+            a => String(a.campaignId) !== String(campaignId)
+          );
+          return {
+            ...prev,
+            adsets: [...otherAdsets, ...merged]
+          };
+        });
+
+        // ✅ Update cache
+        setCache(prev => ({
           ...prev,
-          adsets: merged,
+          lastFetch: {
+            ...prev.lastFetch,
+            [`adsets_${campaignId}_${accountId}`]: Date.now()
+          }
         }));
       }
     } catch (error) {
       console.error("Error fetching adsets:", error);
     }
-  }, [pagination.page, pagination.limit]);
+  }, [datasets.adsets, cache]);
 
-  // 🔹 Fetch Ads for AdSet (không sync)
+  // 🔹 Fetch Ads for AdSet (fetch tất cả để sort và phân trang ở FE)
   const fetchAdsForAdset = useCallback(async (adsetId) => {
     if (!adsetId) return;
     try {
       const response = await axiosInstance.get(`/api/ads`, {
         params: {
           adset_id: adsetId,
-          page: pagination.page,
-          limit: pagination.limit
+          fetch_all: true // Fetch tất cả để FE sort và phân trang
         }
       });
       if (response.data) {
-        const { items, total, pages } = response.data;
-        
-        // Cập nhật thông tin phân trang từ response
-        setPagination(prev => ({
-          ...prev,
-          total,
-          totalPages: pages
-        }));
+        const { items } = response.data; // Không cần total, pages từ BE nữa
 
-        // ✅ Không cần filter thêm - backend đã filter DELETED
+        // ✅ Backend trả về tất cả items (bao gồm cả DELETED), Frontend sẽ filter
+        // Log để debug: thống kê items theo status
+        if (import.meta.env.DEV) {
+          const statusCount = items.reduce((acc, item) => {
+            acc[item.status] = (acc[item.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log(`📊 Backend returned ads by status:`, statusCount);
+        }
+        
         const mapped = items.map((ad) => ({
           ...ad,
           id: ad._id || ad.id || ad.external_id,
           external_id: ad.external_id,
           adsetId,
           isChecked: false,
-          enabled: ad.status === "ACTIVE" || ad.effective_status === "ACTIVE",
+          enabled: ad.status === "ACTIVE",
           budget: 0, // Ads don't have budget, it's inherited from adset
-          updated_at: ad.updated_at || ad.updatedAt,
+          created_by: ad.created_by,
         }));
 
         // Fetch insights for these ads
@@ -710,47 +987,62 @@ function AdsManagement() {
             results,
             quality: ins.quality_ranking || '-',
             updated_at: a.updated_at || a.updatedAt,
+            created_by: a.created_by,
           };
         });
 
+        // Lưu TẤT CẢ data để sort và phân trang ở FE
         setDatasets((prev) => ({ ...prev, ads: merged }));
       }
     } catch (error) {
       console.error("Error fetching ads:", error);
     }
-  }, [pagination.page, pagination.limit]);
+  }, []); // BỎ pagination.page, pagination.limit
 
-  // 🔹 Fetch all Adsets & Ads by account (không sync)
+  // 🔹 Fetch all Adsets & Ads by account (fetch tất cả để sort và phân trang ở FE)
+  // ✅ Tối ưu: Thêm cache check và batch insights để giảm API calls
   const fetchAllAdsetsForAccount = useCallback(async (accountId) => {
     if (!accountId) return;
+    
+    // ✅ Kiểm tra cache: Nếu đã có adsets của account này và còn fresh, không fetch lại
+    const cacheKey = `adsets_all_${accountId}`;
+    const lastFetch = cache.lastFetch?.[cacheKey];
+    if (lastFetch && (Date.now() - lastFetch) < 120000) {
+      const cachedAdsets = datasets.adsets.filter(
+        a => a.status !== "DELETED" && a.status !== "ARCHIVED"
+      );
+      if (cachedAdsets.length > 0) {
+        console.log(`✅ Using ${cachedAdsets.length} cached adsets for account ${accountId}`);
+        return;
+      }
+    }
+    
     try {
       const response = await axiosInstance.get(`/api/adsets`, {
         params: {
           account_id: accountId,
-          page: pagination.page,
-          limit: pagination.limit
+          fetch_all: true // Fetch tất cả để FE sort và phân trang
         }
       });
       if (response.data) {
-        const { items, total, pages } = response.data;
-        
-        // Cập nhật thông tin phân trang từ response
-        setPagination(prev => ({
-          ...prev,
-          total,
-          totalPages: pages
-        }));
+        const { items } = response.data; // Không cần total, pages từ BE nữa
 
-        // ✅ Không cần filter thêm - backend đã filter DELETED
+        // ✅ Backend trả về tất cả items (bao gồm cả DELETED), Frontend sẽ filter
+        if (import.meta.env.DEV) {
+          const statusCount = items.reduce((acc, item) => {
+            acc[item.status] = (acc[item.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log(`📊 Backend returned adsets by status:`, statusCount);
+        }
+        
         const mapped = items.map((adset) => ({
           ...adset,
           id: adset._id || adset.id || adset.external_id,
           external_id: adset.external_id,
           campaignId: adset.campaign_id,
           isChecked: false,
-          enabled:
-            adset.status === "ACTIVE" ||
-            adset.effective_status === "ACTIVE",
+          enabled: adset.status === "ACTIVE",
           budget: adset.daily_budget || adset.lifetime_budget || 0,
           start_time: adset.start_time,
           end_time: adset.end_time,
@@ -758,20 +1050,29 @@ function AdsManagement() {
           optimization_goal: adset.optimization_goal,
           bid_strategy: adset.bid_strategy,
           bid_amount: adset.bid_amount,
-          updated_at: adset.updated_at || adset.updatedAt,
+          created_by: adset.created_by,
         }));
 
-        // Fetch insights for these adsets
+        // ✅ Fetch insights theo batch nhỏ (50 items/lần) để tránh quá tải và rate limit
         const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
         let insightsMap = {};
         if (adsetIds.length) {
           try {
-            const { data: ins } = await axiosInstance.get(`/api/adsets/insights?ids=${adsetIds.join(',')}`);
-            if (ins?.items?.length) {
-              insightsMap = ins.items.reduce((acc, it) => {
-                acc[it.id] = it.insights || {};
-                return acc;
-              }, {});
+            const BATCH_SIZE = 50; // Chia nhỏ thành batch 50 items
+            for (let i = 0; i < adsetIds.length; i += BATCH_SIZE) {
+              const batch = adsetIds.slice(i, i + BATCH_SIZE);
+              const { data: ins } = await axiosInstance.get(
+                `/api/adsets/insights?ids=${batch.join(',')}`
+              );
+              if (ins?.items?.length) {
+                ins.items.forEach(it => {
+                  insightsMap[it.id] = it.insights || {};
+                });
+              }
+              // Thêm delay nhỏ giữa các batch để tránh rate limit (100ms)
+              if (i + BATCH_SIZE < adsetIds.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
             }
           } catch (e) {
             console.warn('Adset insights fetch failed', e);
@@ -788,18 +1089,29 @@ function AdsManagement() {
             reach: ins.reach || 0,
             results,
             quality: ins.quality_ranking || '-',
+            created_by: a.created_by,
           };
         });
 
+        // Lưu TẤT CẢ data để sort và phân trang ở FE
         setDatasets((prev) => ({
           ...prev,
           adsets: merged,
+        }));
+
+        // ✅ Update cache sau khi fetch thành công
+        setCache(prev => ({
+          ...prev,
+          lastFetch: {
+            ...prev.lastFetch,
+            [cacheKey]: Date.now()
+          }
         }));
       }
     } catch (error) {
       console.error("Error fetching adsets:", error);
     }
-  }, [pagination.page, pagination.limit]);
+  }, [datasets.adsets, cache]); // ✅ Thêm dependencies để cache hoạt động đúng
 
   const fetchAllAdsForAccount = useCallback(async (accountId) => {
     if (!accountId) return;
@@ -807,30 +1119,31 @@ function AdsManagement() {
       const response = await axiosInstance.get(`/api/ads`, {
         params: {
           account_id: accountId,
-          page: pagination.page,
-          limit: pagination.limit
+          fetch_all: true // Fetch tất cả để FE sort và phân trang
         }
       });
       if (response.data) {
-        const { items, total, pages } = response.data;
-        
-        // Cập nhật thông tin phân trang từ response
-        setPagination(prev => ({
-          ...prev,
-          total,
-          totalPages: pages
-        }));
+        const { items } = response.data; // Không cần total, pages từ BE nữa
 
-        // ✅ Không cần filter thêm - backend đã filter DELETED
+        // ✅ Backend trả về tất cả items (bao gồm cả DELETED), Frontend sẽ filter
+        // Log để debug: thống kê items theo status
+        if (import.meta.env.DEV) {
+          const statusCount = items.reduce((acc, item) => {
+            acc[item.status] = (acc[item.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log(`📊 Backend returned ads by status:`, statusCount);
+        }
+        
         const mapped = items.map((ad) => ({
           ...ad,
           id: ad._id || ad.id || ad.external_id,
           external_id: ad.external_id,
           adsetId: ad.adset_id || ad.set_id,
           isChecked: false,
-          enabled: ad.status === "ACTIVE" || ad.effective_status === "ACTIVE",
+          enabled: ad.status === "ACTIVE",
           budget: 0, // Ads don't have budget, it's inherited from adset
-          updated_at: ad.updated_at || ad.updatedAt,
+          created_by: ad.created_by,
         }));
 
         // Fetch insights in batch
@@ -861,22 +1174,26 @@ function AdsManagement() {
             results,
             quality: ins.quality_ranking || '-',
             updated_at: a.updated_at || a.updatedAt,
+            created_by: a.created_by,
           };
         });
 
+        // Lưu TẤT CẢ data để sort và phân trang ở FE
         setDatasets((prev) => ({ ...prev, ads: merged }));
       }
     } catch (error) {
       console.error("Error fetching ads:", error);
     }
-  }, [pagination.page, pagination.limit]);
+  }, []); // BỎ pagination.page, pagination.limit
 
-  // 🔹 Fetch Ad Accounts
+  // 🔹 Fetch Ad Accounts (chỉ lấy ACTIVE accounts)
   useEffect(() => {
     const fetchAdAccounts = async () => {
       setLoadingAccounts(true);
       try {
-        const response = await axiosInstance.get("/api/ads-accounts");
+        const response = await axiosInstance.get("/api/ads-accounts", {
+          params: { status: 'ACTIVE' } // Chỉ lấy accounts có status ACTIVE
+        });
         if (response.data?.items) {
           setAdAccounts(response.data.items);
           setInitialized(true);
@@ -897,17 +1214,16 @@ function AdsManagement() {
     }
   }, [selectedAccountId, initialized, syncData]);
 
-  // 🔹 Load data khi pagination thay đổi hoặc chuyển tab (gộp logic reset)
+  // 🔹 Load data khi chuyển tab hoặc account thay đổi (KHÔNG phụ thuộc vào pagination)
   useEffect(() => {
     if (selectedAccountId && initialized) {
       // Reset pagination về page 1 khi chuyển tab
       if (prevActiveTabRef.current !== activeTab) {
         setPagination(prev => ({ ...prev, page: 1 }));
         prevActiveTabRef.current = activeTab;
-        return; // Không fetch data ngay, để useEffect chạy lại với page: 1
       }
 
-      // Fetch data dựa trên tab hiện tại
+      // Fetch data (fetch tất cả, không phân trang)
       if (activeTab === "campaigns") {
         fetchCampaignsForAccount(selectedAccountId);
       } else if (activeTab === "adsets") {
@@ -929,8 +1245,6 @@ function AdsManagement() {
     selectedAccountId,
     initialized,
     activeTab,
-    pagination.page,
-    pagination.limit,
     selectedCampaign?.id,
     selectedAdset?.id,
     fetchCampaignsForAccount,
@@ -938,9 +1252,15 @@ function AdsManagement() {
     fetchAllAdsetsForAccount,
     fetchAdsForAdset,
     fetchAllAdsForAccount
-  ]);
+  ]); // BỎ pagination.page, pagination.limit
+
+  // useEffect riêng để reset page khi limit thay đổi
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [pagination.limit]);
 
   // 🔹 Handle account change
+  // ✅ Tối ưu: Chỉ fetch campaigns, để useEffect tự động fetch adsets/ads khi chuyển tab
   const handleAccountChange = (e) => {
     const accountId = e.target.value;
     setSelectedAccountId(accountId);
@@ -948,9 +1268,11 @@ function AdsManagement() {
     resetSelection();
     setActiveTab("campaigns");
     if (accountId) {
+      // ✅ CHỈ fetch campaigns ở đây, useEffect sẽ tự động fetch adsets/ads khi cần
       fetchCampaignsForAccount(accountId);
-      fetchAllAdsetsForAccount(accountId);
-      fetchAllAdsForAccount(accountId);
+      // ❌ XÓA: Không fetch adsets/ads ở đây nữa để tránh duplicate calls
+      // fetchAllAdsetsForAccount(accountId);
+      // fetchAllAdsForAccount(accountId);
     } else {
       // Clear datasets when deselecting
       setDatasets({ campaigns: [], adsets: [], ads: [] });
@@ -960,8 +1282,8 @@ function AdsManagement() {
   // 🔹 Handle refresh data (tối ưu - chỉ sync và fetch tab hiện tại)
   const handleRefresh = useCallback(async () => {
     if (!selectedAccountId) {
-      toast.warning("Vui lòng chọn tài khoản quảng cáo", {
-        description: "Chọn tài khoản quảng cáo trước khi làm mới dữ liệu",
+      toast.warning(t('toasts.select_account_warning'), {
+        description: t('toasts.select_account_description'),
       });
       return;
     }
@@ -990,15 +1312,46 @@ function AdsManagement() {
       }
 
       console.log("✅ Data refreshed successfully");
-      toast.success("Làm mới dữ liệu thành công!");
+      toast.success(t('toasts.refresh_success'));
     } catch (error) {
       console.error("❌ Error refreshing data:", error);
-      toast.error("Lỗi khi làm mới dữ liệu");
+      toast.error(t('toasts.refresh_error'));
     } finally {
       setRefreshing(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccountId, activeTab, selectedCampaign?.id, selectedAdset?.id, syncData, fetchCampaignsForAccount, fetchAdsetsForCampaign, fetchAllAdsetsForAccount, fetchAdsForAdset, fetchAllAdsForAccount, toast]);
+  }, [selectedAccountId, activeTab, selectedCampaign?.id, selectedAdset?.id, syncData, fetchCampaignsForAccount, fetchAdsetsForCampaign, fetchAllAdsetsForAccount, fetchAdsForAdset, fetchAllAdsForAccount, toast, t]);
+
+  // ✅ Chỉ fetch từ DB, không sync Facebook (dùng cho draft)
+  const handleFetchOnly = useCallback(async () => {
+    if (!selectedAccountId) {
+      return;
+    }
+
+    try {
+      // Chỉ fetch data cho tab hiện tại (KHÔNG sync Facebook)
+      if (activeTab === "campaigns") {
+        await fetchCampaignsForAccount(selectedAccountId);
+      } else if (activeTab === "adsets") {
+        if (selectedCampaign) {
+          await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId);
+        } else {
+          await fetchAllAdsetsForAccount(selectedAccountId);
+        }
+      } else if (activeTab === "ads") {
+        if (selectedAdset) {
+          await fetchAdsForAdset(selectedAdset.id);
+        } else {
+          await fetchAllAdsForAccount(selectedAccountId);
+        }
+      }
+
+      console.log("✅ Data fetched successfully");
+    } catch (error) {
+      console.error("❌ Error fetching data:", error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccountId, activeTab, selectedCampaign?.id, selectedAdset?.id, fetchCampaignsForAccount, fetchAdsetsForCampaign, fetchAllAdsetsForAccount, fetchAdsForAdset, fetchAllAdsForAccount]);
 
   return (
     <div className="ads-management-layout">
@@ -1012,15 +1365,15 @@ function AdsManagement() {
                   onChange={handleAccountChange}
                   disabled={loadingAccounts}
                 >
-                  <option value="">Chọn tài khoản quảng cáo</option>
+                  <option value="">{t('management.select_account')}</option>
                   {loadingAccounts ? (
-                    <option disabled>Đang tải tài khoản...</option>
+                    <option disabled>{t('management.loading_accounts')}</option>
                   ) : adAccounts.length === 0 ? (
-                    <option disabled>Không có tài khoản nào</option>
+                    <option disabled>{t('management.no_accounts')}</option>
                   ) : (
                     adAccounts.map((account) => (
                       <option key={account._id} value={account.external_id}>
-                        {account.name || "Tài khoản"} ({account.external_id})
+                        {account.name || t('management.account')} ({account.external_id})
                       </option>
                     ))
                   )}
@@ -1037,16 +1390,16 @@ function AdsManagement() {
                   }}
                   disabled={!selectedAccountId}
                 >
-                  + Tạo chiến dịch
+                  + {t('management.create_campaign')}
                 </button>
               </div>
 
               <div className="filters">
-                <span>Từ</span>
+                <span>{t('management.from')}</span>
                 <input type="date" />
-                <span>đến</span>
+                <span>{t('management.to')}</span>
                 <input type="date" />
-                <button className="btn-filter">Tìm</button>
+                <button className="btn-filter">{t('management.search')}</button>
               </div>
             </div>
 
@@ -1060,7 +1413,7 @@ function AdsManagement() {
                     setActiveTab("campaigns");
                   }}
                 >
-                  Tất cả chiến dịch
+                  {t('management.all_campaigns')}
                 </button>
                 {selectedCampaign && (
                   <>
@@ -1099,7 +1452,7 @@ function AdsManagement() {
                   resetSelection();
                 }}
               >
-                <span className="tab-icon">▦</span> Chiến dịch
+                <span className="tab-icon">▦</span> {t('management.campaigns_tab')}
               </button>
               <button
                 className={`tab ${activeTab === "adsets" ? "active" : ""}`}
@@ -1110,7 +1463,7 @@ function AdsManagement() {
                     fetchAllAdsetsForAccount(selectedAccountId);
                 }}
               >
-                <span className="tab-icon">▣</span> Nhóm quảng cáo
+                <span className="tab-icon">▣</span> {t('management.adsets_tab')}
               </button>
               <button
                 className={`tab ${activeTab === "ads" ? "active" : ""}`}
@@ -1121,7 +1474,7 @@ function AdsManagement() {
                     fetchAllAdsForAccount(selectedAccountId);
                 }}
               >
-                <span className="tab-icon">▥</span> Quảng cáo
+                <span className="tab-icon">▥</span> {t('management.ads_tab')}
               </button>
 
               {hasSelectedItems && (
@@ -1146,10 +1499,10 @@ function AdsManagement() {
                 className="btn-refresh-ads"
                 onClick={handleRefresh}
                 disabled={refreshing || !selectedAccountId}
-                title="Làm mới dữ liệu"
+                title={t('management.refresh')}
               >
                 <RefreshCw size={16} className={refreshing ? "spinning" : ""} />
-                {refreshing ? "Đang tải..." : "Làm mới"}
+                {refreshing ? t('management.refreshing') : t('management.refresh')}
               </button>
             </div>
 
@@ -1165,26 +1518,26 @@ function AdsManagement() {
                         onChange={handleCheckAll}
                       />
                     </th>
-                    <th>Tắt/Bật</th>
-                    <th>Tên</th>
-                    <th>Trạng thái</th>
-                    <th>Ngân sách</th>
-                    {activeTab === "adsets" && <th>Thời gian chạy</th>}
-                    {activeTab === "adsets" && <th>Nhắm mục tiêu</th>}
-                    {activeTab === "campaigns" && <th>Mục tiêu</th>}
-                    <th>Hiển thị</th>
-                    <th>Tiếp cận</th>
-                    <th>Kết quả</th>
-                    <th>Chất lượng</th>
-                    <th>Cập nhật lần cuối</th>
-                    <th>Hành động</th>
+                    <th>{t('management.toggle_on_off')}</th>
+                    <th>{t('management.name')}</th>
+                    <th>{t('management.status')}</th>
+                    <th>{t('management.budget')}</th>
+                    {activeTab === "adsets" && <th>{t('management.runtime')}</th>}
+                    {activeTab === "adsets" && <th>{t('management.targeting')}</th>}
+                    {activeTab === "campaigns" && <th>{t('management.objective')}</th>}
+                    <th>{t('management.impressions')}</th>
+                    <th>{t('management.reach')}</th>
+                    <th>{t('management.results')}</th>
+                    <th>{t('management.quality')}</th>
+                    <th>{t('management.creator')}</th>
+                    <th>{t('management.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(activeTab === "ads" || activeTab === "adsets" || activeTab === "campaigns") && rows.length === 0 && (
                     <tr>
                       <td colSpan={activeTab === "adsets" ? 13 : activeTab === "campaigns" ? 12 : 11} style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
-                        Chưa có quảng cáo nào để hiển thị. Hãy chọn tài khoản quảng cáo khác hoặc tạo mới.
+                        {t('management.no_data')}
                       </td>
                     </tr>
                   )}
@@ -1210,12 +1563,17 @@ function AdsManagement() {
                       </td>
                       <td>
                         <span
-                          className="name-text clickable"
+                          className={`name-text ${
+                            activeTab === "ads" 
+                              ? "ad-name" 
+                              : "clickable"
+                          }`}
                           onClick={() => {
                             if (activeTab === "campaigns")
                               handleCampaignClick(row);
                             else if (activeTab === "adsets")
                               handleAdsetClick(row);
+                            // Ad không có onClick vì là bước cuối
                           }}
                         >
                           {row.name}
@@ -1230,49 +1588,39 @@ function AdsManagement() {
                           {row.start_time && row.end_time ? (
                             <div style={{ fontSize: '12px' }}>
                               <div>{new Date(row.start_time).toLocaleDateString('vi-VN')}</div>
-                              <div>đến</div>
+                              <div>{t('management.to')}</div>
                               <div>{new Date(row.end_time).toLocaleDateString('vi-VN')}</div>
                             </div>
                           ) : row.start_time ? (
                             <div style={{ fontSize: '12px' }}>
-                              <div>Từ: {new Date(row.start_time).toLocaleDateString('vi-VN')}</div>
-                              <div>Không giới hạn</div>
+                              <div>{t('management.from')}: {new Date(row.start_time).toLocaleDateString('vi-VN')}</div>
+                              <div>{t('management.no_limit')}</div>
                             </div>
                           ) : (
-                            "Chưa thiết lập"
+                            t('labels.not_set')
                           )}
                         </td>
                       )}
                       {activeTab === "adsets" && (
                         <td className="text-center">
                           <div style={{ fontSize: '12px', textAlign: 'left' }}>
-                            {row.targeting && (
-                              <>
-                                {row.targeting.genders && (
-                                  <div>Giới tính: {row.targeting.genders.join(', ')}</div>
-                                )}
-                                {row.targeting.age_min && row.targeting.age_max && (
-                                  <div>Tuổi: {row.targeting.age_min}-{row.targeting.age_max}</div>
-                                )}
-                                {row.targeting.geo_locations && row.targeting.geo_locations.countries && (
-                                  <div>Vị trí: {row.targeting.geo_locations.countries.join(', ')}</div>
-                                )}
-                                {row.targeting.languages && (
-                                  <div>Ngôn ngữ: {row.targeting.languages.join(', ')}</div>
-                                )}
-                                {row.optimization_goal && (
-                                  <div>Mục tiêu: {row.optimization_goal}</div>
-                                )}
-                              </>
+                            {row.targeting && Object.keys(row.targeting).length > 0 ? (
+                              formatTargetingVN(row.targeting).map((line, idx) => (
+                                <div key={idx}>{line}</div>
+                              ))
+                            ) : (
+                              t('labels.not_set')
                             )}
-                            {(!row.targeting || Object.keys(row.targeting).length === 0) && "Chưa thiết lập"}
+                            {row.optimization_goal && (
+                              <div>{t('management.goal_label')}: {translateOptimizationGoal(row.optimization_goal)}</div>
+                            )}
                           </div>
                         </td>
                       )}
                       {activeTab === "campaigns" && (
                         <td className="text-center">
                           <div style={{ fontSize: '12px' }}>
-                            {row.objective || "Chưa thiết lập"}
+                            {row.objective ? translateObjective(row.objective) : t('labels.not_set')}
                           </div>
                         </td>
                       )}
@@ -1281,33 +1629,28 @@ function AdsManagement() {
                       <td className="text-center">{row.results || "0"}</td>
                       <td className="text-center">{row.quality || "0"}</td>
                       <td className="text-center">
-                        {row.updated_at
-                          ? new Date(row.updated_at).toLocaleString("vi-VN", {
-                              timeZone: "Asia/Ho_Chi_Minh",
-                              hour12: false,
-                            })
-                          : "Chưa cập nhật"}
+                        {row.created_by?.full_name || row.created_by?.email || t('labels.not_set')}
                       </td>
                       <td>
                         <div className="action-buttons">
                           <button
                             className="ads-action-btn ads-update-btn"
                             onClick={() => handleUpdate(row.id)}
-                            title="Cập nhật"
+                            title={t('management.update')}
                           >
                             <Edit size={14} />
                           </button>
                           <button
                             className="ads-action-btn ads-archive-btn"
                             onClick={() => handleArchive(row.id)}
-                            title="Lưu trữ"
+                            title={t('management.archive')}
                           >
                             <Archive size={14} />
                           </button>
                           <button
                             className="ads-action-btn ads-delete-btn"
                             onClick={() => handleDelete(row.id)}
-                            title="Xóa"
+                            title={t('management.delete')}
                           >
                             <Trash size={14} />
                           </button>
@@ -1349,8 +1692,16 @@ function AdsManagement() {
             setWizardMode("create");
           }}
           onSuccess={() => {
-            // Refresh data after successful create/update
+            // Refresh data after successful create/update (sync Facebook)
             handleRefresh();
+          }}
+          onError={() => {
+            // ✅ Refresh data sau khi publish thất bại để hiển thị items FAILED
+            handleFetchOnly();
+          }}
+          onDraftSaved={() => {
+            // ✅ CHỈ FETCH LẠI TỪ DB (KHÔNG SYNC FACEBOOK)
+            handleFetchOnly();
           }}
           mode={wizardMode}
           editingItem={editingItem}
@@ -1372,6 +1723,15 @@ function AdsManagement() {
         message={confirmationPopup.message}
         type={confirmationPopup.type}
         isLoading={confirmationPopup.isLoading}
+      />
+
+      {/* Progress Popup */}
+      <ProgressPopup
+        isOpen={progressState.isOpen}
+        type={progressState.type}
+        title={progressState.title}
+        progress={progressState.progress}
+        onClose={closeProgress}
       />
     </div>
   );

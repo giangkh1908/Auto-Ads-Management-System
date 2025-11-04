@@ -9,6 +9,7 @@ import {
   publishAdController,
   publishFlexibleController,
   updateFlexibleController,
+  saveDraftController,
 } from "../../controllers/ads/adsWizard.controller.js";
 
 const router = Router();
@@ -25,5 +26,8 @@ router.post("/publish-flexible", authenticate, publishFlexibleController);
 
 // New flexible routes - Update
 router.put("/update-flexible", authenticate, updateFlexibleController);
+
+// Save Draft route
+router.post("/save-draft", authenticate, saveDraftController);
 
 export default router;

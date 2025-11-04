@@ -6,7 +6,7 @@ const BILLING_EVENT_LABELS = {
   APP_INSTALLS: "Cài đặt ứng dụng",
 };
 
-export const SalesSchema = {
+ const SalesSchema = {
   objective: "SALES",
   sections: [
     {
@@ -62,7 +62,7 @@ export const SalesSchema = {
             return events.map(e => ({ value: e, label: BILLING_EVENT_LABELS[e] || e }));
           },
           default: "IMPRESSIONS",
-          disabled: (adset) => !adset.optimization_goal,
+          // disabled: (adset) => !adset.optimization_goal,
           hint: (adset) => !adset.optimization_goal ? "Vui lòng chọn mục tiêu tối ưu hóa trước" : null,
           validate: (value) => {
             if (!value) return "Thiếu sự kiện tính phí";
@@ -122,6 +122,7 @@ export const SalesSchema = {
             { value: "lifetime", label: "Ngân sách tổng" },
           ],
           default: "daily",
+          disabled: (adset, mode) => mode === "edit" && adset.external_id,
         },
         {
           type: "money",
@@ -145,8 +146,7 @@ export const SalesSchema = {
           type: "datetime",
           name: "start_time",
           label: "Ngày bắt đầu",
-          disabled: (mode) => mode === "edit",
-          lockMessage: "🔒 Không thể sửa",
+          disabled: (adset, mode) => mode === "edit" && adset?.external_id
         },
         {
           type: "datetime",

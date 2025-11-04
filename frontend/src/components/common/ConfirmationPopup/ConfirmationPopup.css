@@ -226,6 +226,61 @@
   100% { transform: rotate(360deg); }
 } */
 
+/* ✅ THÊM: Save Draft Styles */
+.confirmation-icon.save-draft-icon {
+  color: #10b981;
+}
+
+.confirmation-icon-container:has(.save-draft-icon) {
+  background: #d1fae5;
+}
+
+/* Save Draft Button */
+.btn-confirm-save-draft {
+  background-color: #10b981;
+  color: white;
+}
+
+.btn-confirm-save-draft:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+/* Discard Button */
+.btn-discard {
+  background-color: white;
+  color: #ef4444;
+  border: 1px solid #fecaca;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.btn-discard:hover:not(:disabled) {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+.btn-discard:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Footer với 3 buttons */
+.confirmation-footer.three-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.confirmation-footer.three-buttons .btn-discard {
+  margin-right: auto;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .confirmation-popup {
@@ -239,6 +294,15 @@
   
   .btn-cancel,
   .btn-confirm {
+    width: 100%;
+  }
+  
+  .confirmation-footer.three-buttons {
+    flex-direction: column;
+  }
+  
+  .confirmation-footer.three-buttons .btn-discard {
+    margin-right: 0;
     width: 100%;
   }
 }

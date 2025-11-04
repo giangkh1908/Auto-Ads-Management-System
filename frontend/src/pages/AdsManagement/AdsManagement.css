@@ -156,16 +156,44 @@
   color: #374151;
 }
 
-.breadcrumb-item.active {
+/* .breadcrumb-item.active {
   color: #2563eb;
   font-weight: 600;
-}
+} */
 
 .breadcrumb-separator {
   color: #9ca3af;
   margin: 0 4px;
 }
 
+/* Style riêng cho tên trong breadcrumb */
+.breadcrumb-name {
+  font-weight: 600;
+  color: #1e40af;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  padding: 0 4px;
+  border-radius: 4px;
+  position: relative;
+}
+
+/* Hiệu ứng cho active breadcrumb name */
+.breadcrumb-item.active .breadcrumb-name {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+/* Hover effect cho breadcrumb name */
+.breadcrumb-item:hover .breadcrumb-name {
+  text-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+/* Ads Tabs */
 .ads-tabs {
   display: flex;
   gap: 8px;
@@ -275,16 +303,29 @@
 .name-text {
   flex: 1;
   cursor: default;
+  color: #111827;
 }
 
+/* Campaign & AdSet: Màu xanh, có thể click */
 .name-text.clickable {
   cursor: pointer;
   color: #2563eb;
-  text-decoration: underline;
+  text-decoration: none;
+  font-weight: 500;
 }
 
 .name-text.clickable:hover {
   color: #1d4ed8;
+  text-decoration: none;
+}
+
+/* Ad: Màu đen, không clickable - Cải thiện hiển thị nội dung vì là bước cuối */
+.name-text.ad-name {
+  color: #000000; /* ✅ Màu đen để nội dung rõ ràng hơn */
+  cursor: default;
+  text-decoration: none;
+  font-weight: 600; /* ✅ Tăng độ đậm để nổi bật */
+  line-height: 1.5; /* ✅ Tăng line-height để dễ đọc */
 }
 
 .row-actions {
@@ -465,11 +506,6 @@
   font-weight: 500;
 }
 
-.status-archived {
-  color: #7c3aed;
-  font-weight: 500;
-}
-
 .status-pending {
   color: #f59e0b;
   font-weight: 500;
@@ -480,6 +516,17 @@
   font-weight: 500;
 }
 
+.status-failed {
+  color: #dc2626;
+  font-weight: 500; 
+  background-color: #fee2e2;
+}
+
+.status-draft {
+  color: #000000;
+  font-weight: 500;
+  background-color: #c6c6c6;
+}
 /* Action buttons */
 .action-buttons {
   display: flex;

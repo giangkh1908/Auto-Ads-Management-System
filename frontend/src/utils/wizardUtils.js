@@ -1,4 +1,6 @@
 // Utility functions cho CreateAdsWizard
+import { convertCountryNamesToCodes, convertLanguageCodeToLocaleId } from "./locationUtils";
+import { convertCTAToFacebookType } from "./ctaUtils";
 
 /**
  * Helper function để extract string ID từ ObjectId format
@@ -102,7 +104,7 @@ export function buildPayload({
         name: ad.headline,
         description: ad.description,
         call_to_action: {
-          type: "MESSAGE_PAGE",
+          type: convertCTAToFacebookType(ad.cta),
           value: { link: ad.destinationUrl || "https://fchat.vn" },
         },
         ...(ad.mediaUrl && { picture: ad.mediaUrl }),
@@ -136,16 +138,29 @@ export function buildPayload({
       targeting: {
         age_min: adset.targeting.ageMin || 18,
         age_max: adset.targeting.ageMax || 65,
-        geo_locations: { countries: ["VN"] },
+        // ✅ Lấy location từ adset.targeting.locations và convert sang country codes
+        geo_locations: {
+          countries: convertCountryNamesToCodes(
+            adset.targeting?.locations || ["Viet Nam"]
+          ),
+        },
+        // ✅ THÊM: Gender và language
+        ...(adset.targeting?.gender && adset.targeting.gender !== "all" && {
+          genders: adset.targeting.gender === "male" ? [1] : adset.targeting.gender === "female" ? [2] : [],
+        }),
+        ...(adset.targeting?.language && adset.targeting.language !== "all" && (() => {
+          const localeId = convertLanguageCodeToLocaleId(adset.targeting.language);
+          return localeId ? { locales: [localeId] } : {};
+        })()),
         targeting_automation: {
           advantage_audience: 0,
         },
       },
-      start_time: adset.schedule?.start
-        ? new Date(adset.schedule.start).toISOString()
+      start_time: adset.start_time
+        ? new Date(adset.start_time).toISOString()
         : new Date().toISOString(),
-      end_time: adset.schedule?.end
-        ? new Date(adset.schedule.end).toISOString()
+      end_time: adset.end_time
+        ? new Date(adset.end_time).toISOString()
         : null,
       optimization_goal: adset.optimization_goal,
       conversion_event: adset.conversion_event,
@@ -162,6 +177,13 @@ export function buildPayload({
             },
           }
         : {}),
+      // Vị trí chuyển đổi/lưu lượng (prefill & update BE/FB)
+      ...(adset.traffic_destination && {
+        traffic_destination: adset.traffic_destination,
+      }),
+      ...(adset.destination_type && {
+        destination_type: adset.destination_type,
+      }),
     },
     ad: {
       draftId: ad.id || null,

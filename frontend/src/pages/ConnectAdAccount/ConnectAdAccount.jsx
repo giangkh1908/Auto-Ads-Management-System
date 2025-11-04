@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './ConnectAdAccount.css'
 import { useToast } from '../../hooks/useToast'
 import axiosInstance from '../../utils/axios'
 import logo from "../../assets/Logo_Fchat.png";
+import { useAuth } from '../../hooks/useAuth'
 
 function ConnectAdAccount() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
   const [loading, setLoading] = useState(false)
@@ -16,6 +19,7 @@ function ConnectAdAccount() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('status')
   const [selectAll, setSelectAll] = useState(false)
+  const { user } = useAuth()
   
   // Tải dữ liệu tài khoản quảng cáo từ Facebook API
   useEffect(() => {
@@ -34,7 +38,7 @@ function ConnectAdAccount() {
         setFbAdAccounts(fbAccounts)
       } catch (e) {
         console.error('Load ad accounts error:', e)
-        toast.error('Không tải được danh sách tài khoản quảng cáo từ Facebook')
+        toast.error(t('connect_ad_account.load_error'))
       } finally {
         setLoading(false)
       }
@@ -47,25 +51,25 @@ function ConnectAdAccount() {
     const getStatusLabel = (accountStatus) => {
       const status = Number(accountStatus)
       switch (status) {
-        case 1: return 'Hoạt động'
-        case 2: return 'Vô hiệu hóa'
-        case 3: return 'Chưa xác minh'
-        default: return 'Không hoạt động'
+        case 1: return t('account_management.status_active')
+        case 2: return t('account_management.status_disabled')
+        case 3: return t('account_management.status_unverified')
+        default: return t('account_management.status_inactive')
       }
     }
 
     return (fbAdAccounts || []).map(acc => ({
       id: acc.external_id || acc._id,
-      name: acc.name || 'Facebook Ad Account',
+      name: acc.name || t('connect_ad_account.default_account_name'),
       externalId: acc.external_id,
       currency: acc.currency || 'USD',
       timezone: acc.timezone_name || 'UTC',
       status: getStatusLabel(acc.account_status),
       isConnected: connectedAccountIds.includes(acc.external_id),
       isSelected: false,
-      avatar: `https://graph.facebook.com/${acc.external_id}/picture?type=square`,
+      avatar: user?.avatar || `https://graph.facebook.com/${acc.external_id}/picture?type=square`,
     }))
-  }, [fbAdAccounts, connectedAccountIds])
+  }, [fbAdAccounts, connectedAccountIds, t, user])
 
   //Đếm số tài khoản đã kết nối và còn lại
   const connectedCount = adAccounts.filter(acc => acc.isConnected).length
@@ -121,11 +125,11 @@ function ConnectAdAccount() {
         await axiosInstance.post('/api/ads-accounts/connect', { account_id: acc.externalId })
       }
       setConnectedAccountIds(prev => Array.from(new Set([...prev, ...selected.map(acc => acc.externalId)])))
-      toast.success(`Đã kết nối ${selected.length} tài khoản quảng cáo`)
+      toast.success(t('connect_ad_account.connect_success', { count: selected.length }))
       navigate('/account-management')
     } catch (e) {
       console.error('Connect ad account error:', e)
-      toast.error('Kết nối thất bại, vui lòng thử lại')
+      toast.error(t('connect_ad_account.connect_error'))
     } finally {
       setSyncing(false)
     }
@@ -139,10 +143,10 @@ function ConnectAdAccount() {
       const fbRes = await axiosInstance.get('/api/ads-accounts/facebook')
       const fbAccounts = fbRes.data?.items || []
       setFbAdAccounts(fbAccounts)
-      toast.success('Làm mới danh sách tài khoản quảng cáo thành công!')
+      toast.success(t('connect_ad_account.refresh_success'))
     } catch (error) {
       console.log('Refresh ad accounts error:', error)
-      toast.error('Lỗi khi làm mới: ' + (error.message || 'Unknown error'))
+      toast.error(t('connect_ad_account.refresh_error', { error: error.message || 'Unknown error' }))
     } finally {
       setSyncing(false)
     }
@@ -181,18 +185,18 @@ function ConnectAdAccount() {
 
         {/* Status Info */}
         <div className="status-info">
-          Đã kết nối {connectedCount} tài khoản quảng cáo, còn lại: {remainingCount} tài khoản
+          {t('connect_ad_account.connected_count', { count: connectedCount, remaining: remainingCount })}
         </div>
 
         {/* Ad Account Management Section */}
         <div className="page-management-container">
           {loading ? (
             <div className="empty-state">
-              <p>Đang tải danh sách tài khoản quảng cáo...</p>
+              <p>{t('connect_ad_account.loading_list')}</p>
             </div>
           ) : adAccounts.length === 0 ? (
             <div className="empty-state">
-              <p>Không có tài khoản quảng cáo nào để hiển thị. Hãy đăng nhập Facebook và cấp quyền quảng cáo.</p>
+              <p>{t('connect_ad_account.no_accounts')}</p>
             </div>
           ) : (
           <>
@@ -202,7 +206,7 @@ function ConnectAdAccount() {
               <input 
                 type="text" 
                 className="search-input"
-                placeholder="Tìm tài khoản quảng cáo"
+                placeholder={t('connect_ad_account.search_placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -214,20 +218,20 @@ function ConnectAdAccount() {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
-                <option value="status">Trạng thái</option>
-                <option value="connected">Đã kết nối</option>
-                <option value="not-connected">Chưa kết nối</option>
+                <option value="status">{t('connect_ad_account.status_filter')}</option>
+                <option value="connected">{t('connect_ad_account.status_connected')}</option>
+                <option value="not-connected">{t('connect_ad_account.status_not_connected')}</option>
               </select>
-              <span className="page-count">{filteredAccounts.length} tài khoản</span>
+              <span className="page-count">{t('connect_ad_account.account_count', { count: filteredAccounts.length })}</span>
             </div>
           </div>
 
           {/* Ad Account List Table */}
           <div className="page-list-table">
             <div className="table-header">
-              <div className="col-page-name">Tên tài khoản</div>
-              <div className="col-role">Trạng thái</div>
-              <div className="col-status">Kết nối</div>
+              <div className="col-page-name">{t('connect_ad_account.table_account_name')}</div>
+              <div className="col-role">{t('connect_ad_account.table_status')}</div>
+              <div className="col-status">{t('connect_ad_account.table_connection')}</div>
               <div className="col-select">
                 <input 
                   type="checkbox"
@@ -248,8 +252,8 @@ function ConnectAdAccount() {
                 <div className="col-page-name">
                   <div className="page-info">
                     <img
-                      src={account.avatar}
-                      alt={account.name}
+                      src= {account.avatar}
+                      alt= "Avatar"
                       className="page-avatar"
                     />
                     <div className="page-details">
@@ -268,7 +272,7 @@ function ConnectAdAccount() {
                 <div className="col-status">
                   <div className="status-info">
                     <div className="status-text">
-                      {account.isConnected ? 'Đã kết nối' : 'Chưa kết nối'}
+                      {account.isConnected ? t('connect_ad_account.connected') : t('connect_ad_account.not_connected')}
                     </div>
                   </div>
                 </div>
@@ -293,7 +297,7 @@ function ConnectAdAccount() {
               onClick={handleConnectSelected}
               disabled={selectedAccounts.length === 0 || syncing}
             >
-              {syncing ? 'Đang kết nối...' : `Kết nối ${selectedAccounts.length}`}
+              {syncing ? t('connect_ad_account.connecting') : t('connect_ad_account.connect_count', { count: selectedAccounts.length })}
             </button>
           </div>
           </>
@@ -302,13 +306,13 @@ function ConnectAdAccount() {
             
         {/* Help Section */}
         <div className="help-section">
-          <h3 className="help-title">Bạn không nhìn thấy tài khoản quảng cáo?</h3>
+          <h3 className="help-title">{t('connect_ad_account.help_title')}</h3>
           <p className="help-text">
-            Vui lòng làm mới để cập nhật danh sách tài khoản quảng cáo từ Facebook.
+            {t('connect_ad_account.help_description')}
           </p>
           <button className="refresh-btn" onClick={handleRefresh} disabled={syncing}>
             <span className="refresh-icon">↻</span>
-            {syncing ? 'ĐANG LÀM MỚI...' : 'LÀM MỚI DANH SÁCH'}
+            {syncing ? t('connect_ad_account.refreshing') : t('connect_ad_account.refresh_list')}
           </button>
         </div>
 
@@ -326,7 +330,7 @@ function ConnectAdAccount() {
         <div className="back-section">
           <button className="back-btn" onClick={handleBackToList}>
             <span className="back-icon">←</span>
-            Về trang trước
+            {t('connect_ad_account.back_button')}
           </button>
         </div>
       </div>

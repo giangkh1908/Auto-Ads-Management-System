@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
 
   SHOPS: {
     LIST: `${API_CONFIG.BASE_URL}/api/shops`,
+    MY_SHOPS: `${API_CONFIG.BASE_URL}/api/shops/my-shops`,
     DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/shops/${id}`,
     CREATE: `${API_CONFIG.BASE_URL}/api/shops`,
     UPDATE: (id) => `${API_CONFIG.BASE_URL}/api/shops/${id}`,
@@ -88,6 +89,10 @@ export const API_ENDPOINTS = {
       `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}${
         token ? `?access_token=${token}` : ""
       }`,
+    ARCHIVE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}/archive${
+        token ? `?access_token=${token}` : ""
+      }`,
     SYNC: (accountId, token) =>
       `${API_CONFIG.BASE_URL}${
         API_CONFIG.API_PREFIX
@@ -106,6 +111,10 @@ export const API_ENDPOINTS = {
       `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}${
         token ? `?access_token=${token}` : ""
       }`,
+    ARCHIVE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}/archive${
+        token ? `?access_token=${token}` : ""
+      }`,
     SYNC: (accountId, token) =>
       `${API_CONFIG.BASE_URL}${
         API_CONFIG.API_PREFIX
@@ -120,6 +129,10 @@ export const API_ENDPOINTS = {
     UPDATE: (id) => `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}`,
     DELETE: (id, token) =>
       `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}${
+        token ? `?access_token=${token}` : ""
+      }`,
+    ARCHIVE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}/archive${
         token ? `?access_token=${token}` : ""
       }`,
     SYNC: (accountId, token) =>

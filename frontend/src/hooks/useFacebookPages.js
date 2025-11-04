@@ -27,16 +27,6 @@ export function useFacebookPages() {
               }))
           : [];
         setFacebookPages(connectedPages);
-
-        // Show success toast if pages are loaded
-        if (connectedPages.length > 0) {
-          console.log("Tải danh sách Page thành công!");
-        } else {
-          toast.warning("Không có Page nào được kết nối", {
-            description:
-              "Vui lòng kết nối ít nhất một Page trước khi tạo quảng cáo",
-          });
-        }
       } catch (e) {
         // silent fail; selection will just be empty
         console.log("Failed to load connected facebook pages", e);

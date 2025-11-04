@@ -1,4 +1,5 @@
 // controllers/ads/adsWizard.controller.js
+import mongoose from 'mongoose';
 import { 
   publishWizard, 
   updateWizard,
@@ -10,6 +11,11 @@ import {
 } from "../../services/adsWizardService.js";
 import User from "../../models/user.model.js";
 import AdsAccount from "../../models/ads/adsAccount.model.js";
+import AdsCampaign from "../../models/ads/adsCampaign.model.js";
+import AdsSet from "../../models/ads/adsSet.model.js";
+import Ads from "../../models/ads/ads.model.js";
+import Creative from "../../models/ads/creative.model.js";
+import { convertCTAToFacebookType } from "../../utils/ctaUtils.js";
 
 /**
  * 🪄 Controller: Publish quy trình tạo quảng cáo Wizard
@@ -740,7 +746,7 @@ export async function updateFlexibleController(req, res) {
       });
     }
 
-    console.log(`🔄 [Flexible Update] Bắt đầu update ${campaignsList.length} campaigns với cấu trúc linh hoạt`);
+    console.log(`Bắt đầu update ${campaignsList.length} campaigns`);
 
     // Chuẩn bị dữ liệu (⚠️ KHÔNG ghi đè created_by khi update)
     const enrichedCampaignsList = campaignsList.map(campaign => ({
@@ -781,6 +787,230 @@ export async function updateFlexibleController(req, res) {
       success: false,
       message: "Cập nhật cấu trúc linh hoạt thất bại.",
       error_user_msg,
+    });
+  }
+}
+
+/**
+ * 🔍 Helper: Kiểm tra xem ID có phải ObjectId hợp lệ không (không phải temp ID)
+ */
+function isValidObjectId(id) {
+  if (!id) return false;
+  // Kiểm tra format ObjectId và không phải temp ID
+  return mongoose.Types.ObjectId.isValid(id) && !id.toString().startsWith('temp_');
+}
+
+/**
+ * 💾 Controller: Lưu nháp campaign/adset/ad
+ * POST /api/ads-wizard/save-draft
+ */
+export async function saveDraftController(req, res) {
+  try {
+    const { ad_account_id, campaigns } = req.body;
+    
+    if (!ad_account_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu ad_account_id"
+      });
+    }
+    
+    if (!campaigns || campaigns.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu dữ liệu campaigns"
+      });
+    }
+
+    // Kiểm tra quyền sở hữu tài khoản quảng cáo
+    const account = await AdsAccount.findOne({
+      external_id: ad_account_id,
+      $or: [
+        { user: req.user._id },
+        { shop_admin_id: req.user._id },
+        { shop_user_id: req.user._id },
+      ],
+    });
+
+    if (!account) {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản quảng cáo không thuộc quyền sở hữu của bạn.",
+      });
+    }
+
+    const savedItems = {
+      campaigns: [],
+      adsets: [],
+      ads: [],
+      creatives: []
+    };
+
+    // Lưu từng campaign
+    for (const campaignData of campaigns) {
+      // ✅ Tạo hoặc update Campaign draft (check ObjectId hợp lệ)
+      const campaignDoc = isValidObjectId(campaignData._id)
+        ? await AdsCampaign.findByIdAndUpdate(
+            campaignData._id,
+            {
+              name: campaignData.name,
+              objective: campaignData.objective,
+              status: 'DRAFT',
+              daily_budget: campaignData.daily_budget,
+              lifetime_budget: campaignData.lifetime_budget,
+              external_account_id: ad_account_id,
+              // ✅ XÓA page_id và page_name từ campaign (đã di chuyển sang adset)
+              // page_id: campaignData.facebookPageId,
+              // page_name: campaignData.facebookPage,
+              updated_at: new Date()
+            },
+            { new: true }
+          )
+        :             await AdsCampaign.create({
+              name: campaignData.name,
+              objective: campaignData.objective,
+              status: 'DRAFT',
+              daily_budget: campaignData.daily_budget,
+              lifetime_budget: campaignData.lifetime_budget,
+              external_account_id: ad_account_id,
+              // ✅ XÓA page_id và page_name từ campaign (đã di chuyển sang adset)
+              // page_id: campaignData.facebookPageId,
+              // page_name: campaignData.facebookPage,
+              account_id: account._id,
+              shop_id: account.shop_id,
+              created_by: req.user._id,
+            });
+
+      savedItems.campaigns.push(campaignDoc);
+
+      // Lưu AdSets nếu có
+      if (campaignData.adsets && campaignData.adsets.length > 0) {
+        for (const adsetData of campaignData.adsets) {
+          // ✅ Tạo hoặc update AdSet draft (check ObjectId hợp lệ)
+          const adsetDoc = isValidObjectId(adsetData._id)
+            ? await AdsSet.findByIdAndUpdate(
+                adsetData._id,
+                {
+                  name: adsetData.name,
+                  status: 'DRAFT',
+                  campaign_id: campaignDoc._id,
+                  daily_budget: adsetData.budgetAmount,
+                  targeting: adsetData.targeting,
+                  optimization_goal: adsetData.optimization_goal,
+                  billing_event: adsetData.billing_event,
+                  bid_strategy: adsetData.bid_strategy,
+                  // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
+                  ...(adsetData.facebookPageId && { page_id: adsetData.facebookPageId }),
+                  ...(adsetData.facebookPage && { page_name: adsetData.facebookPage }),
+                  updated_at: new Date()
+                },
+                { new: true }
+              )
+            : await AdsSet.create({
+                name: adsetData.name,
+                status: 'DRAFT',
+                campaign_id: campaignDoc._id,
+                external_account_id: ad_account_id,
+                daily_budget: adsetData.budgetAmount,
+                targeting: adsetData.targeting,
+                optimization_goal: adsetData.optimization_goal,
+                billing_event: adsetData.billing_event,
+                bid_strategy: adsetData.bid_strategy,
+                // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
+                ...(adsetData.facebookPageId && { page_id: adsetData.facebookPageId }),
+                ...(adsetData.facebookPage && { page_name: adsetData.facebookPage }),
+                created_by: req.user._id, 
+              });
+
+          savedItems.adsets.push(adsetDoc);
+
+          // Lưu Ads nếu có
+          if (adsetData.ads && adsetData.ads.length > 0) {
+            for (const adData of adsetData.ads) {
+              // ✅ Tạo hoặc update Ad draft (check ObjectId hợp lệ)
+              const adDoc = isValidObjectId(adData._id)
+                ? await Ads.findByIdAndUpdate(
+                    adData._id,
+                    {
+                      name: adData.name,
+                      status: 'DRAFT',
+                      set_id: adsetDoc._id,
+                      updated_at: new Date()
+                    },
+                    { new: true }
+                  )
+                : await Ads.create({
+                    name: adData.name,
+                    status: 'DRAFT',
+                    set_id: adsetDoc._id,
+                    external_account_id: ad_account_id,
+                    created_by: req.user._id,
+                  });
+
+              savedItems.ads.push(adDoc);
+
+              // ✅ Lưu Creative nếu có dữ liệu creative
+              if (adData.primaryText || adData.headline || adData.mediaUrl || adData.destinationUrl) {
+                try {
+                  // Kiểm tra xem đã có creative cho ad này chưa
+                  let creativeDoc = await Creative.findOne({ ads_id: adDoc._id });
+                  
+                  const creativeData = {
+                    name: adData.name + ' Creative',
+                    ads_id: adDoc._id,
+                    // ✅ LẤY page_id TỪ ADSET THAY VÌ CAMPAIGN
+                    page_id: adsetData.facebookPageId || campaignData.facebookPageId,
+                    object_story_spec: {
+                      page_id: adsetData.facebookPageId || campaignData.facebookPageId,
+                      link_data: {
+                        message: adData.primaryText || '',
+                        link: adData.destinationUrl || 'https://fchat.vn',
+                        name: adData.headline || '',
+                        description: adData.description || '',
+                        call_to_action: {
+                          type: convertCTAToFacebookType(adData.cta),
+                        },
+                        ...(adData.mediaUrl && { picture: adData.mediaUrl }),
+                      },
+                    },
+                  };
+
+                  if (creativeDoc) {
+                    // Update creative hiện có
+                    creativeDoc = await Creative.findByIdAndUpdate(
+                      creativeDoc._id,
+                      creativeData,
+                      { new: true }
+                    );
+                  } else {
+                    // Tạo mới creative
+                    creativeDoc = await Creative.create(creativeData);
+                  }
+
+                  savedItems.creatives.push(creativeDoc);
+                } catch (creativeError) {
+                  console.error('⚠️ Lỗi khi lưu creative:', creativeError);
+                  // Không throw error, tiếp tục lưu ad khác
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã lưu nháp thành công',
+      data: savedItems
+    });
+
+  } catch (error) {
+    console.error('❌ Lỗi lưu draft:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lưu nháp',
+      error: error.message
     });
   }
 }

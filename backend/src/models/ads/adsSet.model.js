@@ -17,6 +17,10 @@ const adsSetSchema = new mongoose.Schema(
 
     name: { type: String, trim: true },
 
+    // 📄 Thông tin trang Page chạy quảng cáo (di chuyển từ Campaign)
+    page_id: { type: String, trim: true, default: null },
+    page_name: { type: String, trim: true, default: null },
+
     // ⚙️ Trạng thái
     status: {
       type: String,
@@ -40,6 +44,9 @@ const adsSetSchema = new mongoose.Schema(
     promoted_object: { type: mongoose.Schema.Types.Mixed, default: {} },
     targeting: { type: mongoose.Schema.Types.Mixed, default: {} },
 
+    // Vị trí chuyển đổi/Lưu lượng (WEBSITE/APP/MESSAGING/CALLS/ON_POST/ON_PAGE/ON_EVENT...)
+    traffic_destination: { type: String, trim: true, default: null },
+
     // 💰 Ngân sách & thời gian
     daily_budget: { type: Number },
     lifetime_budget: { type: Number },
@@ -49,6 +56,8 @@ const adsSetSchema = new mongoose.Schema(
     // Audit
     deleted_at: { type: Date, default: null },
     meta: { type: mongoose.Schema.Types.Mixed, default: {} },
+    created_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    updated_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );
