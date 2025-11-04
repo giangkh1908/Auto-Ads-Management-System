@@ -2,6 +2,8 @@ import ShopUser from "../../models/shops/shopUser.model.js";
 import UserRole from "../../models/userRole.model.js";
 import User from "../../models/user.model.js";
 import Role from "../../models/role.model.js";
+import jwt from "jsonwebtoken";
+import { sendInvitationEmail } from "../../services/emailService.js";
 
 // Thêm User vào Shop
 export const createShopUser = async (req, res) => {
@@ -14,12 +16,77 @@ export const createShopUser = async (req, res) => {
   }
 };
 
+export const inviteEmployee = async (req, res) => {
+  try {
+    const { email, roleId, invitedBy } = req.body;
+
+    if (!email || !roleId || !invitedBy) {
+      return res.status(400).json({ success: false, message: "Thiếu dữ liệu đầu vào" });
+    }
+
+    // Kiểm tra user tồn tại chưa
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Gửi email mời
+      await sendInvitationEmail(email);
+
+      return res.status(200).json({
+        success: true,
+        message: "Đã gửi email mời nhân viên mới.",
+        invitedEmail: email,
+      });
+    }
+
+    // Nếu user đã tồn tại → thêm trực tiếp vào Shop
+    if (user.status === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Người dùng chưa hoàn tất đăng ký. Vui lòng chờ họ hoàn tất đăng ký qua email mời.",
+      });
+    }
+
+    // Tạo ShopUser
+    const shopUser = await ShopUser.create({
+      shop_id: shopId,
+      user_id: user._id,
+      invited_by: invitedBy,
+      status: "active",
+    });
+
+    // Tạo UserRole
+    await UserRole.create({
+      user_id: user._id,
+      shop_id: shopId,
+      role_id: roleId,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Đã thêm nhân viên vào shop.",
+      data: shopUser,
+    });
+  } catch (error) {
+    console.error("inviteEmployee error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống khi mời nhân viên",
+      error: error.message,
+    });
+  }
+};
+
 // Lấy danh sách tất cả ShopUser
 export const getShopUsers = async (req, res) => {
   try {
     const shopUsers = await ShopUser.find()
+      .populate({
+        path: "user_id",
+        select: "name email status",
+        match: { status: { $ne: "pending" } } // Không lấy user pending
+      })
       .populate("shop_id", "shop_name status")
-      .populate("user_id", "name email");
+      .lean();
     res.json(shopUsers);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,8 +98,12 @@ export const getUsersByShop = async (req, res) => {
     const { shopId } = req.params;
 
     // Lấy danh sách ShopUser thuộc shop này
-    const shopUsers = await ShopUser.find({ shop_id: shopId})
-      .populate("user_id", "full_name username email avatar status")
+    const shopUsers = await ShopUser.find({ shop_id: shopId })
+      .populate({
+        path: "user_id",
+        select: "full_name username email avatar status",
+        match: { status: { $ne: "pending" } } // Không lấy user pending
+      })
       .lean();
 
     // Lấy danh sách userId để query sang UserRole
@@ -73,7 +144,7 @@ export const getUsersByShop = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ getUsersByShop error:", error);
+    console.error("getUsersByShop error:", error);
     res.status(500).json({
       success: false,
       message: "Lỗi hệ thống khi lấy danh sách user của shop"
@@ -99,9 +170,9 @@ export const getShopsByUser = async (req, res) => {
   try {
     const userId = req.params.userId; // hoặc req.user._id nếu đang login
 
-    const memberships = await ShopUser.find({ 
-      user_id: userId, 
-      status: "active" 
+    const memberships = await ShopUser.find({
+      user_id: userId,
+      status: "active"
     })
       .populate("shop_id", "shop_name industry status") // populate sang Shop
       .populate("invited_by", "name email"); // optional
@@ -135,18 +206,43 @@ export const updateUserRole = async (req, res) => {
     const { shopId } = req.params;
     const { userId, newRoleId, currentUserId } = req.body;
 
-    // Kiểm tra quyền: chỉ Shop Owner mới có thể thay đổi role
-    const ownerRole = await UserRole.findOne({
+    const targetUser = await User.findById(userId);
+    if (targetUser?.status === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Người dùng chưa hoàn tất đăng ký.",
+      });
+    }
+
+    // Lấy vai trò của người thao tác (người đang thực hiện hành động)
+    const actorRole = await UserRole.findOne({
       shop_id: shopId,
       user_id: currentUserId,
     }).populate("role_id", "role_name");
 
-    if (!ownerRole || ownerRole.role_id.role_name !== "Shop Owner") {
+    if (!actorRole) {
       return res.status(403).json({
         success: false,
-        message: "Bạn không có quyền thay đổi vai trò của nhân viên.",
+        message: "Không tìm thấy vai trò của bạn trong shop này.",
       });
     }
+
+    const actorRoleName = actorRole.role_id.role_name;
+
+    // Lấy role hiện tại của người bị đổi
+    const targetRole = await UserRole.findOne({
+      shop_id: shopId,
+      user_id: userId,
+    }).populate("role_id", "role_name");
+
+    if (!targetRole) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy vai trò của người dùng này trong shop.",
+      });
+    }
+
+    const targetRoleName = targetRole.role_id.role_name;
 
     // Lấy thông tin role mới
     const newRole = await Role.findById(newRoleId);
@@ -157,7 +253,7 @@ export const updateUserRole = async (req, res) => {
       });
     }
 
-    // Chặn gán vai trò "Shop Owner" cho người khác
+    // Không được gán quyền Shop Owner cho người khác
     if (newRole.role_name === "Shop Owner") {
       return res.status(403).json({
         success: false,
@@ -165,15 +261,21 @@ export const updateUserRole = async (req, res) => {
       });
     }
 
-    // Không cho user tự đổi role của chính mình
-    if (userId === currentUserId) {
-      return res.status(400).json({
+    // Kiểm tra quyền ai được đổi ai
+    const canChange =
+      (actorRoleName === "Shop Owner" &&
+        ["Marketing Admin", "Marketer"].includes(targetRoleName)) ||
+      (actorRoleName === "Marketing Admin" &&
+        (targetRoleName === "Marketer" || userId === currentUserId)); // <--- Cho phép Marketing Admin tự đổi role của mình
+
+    if (!canChange) {
+      return res.status(403).json({
         success: false,
-        message: "Không thể thay đổi vai trò của chính bạn.",
+        message: `Bạn (${actorRoleName}) không có quyền thay đổi vai trò của ${targetRoleName}.`,
       });
     }
 
-    // Cập nhật role của user trong shop này
+    // Cập nhật role của user trong shop
     const updated = await UserRole.findOneAndUpdate(
       { shop_id: shopId, user_id: userId },
       { role_id: newRoleId },
@@ -189,14 +291,14 @@ export const updateUserRole = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Cập nhật vai trò thành công.",
+      message: `Đã cập nhật vai trò của ${targetRoleName} thành ${newRole.role_name}.`,
       data: updated,
     });
   } catch (error) {
     console.error("updateUserRole error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi hệ thống khi cập nhật vai trò người dùng.",
+      message: "Lỗi hệ thống khi cập nhật vai trò người dùng: " + error.message,
     });
   }
 };
@@ -207,24 +309,63 @@ export const updateUserStatus = async (req, res) => {
     const { shopId } = req.params;
     const { userId, newStatus, currentUserId } = req.body;
 
-    // Kiểm tra quyền: chỉ Shop Owner mới có thể thay đổi status
-    const ownerRole = await UserRole.findOne({
+    const targetUser = await User.findById(userId);
+    if (targetUser?.status === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Người dùng chưa hoàn tất đăng ký.",
+      });
+    }
+
+    // Lấy role của người đang thao tác (người gửi request)
+    const actorRole = await UserRole.findOne({
       shop_id: shopId,
       user_id: currentUserId,
     }).populate("role_id", "role_name");
 
-    if (!ownerRole || ownerRole.role_id.role_name !== "Shop Owner") {
+    if (!actorRole) {
       return res.status(403).json({
         success: false,
-        message: "Bạn không có quyền thay đổi trạng thái của nhân viên.",
+        message: "Không tìm thấy vai trò của bạn trong shop này.",
       });
     }
 
-    // Không cho tự đổi trạng thái của chính mình
+    const actorRoleName = actorRole.role_id.role_name;
+
+    // Lấy role của user bị tác động
+    const targetRole = await UserRole.findOne({
+      shop_id: shopId,
+      user_id: userId,
+    }).populate("role_id", "role_name");
+
+    if (!targetRole) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy vai trò của người dùng này trong shop.",
+      });
+    }
+
+    const targetRoleName = targetRole.role_id.role_name;
+
+    // Không cho tự đổi trạng thái chính mình
     if (userId === currentUserId) {
       return res.status(400).json({
         success: false,
         message: "Không thể thay đổi trạng thái của chính bạn.",
+      });
+    }
+
+    // Kiểm tra quyền hạn
+    const canChange =
+      (actorRoleName === "Shop Owner" &&
+        ["Marketing Admin", "Marketer"].includes(targetRoleName)) ||
+      (actorRoleName === "Marketing Admin" &&
+        targetRoleName === "Marketer");
+
+    if (!canChange) {
+      return res.status(403).json({
+        success: false,
+        message: `Bạn (${actorRoleName}) không có quyền thay đổi trạng thái của ${targetRoleName}.`,
       });
     }
 
@@ -247,13 +388,13 @@ export const updateUserStatus = async (req, res) => {
     if (!updated) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy user trong shop.",
+        message: "Không tìm thấy người dùng trong shop.",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: `Đã cập nhật trạng thái thành '${newStatus}'.`,
+      message: `Đã cập nhật trạng thái của ${targetRoleName} thành '${newStatus}'.`,
       data: updated,
     });
   } catch (error) {
@@ -262,6 +403,64 @@ export const updateUserStatus = async (req, res) => {
       success: false,
       message: "Lỗi hệ thống khi cập nhật trạng thái người dùng.",
     });
+  }
+};
+
+export const relinquishOwnership = async (req, res) => {
+  try {
+    const { shopId } = req.body;
+    const currentUserId = req.user._id;
+    const { employeeId } = req.body;
+
+    const targetUser = await User.findById(employeeId);
+    if (targetUser?.status === "pending") {
+      return res.status(400).json({ success: false, message: "Người dùng chưa hoàn tất đăng ký." });
+    }
+
+    // Kiểm tra user hiện tại có phải là chủ shop không
+    const ownerRole = await Role.findOne({ role_name: "Shop Owner" });
+    const marketingRole = await Role.findOne({ role_name: "Marketing Admin" });
+
+    if (!ownerRole || !marketingRole)
+      return res.status(400).json({ message: "Role dữ liệu chưa được khởi tạo đầy đủ" });
+
+    const currentOwnerRole = await UserRole.findOne({
+      user_id: currentUserId,
+      shop_id: shopId,
+      role_id: ownerRole._id,
+    });
+    console.log("currentOwnerRole:", currentOwnerRole);
+
+    if (!currentOwnerRole)
+      return res.status(403).json({ message: "Bạn không có quyền thực hiện thao tác này." });
+
+    // Kiểm tra nhân viên có thuộc shop không
+    const employeeRole = await UserRole.findOne({
+      user_id: employeeId,
+      shop_id: shopId,
+    });
+
+    if (!employeeRole)
+      return res.status(404).json({ message: "Nhân viên không thuộc cửa hàng này." });
+
+    // Cập nhật role: chuyển quyền
+    await Promise.all([
+      // Shop Owner cũ → Marketing Admin
+      UserRole.findOneAndUpdate(
+        { user_id: currentUserId, shop_id: shopId },
+        { role_id: marketingRole._id }
+      ),
+      // Employee → Shop Owner
+      UserRole.findOneAndUpdate(
+        { user_id: employeeId, shop_id: shopId },
+        { role_id: ownerRole._id }
+      ),
+    ]);
+
+    return res.status(200).json({ message: "Đã chuyển quyền Shop Owner thành công." });
+  } catch (error) {
+    console.error("Lỗi relinquishOwnership:", error);
+    res.status(500).json({ message: "Lỗi hệ thống", error: error.message });
   }
 };
 

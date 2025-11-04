@@ -6,6 +6,7 @@ import { ROUTES } from "../../constants/app.constants";
 import "./Shop.css";
 import { toast } from "react-toastify";
 import { STORAGE_KEYS } from '../../constants/app.constants';
+import { useParams } from "react-router-dom";
 
 function Employee() {
   const { t } = useTranslation();
@@ -14,8 +15,27 @@ function Employee() {
   const [searchEmail, setSearchEmail] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
-  const shopId = "68ed2a2d64097dc1c878e716"; // Ví dụ
-  const currentUserId = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN); // sau này lấy từ AuthContext
+  const { shopId } = useParams();
+  const userData = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_DATA) || "{}");
+  const currentUserId = userData._id;
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("Marketer");
+
+  useEffect(() => {
+    if (shopId) {
+      fetch(`/api/shop/employee/${shopId}`);
+    }
+  }, [shopId]);
+
+  useEffect(() => {
+    if (employees.length > 0 && currentUserId) {
+      const currentEmp = employees.find(emp => emp.id === currentUserId);
+      setCurrentUserRole(currentEmp?.role || null);
+    }
+  }, [employees, currentUserId]);
 
   useEffect(() => {
     const loadShops = async () => {
@@ -57,7 +77,10 @@ function Employee() {
 
       const res = await fetch(`http://localhost:5001/api/shop-users/${shopId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+        },
         body: JSON.stringify({ userId, newRoleId, currentUserId }),
       });
 
@@ -81,6 +104,28 @@ function Employee() {
   //Hành động với page
   const handleAction = async (userId, action) => {
     try {
+      if (action === "relinquish") {
+        const res = await fetch(`http://localhost:5001/api/shop-users/relinquish`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+          },
+          body: JSON.stringify({
+            employeeId: userId,
+            shopId: shopId,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          toast.success(data.message);
+          window.location.reload();
+        } else {
+          toast.error(data.message || "Không thể chuyển quyền");
+        }
+        return;
+      }
       let newStatus = "";
       if (action === "activate") newStatus = "active";
       else if (action === "deactivate") newStatus = "inactive";
@@ -88,7 +133,10 @@ function Employee() {
 
       const res = await fetch(`http://localhost:5001/api/shop-users/status/${shopId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+        },
         body: JSON.stringify({ userId, newStatus, currentUserId }),
       });
 
@@ -101,7 +149,7 @@ function Employee() {
             emp.user_id === userId ? { ...emp, status: newStatus } : emp
           )
         );
-        window.location.reload(); // ✅ Reload lại toàn trang sau khi đổi trạng thái
+        window.location.reload(); // Reload lại toàn trang sau khi đổi trạng thái
       } else {
         toast.error(data.message || "Không thể cập nhật trạng thái");
       }
@@ -111,9 +159,48 @@ function Employee() {
     }
   };
 
+  const handleInviteEmployee = async () => {
+    if (!inviteEmail.trim()) {
+      toast.error("Vui lòng nhập email nhân viên!");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:5001/api/shop-users/invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+        },
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          roleId: inviteRole === "Marketing Admin"
+            ? "68ff6cab6ef1d167ed39c6f9"
+            : "68ff6cab6ef1d167ed39c6f8",
+          invitedBy: currentUserId
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success(data.message || "Đã gửi lời mời thành công!");
+        setIsInviteOpen(false);
+        setInviteEmail("");
+        setInviteRole("Marketer");
+        window.location.reload(); // reload danh sách nhân viên
+      } else {
+        toast.error(data.message || "Không thể gửi lời mời");
+      }
+    } catch (error) {
+      console.error("Invite employee error:", error);
+      toast.error("Lỗi khi gửi lời mời");
+    }
+  };
+
   //Thêm page mới
   const handleAddNewPage = () => {
-    // setIsAddOpen(true);
+    setIsInviteOpen(true);
   };
 
   const filteredEmployees = employees.filter((emp) => {
@@ -125,6 +212,42 @@ function Employee() {
 
     return matchesEmail && matchesRole;
   });
+
+  const renderInviteModal = () => (
+    isInviteOpen && (
+      <div className="modal-overlay" onClick={() => setIsInviteOpen(false)}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <h3>Thêm nhân viên mới</h3>
+
+          <div className="modal-field">
+            <label>Email nhân viên</label>
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="vd: example@gmail.com"
+            />
+          </div>
+
+          <div className="modal-field">
+            <label>Chọn vai trò</label>
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value)}
+            >
+              <option value="Marketing Admin">Marketing Admin</option>
+              <option value="Marketer">Marketer</option>
+            </select>
+          </div>
+
+          <div className="modal-actions">
+            <button onClick={handleInviteEmployee} className="btn btn-primary">Gửi lời mời</button>
+            <button onClick={() => setIsInviteOpen(false)} className="btn btn-secondary">Hủy</button>
+          </div>
+        </div>
+      </div>
+    )
+  );
 
   return (
     <div className="shop-border">
@@ -241,13 +364,15 @@ function Employee() {
                         >
                           <Pause size={14} />
                         </button>
-                        <button
-                          className="shop-action-btn shop-upgrade-btn"
-                          onClick={() => handleAction(employee.id, "relinquish")}
-                          title={t('shop.relinquish')}
-                        >
-                          <Hand size={14} />
-                        </button>
+                        {currentUserRole === "Shop Owner" && (
+                          <button
+                            className="shop-action-btn shop-upgrade-btn"
+                            onClick={() => handleAction(employee.id, "relinquish")}
+                            title={t('shop.relinquish')}
+                          >
+                            <Hand size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -257,6 +382,7 @@ function Employee() {
           </div>
         </div>
       </div>
+      {renderInviteModal()}
     </div>
   );
 }

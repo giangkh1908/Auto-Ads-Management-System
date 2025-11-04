@@ -11,6 +11,8 @@ function MyShop() {
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab] = useState("info");
+  const [currentUser, setCurrentUser] = useState(true);
+  const currentShop = shops.find((s) => s.isCurrent);
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -34,6 +36,19 @@ function MyShop() {
   });
 
   useEffect(() => {
+    const fetchUser = async () => {
+      const res = await fetch("http://localhost:5001/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+        }
+      });
+      const data = await res.json();
+      setCurrentUser(data.data.user);
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
     loadShops();
   }, []);
 
@@ -55,10 +70,14 @@ function MyShop() {
 
       if (data.success && Array.isArray(data.data)) {
         const formatted = data.data.map((shop) => {
-          const permissions = shop.user_role.permissions;
+          const permissions = shop.user_role?.permissions || [];
           const canUpdate = permissions.some(
             (perm) =>
               perm.module === "shop" && perm.actions.includes("update_details")
+          );
+          const canViewEmployee = permissions.some(
+            (perm) =>
+              perm.module === "employee" && perm.actions.includes("view")
           );
 
           return {
@@ -67,6 +86,8 @@ function MyShop() {
             package: shop.package || "Basic",
             employeeCount: shop.employee_count || 0,
             pageCount: shop.page_count || 0,
+            industry: shop.industry || "Other",
+            isCurrent: shop.is_current || false,
             role: shop.user_role.role_name || "Owner",
             email: shop.owner_id?.email || "",
             phone: shop.owner_id?.phone || "",
@@ -75,6 +96,7 @@ function MyShop() {
               : "N/A",
             status: shop.status || "Active",
             canUpdate,
+            canViewEmployee,
           };
         });
 
@@ -146,13 +168,6 @@ function MyShop() {
 
   //Thêm page mới
   const handleAddNewPage = () => {
-    onClick = {() => {
-    setAddForm({
-      shopName: "",
-      email: "",
-      phone: "",
-      category: "other",
-    });
     setIsAddOpen(true);
   };
 
@@ -168,10 +183,17 @@ function MyShop() {
           {t('shop.my_shop')}
         </NavLink>
         <NavLink
-          to={ROUTES.SHOP_EMPLOYEE}
-          className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
+          to={currentShop?.canViewEmployee ? `${ROUTES.SHOP_EMPLOYEE}/${currentShop.id}` : "#"}
+          state={{ shopId: currentShop?._id }}
+          onClick={(e) => {
+            if (!currentShop?.canViewEmployee) e.preventDefault();
+          }}
+          className={({ isActive }) =>
+            `shop-tab ${isActive ? "active" : ""} ${!currentShop?.canViewEmployee ? "disabled" : ""
+            }`
+          }
         >
-          {t('shop.employee')}
+          {t("shop.employee")}
         </NavLink>
         <NavLink
           to={ROUTES.SHOP_HISTORY}
@@ -219,6 +241,9 @@ function MyShop() {
                             {shop?.shopName?.charAt(0)?.toUpperCase() || "?"}
                           </div>
                           <span>{shop.shopName}</span>
+                          {shop.isCurrent && (
+                            <span className="current-badge">Active Now</span>
+                          )}
                         </div>
                       </div>
                       <div className="table-cell" data-label={t('shop.package')}>
@@ -260,7 +285,7 @@ function MyShop() {
                                 email: shop.email,
                                 phone: shop.phone,
                                 category: (
-                                  shop.package || "other"
+                                  shop.industry || "other"
                                 ).toLowerCase(),
                               });
                               setIsUpdateOpen(true);
@@ -273,6 +298,42 @@ function MyShop() {
                             }}
                           >
                             <Edit size={14} />
+                          </button>
+                          <button
+                            className={`shop-action-btn shop-current-btn ${shop.isCurrent ? "active" : ""
+                              }`}
+                            title={shop.isCurrent ? "Current Shop" : "Set as Current"}
+                            disabled={shop.isCurrent}
+                            style={{
+                              cursor: shop.isCurrent ? "default" : "pointer",
+                              opacity: shop.isCurrent ? 0.6 : 1,
+                            }}
+                            onClick={async () => {
+                              if (shop.isCurrent) return; // Nếu đã là current thì không cần làm gì
+                              try {
+                                const res = await fetch(
+                                  `http://localhost:5001/api/shops/switch/${shop.id}`,
+                                  {
+                                    method: "PATCH",
+                                    headers: {
+                                      Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
+                                    },
+                                  }
+                                );
+                                const data = await res.json();
+                                if (data.success) {
+                                  alert("Switched to this shop successfully!");
+                                  await loadShops(); // refresh danh sách
+                                } else {
+                                  alert(data.message || "Failed to switch shop");
+                                }
+                              } catch (err) {
+                                console.error("Switch shop error:", err);
+                                alert("Server error while switching shop");
+                              }
+                            }}
+                          >
+                            {shop.isCurrent ? "Current" : "Set Active"} { }
                           </button>
                           {/* <button
                               className="shop-action-btn shop-activate-btn"
@@ -339,10 +400,10 @@ function MyShop() {
                   id="add-email"
                   type="email"
                   className="modal-input"
-                  value={addForm.email}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, email: e.target.value })
-                  }
+                  value={currentUser?.email || "Chưa có email"}
+                  readOnly
+                  disabled
+                  style={{ backgroundColor: "#dddbdbff" }}
                 />
               </div>
               <div className="form-field">
@@ -351,10 +412,10 @@ function MyShop() {
                   id="add-phone"
                   type="tel"
                   className="modal-input"
-                  value={addForm.phone}
-                  onChange={(e) =>
-                    setAddForm({ ...addForm, phone: e.target.value })
-                  }
+                  value={currentUser?.phone || "Chưa có số điện thoại"}
+                  readOnly
+                  disabled
+                  style={{ backgroundColor: "#dddbdbff" }}
                 />
               </div>
 

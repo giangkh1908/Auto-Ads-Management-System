@@ -161,7 +161,7 @@ function AppContent() {
           } 
         />
         <Route 
-          path={ROUTES.SHOP_EMPLOYEE}
+          path={ROUTES.SHOP_EMPLOYEE_DETAIL}
           element={
             <ProtectedRoute>
               <main className="page-content">
@@ -181,7 +181,7 @@ function AppContent() {
           } 
         />
         <Route 
-          path={ROUTES.SHOP_EMPLOYEE}
+          path={ROUTES.SHOP_EMPLOYEE_DETAIL}
           element={
             <ProtectedRoute>
               <main className="page-content">

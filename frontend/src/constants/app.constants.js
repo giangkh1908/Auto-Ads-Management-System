@@ -31,6 +31,7 @@ export const ROUTES = {
   PROFILE: '/profile',
   SHOP: '/shop',
   SHOP_EMPLOYEE: '/shop/employee',
+  SHOP_EMPLOYEE_DETAIL: '/shop/employee/:shopId',
   SHOP_HISTORY: '/shop/history',
   CONNECT_PAGE: '/connect-page',
   CONNECT_AD_ACCOUNT: '/connect-ad-account',

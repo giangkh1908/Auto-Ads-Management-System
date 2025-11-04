@@ -8,6 +8,7 @@ import {
     deleteShop, 
     activateShop, 
     deactivateShop,
+    switchCurrentShop,
     getFacebookPages, 
     connectFacebookPage, 
     disconnectFacebookPage, 
@@ -27,11 +28,13 @@ router.post("/", createShop);
 
 router.put("/:id", authorizeInShop("shop", "update_details"), updateShop);
 
-router.delete("/:id", deleteShop);
+// router.delete("/:id", deleteShop);
 
-router.patch("/:id/activate", authorizeInShop("shop", "activate"), activateShop);
+router.patch("/switch/:id", authorizeInShop("shop", "change_active"), switchCurrentShop);
 
-router.patch("/:id/deactivate", authorizeInShop("shop", "deactivate"), deactivateShop);
+// router.patch("/:id/activate", authorizeInShop("shop", "activate"), activateShop);
+
+// router.patch("/:id/deactivate", authorizeInShop("shop", "deactivate"), deactivateShop);
 
 // Facebook integration helpers
 router.post("/facebook/connect", authenticate, connectFacebookPage);

@@ -3,6 +3,8 @@ import User from "../../models/user.model.js";
 import fetch from "node-fetch";
 import Log from "../../models/log.model.js";
 import UserRole from "../../models/userRole.model.js";
+import ShopUser from "../../models/shops/shopUser.model.js";
+import Role from "../../models/role.model.js";
 
 //  Tạo Shop
 export const createShop = async (req, res) => {
@@ -13,9 +15,41 @@ export const createShop = async (req, res) => {
     if (!req.body.industry) {
       return res.status(400).json({ message: "Category is required" });
     }
+    // Tìm role "Shop Owner" thay vì fix cứng _id
+    const ownerRole = await Role.findOne({ role_name: "Shop Owner" });
+    if (!ownerRole) {
+      return res.status(404).json({
+        success: false,
+        message: "Role 'Shop Owner' không tồn tại trong hệ thống.",
+      });
+    }
     const ownerId = req.user._id;
+    // Kiểm tra xem user đã có shop trùng tên chưa
+    const existingShop = await Shop.findOne({
+      owner_id: ownerId,
+      shop_name: { $regex: new RegExp(`^${req.body.shop_name}$`, "i") }, // không phân biệt hoa thường
+    });
+
+    if (existingShop) {
+      return res.status(400).json({
+        success: false,
+        message: `Bạn đã có một cửa hàng tên "${req.body.shop_name}" rồi.`,
+      });
+    }
+
     const shop = new Shop({ ...req.body, owner_id: ownerId });
     await shop.save();
+    const userRole = new UserRole({
+      user_id: ownerId,
+      shop_id: shop._id,
+      role_id: ownerRole._id,
+    });
+    await userRole.save();
+    const shopUser = new ShopUser({
+      shop_id: shop._id,
+      user_id: ownerId,
+    });
+    await shopUser.save();
     res.status(201).json({
       success: true,
       message: "Shop created successfully",
@@ -69,10 +103,10 @@ export const getShopsByOwner = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Lấy danh sách user_roles theo user
+    // Lấy danh sách role của user trong các shop
     const userRoles = await UserRole.find({ user_id: userId })
       .populate("role_id", "role_name permissions")
-      .select("shop_id role_id");
+      .select("shop_id role_id is_current");
 
     if (!userRoles.length) {
       return res.status(403).json({
@@ -84,7 +118,7 @@ export const getShopsByOwner = async (req, res) => {
     // Lấy danh sách shop_id mà user có quyền
     const shopIds = userRoles.map((ur) => ur.shop_id);
 
-    // Lấy thông tin các shop này
+    // Lấy thông tin chi tiết của các shop
     const shops = await Shop.find({ _id: { $in: shopIds } })
       .populate({
         path: "owner_id",
@@ -95,26 +129,52 @@ export const getShopsByOwner = async (req, res) => {
         populate: { path: "role_id", select: "role_name" },
       });
 
-    // Gắn role tương ứng với user hiện tại
+    // 👉 Đếm số lượng employee trong mỗi shop (từ bảng ShopUser)
+    const shopEmployeesCount = await Promise.all(
+      shops.map(async (shop) => {
+        const count = await ShopUser.countDocuments({
+          shop_id: shop._id,
+          status: "active", // chỉ tính nhân viên đang hoạt động
+        });
+        return { shop_id: shop._id.toString(), employee_count: count };
+      })
+    );
+
+    // Gắn role tương ứng và employee_count vào từng shop
     const shopsWithUserRole = shops.map((shop) => {
       const roleEntry = userRoles.find(
         (ur) => ur.shop_id.toString() === shop._id.toString()
       );
+
+      const employeeInfo = shopEmployeesCount.find(
+        (item) => item.shop_id === shop._id.toString()
+      );
+
+      // Đếm số lượng page đang connected trong facebook_pages
+      const pageCount = Array.isArray(shop.facebook_pages)
+        ? shop.facebook_pages.filter((p) => p.connected_status === "connected")
+            .length
+        : 0;
+
       return {
         ...shop.toObject(),
-        user_role: roleEntry.role_id, // chỉ lấy role_id đã populate có role_name
+        user_role: roleEntry.role_id,
+        is_current: roleEntry.is_current,
+        employee_count: employeeInfo?.employee_count || 0,
+        page_count: pageCount,
       };
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: shopsWithUserRole,
     });
   } catch (error) {
-    console.error("Error in getShopsByOwner:", error);
+    console.error("Lỗi khi lấy danh sách shop theo owner:", error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Lỗi máy chủ khi lấy danh sách shop.",
+      error: error.message,
     });
   }
 };
@@ -135,6 +195,29 @@ export const updateShop = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+// Chuyển đổi shop hiện tại cho người dùng
+export const switchCurrentShop = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params;
+
+    const targetRole = await UserRole.findOne({ user_id: userId, shop_id: id });
+    if (!targetRole) {
+      return res.status(404).json({ success: false, message: "User not part of this shop" });
+    }
+
+    // Cập nhật: chỉ 1 shop được active
+    await UserRole.updateMany({ user_id: userId }, { $set: { is_current: false } });
+    targetRole.is_current = true;
+    await targetRole.save();
+
+    res.json({ success: true, message: "Current shop switched successfully" });
+  } catch (err) {
+    console.error("Error switching shop:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -322,18 +405,18 @@ export const refreshFacebookToken = async (req, res) => {
       });
     }
 
-    console.log('🔄 Attempting to refresh Facebook token...');
+    console.log('Attempting to refresh Facebook token...');
     const refreshUrl = `https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${user.facebookAccessToken}`;
 
-    console.log('🔄 Refresh URL:', refreshUrl.replace(appSecret, '***SECRET***'));
+    console.log('Refresh URL:', refreshUrl.replace(appSecret, '***SECRET***'));
 
     const fbResp = await fetch(refreshUrl);
     const fbData = await fbResp.json();
 
-    console.log('🔄 Facebook refresh response:', fbData);
+    console.log('Facebook refresh response:', fbData);
 
     if (fbData.error) {
-      console.error('❌ Facebook token refresh error:', fbData.error);
+      console.error('Facebook token refresh error:', fbData.error);
       return res.status(400).json({
         success: false,
         message: `Không thể làm mới access token: ${fbData.error.message || 'Token đã hết hạn'}`,
@@ -342,7 +425,7 @@ export const refreshFacebookToken = async (req, res) => {
     }
 
     if (!fbData.access_token) {
-      console.error('❌ No access_token in response:', fbData);
+      console.error('No access_token in response:', fbData);
       return res.status(400).json({
         success: false,
         message: 'Facebook không trả về access token mới.'
@@ -353,7 +436,7 @@ export const refreshFacebookToken = async (req, res) => {
     user.facebookAccessToken = fbData.access_token;
     await user.save();
 
-    console.log('✅ Facebook token refreshed successfully');
+    console.log('Facebook token refreshed successfully');
     return res.status(200).json({
       success: true,
       message: 'Làm mới access token thành công.',
