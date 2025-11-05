@@ -1,5 +1,6 @@
 import express from "express";
-import { createShopUser, getShopUsers, getUsersByShop, updateUserRole, updateUserStatus, relinquishOwnership, deleteShopUser } from "../../controllers/shops/shopUserControllers.js";
+// 1. Thêm 'inviteEmployee' vào danh sách import
+import { createShopUser, getShopUsers, getUsersByShop, updateUserRole, updateUserStatus, relinquishOwnership, deleteShopUser, inviteEmployee } from "../../controllers/shops/shopUserControllers.js";
 import { authenticate, authorizeInShop } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -7,6 +8,9 @@ const router = express.Router();
 router.get("/", getShopUsers);
 
 router.get("/:shopId", getUsersByShop);
+
+// 2. Thêm route mới cho chức năng invite
+router.post("/invite", authenticate, inviteEmployee);
 
 router.post("/", createShopUser);
 
