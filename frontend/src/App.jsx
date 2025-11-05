@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound/NotFound.jsx";
 import AccountManagement from "./pages/AccountManagement/AccountManagement.jsx";
 import AdsManagement from "./pages/AdsManagement/AdsManagement.jsx";
 import ArchiveAds from "./pages/ArchiveAds/ArchiveAds.jsx";
+import Analytics from "./pages/Analytics/Analytics.jsx";
 import ConnectPage from "./pages/ConnectPage/ConnectPage.jsx";
 import ConnectAdAccount from "./pages/ConnectAdAccount/ConnectAdAccount.jsx";
 import ServicePackage from "./pages/ServicePackage/ServicePackage.jsx";
@@ -134,6 +135,18 @@ function AppContent() {
                 </main>
                 <Sidebar />
               </>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Route cho Analytics */}
+        <Route
+          path={ROUTES.ANALYTICS}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <Analytics />
+              </main>
             </ProtectedRoute>
           }
         />
