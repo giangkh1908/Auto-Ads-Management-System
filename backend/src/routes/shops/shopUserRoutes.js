@@ -9,7 +9,6 @@ router.get("/", getShopUsers);
 
 router.get("/:shopId", getUsersByShop);
 
-// 2. Thêm route mới cho chức năng invite
 router.post("/invite", authenticate, inviteEmployee);
 
 router.post("/", createShopUser);
