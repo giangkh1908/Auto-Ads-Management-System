@@ -8,6 +8,7 @@ import AdsCampaign from "../models/ads/adsCampaign.model.js";
 import AdsSet from "../models/ads/adsSet.model.js";
 import Ads from "../models/ads/ads.model.js";
 import AdPerformance from "../models/ads/adPerformance.model.js";
+import AdHourlyInsight from "../models/ads/adHourlyInsight.model.js";
 
 const FB_API = "https://graph.facebook.com/v23.0";
 
@@ -1125,6 +1126,13 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
       access_token: accessToken
     });
 
+    const rawTimeIncrement = options.timeIncrement ?? 1;
+    const numericTimeIncrement = Number(rawTimeIncrement);
+    const resolvedTimeIncrement = Number.isFinite(numericTimeIncrement)
+      ? Math.max(1, Math.floor(numericTimeIncrement))
+      : 1;
+    params.set('time_increment', String(resolvedTimeIncrement));
+
     if (needActions && options.actionBreakdowns) {
       params.set('action_breakdowns', options.actionBreakdowns);
     }
@@ -1147,8 +1155,34 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
       params.set('time_range', JSON.stringify({ preset: 'last_30d' }));
     }
     
+    console.log('[fbAdsService] Fetching account insights', {
+      accountId: withPrefix,
+      level: params.get('level'),
+      timeIncrement: params.get('time_increment'),
+      hasActions: needActions,
+      breakdowns: params.get('breakdowns') || null,
+      actionBreakdowns: params.get('action_breakdowns') || null,
+      timeRange: params.get('time_range') || null
+    });
+
     const response = await axios.get(`${url}?${params.toString()}`);
     const insightsData = response.data?.data || [];
+    
+    // ✅ LOG: Kiểm tra response từ Facebook API
+    console.log(`[fbAdsService] 📊 API Response: ${insightsData.length} records`, {
+      firstRecord: insightsData[0] ? {
+        ad_id: insightsData[0].ad_id,
+        date_start: insightsData[0].date_start,
+        date_stop: insightsData[0].date_stop,
+        spend: insightsData[0].spend,
+        impressions: insightsData[0].impressions
+      } : null,
+      sampleDates: insightsData.slice(0, 3).map(item => ({
+        ad_id: item.ad_id,
+        date_start: item.date_start,
+        date_stop: item.date_stop
+      }))
+    });
     
     if (insightsData.length > 0) {
       const uniqueAdIds = [...new Set(insightsData.map(item => item.ad_id).filter(Boolean))];
@@ -1381,10 +1415,34 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
  * @param {string} accountId - MongoDB _id của AdsAccount
  * @returns {Promise<{saved: number, skipped: number}>}
  */
+function parseInsightDate(item) {
+  const baseDate = item?.date_start || item?.date_stop;
+  if (!baseDate) {
+    return null;
+  }
+
+  const parsed = new Date(`${baseDate}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  parsed.setUTCHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function isAggregatedInsight(item) {
+  if (!item) return false;
+  if (!item.date_start || !item.date_stop) return false;
+  return item.date_start !== item.date_stop;
+}
+
 export async function saveInsightsToAdPerformance(insightsData, accountId) {
   if (!insightsData || !Array.isArray(insightsData) || insightsData.length === 0) {
+    console.log('[fbAdsService] ⚠️ No insights data to save');
     return { saved: 0, skipped: 0 };
   }
+
+  console.log(`[fbAdsService] 💾 Preparing to save ${insightsData.length} performance records to database...`);
 
   try {
     const account = await AdsAccount.findById(accountId);
@@ -1413,7 +1471,7 @@ export async function saveInsightsToAdPerformance(insightsData, accountId) {
 
     for (const item of insightsData) {
       try {
-        if (!item.ad_id || !item.date_start) {
+        if (!item.ad_id) {
           skipped++;
           continue;
         }
@@ -1427,7 +1485,36 @@ export async function saveInsightsToAdPerformance(insightsData, accountId) {
         const adset = item.adset_id ? adsetsMap.get(item.adset_id) : null;
         const campaign = item.campaign_id ? campaignsMap.get(item.campaign_id) : null;
 
-        const date = new Date(item.date_start);
+        if (isAggregatedInsight(item)) {
+          console.warn(
+            `[fbAdsService] ⚠️ Skipping aggregated insight for ad ${item.ad_id} covering ${item.date_start} -> ${item.date_stop}. Ensure time_increment=1 to avoid aggregated rows.`
+          );
+          skipped++;
+          continue;
+        }
+
+        const date = parseInsightDate(item);
+        if (!date) {
+          console.warn(`[fbAdsService] ⚠️ Unable to parse insight date for ad ${item.ad_id}. Raw dates:`, {
+            date_start: item.date_start,
+            date_stop: item.date_stop
+          });
+          skipped++;
+          continue;
+        }
+        
+        // ✅ LOG: Debug first few items để verify date parsing
+        if (saved < 3) {
+          console.log(`[fbAdsService] 🔍 Processing insight #${saved + 1}:`, {
+            ad_id: item.ad_id,
+            ad_name: item.ad_name,
+            date_start: item.date_start,
+            date_stop: item.date_stop,
+            parsed_date: date.toISOString().split('T')[0],
+            spend: item.spend,
+            impressions: item.impressions
+          });
+        }
         
         const performanceData = {
           ads_id: ad._id,
@@ -1513,13 +1600,19 @@ export async function saveInsightsToAdPerformance(insightsData, accountId) {
           }
         }
 
+        // ✅ DÙNG UPSERT thay vì insert
         bulkOps.push({
           updateOne: {
             filter: {
               ads_id: ad._id,
               date: date
             },
-            update: { $set: performanceData },
+            update: { 
+              $set: performanceData,
+              $setOnInsert: {
+                created_at: new Date()
+              }
+            },
             upsert: true
           }
         });
@@ -1532,13 +1625,213 @@ export async function saveInsightsToAdPerformance(insightsData, accountId) {
     }
 
     if (bulkOps.length > 0) {
-      await AdPerformance.bulkWrite(bulkOps);
+      console.log(`[fbAdsService] 💾 Saving ${bulkOps.length} performance records to database...`);
+      const result = await AdPerformance.bulkWrite(bulkOps);
+      
+      // ✅ LOG CHI TIẾT KẾT QUẢ
+      console.log(`[fbAdsService] ✅ BulkWrite completed:`, {
+        upserted: result.upsertedCount,    // Số records MỚI được insert
+        modified: result.modifiedCount,     // Số records CŨ được update
+        matched: result.matchedCount,       // Số records tìm thấy
+        total: result.upsertedCount + result.modifiedCount
+      });
     }
+
+    console.log(`[fbAdsService] 📊 Save summary: saved=${saved}, skipped=${skipped}`);
 
     return { saved, skipped };
   } catch (err) {
-    console.error('Error saving insights to AdPerformance:', err.message);
+    console.error('[fbAdsService] ❌ Error saving insights to AdPerformance:', err.message);
     throw err;
+  }
+}
+
+function toHourFloor(dateInput) {
+  const date = dateInput ? new Date(dateInput) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    return now;
+  }
+  date.setMinutes(0, 0, 0);
+  return date;
+}
+
+function resolveInsightAt(item, fallback) {
+  const candidate =
+    item?.insight_at ||
+    item?.timestamp ||
+    item?.time ||
+    item?.date_start ||
+    fallback;
+  const date = candidate ? new Date(candidate) : null;
+  if (!date || Number.isNaN(date.getTime())) {
+    return fallback instanceof Date ? fallback : new Date(fallback || Date.now());
+  }
+  return date;
+}
+
+export async function saveInsightsToAdHourlyCollection(insightsData, accountId) {
+  if (!insightsData || !Array.isArray(insightsData) || insightsData.length === 0) {
+    return { saved: 0, skipped: 0 };
+  }
+
+  try {
+    const account = await AdsAccount.findById(accountId).lean();
+    if (!account) {
+      console.warn(`⚠️ Account ${accountId} not found, skipping hourly save`);
+      return { saved: 0, skipped: insightsData.length };
+    }
+
+    const adExternalIds = [...new Set(insightsData.map(item => item?.ad_id).filter(Boolean))];
+    if (adExternalIds.length === 0) {
+      return { saved: 0, skipped: insightsData.length };
+    }
+
+    const [adsDocs, adsetsDocs, campaignsDocs] = await Promise.all([
+      Ads.find({ external_id: { $in: adExternalIds } }),
+      AdsSet.find({ external_id: { $in: [...new Set(insightsData.map(item => item?.adset_id).filter(Boolean))] } }),
+      AdsCampaign.find({ external_id: { $in: [...new Set(insightsData.map(item => item?.campaign_id).filter(Boolean))] } })
+    ]);
+
+    const adsMap = new Map(adsDocs.map(ad => [ad.external_id, ad]));
+    const adsetsMap = new Map(adsetsDocs.map(adset => [adset.external_id, adset]));
+    const campaignsMap = new Map(campaignsDocs.map(campaign => [campaign.external_id, campaign]));
+
+    let saved = 0;
+    let skipped = 0;
+
+    for (const item of insightsData) {
+      try {
+        if (!item?.ad_id) {
+          skipped++;
+          continue;
+        }
+
+        const ad = adsMap.get(item.ad_id);
+        if (!ad) {
+          skipped++;
+          continue;
+        }
+
+        const adset = item.adset_id ? adsetsMap.get(item.adset_id) : null;
+        const campaign = item.campaign_id ? campaignsMap.get(item.campaign_id) : null;
+
+        let retrievedAt = item.retrieved_at ? new Date(item.retrieved_at) : new Date();
+        if (Number.isNaN(retrievedAt.getTime())) {
+          retrievedAt = new Date();
+        }
+        const retrievedAtHour = toHourFloor(retrievedAt);
+        const insightAt = resolveInsightAt(item, retrievedAtHour);
+
+        const spendValue = Number(item.spend ?? 0) || 0;
+        const derivedDailyBudget = (() => {
+          if (item.daily_budget !== undefined) return Number(item.daily_budget) || 0;
+          if (adset?.daily_budget) return Number(adset.daily_budget) / 100;
+          if (campaign?.daily_budget) return Number(campaign.daily_budget) / 100;
+          return 0;
+        })();
+
+        const document = {
+          account_id: account._id,
+          campaign_id: campaign?._id || null,
+          adset_id: adset?._id || null,
+          ad_id: ad._id,
+
+          account_external_id: account.external_id || null,
+          campaign_external_id: item.campaign_id || campaign?.external_id || null,
+          adset_external_id: item.adset_id || adset?.external_id || null,
+          ad_external_id: item.ad_id || ad.external_id || null,
+
+          delivery_status: item.delivery || item.delivery_status || null,
+
+          impressions: Number(item.impressions ?? 0) || 0,
+          reach: Number(item.reach ?? 0) || 0,
+          clicks: Number(item.clicks ?? item.inline_link_clicks ?? 0) || 0,
+          spend: spendValue,
+          conversions: Number(item.conversions ?? item.results ?? 0) || 0,
+          frequency: Number(item.frequency ?? 0) || 0,
+
+          cpc: item.cpc !== undefined ? Number(item.cpc) : null,
+          cpm: item.cpm !== undefined ? Number(item.cpm) : null,
+          ctr: item.ctr !== undefined ? Number(item.ctr) : null,
+          conversion_rate: item.conversion_rate !== undefined ? Number(item.conversion_rate) : null,
+          cost_per_conversion: item.cost_per_conversion !== undefined ? Number(item.cost_per_conversion) : null,
+
+          results: (() => {
+            if (Array.isArray(item.results)) {
+              return item.results.reduce((sum, res) => sum + Number(res?.value ?? 0), 0);
+            }
+            return item.results !== undefined ? Number(item.results) || 0 : Number(item.website_purchases ?? 0) || 0;
+          })(),
+          cost_per_result: item.cost_per_result !== undefined ? Number(item.cost_per_result) : null,
+
+          campaign_name: item.campaign_name || campaign?.name || null,
+          adset_name: item.adset_name || adset?.name || null,
+          ad_name: item.ad_name || ad?.name || null,
+          page_name: item.page_name || adset?.page_name || campaign?.page_name || null,
+
+          daily_budget: derivedDailyBudget,
+          daily_spend_rate:
+            derivedDailyBudget > 0 && spendValue > 0
+              ? (spendValue / derivedDailyBudget) * 100
+              : null,
+          total_amount_spent: Number(item.total_amount_spent ?? spendValue) || 0,
+
+          link_clicks: Number(item.link_clicks ?? item.inline_link_clicks ?? 0) || 0,
+          link_cpc: item.link_cpc !== undefined
+            ? Number(item.link_cpc)
+            : (item.cost_per_inline_link_click !== undefined ? Number(item.cost_per_inline_link_click) : null),
+          link_ctr: item.link_ctr !== undefined
+            ? Number(item.link_ctr)
+            : (item.inline_link_click_ctr !== undefined ? Number(item.inline_link_click_ctr) : null),
+
+          website_purchases: Number(item.website_purchases ?? item.results ?? 0) || 0,
+          website_purchase_roas: (() => {
+            if (Array.isArray(item.website_purchase_roas)) {
+              return Number(item.website_purchase_roas[0]?.value ?? null);
+            }
+            if (typeof item.website_purchase_roas === 'number') {
+              return Number(item.website_purchase_roas);
+            }
+            if (Array.isArray(item.purchase_roas)) {
+              return Number(item.purchase_roas[0]?.value ?? null);
+            }
+            if (typeof item.purchase_roas === 'number') {
+              return Number(item.purchase_roas);
+            }
+            return null;
+          })(),
+
+          audience_reach_percentage: item.audience_reach_percentage !== undefined
+            ? Number(item.audience_reach_percentage)
+            : null,
+
+          rule_evaluations: item.rule_evaluations || {},
+
+          insight_at: insightAt,
+          retrieved_at: retrievedAt,
+          retrieved_at_hour: retrievedAtHour,
+          meta: item.meta || {},
+        };
+
+        await AdHourlyInsight.findOneAndUpdate(
+          { ad_id: document.ad_id, retrieved_at_hour: document.retrieved_at_hour },
+          { $set: document },
+          { upsert: true, new: true }
+        );
+
+        saved++;
+      } catch (itemError) {
+        console.error('Error saving hourly insight item:', itemError.message);
+        skipped++;
+      }
+    }
+
+    return { saved, skipped };
+  } catch (error) {
+    console.error('Error saving hourly insights:', error.message);
+    throw error;
   }
 }
 
