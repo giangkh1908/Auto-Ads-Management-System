@@ -118,6 +118,45 @@
   margin-left: auto;
 }
 
+.analytics-refresh-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.2s ease;
+  min-width: 37px;
+  height: 37px;
+}
+
+.analytics-refresh-button:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #2563eb;
+}
+
+.analytics-refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.analytics-refresh-icon-spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .analytics-search-box {
   position: relative;
   display: flex;
@@ -278,6 +317,18 @@
 .analytics-data-metric-column {
   /* Các cột này không có sticky, có thể scroll tự do */
   position: relative;
+}
+
+.analytics-tooltip-icon {
+  margin-left: 4px;
+  font-size: 12px;
+  opacity: 0.6;
+  cursor: help;
+  display: inline-block;
+}
+
+.analytics-data-metric-column:hover .analytics-tooltip-icon {
+  opacity: 1;
 }
 
 .analytics-empty-table {

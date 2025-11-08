@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Search, ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, ChevronDown, RefreshCw } from "lucide-react";
 import DateRangePicker from "../../components/common/DateRangePicker/DateRangePicker";
 import axiosInstance from "../../utils/axios";
 import "./Analytics.css";
@@ -25,20 +25,30 @@ function Analytics() {
     date: false,
   });
 
-  // State cho các checkbox data metrics
   const [dataMetrics, setDataMetrics] = useState({
     amountSpent: true,
+    dailyBudget: false,
+    dailySpendRate: false,
+    totalAmountSpent: false,
     impressions: true,
     reach: true,
-    results: true,
-    costPerResults: false, // CPR
-    delivery: false,
     frequency: false,
+    audienceReachPercentage: false,
+    clicks: false,
     linkClicks: false,
+    linkCpc: false,
+    linkCtr: false,
     cpc: false,
     cpm: false,
     ctr: false,
-    resultsRoas: false,
+    conversions: false,
+    conversionRate: false,
+    costPerConversion: false,
+    websitePurchases: false,
+    websitePurchaseRoas: false,
+    results: true,
+    costPerResults: false,
+    delivery: false,
   });
 
   // Mock data - sau này sẽ thay bằng API call
@@ -108,125 +118,143 @@ function Analytics() {
     return null;
   };
 
-  // Fetch insights data khi selectedAccount hoặc dateRange thay đổi
-  useEffect(() => {
+  const fetchInsights = useCallback(async () => {
     if (!selectedAccount || !dateRange) {
       setTableData([]);
       return;
     }
 
-    const fetchInsights = async () => {
-      setLoadingInsights(true);
-      try {
-        // Parse date range từ "dd/MM/yyyy - dd/MM/yyyy" sang date_start và date_stop
-        const parts = dateRange.split(" - ");
-        if (parts.length !== 2) {
-          setTableData([]);
-          return;
-        }
-
-        const dateStart = parseDateToAPIFormat(parts[0]);
-        const dateStop = parseDateToAPIFormat(parts[1]);
-
-        if (!dateStart || !dateStop) {
-          setTableData([]);
-          return;
-        }
-
-        const response = await axiosInstance.get(
-          `/api/ads-accounts/${selectedAccount}/insights`,
-          {
-            params: {
-              breakdowns: "age",
-              date_start: dateStart,
-              date_stop: dateStop,
-              _t: Date.now(), // ✅ Cache busting
-            },
-            headers: {
-              'Cache-Control': 'no-cache', // ✅ Disable cache
-            },
-          }
-        );
-
-        // ✅ Chỉ giữ console chính
-        console.log("📊 Insights Response:", {
-          total: response.data?.total,
-          itemsCount: response.data?.items?.length || 0,
-          items: response.data?.items,
-        });
-
-        if (response.data?.items) {
-          // Map data từ API sang format cho bảng
-          const mappedData = response.data.items.map((item) => {
-            // Parse actions để lấy results (purchase actions)
-            let results = 0;
-            if (item.actions && Array.isArray(item.actions)) {
-              const purchaseAction = item.actions.find(
-                (action) => action.action_type === "purchase"
-              );
-              results = purchaseAction ? parseFloat(purchaseAction.value) || 0 : 0;
-            }
-
-            // Parse purchase_roas
-            let purchaseRoas = null;
-            if (item.purchase_roas && Array.isArray(item.purchase_roas)) {
-              purchaseRoas = parseFloat(item.purchase_roas[0]?.value) || null;
-            }
-
-            // ✅ link_clicks đã được parse từ backend, nhưng có fallback từ actions
-            let linkClicks = item.link_clicks || 0;
-            if (linkClicks === 0 && item.actions && Array.isArray(item.actions)) {
-              const linkClickAction = item.actions.find(
-                (action) => action.action_type === "link_click"
-              );
-              linkClicks = linkClickAction ? parseInt(linkClickAction.value) || 0 : 0;
-            }
-
-            return {
-              campaignName: item.campaign_name || "",
-              adSetName: item.adset_name || "",
-              adName: item.ad_name || "",
-              pageName: item.page_id || "",
-              adText: item.ad_creative_body || "", // ✅ Đã được fetch từ Creative API
-              ageRange: item.age || "",
-              campaignObjective: item.objective || "",
-              date: item.date_start || "",
-              amountSpent: parseFloat(item.spend) || 0,
-              impressions: parseInt(item.impressions) || 0,
-              reach: parseInt(item.reach) || 0,
-              results: results,
-              costPerResults: results > 0 ? (parseFloat(item.spend) || 0) / results : null,
-              delivery: item.delivery || "", // ✅ Đã được tính từ backend
-              frequency: parseFloat(item.frequency) || null,
-              linkClicks: linkClicks, // ✅ Sử dụng giá trị từ backend hoặc fallback
-              cpc: parseFloat(item.cpc) || null,
-              cpm: parseFloat(item.cpm) || null,
-              ctr: parseFloat(item.ctr) || null,
-              resultsRoas: purchaseRoas,
-            };
-          });
-          
-          // ✅ Chỉ log tổng kết cuối cùng
-          console.log("📊 Final Mapped Data:", {
-            total: mappedData.length,
-            sample: mappedData[0], // Sample item đầu tiên
-          });
-          
-          setTableData(mappedData);
-        } else {
-          console.warn("⚠️ No items in response:", response.data);
-          setTableData([]);
-        }
-      } catch (error) {
-        console.error("Error fetching insights:", error);
+    setLoadingInsights(true);
+    try {
+      const parts = dateRange.split(" - ");
+      if (parts.length !== 2) {
         setTableData([]);
-      } finally {
         setLoadingInsights(false);
+        return;
       }
-    };
 
-    fetchInsights();
+      const dateStart = parseDateToAPIFormat(parts[0]);
+      const dateStop = parseDateToAPIFormat(parts[1]);
+
+      if (!dateStart || !dateStop) {
+        setTableData([]);
+        setLoadingInsights(false);
+        return;
+      }
+
+      const response = await axiosInstance.get(
+        `/api/ads-accounts/${selectedAccount}/insights`,
+        {
+          params: {
+            breakdowns: "age",
+            date_start: dateStart,
+            date_stop: dateStop,
+            _t: Date.now(),
+          },
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        }
+      );
+
+      console.log("📊 Insights Response:", {
+        total: response.data?.total,
+        itemsCount: response.data?.items?.length || 0,
+        items: response.data?.items,
+      });
+
+      if (response.data?.items) {
+        const mappedData = response.data.items.map((item) => {
+          let results = item.results || 0;
+          if (results === 0 && item.actions && Array.isArray(item.actions)) {
+            const purchaseAction = item.actions.find(
+              (action) => action.action_type === "purchase"
+            );
+            results = purchaseAction ? parseFloat(purchaseAction.value) || 0 : 0;
+          }
+
+          let purchaseRoas = null;
+          if (item.purchase_roas && Array.isArray(item.purchase_roas)) {
+            purchaseRoas = parseFloat(item.purchase_roas[0]?.value) || null;
+          } else if (item.website_purchase_roas) {
+            purchaseRoas = parseFloat(item.website_purchase_roas) || null;
+          }
+
+          let linkClicks = item.link_clicks || 0;
+          if (linkClicks === 0 && item.actions && Array.isArray(item.actions)) {
+            const linkClickAction = item.actions.find(
+              (action) => action.action_type === "link_click"
+            );
+            linkClicks = linkClickAction ? parseInt(linkClickAction.value) || 0 : 0;
+          }
+
+          const spend = parseFloat(item.spend) || 0;
+          const impressions = parseInt(item.impressions) || 0;
+          const reach = parseInt(item.reach) || 0;
+          const clicks = parseInt(item.clicks) || 0;
+
+          return {
+            campaignName: item.campaign_name || "",
+            adSetName: item.adset_name || "",
+            adName: item.ad_name || "",
+            pageName: item.page_name || "",
+            adText: item.ad_creative_body || "",
+            ageRange: item.age || "",
+            campaignObjective: item.objective || "",
+            date: item.date_start || "",
+            amountSpent: spend,
+            dailyBudget: item.daily_budget ? parseFloat(item.daily_budget) : null,
+            dailySpendRate: item.daily_spend_rate ? parseFloat(item.daily_spend_rate) : null,
+            totalAmountSpent: item.total_amount_spent ? parseFloat(item.total_amount_spent) : spend,
+            impressions: impressions,
+            reach: reach,
+            frequency: item.frequency ? parseFloat(item.frequency) : null,
+            audienceReachPercentage: item.audience_reach_percentage ? parseFloat(item.audience_reach_percentage) : null,
+            clicks: clicks,
+            linkClicks: linkClicks,
+            linkCpc: item.link_cpc ? parseFloat(item.link_cpc) : null,
+            linkCtr: item.link_ctr ? parseFloat(item.link_ctr) : null,
+            cpc: item.cpc ? parseFloat(item.cpc) : null,
+            cpm: item.cpm ? parseFloat(item.cpm) : null,
+            ctr: item.ctr ? parseFloat(item.ctr) : null,
+            conversions: item.conversions ? parseFloat(item.conversions) : 0,
+            conversionRate: item.conversion_rate ? parseFloat(item.conversion_rate) : null,
+            costPerConversion: item.cost_per_conversion ? parseFloat(item.cost_per_conversion) : null,
+            websitePurchases: item.website_purchases ? parseFloat(item.website_purchases) : 0,
+            websitePurchaseRoas: purchaseRoas,
+            results: results,
+            costPerResults: item.cost_per_result ? parseFloat(item.cost_per_result) : (results > 0 ? spend / results : null),
+            delivery: item.delivery || "",
+          };
+        });
+        
+        console.log("📊 Final Mapped Data:", {
+          total: mappedData.length,
+          sample: mappedData[0],
+        });
+        
+        setTableData(mappedData);
+      } else {
+        console.warn("⚠️ No items in response:", response.data);
+        setTableData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching insights:", error);
+      setTableData([]);
+    } finally {
+      setLoadingInsights(false);
+    }
   }, [selectedAccount, dateRange]);
+
+  useEffect(() => {
+    fetchInsights();
+  }, [fetchInsights]);
+
+  const handleRefresh = () => {
+    if (selectedAccount && dateRange) {
+      fetchInsights();
+    }
+  };
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -260,52 +288,133 @@ function Analytics() {
     }));
   };
 
+  // Mapping labels tiếng Việt
+  const columnLabels = {
+    // Breakdown columns
+    campaignName: "Tên chiến dịch",
+    adSetName: "Tên nhóm quảng cáo",
+    adName: "Tên quảng cáo",
+    pageName: "Tên trang",
+    adText: "Nội dung quảng cáo",
+    ageRange: "Độ tuổi",
+    campaignObjective: "Mục tiêu chiến dịch",
+    date: "Ngày",
+    
+    // Data metrics
+    amountSpent: "Số tiền đã chi",
+    dailyBudget: "Ngân sách hàng ngày",
+    dailySpendRate: "Tỷ lệ chi tiêu hàng ngày (%)",
+    totalAmountSpent: "Tổng số tiền đã chi",
+    impressions: "Số lần hiển thị",
+    reach: "Lượt tiếp cận",
+    frequency: "Tần suất",
+    audienceReachPercentage: "Tỷ lệ tiếp cận đối tượng (%)",
+    clicks: "Số lượt nhấp",
+    linkClicks: "Số lượt nhấp liên kết",
+    linkCpc: "Link CPC",
+    linkCtr: "Link CTR",
+    cpc: "CPC",
+    cpm: "CPM",
+    ctr: "CTR",
+    conversions: "Số chuyển đổi",
+    conversionRate: "Tỷ lệ chuyển đổi (%)",
+    costPerConversion: "Chi phí mỗi chuyển đổi",
+    websitePurchases: "Lượt mua trên website",
+    websitePurchaseRoas: "Website Purchase ROAS",
+    results: "Kết quả",
+    costPerResults: "Chi phí mỗi kết quả (CPA)",
+    delivery: "Trạng thái phân phối",
+  };
+
+  // Tooltips cho các metrics
+  const columnTooltips = {
+    cpc: "Cost Per Click - Chi phí trung bình cho mỗi lượt nhấp",
+    cpm: "Cost Per Mille - Chi phí cho 1,000 lần hiển thị",
+    ctr: "Click-Through Rate - Tỷ lệ nhấp (số lượt nhấp / số lần hiển thị × 100%)",
+    linkCpc: "Link Cost Per Click - Chi phí trung bình cho mỗi lượt nhấp vào liên kết",
+    linkCtr: "Link Click-Through Rate - Tỷ lệ nhấp vào liên kết",
+    conversions: "Số lượng hành động chuyển đổi (mua hàng, đăng ký, v.v.)",
+    conversionRate: "Tỷ lệ chuyển đổi (số chuyển đổi / số lượt nhấp × 100%)",
+    costPerConversion: "Chi phí trung bình để có được một chuyển đổi",
+    websitePurchaseRoas: "Return On Ad Spend - Tỷ suất hoàn vốn từ quảng cáo cho lượt mua trên website",
+    costPerResults: "Cost Per Action - Chi phí cho mỗi kết quả (hành động mục tiêu)",
+    frequency: "Số lần trung bình một người xem quảng cáo của bạn",
+    audienceReachPercentage: "Tỷ lệ phần trăm đối tượng mục tiêu đã tiếp cận được",
+    dailySpendRate: "Tỷ lệ phần trăm ngân sách hàng ngày đã sử dụng",
+  };
+
   // Tính toán các cột breakdown (cố định)
   const getBreakdownColumns = () => {
     const columns = [];
 
     if (breakdownColumns.campaignName)
-      columns.push({ key: "campaignName", label: "Campaign Name" });
+      columns.push({ key: "campaignName", label: columnLabels.campaignName });
     if (breakdownColumns.adSetName)
-      columns.push({ key: "adSetName", label: "Ad Set Name" });
+      columns.push({ key: "adSetName", label: columnLabels.adSetName });
     if (breakdownColumns.adName)
-      columns.push({ key: "adName", label: "Ad Name" });
+      columns.push({ key: "adName", label: columnLabels.adName });
     if (breakdownColumns.pageName)
-      columns.push({ key: "pageName", label: "Page Name" });
+      columns.push({ key: "pageName", label: columnLabels.pageName });
     if (breakdownColumns.adText)
-      columns.push({ key: "adText", label: "Ad Text" });
+      columns.push({ key: "adText", label: columnLabels.adText });
     if (breakdownColumns.ageRange)
-      columns.push({ key: "ageRange", label: "Age Range" });
+      columns.push({ key: "ageRange", label: columnLabels.ageRange });
     if (breakdownColumns.campaignObjective)
-      columns.push({ key: "campaignObjective", label: "Campaign Objective" });
+      columns.push({ key: "campaignObjective", label: columnLabels.campaignObjective });
     if (breakdownColumns.date) 
-      columns.push({ key: "date", label: "Date" });
+      columns.push({ key: "date", label: columnLabels.date });
     return columns;
   };
 
-  // Tính toán các cột data metrics (có thể scroll)
   const getDataMetricsColumns = () => {
     const columns = [];
 
     if (dataMetrics.amountSpent)
-      columns.push({ key: "amountSpent", label: "Amount Spent" });
+      columns.push({ key: "amountSpent", label: columnLabels.amountSpent });
+    if (dataMetrics.dailyBudget)
+      columns.push({ key: "dailyBudget", label: columnLabels.dailyBudget });
+    if (dataMetrics.dailySpendRate)
+      columns.push({ key: "dailySpendRate", label: columnLabels.dailySpendRate, tooltip: columnTooltips.dailySpendRate });
+    if (dataMetrics.totalAmountSpent)
+      columns.push({ key: "totalAmountSpent", label: columnLabels.totalAmountSpent });
     if (dataMetrics.impressions)
-      columns.push({ key: "impressions", label: "Impressions" });
-    if (dataMetrics.reach) columns.push({ key: "reach", label: "Reach" });
-    if (dataMetrics.results) columns.push({ key: "results", label: "Results" });
-    if (dataMetrics.costPerResults)
-      columns.push({ key: "costPerResults", label: "Cost per Results (CPR)" });
-    if (dataMetrics.delivery)
-      columns.push({ key: "delivery", label: "Delivery" });
+      columns.push({ key: "impressions", label: columnLabels.impressions });
+    if (dataMetrics.reach) 
+      columns.push({ key: "reach", label: columnLabels.reach });
     if (dataMetrics.frequency)
-      columns.push({ key: "frequency", label: "Frequency" });
+      columns.push({ key: "frequency", label: columnLabels.frequency, tooltip: columnTooltips.frequency });
+    if (dataMetrics.audienceReachPercentage)
+      columns.push({ key: "audienceReachPercentage", label: columnLabels.audienceReachPercentage, tooltip: columnTooltips.audienceReachPercentage });
+    if (dataMetrics.clicks)
+      columns.push({ key: "clicks", label: columnLabels.clicks });
     if (dataMetrics.linkClicks)
-      columns.push({ key: "linkClicks", label: "Link Clicks" });
-    if (dataMetrics.cpc) columns.push({ key: "cpc", label: "CPC" });
-    if (dataMetrics.cpm) columns.push({ key: "cpm", label: "CPM" });
-    if (dataMetrics.ctr) columns.push({ key: "ctr", label: "CTR" });
-    if (dataMetrics.resultsRoas)
-      columns.push({ key: "resultsRoas", label: "Results ROAS" });
+      columns.push({ key: "linkClicks", label: columnLabels.linkClicks });
+    if (dataMetrics.linkCpc)
+      columns.push({ key: "linkCpc", label: columnLabels.linkCpc, tooltip: columnTooltips.linkCpc });
+    if (dataMetrics.linkCtr)
+      columns.push({ key: "linkCtr", label: columnLabels.linkCtr, tooltip: columnTooltips.linkCtr });
+    if (dataMetrics.cpc) 
+      columns.push({ key: "cpc", label: columnLabels.cpc, tooltip: columnTooltips.cpc });
+    if (dataMetrics.cpm) 
+      columns.push({ key: "cpm", label: columnLabels.cpm, tooltip: columnTooltips.cpm });
+    if (dataMetrics.ctr) 
+      columns.push({ key: "ctr", label: columnLabels.ctr, tooltip: columnTooltips.ctr });
+    if (dataMetrics.conversions)
+      columns.push({ key: "conversions", label: columnLabels.conversions, tooltip: columnTooltips.conversions });
+    if (dataMetrics.conversionRate)
+      columns.push({ key: "conversionRate", label: columnLabels.conversionRate, tooltip: columnTooltips.conversionRate });
+    if (dataMetrics.costPerConversion)
+      columns.push({ key: "costPerConversion", label: columnLabels.costPerConversion, tooltip: columnTooltips.costPerConversion });
+    if (dataMetrics.websitePurchases)
+      columns.push({ key: "websitePurchases", label: columnLabels.websitePurchases });
+    if (dataMetrics.websitePurchaseRoas)
+      columns.push({ key: "websitePurchaseRoas", label: columnLabels.websitePurchaseRoas, tooltip: columnTooltips.websitePurchaseRoas });
+    if (dataMetrics.results) 
+      columns.push({ key: "results", label: columnLabels.results });
+    if (dataMetrics.costPerResults)
+      columns.push({ key: "costPerResults", label: columnLabels.costPerResults, tooltip: columnTooltips.costPerResults });
+    if (dataMetrics.delivery)
+      columns.push({ key: "delivery", label: columnLabels.delivery });
 
     return columns;
   };
@@ -359,6 +468,18 @@ function Analytics() {
             )}
           </div>
           <div className="analytics-header-right-controls">
+            <button
+              className="analytics-refresh-button"
+              onClick={handleRefresh}
+              disabled={!selectedAccount || !dateRange || loadingInsights}
+              aria-label="Refresh data"
+              title="Làm mới dữ liệu"
+            >
+              <RefreshCw 
+                size={18} 
+                className={loadingInsights ? "analytics-refresh-icon-spinning" : ""}
+              />
+            </button>
             <div className="analytics-search-box">
               <input
                 type="text"
@@ -411,8 +532,11 @@ function Analytics() {
                     <th
                       key={column.key}
                       className="analytics-data-metric-column"
+                      title={column.tooltip || ""}
+                      style={{ cursor: column.tooltip ? "help" : "default" }}
                     >
                       {column.label}
+                      {column.tooltip && <span className="analytics-tooltip-icon" title={column.tooltip}>ℹ️</span>}
                     </th>
                   ))}
                 </tr>
@@ -457,15 +581,30 @@ function Analytics() {
                           {row[column.key] || "-"}
                         </td>
                       ))}
-                      {/* Data metrics columns - có thể scroll */}
-                      {dataMetricsCols.map((column) => (
-                        <td
-                          key={column.key}
-                          className="analytics-data-metric-column"
-                        >
-                          {row[column.key] || "-"}
-                        </td>
-                      ))}
+                      {dataMetricsCols.map((column) => {
+                        let displayValue = row[column.key];
+                        
+                        if (displayValue === null || displayValue === undefined || displayValue === "") {
+                          displayValue = "-";
+                        } else if (typeof displayValue === "number") {
+                          if (column.key.includes("Rate") || column.key.includes("Percentage") || column.key.includes("CTR") || column.key.includes("ROAS")) {
+                            displayValue = displayValue.toFixed(2) + (column.key.includes("ROAS") ? "" : "%");
+                          } else if (column.key.includes("Spent") || column.key.includes("Budget") || column.key.includes("CPC") || column.key.includes("CPM") || column.key.includes("CPA") || column.key.includes("Conversion")) {
+                            displayValue = displayValue.toFixed(2);
+                          } else {
+                            displayValue = displayValue.toLocaleString();
+                          }
+                        }
+                        
+                        return (
+                          <td
+                            key={column.key}
+                            className="analytics-data-metric-column"
+                          >
+                            {displayValue}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))
                 )}
@@ -502,67 +641,41 @@ function Analytics() {
           <div className="analytics-settings-content">
             {activeTab === "breakdown" && (
               <div className="analytics-breakdown-options">
-                {Object.entries(breakdownColumns).map(([key, checked]) => {
-                  const labels = {
-                    campaignName: "Campaign Name",
-                    adSetName: "Ad Set Name",
-                    adName: "Ad Name",
-                    pageName: "Page Name",
-                    adText: "Ad Text",
-                    ageRange: "Age Range",
-                    campaignObjective: "Campaign Objective",
-                    date: "Date",
-                  };
-
-                  return (
-                    <label key={key} className="analytics-checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => handleBreakdownChange(key)}
-                        className="analytics-checkbox-input"
-                      />
-                      <span className="analytics-checkbox-text">
-                        {labels[key]}
-                      </span>
-                    </label>
-                  );
-                })}
+                {Object.entries(breakdownColumns).map(([key, checked]) => (
+                  <label key={key} className="analytics-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => handleBreakdownChange(key)}
+                      className="analytics-checkbox-input"
+                    />
+                    <span className="analytics-checkbox-text">
+                      {columnLabels[key]}
+                    </span>
+                  </label>
+                ))}
               </div>
             )}
 
             {activeTab === "data" && (
               <div className="analytics-data-options">
-                {Object.entries(dataMetrics).map(([key, checked]) => {
-                  const labels = {
-                    amountSpent: "Amount Spent",
-                    impressions: "Impressions",
-                    reach: "Reach",
-                    results: "Results",
-                    costPerResults: "Cost per Results (CPR)",
-                    delivery: "Delivery",
-                    frequency: "Frequency",
-                    linkClicks: "Link Clicks",
-                    cpc: "CPC",
-                    cpm: "CPM",
-                    ctr: "CTR",
-                    resultsRoas: "Results ROAS",
-                  };
-
-                  return (
-                    <label key={key} className="analytics-checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => handleDataChange(key)}
-                        className="analytics-checkbox-input"
-                      />
-                      <span className="analytics-checkbox-text">
-                        {labels[key]}
-                      </span>
-                    </label>
-                  );
-                })}
+                {Object.entries(dataMetrics).map(([key, checked]) => (
+                  <label 
+                    key={key} 
+                    className="analytics-checkbox-label"
+                    title={columnTooltips[key] || ""}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => handleDataChange(key)}
+                      className="analytics-checkbox-input"
+                    />
+                    <span className="analytics-checkbox-text">
+                      {columnLabels[key]}
+                    </span>
+                  </label>
+                ))}
               </div>
             )}
           </div>
