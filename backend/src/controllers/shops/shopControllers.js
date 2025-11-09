@@ -5,6 +5,7 @@ import Log from "../../models/log.model.js";
 import UserRole from "../../models/userRole.model.js";
 import ShopUser from "../../models/shops/shopUser.model.js";
 import Role from "../../models/role.model.js";
+import { saveLog } from "../../utils/log.js";
 
 //  Tạo Shop
 export const createShop = async (req, res) => {
@@ -56,18 +57,16 @@ export const createShop = async (req, res) => {
       shop,
     });
     console.log("Creating shop:", req.body);
-    // Ghi log hành động
-    // await Log.create({
-    //   user_id: req.user?._id || null, // nếu có middleware auth
-    //   shop_id: shop._id,
-    //   action: "CREATE_SHOP",
-    //   target_type: "Shop",
-    //   target_id: shop._id.toString(),
-    //   request: req.body,
-    //   response: shop,
-    //   success: true,
-    //   ip_address: req.ip,
-    // });
+    await saveLog({
+      user_id: ownerId,
+      shop_id: shop._id,
+      action: "CREATE_SHOP",
+      target_type: "Shop",
+      target_id: shop._id.toString(),
+      request: req.body,
+      response: shop,
+      ip_address: req.ip,
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -406,6 +405,17 @@ export const connectFacebookPage = async (req, res) => {
       { new: true }
     );
 
+    await saveLog({
+      user_id: userId,
+      shop_id: shopId,
+      action: "CONNECT_FACEBOOK_PAGE",
+      target_type: "FacebookPage",
+      target_id: pageId,
+      request: req.body,
+      response: { shop, shopUser: updatedShopUser },
+      ip_address: req.ip,
+    });
+
     return res.status(200).json({ success: true, message: 'Kết nối page thành công.', data: { shop, shopUser: updatedShopUser } });
   } catch (error) {
     console.error('connectFacebookPage error:', error);
@@ -460,6 +470,18 @@ export const disconnectFacebookPage = async (req, res) => {
 
     const updatedShop = await Shop.findById(shopId);
     const updatedShopUser = await ShopUser.findById(shopUser._id);
+
+    await saveLog({
+      user_id: userId,
+      shop_id: shopId,
+      action: "DISCONNECT_FACEBOOK_PAGE",
+      target_type: "FacebookPage",
+      target_id: pageId,
+      request: req.body,
+      success: true,
+      ip_address: req.ip,
+    });
+
     return res.status(200).json({ success: true, message: 'Đã ngắt kết nối page.', data: { shop: updatedShop, shopUser: updatedShopUser, } });
   } catch (error) {
     console.log('disconnectFacebookPage error:', error);
