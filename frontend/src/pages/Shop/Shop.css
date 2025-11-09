@@ -628,3 +628,29 @@
   text-align: right;
   padding: 20px 0px;
 }
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.history-table th,
+.history-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+.history-table th {
+  background-color: #f4f4f4;
+  font-weight: 600;
+}
+
+.history-table tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.history-table tr:hover {
+  background-color: #f1f7ff;
+}

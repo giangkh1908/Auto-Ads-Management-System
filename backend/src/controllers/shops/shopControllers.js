@@ -273,6 +273,45 @@ export const deactivateShop = async (req, res) => {
   }
 };
 
+export const getShopLogs = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Lấy shop hiện tại của user
+    const currentRole = await UserRole.findOne({
+      user_id: userId,
+      is_current: true,
+    }).lean();
+
+    if (!currentRole) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy shop hiện tại của người dùng.",
+      });
+    }
+
+    const shopId = currentRole.shop_id;
+
+    // Lấy log của shop đó
+    const logs = await Log.find({ shop_id: shopId })
+      .populate("user_id", "full_name email")
+      .sort({ created_at: -1 }) // mới nhất trước
+      .limit(100);
+
+    return res.status(200).json({
+      success: true,
+      data: logs,
+    });
+  } catch (error) {
+    console.error("Lỗi getShopLogs:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi lấy log.",
+      error: error.message,
+    });
+  }
+};
+
 // Lấy danh sách trang Facebook từ access token đã lưu (người dùng hiện tại)
 export const getFacebookPages = async (req, res) => {
   try {
