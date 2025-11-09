@@ -309,7 +309,7 @@ function Employee() {
       {/* Tabs/end để active đúng tại shop, ko ăn vào cái khác */}
       <div className="shop-tabs">
         <NavLink end to={ROUTES.SHOP} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>{t('shop.my_shop')}</NavLink>
-        <NavLink to={ROUTES.SHOP_EMPLOYEE} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>{t('shop.employee')}</NavLink>
+        <NavLink to={`${ROUTES.SHOP_EMPLOYEE}/${shopId}`} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>{t('shop.employee')}</NavLink>
         <NavLink to={ROUTES.SHOP_HISTORY} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>{t('shop.history')}</NavLink>
       </div>
 

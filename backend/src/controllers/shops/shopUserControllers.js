@@ -25,6 +25,9 @@ export const inviteEmployee = async (req, res) => {
   try {
     const { email, roleId, invitedBy } = req.body;
     const { shopId } = req.body;
+    const shop = await Shop.findById(shopId);
+    const currentUser = await User.findById(invitedBy);
+    const role = await Role.findById(roleId);
 
     if (!email || !roleId || !invitedBy || !shopId) {
       return res.status(400).json({
@@ -42,6 +45,24 @@ export const inviteEmployee = async (req, res) => {
     if (!user) {
       // Gửi email mời
       await sendInvitationEmail(email);
+
+      await saveLog({
+      user_id: invitedBy,
+      user_name: currentUser.full_name || currentUser.email,
+      shop_id: shopId,
+      shop_name: shop.shop_name,
+      action: "ADD_EMPLOYEE",
+      target_type: "User",
+      target_id: user._id.toString(),
+      target_name: user.full_name || user.email,
+      description: `${currentUser.full_name || currentUser.email} đã thêm nhân viên "${user.full_name || user.email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
+      request: req.body,
+      response: shopUser,
+      success: true,
+      source: "manual",
+      ip_address: req.ip,
+      meta: { role_assigned: roleId, invited_email: email },
+    });
 
       return res.status(200).json({
         success: true,
@@ -79,10 +100,14 @@ export const inviteEmployee = async (req, res) => {
 
     await saveLog({
       user_id: invitedBy,
+      user_name: currentUser.full_name || currentUser.email,
       shop_id: shopId,
-      action: "INVITE_EMPLOYEE",
+      shop_name: shop.shop_name,
+      action: "ADD_EMPLOYEE",
       target_type: "User",
       target_id: user._id.toString(),
+      target_name: user.full_name || user.email,
+      description: `${currentUser.full_name || currentUser.email} đã thêm nhân viên "${user.full_name || user.email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
       request: req.body,
       response: shopUser,
       success: true,
@@ -262,6 +287,8 @@ export const updateUserRole = async (req, res) => {
   try {
     const { shopId } = req.params;
     const { userId, newRoleId, currentUserId } = req.body;
+    const currentUser = await User.findById(currentUserId);
+    const shop = await Shop.findById(shopId);
 
     const targetUser = await User.findById(userId);
     if (targetUser?.status === StatusEnum.PENDING) {
@@ -369,11 +396,15 @@ export const updateUserRole = async (req, res) => {
 
     await saveLog({
       user_id: currentUserId,
+      user_name: currentUser.full_name || currentUser.email,
       shop_id: shopId,
+      shop_name: shop.shop_name,
       action: "UPDATE_USER_ROLE",
       target_type: "UserRole",
       target_id: userId,
-      request: { userId, newRoleId },
+      target_name: targetUser.full_name || targetUser.email,
+      description: `${currentUser.full_name || currentUser.email} đã thay đổi vai trò của "${targetUser.full_name || targetUser.email}" từ "${targetRoleName}" → "${newRole.role_name}" trong cửa hàng "${shop.shop_name}"`,
+      request: req.body,
       response: updated,
       success: true,
       source: "manual",
@@ -407,6 +438,8 @@ export const updateUserStatus = async (req, res) => {
   try {
     const { shopId } = req.params;
     const { userId, newStatus, currentUserId } = req.body;
+    const currentUser = await User.findById(currentUserId);
+    const shop = await Shop.findById(shopId);
 
     const targetUser = await User.findById(userId);
     if (targetUser?.status === StatusEnum.PENDING) {
@@ -511,14 +544,19 @@ export const updateUserStatus = async (req, res) => {
         },
       });
     }
+    console.log("newStatus", newStatus);
 
     await saveLog({
       user_id: currentUserId,
+      user_name: currentUser.full_name || currentUser.email,
       shop_id: shopId,
+      shop_name: shop.shop_name,
       action: "UPDATE_USER_STATUS",
       target_type: "ShopUser",
       target_id: userId,
-      request: { newStatus },
+      target_name: targetUser.full_name || targetUser.email,
+      description: `${currentUser.full_name || currentUser.email} đã ${newStatus} nhân viên "${targetUser.full_name || targetUser.email}" trong cửa hàng "${shop.shop_name}"`,
+      request: req.body,
       response: updated,
       success: true,
       source: "manual",
@@ -548,6 +586,8 @@ export const relinquishOwnership = async (req, res) => {
     const { shopId } = req.body;
     const currentUserId = req.user._id;
     const { employeeId } = req.body;
+    const shop = await Shop.findById(shopId);
+    const currentUser = await User.findById(currentUserId);
 
     const targetUser = await User.findById(employeeId);
     if (targetUser?.status === StatusEnum.PENDING) {
@@ -619,16 +659,16 @@ export const relinquishOwnership = async (req, res) => {
 
     await saveLog({
       user_id: currentUserId,
+      user_name: currentUser.full_name || currentUser.email,
       shop_id: shopId,
+      shop_name: shop.shop_name,
       action: "TRANSFER_OWNERSHIP",
       target_type: "User",
       target_id: employeeId,
+      target_name: targetUser.full_name || targetUser.email,
+      description: `${currentUser.full_name || currentUser.email} đã chuyển giao quyền chủ shop "${shop.shop_name}" cho "${targetUser.full_name || targetUser.email}"`,
       request: req.body,
-      response: {
-        from_role: "Shop Owner",
-        to_role: "Marketing Admin",
-        new_owner: targetUser?.email || targetUser?._id?.toString(),
-      },
+      ip_address: req.ip,
       success: true,
       source: "manual",
       ip_address: req.ip,
@@ -659,6 +699,8 @@ export const assignPagesToEmployee = async (req, res) => {
   try {
     const { shopId, employeeId, pages } = req.body;
     const currentUserId = req.user._id;
+    const currentUser = await User.findById(currentUserId);
+    const targetUser = await User.findById(employeeId);
 
     if (!shopId || !employeeId || !Array.isArray(pages)) {
       return res.status(400).json({
@@ -715,6 +757,14 @@ export const assignPagesToEmployee = async (req, res) => {
 
     // Merge: giữ page cũ không bị mất nếu không có trong danh sách mới
     const existingPages = employee.facebook_pages || [];
+
+    // TẠO DANH SÁCH TÊN PAGE ĐỂ LƯU LOG
+    const pageNames = normalizedPages
+      .map(p => p.page_name)
+      .filter(Boolean)
+      .join(", ");
+    const pageCount = normalizedPages.length;
+    
     const mergedPages = [
       ...normalizedPages,
       ...existingPages.filter((old) => !normalizedPages.some((np) => np.page_id === old.page_id)),
@@ -781,12 +831,17 @@ export const assignPagesToEmployee = async (req, res) => {
 
     await saveLog({
       user_id: currentUserId,
-      shop_id: shopId,
+      user_name: currentUser.full_name || currentUser.email,
+      shop_id: shop._id,
+      shop_name: shop.shop_name,
       action: "ASSIGN_PAGES",
       target_type: "FacebookPage",
       target_id: employeeId,
+      target_name: targetUser.full_name || targetUser.email,
+      description: `Phân quyền cho nhân viên ${targetUser.full_name || targetUser.email} vào các page: ${pageNames} (${pageCount} trang); Cửa hàng: ${shop.shop_name}`,
       request: req.body,
       response: updatedEmployee,
+      ip_address: req.ip,
       success: true,
       source: "manual",
       ip_address: req.ip,
@@ -822,6 +877,20 @@ export const deleteShopUser = async (req, res) => {
         message: getErrorMessage(ErrorCode.EMP_001, 'vi'),
       },
     });
+    // await saveLog({
+    //   user_id: currentUserId,
+    //   user_name: actorName,
+    //   shop_id: shopUser.shop_id,
+    //   shop_name: shopName,
+    //   action: "REMOVE_EMPLOYEE",
+    //   target_type: "ShopUser",
+    //   target_id: shopUser.user_id?._id?.toString(),
+    //   target_name: employeeName,
+    //   description: `${actorName} đã xóa nhân viên "${employeeName}" ra khỏi cửa hàng "${shopName}"`,
+    //   ip_address: req.ip,
+    //   success: true,
+    //   source: "manual",
+    // });
     res.json({ message: "ShopUser deleted" });
   } catch (error) {
     res.status(500).json({

@@ -25,6 +25,7 @@ export const createShop = async (req, res) => {
       });
     }
     const ownerId = req.user._id;
+    const currentUser = await User.findById(ownerId);
     // Kiểm tra xem user đã có shop trùng tên chưa
     const existingShop = await Shop.findOne({
       owner_id: ownerId,
@@ -59,10 +60,13 @@ export const createShop = async (req, res) => {
     console.log("Creating shop:", req.body);
     await saveLog({
       user_id: ownerId,
+      user_name: currentUser.full_name || currentUser.email,
       shop_id: shop._id,
+      shop_name: shop.shop_name,
       action: "CREATE_SHOP",
       target_type: "Shop",
       target_id: shop._id.toString(),
+      target_name: shop.shop_name,
       request: req.body,
       response: shop,
       ip_address: req.ip,
@@ -300,7 +304,7 @@ export const getShopLogs = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: logs,
+      data: logs, shopId,
     });
   } catch (error) {
     console.error("Lỗi getShopLogs:", error);
@@ -347,6 +351,7 @@ export const connectFacebookPage = async (req, res) => {
   try {
     const { pageId, pageAccessToken } = req.body;
     const userId = req.user._id;
+    const currentUser = await User.findById(userId);
     if (!pageId || !pageAccessToken) {
       return res.status(400).json({ success: false, message: 'Thiếu tham số.' });
     }
@@ -446,10 +451,14 @@ export const connectFacebookPage = async (req, res) => {
 
     await saveLog({
       user_id: userId,
+      user_name: currentUser.full_name || currentUser.email,
       shop_id: shopId,
+      shop_name: shop.shop_name,
       action: "CONNECT_FACEBOOK_PAGE",
       target_type: "FacebookPage",
       target_id: pageId,
+      target_name: pageInfo?.name || pageId,
+      page_info: pageInfo,
       request: req.body,
       response: { shop, shopUser: updatedShopUser },
       ip_address: req.ip,
@@ -470,6 +479,7 @@ export const disconnectFacebookPage = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Thiếu tham số.' });
     }
     const userId = req.user._id;
+    const currentUser = await User.findById(userId);
 
     // Lấy shop hiện tại của user
     const currentUserRole = await UserRole.findOne({
@@ -512,10 +522,13 @@ export const disconnectFacebookPage = async (req, res) => {
 
     await saveLog({
       user_id: userId,
+      user_name: currentUser.full_name || currentUser.email,
       shop_id: shopId,
+      shop_name: updatedShop?.shop_name || "Shop",
       action: "DISCONNECT_FACEBOOK_PAGE",
       target_type: "FacebookPage",
       target_id: pageId,
+      target_name: pageId,
       request: req.body,
       success: true,
       ip_address: req.ip,

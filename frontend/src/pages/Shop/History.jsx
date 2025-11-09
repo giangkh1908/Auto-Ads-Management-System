@@ -1,13 +1,38 @@
+// src/pages/shop/History.jsx
 import { useTranslation } from "react-i18next";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { ROUTES } from "../../constants/app.constants";
 import "./Shop.css";
 import { STORAGE_KEYS } from "../../constants/app.constants";
+import { formatDistanceToNow, format } from "date-fns";
+import { vi, enUS } from "date-fns/locale";
+
+const Icon = ({ type }) => {
+  switch (type) {
+    case "CREATE_SHOP":
+    case "ADD_EMPLOYEE":
+      return <span className="log-icon add">add</span>;
+    case "REMOVE_EMPLOYEE":
+    case "DISCONNECT_FACEBOOK_PAGE":
+      return <span className="log-icon remove">remove</span>;
+    case "UPDATE_USER_ROLE":
+    case "ASSIGN_PAGES":
+      return <span className="log-icon assign">assignment</span>;
+    case "TRANSFER_OWNERSHIP":
+      return <span className="log-icon transfer">swap_horiz</span>;
+    case "CONNECT_FACEBOOK_PAGE":
+      return <span className="log-icon connect">link</span>;
+    default:
+      return <span className="log-icon default">info</span>;
+  }
+};
 
 function History() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const location = useLocation();
   const [logs, setLogs] = useState([]);
+  const [currentShopId, setCurrentShopId] = useState(""); // LẤY SHOP ID CHUẨN NHẤT
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,12 +41,16 @@ function History() {
         const res = await fetch("http://localhost:5001/api/shops/logs", {
           method: "GET",
           headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
-        },
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
+          },
         });
         const data = await res.json();
-        if (data.success) setLogs(data.data);
+        if (data.success && data.data.length > 0) {
+          const sortedLogs = data.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          setLogs(sortedLogs);
+          setCurrentShopId(data.shopId);
+        }
       } catch (err) {
         console.error("Error fetching logs:", err);
       } finally {
@@ -31,22 +60,21 @@ function History() {
     fetchLogs();
   }, []);
 
-  const renderNote = (log) => {
-    const name = log.meta?.employee_name || "";
-    const pages = log.meta?.pages?.join(", ");
-    switch (log.action) {
-      case "assign_page":
-        return `Phân quyền cho nhân viên ${name} vào các page: ${pages}`;
-      case "remove_page":
-        return `Ngắt kết nối fanpage: ${pages}`;
-      case "add_employee":
-        return `Thêm mới nhân viên ${name}`;
-      case "remove_employee":
-        return `Xóa nhân viên ${name} ra khỏi Shop`;
-      case "relinquish_ownership":
-        return `Chuyển quyền chủ Shop cho nhân viên ${name}`;
-      default:
-        return log.action || "Hành động không xác định";
+  // Format thời gian
+  const formatTime = (date) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffInHours = (now - d) / (1000 * 60 * 60);
+
+    if (diffInHours < 24) {
+      return formatDistanceToNow(d, {
+        addSuffix: true,
+        locale: i18n.language === "vi" ? vi : enUS,
+      });
+    } else if (diffInHours < 168) {
+      return format(d, "EEEE, HH:mm", { locale: i18n.language === "vi" ? vi : enUS });
+    } else {
+      return format(d, "dd/MM/yyyy HH:mm", { locale: i18n.language === "vi" ? vi : enUS });
     }
   };
 
@@ -56,9 +84,15 @@ function History() {
         <NavLink end to={ROUTES.SHOP} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>
           {t("shop.my_shop")}
         </NavLink>
-        <NavLink to={ROUTES.SHOP_EMPLOYEE} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>
+
+        {/* CHUYỂN ĐÚNG SHOP ID */}
+        <NavLink
+          to={`${ROUTES.SHOP_EMPLOYEE}/${currentShopId}`}
+          className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
+        >
           {t("shop.employee")}
         </NavLink>
+
         <NavLink to={ROUTES.SHOP_HISTORY} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>
           {t("shop.history")}
         </NavLink>
@@ -67,29 +101,57 @@ function History() {
       <div className="shop-page">
         <div className="shop-container">
           <div className="shop-content">
+            <h2 className="history-title">
+              Lịch sử hoạt động
+            </h2>
+
             {loading ? (
-              <p>Đang tải lịch sử...</p>
+              <div className="history-skeleton">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="skeleton-item">
+                    <div className="skeleton-avatar"></div>
+                    <div className="skeleton-text"></div>
+                    <div className="skeleton-time"></div>
+                  </div>
+                ))}
+              </div>
             ) : logs.length === 0 ? (
-              <p>Không có lịch sử hoạt động.</p>
+              <div className="history-empty">
+                <p>Chưa có hoạt động nào.</p>
+              </div>
             ) : (
-              <table className="history-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Note</th>
-                    <th>Created</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <tr key={log._id}>
-                      <td>{log.user_id?.full_name || "Hệ thống"}</td>
-                      <td>{renderNote(log)}</td>
-                      <td>{new Date(log.created_at).toLocaleString("vi-VN")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="history-list">
+                {logs.map((log) => (
+                  <div key={log._id} className="history-item">
+                    <div className="history-avatar">
+                      {log.user_id?.avatar ? (
+                        <img src={log.user_id.avatar} alt={log.user_id.full_name} />
+                      ) : (
+                        <div className="avatar-placeholder">
+                          {log.user_id?.full_name?.[0] || "U"}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="history-content">
+                      <div className="history-header">
+                        <span className="history-user">
+                          {log.user_name || log.user_id?.full_name || log.user_id?.email || "Hệ thống"}
+                        </span>
+                        <Icon type={log.action} />
+                      </div>
+
+                      <div className="history-description">
+                        {log.description || "Đã thực hiện một hành động"}
+                      </div>
+
+                      <div className="history-time">
+                        {formatTime(log.created_at)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
