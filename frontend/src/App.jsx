@@ -27,6 +27,7 @@ import Employee from './pages/Shop/Employee.jsx'
 import History from './pages/Shop/History.jsx'
 import ScrollToTop from './utils/ScrollToTop.jsx'
 import { ROUTES, HEADER_ROUTES, AUTH_MODES } from './constants/app.constants'
+import "antd/dist/reset.css";
 
 function AppContent() {
   const [authVisible, setAuthVisible] = useState(false)

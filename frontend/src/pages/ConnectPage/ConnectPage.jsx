@@ -24,8 +24,8 @@ function ConnectPage() {
     const load = async () => {
       try {
         const me = await profileService.getCurrentProfile();
-        const shop = me?.data?.shop || me?.shop;
-        setShopId(shop?._id || null);
+        const shop = me?.data?.shopUser || me?.shopUser;
+        setShopId(shop?.shop_id || null);
         const connected = Array.isArray(shop?.facebook_pages)
           ? shop.facebook_pages
               .filter((p) => p.connected_status === "connected")

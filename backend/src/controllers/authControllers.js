@@ -9,7 +9,9 @@ import {
   sendVerificationEmail,
   sendPasswordResetEmail,
 } from "../services/emailService.js";
-import jwt from "jsonwebtoken";
+import ShopUser from "../models/shops/shopUser.model.js";
+import UserRole from "../models/userRole.model.js";
+import { RoleEnum } from "../constants/enum.js";
 
 // Hàm xác thực CAPTCHA bằng axios
 async function verifyCaptcha(token) {
@@ -94,7 +96,7 @@ export const register = async (req, res) => {
     });
 
     // Tạo shop mặc định cho user mới
-    await Shop.create({
+    const shop = await Shop.create({
       shop_name: full_name,
       owner_id: user._id,
       status: "active",
@@ -106,6 +108,18 @@ export const register = async (req, res) => {
       created_by: user._id,
       updated_by: user._id,
     });
+    const shopUser = await ShopUser.create({
+        user_id: user._id,
+        shop_id: shop._id,
+        is_manager: true,
+      });
+      await UserRole.create({
+        user_id: user._id,
+        role_id: RoleEnum.SHOP_OWNER,
+        shop_id: shop._id,
+        shop_user_id: shopUser._id,
+        is_current: true,
+      });
 
     // Tạo token xác minh email
     const token = crypto.randomBytes(32).toString("hex");
@@ -274,7 +288,7 @@ export const facebookLogin = async (req, res) => {
       });
 
       // Tạo shop mặc định cho user Facebook lần đầu
-      await Shop.create({
+      const shop = await Shop.create({
         shop_name: fbData.name,
         owner_id: user._id,
         status: "active",
@@ -285,6 +299,18 @@ export const facebookLogin = async (req, res) => {
         },
         created_by: user._id,
         updated_by: user._id,
+      });
+      const shopUser = await ShopUser.create({
+        user_id: user._id,
+        shop_id: shop._id,
+        is_manager: true,
+      });
+      await UserRole.create({
+        user_id: user._id,
+        role_id: RoleEnum.SHOP_OWNER,
+        shop_id: shop._id,
+        shop_user_id: shopUser._id,
+        is_current: true,
       });
     } else {
       user.avatar = fbData.picture?.data?.url || user.avatar;
@@ -421,21 +447,57 @@ export const resetPassword = async (req, res) => {
 export const getCurrentUser = async (req, res) => {
   try {
     const user = req.user;
-    const shop = await Shop.findOne({
-      owner_id: user._id,
+
+    // Lấy role hiện tại (is_current = true)
+    const currentRole = await UserRole.findOne({
+      user_id: user._id,
+      is_current: true,
       deleted_at: null,
+    })
+      .populate("role_id", "role_name permissions") // optional: lấy thông tin role
+      .lean();
+
+    if (!currentRole) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy vai trò hiện tại của người dùng.",
+      });
+    }
+
+    // Lấy thông tin Shop tương ứng
+    const shop = await Shop.findById(currentRole.shop_id).lean();
+
+    if (!shop) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy cửa hàng tương ứng với vai trò hiện tại.",
+      });
+    }
+
+    // Lấy ShopUser tương ứng (liên kết user với shop)
+    const shopUser = await ShopUser.findOne({
+      user_id: user._id,
+      shop_id: currentRole.shop_id,
+      removed_at: null,
     }).lean();
 
+    // Trả dữ liệu về frontend
     return res.status(200).json({
       success: true,
       data: {
         user,
+        currentRole,
+        shopUser,
         shop,
       },
     });
   } catch (error) {
     console.error("Get current user error:", error);
-    return res.status(500).json({ success: false, message: "Lỗi hệ thống." });
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống khi lấy thông tin người dùng hiện tại.",
+      error: error.message,
+    });
   }
 };
 

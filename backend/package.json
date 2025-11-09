@@ -30,10 +30,13 @@
     "nodemailer": "^7.0.10",
     "openai": "^6.5.0",
     "p-limit": "^7.2.0",
+    "ts": "^0.2.2",
+    "tsc": "^2.0.4",
     "uuid": "^13.0.0",
     "validator": "^13.11.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2"
   }
 }

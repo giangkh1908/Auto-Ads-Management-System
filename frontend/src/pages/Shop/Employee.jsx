@@ -7,6 +7,7 @@ import "./Shop.css";
 import { toast } from "react-toastify";
 import { STORAGE_KEYS } from '../../constants/app.constants';
 import { useParams } from "react-router-dom";
+import { Modal, Checkbox, Button } from "antd";
 
 function Employee() {
   const { t } = useTranslation();
@@ -23,6 +24,11 @@ function Employee() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("Marketer");
+
+  const [selectedPages, setSelectedPages] = useState([]);
+  const [pages, setPages] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (shopId) {
@@ -101,6 +107,54 @@ function Employee() {
     }
   };
 
+  const handleOpenPageAssignModal = async (employee) => {
+    try {
+      setSelectedEmployee(employee);
+    const res = await fetch(`http://localhost:5001/api/shops/facebook/pages`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+        },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPages(data.data.pages || []);
+        setShowModal(true);
+      } else {
+        toast.error("Không thể tải danh sách Page");
+    } 
+    } catch (error) {
+      console.error("Error loading pages:", error);
+    }
+  };
+
+  const handleAssignPages = async () => {
+    const res = await fetch(`http://localhost:5001/api/shop-users/assign-pages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
+      },
+      body: JSON.stringify({
+        shopId: shopId,
+        employeeId: selectedEmployee.id,
+        pages: selectedPages.map((p) => ({
+          page_id: p.id,
+          page_token: p.pageAccessToken,
+        page_info: { name: p.name, category: p.category, picture_url: p.picture },
+      })),
+    }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast.success("Phân quyền Page thành công!");
+      setShowModal(false);
+    } else {
+      toast.error(data.message || "Không thể phân quyền Page");
+    }
+  };
+
   //Hành động với page
   const handleAction = async (userId, action) => {
     try {
@@ -173,6 +227,7 @@ function Employee() {
           "Authorization": `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`
         },
         body: JSON.stringify({
+          shopId: shopId,
           email: inviteEmail.trim(),
           roleId: inviteRole === "Marketing Admin"
             ? "68ff6cab6ef1d167ed39c6f9"
@@ -320,7 +375,7 @@ function Employee() {
                       <span>{employee.email}</span>
                     </div>
                     <div className="table-cell" data-label={t('shop.page_count')}>
-                      <span className="employee-count">{employee.page}</span>
+                      <Button onClick={() => handleOpenPageAssignModal(employee)}>Phân quyền Page</Button>
                     </div>
                     <div className="table-cell" data-label={t('shop.role')}>
                       <select
@@ -383,6 +438,23 @@ function Employee() {
         </div>
       </div>
       {renderInviteModal()}
+      <Modal open={showModal} onCancel={() => setShowModal(false)} title="Phân quyền Page cho nhân viên">
+        {pages.map((p) => (
+          <Checkbox
+            key={p.id}
+            checked={selectedPages.some((sp) => sp.id === p.id)}
+            onChange={(e) => {
+              if (e.target.checked) setSelectedPages([...selectedPages, p]);
+              else setSelectedPages(selectedPages.filter((sp) => sp.id !== p.id));
+            }}
+          >
+            <img src={p.picture} alt="" width={24} /> {p.name}
+          </Checkbox>
+        ))}
+        <Button type="primary" onClick={handleAssignPages}>
+          Lưu phân quyền
+        </Button>
+      </Modal>
     </div>
   );
 }

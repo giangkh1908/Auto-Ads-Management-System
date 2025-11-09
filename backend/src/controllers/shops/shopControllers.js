@@ -33,7 +33,7 @@ export const createShop = async (req, res) => {
     if (existingShop) {
       return res.status(400).json({
         success: false,
-        message: `Bạn đã có một cửa hàng tên "${req.body.shop_name}" rồi.`,
+        message: `Bạn đã có một cửa hàng tên "${existingShop.shop_name}" rồi.`,
       });
     }
 
@@ -153,7 +153,7 @@ export const getShopsByOwner = async (req, res) => {
       // Đếm số lượng page đang connected trong facebook_pages
       const pageCount = Array.isArray(shop.facebook_pages)
         ? shop.facebook_pages.filter((p) => p.connected_status === "connected")
-            .length
+          .length
         : 0;
 
       return {
@@ -307,10 +307,27 @@ export const getFacebookPages = async (req, res) => {
 // Kết nối page vào shop: lưu facebook_page_id và facebook_page_token
 export const connectFacebookPage = async (req, res) => {
   try {
-    const { shopId, pageId, pageAccessToken } = req.body;
-    if (!shopId || !pageId || !pageAccessToken) {
+    const { pageId, pageAccessToken } = req.body;
+    const userId = req.user._id;
+    if (!pageId || !pageAccessToken) {
       return res.status(400).json({ success: false, message: 'Thiếu tham số.' });
     }
+
+    // Xác định shop hiện tại qua UserRole (is_current = true)
+    const currentRole = await UserRole.findOne({
+      user_id: userId,
+      is_current: true,
+      revoked_at: null,
+    }).lean();
+
+    if (!currentRole) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy vai trò hiện tại của người dùng.",
+      });
+    }
+
+    const shopId = currentRole.shop_id;
 
     // Lấy data page hiển thị lên dashboard
     let pageInfo = null;
@@ -349,7 +366,47 @@ export const connectFacebookPage = async (req, res) => {
 
     await shop.save();
 
-    return res.status(200).json({ success: true, message: 'Kết nối page thành công.', data: { shop } });
+    // Cập nhật ShopUser bằng findOneAndUpdate (tránh VersionError)
+    const updatedShopUser = await ShopUser.findOneAndUpdate(
+      { user_id: userId, shop_id: shopId, removed_at: null },
+      [
+        {
+          $set: {
+            facebook_pages: {
+              $let: {
+                vars: {
+                  pages: {
+                    $ifNull: ["$facebook_pages", []],
+                  },
+                },
+                in: {
+                  $cond: [
+                    { $in: [pageId, { $map: { input: "$$pages", as: "p", in: "$$p.page_id" } }] },
+                    {
+                      $map: {
+                        input: "$$pages",
+                        as: "p",
+                        in: {
+                          $cond: [
+                            { $eq: ["$$p.page_id", pageId] },
+                            { ...newEntry },
+                            "$$p",
+                          ],
+                        },
+                      },
+                    },
+                    { $concatArrays: ["$$pages", [newEntry]] },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      ],
+      { new: true }
+    );
+
+    return res.status(200).json({ success: true, message: 'Kết nối page thành công.', data: { shop, shopUser: updatedShopUser } });
   } catch (error) {
     console.error('connectFacebookPage error:', error);
     return res.status(500).json({ success: false, message: 'Lỗi hệ thống.' });
@@ -359,23 +416,51 @@ export const connectFacebookPage = async (req, res) => {
 // Ngắt kết nối page khỏi shop (đặt connected_status = 'disconnected' và xoá token)
 export const disconnectFacebookPage = async (req, res) => {
   try {
-    const { shopId, pageId } = req.body;
-    if (!shopId || !pageId) {
+    const { pageId } = req.body;
+    if (!pageId) {
       return res.status(400).json({ success: false, message: 'Thiếu tham số.' });
     }
+    const userId = req.user._id;
 
-    // Xóa phần tử theo page_id để không phụ thuộc index (mảng tự co lại)
-    const result = await Shop.updateOne(
-      { _id: shopId },
-      { $pull: { facebook_pages: { page_id: pageId } } }
-    );
+    // Lấy shop hiện tại của user
+    const currentUserRole = await UserRole.findOne({
+      user_id: userId,
+      is_current: true,
+    });
 
-    if (result.modifiedCount === 0) {
-      return res.status(404).json({ success: false, message: 'Page không tồn tại trong shop.' });
+    if (!currentUserRole) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy vai trò hiện tại của người dùng." });
     }
 
-    const updated = await Shop.findById(shopId);
-    return res.status(200).json({ success: true, message: 'Đã ngắt kết nối page.', data: { shop: updated } });
+    const shopId = currentUserRole.shop_id;
+
+    // Tìm ShopUser tương ứng với người dùng hiện tại trong shop đó
+    const shopUser = await ShopUser.findOne({
+      user_id: userId,
+      shop_id: shopId,
+      removed_at: null,
+    });
+
+    if (!shopUser) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy ShopUser tương ứng." });
+    }
+    console.log(String(shopUser._id).trim());
+
+    // Xóa phần tử theo page_id để không phụ thuộc index (mảng tự co lại)
+    await Promise.all([
+      Shop.updateOne(
+        { _id: shopId },
+        { $pull: { facebook_pages: { page_id: pageId } } }
+      ),
+      ShopUser.updateOne(
+        { _id: String(shopUser._id).trim() },
+        { $pull: { facebook_pages: { page_id: pageId } } }
+      ),
+    ]);
+
+    const updatedShop = await Shop.findById(shopId);
+    const updatedShopUser = await ShopUser.findById(shopUser._id);
+    return res.status(200).json({ success: true, message: 'Đã ngắt kết nối page.', data: { shop: updatedShop, shopUser: updatedShopUser, } });
   } catch (error) {
     console.log('disconnectFacebookPage error:', error);
     return res.status(500).json({ success: false, message: 'Lỗi hệ thống.' });

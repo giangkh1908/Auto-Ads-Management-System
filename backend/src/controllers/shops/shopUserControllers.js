@@ -2,8 +2,13 @@ import ShopUser from "../../models/shops/shopUser.model.js";
 import UserRole from "../../models/userRole.model.js";
 import User from "../../models/user.model.js";
 import Role from "../../models/role.model.js";
-import jwt from "jsonwebtoken";
+import Shop from "../../models/shops/shop.model.js";
 import { sendInvitationEmail } from "../../services/emailService.js";
+import mongoose from "mongoose";
+import { ErrorCode, getErrorMessage } from "../../constants/errorCode.js";
+import { SuccessCode, getSuccessMessage } from "../../constants/successCode.js";
+import { StatusEnum } from "../../constants/enum.js";
+import { saveLog } from "../../utils/log.js";
 
 // Thêm User vào Shop
 export const createShopUser = async (req, res) => {
@@ -19,9 +24,16 @@ export const createShopUser = async (req, res) => {
 export const inviteEmployee = async (req, res) => {
   try {
     const { email, roleId, invitedBy } = req.body;
+    const { shopId } = req.body;
 
-    if (!email || !roleId || !invitedBy) {
-      return res.status(400).json({ success: false, message: "Thiếu dữ liệu đầu vào" });
+    if (!email || !roleId || !invitedBy || !shopId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: ErrorCode.COMMON_003,
+          message: getErrorMessage(ErrorCode.COMMON_003, 'vi'),
+        },
+      });
     }
 
     // Kiểm tra user tồn tại chưa
@@ -33,16 +45,20 @@ export const inviteEmployee = async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: "Đã gửi email mời nhân viên mới.",
+        code: SuccessCode.EMP_SUCCESS_001,
+        message: getSuccessMessage(SuccessCode.EMP_SUCCESS_001, 'vi'),
         invitedEmail: email,
       });
     }
 
     // Nếu user đã tồn tại → thêm trực tiếp vào Shop
-    if (user.status === "pending") {
+    if (user.status === StatusEnum.PENDING) {
       return res.status(400).json({
         success: false,
-        message: "Người dùng chưa hoàn tất đăng ký. Vui lòng chờ họ hoàn tất đăng ký qua email mời.",
+        error: {
+          code: ErrorCode.AUTH_007,
+          message: getErrorMessage(ErrorCode.AUTH_007, 'vi'),
+        },
       });
     }
 
@@ -51,7 +67,7 @@ export const inviteEmployee = async (req, res) => {
       shop_id: shopId,
       user_id: user._id,
       invited_by: invitedBy,
-      status: "active",
+      status: StatusEnum.ACTIVE,
     });
 
     // Tạo UserRole
@@ -61,17 +77,34 @@ export const inviteEmployee = async (req, res) => {
       role_id: roleId,
     });
 
+    await saveLog({
+      user_id: invitedBy,
+      shop_id: shopId,
+      action: "INVITE_EMPLOYEE",
+      target_type: "User",
+      target_id: user._id.toString(),
+      request: req.body,
+      response: shopUser,
+      success: true,
+      source: "manual",
+      ip_address: req.ip,
+      meta: { role_assigned: roleId, invited_email: email },
+    });
+
     return res.status(201).json({
       success: true,
-      message: "Đã thêm nhân viên vào shop.",
+      code: SuccessCode.EMP_SUCCESS_002,
+      message: getSuccessMessage(SuccessCode.EMP_SUCCESS_002, 'vi'),
       data: shopUser,
     });
   } catch (error) {
     console.error("inviteEmployee error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi hệ thống khi mời nhân viên",
-      error: error.message,
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),
+      },
     });
   }
 };
@@ -139,6 +172,8 @@ export const getUsersByShop = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      code: SuccessCode.SUCCESS_000,
+      message: getSuccessMessage(SuccessCode.SUCCESS_000, 'vi'),
       count: result.length,
       data: result
     });
@@ -147,7 +182,10 @@ export const getUsersByShop = async (req, res) => {
     console.error("getUsersByShop error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi hệ thống khi lấy danh sách user của shop"
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),
+      },
     });
   }
 };
@@ -158,10 +196,17 @@ export const getShopUserById = async (req, res) => {
     const shopUser = await ShopUser.findById(req.params.id)
       .populate("shop_id", "shop_name")
       .populate("user_id", "name email");
-    if (!shopUser) return res.status(404).json({ message: "ShopUser not found" });
+    if (!shopUser)
+      return res.status(404).json({
+        code: ErrorCode.EMP_001,
+        message: getErrorMessage(ErrorCode.EMP_001, 'vi')
+      });
     res.json(shopUser);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      code: ErrorCode.COMMON_999,
+      message: getErrorMessage(ErrorCode.COMMON_999, 'vi')
+    });
   }
 };
 
@@ -172,7 +217,7 @@ export const getShopsByUser = async (req, res) => {
 
     const memberships = await ShopUser.find({
       user_id: userId,
-      status: "active"
+      status: StatusEnum.ACTIVE,
     })
       .populate("shop_id", "shop_name industry status") // populate sang Shop
       .populate("invited_by", "name email"); // optional
@@ -183,7 +228,13 @@ export const getShopsByUser = async (req, res) => {
     res.status(200).json({ success: true, count: shops.length, data: shops });
   } catch (error) {
     console.error("getShopsByUser error:", error);
-    res.status(500).json({ success: false, message: "Lỗi hệ thống" });
+    res.status(500).json({
+      success: false,
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi')
+      }
+    });
   }
 };
 
@@ -193,10 +244,16 @@ export const updateShopUser = async (req, res) => {
     const shopUser = await ShopUser.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     });
-    if (!shopUser) return res.status(404).json({ message: "ShopUser not found" });
+    if (!shopUser) return res.status(404).json({
+      code: ErrorCode.EMP_001,
+      message: getErrorMessage(ErrorCode.EMP_001, 'vi')
+    });
     res.json(shopUser);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({
+      code: ErrorCode.COMMON_999,
+      message: getErrorMessage(ErrorCode.COMMON_999, 'vi')
+    });
   }
 };
 
@@ -207,10 +264,13 @@ export const updateUserRole = async (req, res) => {
     const { userId, newRoleId, currentUserId } = req.body;
 
     const targetUser = await User.findById(userId);
-    if (targetUser?.status === "pending") {
+    if (targetUser?.status === StatusEnum.PENDING) {
       return res.status(400).json({
         success: false,
-        message: "Người dùng chưa hoàn tất đăng ký.",
+        error: {
+          code: ErrorCode.AUTH_007,
+          message: getErrorMessage(ErrorCode.AUTH_007, 'vi'),
+        },
       });
     }
 
@@ -223,7 +283,10 @@ export const updateUserRole = async (req, res) => {
     if (!actorRole) {
       return res.status(403).json({
         success: false,
-        message: "Không tìm thấy vai trò của bạn trong shop này.",
+        error: {
+          code: ErrorCode.SHOP_001,
+          message: getErrorMessage(ErrorCode.SHOP_001, 'vi'),
+        },
       });
     }
 
@@ -238,7 +301,10 @@ export const updateUserRole = async (req, res) => {
     if (!targetRole) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy vai trò của người dùng này trong shop.",
+        error: {
+          code: ErrorCode.SHOP_001,
+          message: getErrorMessage(ErrorCode.SHOP_001, 'vi'),
+        },
       });
     }
 
@@ -249,7 +315,10 @@ export const updateUserRole = async (req, res) => {
     if (!newRole) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy vai trò cần gán.",
+        error: {
+          code: ErrorCode.ROLE_001,
+          message: getErrorMessage(ErrorCode.ROLE_001, 'vi'),
+        },
       });
     }
 
@@ -257,7 +326,10 @@ export const updateUserRole = async (req, res) => {
     if (newRole.role_name === "Shop Owner") {
       return res.status(403).json({
         success: false,
-        message: "Không thể gán quyền 'Shop Owner' cho người khác.",
+        error: {
+          code: ErrorCode.ROLE_006,
+          message: getErrorMessage(ErrorCode.ROLE_006, 'vi'),
+        },
       });
     }
 
@@ -271,7 +343,10 @@ export const updateUserRole = async (req, res) => {
     if (!canChange) {
       return res.status(403).json({
         success: false,
-        message: `Bạn (${actorRoleName}) không có quyền thay đổi vai trò của ${targetRoleName}.`,
+        error: {
+          code: ErrorCode.ROLE_006,
+          message: getErrorMessage(ErrorCode.ROLE_006, 'vi'),
+        },
       });
     }
 
@@ -285,20 +360,44 @@ export const updateUserRole = async (req, res) => {
     if (!updated) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy user hoặc role cần cập nhật.",
+        error: {
+          code: ErrorCode.COMMON_003,
+          message: getErrorMessage(ErrorCode.COMMON_003, 'vi'),
+        },
       });
     }
 
+    await saveLog({
+      user_id: currentUserId,
+      shop_id: shopId,
+      action: "UPDATE_USER_ROLE",
+      target_type: "UserRole",
+      target_id: userId,
+      request: { userId, newRoleId },
+      response: updated,
+      success: true,
+      source: "manual",
+      ip_address: req.ip,
+      meta: {
+        old_role: targetRoleName,
+        new_role: updated.role_id?.role_name,
+      },
+    });
+
     res.status(200).json({
       success: true,
-      message: `Đã cập nhật vai trò của ${targetRoleName} thành ${newRole.role_name}.`,
+      code: SuccessCode.ROLE_SUCCESS_002,
+      message: getSuccessMessage(SuccessCode.ROLE_SUCCESS_002, 'vi'),
       data: updated,
     });
   } catch (error) {
     console.error("updateUserRole error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi hệ thống khi cập nhật vai trò người dùng: " + error.message,
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),
+      },
     });
   }
 };
@@ -310,10 +409,13 @@ export const updateUserStatus = async (req, res) => {
     const { userId, newStatus, currentUserId } = req.body;
 
     const targetUser = await User.findById(userId);
-    if (targetUser?.status === "pending") {
+    if (targetUser?.status === StatusEnum.PENDING) {
       return res.status(400).json({
         success: false,
-        message: "Người dùng chưa hoàn tất đăng ký.",
+        error: {
+          code: ErrorCode.AUTH_007,
+          message: getErrorMessage(ErrorCode.AUTH_007, 'vi'),
+        },
       });
     }
 
@@ -326,7 +428,10 @@ export const updateUserStatus = async (req, res) => {
     if (!actorRole) {
       return res.status(403).json({
         success: false,
-        message: "Không tìm thấy vai trò của bạn trong shop này.",
+        error: {
+          code: ErrorCode.SHOP_001,
+          message: getErrorMessage(ErrorCode.SHOP_001, 'vi'),
+        },
       });
     }
 
@@ -341,7 +446,10 @@ export const updateUserStatus = async (req, res) => {
     if (!targetRole) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy vai trò của người dùng này trong shop.",
+        error: {
+          code: ErrorCode.ROLE_001,
+          message: getErrorMessage(ErrorCode.ROLE_001, 'vi'),
+        },
       });
     }
 
@@ -351,7 +459,10 @@ export const updateUserStatus = async (req, res) => {
     if (userId === currentUserId) {
       return res.status(400).json({
         success: false,
-        message: "Không thể thay đổi trạng thái của chính bạn.",
+        error: {
+          code: ErrorCode.AUTH_008,
+          message: getErrorMessage(ErrorCode.AUTH_008, 'vi'),
+        },
       });
     }
 
@@ -365,16 +476,22 @@ export const updateUserStatus = async (req, res) => {
     if (!canChange) {
       return res.status(403).json({
         success: false,
-        message: `Bạn (${actorRoleName}) không có quyền thay đổi trạng thái của ${targetRoleName}.`,
+        error: {
+          code: ErrorCode.ROLE_006,
+          message: getErrorMessage(ErrorCode.ROLE_006, 'vi'),
+        },
       });
     }
 
     // Kiểm tra trạng thái hợp lệ
-    const allowedStatuses = ["active", "inactive", "removed"];
+    const allowedStatuses = [StatusEnum.ACTIVE, StatusEnum.INACTIVE, StatusEnum.REMOVED];
     if (!allowedStatuses.includes(newStatus)) {
       return res.status(400).json({
         success: false,
-        message: "Trạng thái không hợp lệ.",
+        error: {
+          code: ErrorCode.COMMON_003,
+          message: getErrorMessage(ErrorCode.COMMON_003, 'vi'),
+        },
       });
     }
 
@@ -388,20 +505,40 @@ export const updateUserStatus = async (req, res) => {
     if (!updated) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng trong shop.",
+        error: {
+          code: ErrorCode.EMP_001,
+          message: getErrorMessage(ErrorCode.EMP_001, 'vi'),
+        },
       });
     }
 
+    await saveLog({
+      user_id: currentUserId,
+      shop_id: shopId,
+      action: "UPDATE_USER_STATUS",
+      target_type: "ShopUser",
+      target_id: userId,
+      request: { newStatus },
+      response: updated,
+      success: true,
+      source: "manual",
+      ip_address: req.ip,
+    });
+
     res.status(200).json({
       success: true,
-      message: `Đã cập nhật trạng thái của ${targetRoleName} thành '${newStatus}'.`,
+      code: SuccessCode.EMP_SUCCESS_003,
+      message: getSuccessMessage(SuccessCode.EMP_SUCCESS_003, 'vi'),
       data: updated,
     });
   } catch (error) {
     console.error("updateUserStatus error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi hệ thống khi cập nhật trạng thái người dùng.",
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),
+      },
     });
   }
 };
@@ -413,8 +550,14 @@ export const relinquishOwnership = async (req, res) => {
     const { employeeId } = req.body;
 
     const targetUser = await User.findById(employeeId);
-    if (targetUser?.status === "pending") {
-      return res.status(400).json({ success: false, message: "Người dùng chưa hoàn tất đăng ký." });
+    if (targetUser?.status === StatusEnum.PENDING) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: ErrorCode.AUTH_007,
+          message: getErrorMessage(ErrorCode.AUTH_007, 'vi'),
+        },
+      });
     }
 
     // Kiểm tra user hiện tại có phải là chủ shop không
@@ -422,17 +565,28 @@ export const relinquishOwnership = async (req, res) => {
     const marketingRole = await Role.findOne({ role_name: "Marketing Admin" });
 
     if (!ownerRole || !marketingRole)
-      return res.status(400).json({ message: "Role dữ liệu chưa được khởi tạo đầy đủ" });
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: ErrorCode.ROLE_001,
+          message: getErrorMessage(ErrorCode.ROLE_001, 'vi'),
+        },
+      });
 
     const currentOwnerRole = await UserRole.findOne({
       user_id: currentUserId,
       shop_id: shopId,
       role_id: ownerRole._id,
     });
-    console.log("currentOwnerRole:", currentOwnerRole);
 
     if (!currentOwnerRole)
-      return res.status(403).json({ message: "Bạn không có quyền thực hiện thao tác này." });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: ErrorCode.ROLE_006,
+          message: getErrorMessage(ErrorCode.ROLE_006, 'vi'),
+        },
+      });
 
     // Kiểm tra nhân viên có thuộc shop không
     const employeeRole = await UserRole.findOne({
@@ -441,7 +595,13 @@ export const relinquishOwnership = async (req, res) => {
     });
 
     if (!employeeRole)
-      return res.status(404).json({ message: "Nhân viên không thuộc cửa hàng này." });
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: ErrorCode.EMP_001,
+          message: getErrorMessage(ErrorCode.EMP_001, 'vi'),
+        },
+      });
 
     // Cập nhật role: chuyển quyền
     await Promise.all([
@@ -457,10 +617,197 @@ export const relinquishOwnership = async (req, res) => {
       ),
     ]);
 
-    return res.status(200).json({ message: "Đã chuyển quyền Shop Owner thành công." });
+    await saveLog({
+      user_id: currentUserId,
+      shop_id: shopId,
+      action: "TRANSFER_OWNERSHIP",
+      target_type: "User",
+      target_id: employeeId,
+      request: req.body,
+      response: {
+        from_role: "Shop Owner",
+        to_role: "Marketing Admin",
+        new_owner: targetUser?.email || targetUser?._id?.toString(),
+      },
+      success: true,
+      source: "manual",
+      ip_address: req.ip,
+      meta: {
+        transferred_by: currentUserId.toString(),
+        transferred_to: employeeId.toString(),
+        timestamp: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      code: SuccessCode.ROLE_SUCCESS_002,
+      message: getSuccessMessage(SuccessCode.ROLE_SUCCESS_002, 'vi'),
+    });
   } catch (error) {
     console.error("Lỗi relinquishOwnership:", error);
-    res.status(500).json({ message: "Lỗi hệ thống", error: error.message });
+    res.status(500).json({
+      success: false,
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),
+      },
+    });
+  }
+};
+
+export const assignPagesToEmployee = async (req, res) => {
+  try {
+    const { shopId, employeeId, pages } = req.body;
+    const currentUserId = req.user._id;
+
+    if (!shopId || !employeeId || !Array.isArray(pages)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: ErrorCode.COMMON_003,
+          message: getErrorMessage(ErrorCode.COMMON_003, 'vi'),
+        },
+      });
+    }
+
+    const shopObjectId = new mongoose.Types.ObjectId(shopId);
+    const employeeObjectId = new mongoose.Types.ObjectId(employeeId);
+
+    // Kiểm tra ShopUser (employee & current user)
+    const [employee] = await Promise.all([
+      ShopUser.findOne({ user_id: employeeObjectId, shop_id: shopObjectId }),
+      ShopUser.findOne({ user_id: currentUserId, shop_id: shopObjectId }),
+    ]);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: ErrorCode.EMP_001,
+          message: getErrorMessage(ErrorCode.EMP_001, 'vi'),
+        },
+      });
+    }
+
+    // Kiểm tra quyền người thực hiện (chỉ Owner hoặc Marketing Admin)
+    const hasPermission = await UserRole.hasPermission(currentUserId, shopObjectId, "employee", "assign_page");
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: ErrorCode.ROLE_006,
+          message: getErrorMessage(ErrorCode.ROLE_006, 'vi'),
+        },
+      });
+    }
+
+    // Cập nhật facebook_pages cho ShopUser (employee)
+    const normalizedPages = pages.map((p) => ({
+      page_id: p.page_id,
+      page_name: p.page_info?.name || "",
+      page_category: p.page_info?.category || "",
+      page_access_token: p.page_token,
+      picture_url: p.page_info?.picture_url || "",
+      connected_status: "connected",
+      assigned_by: currentUserId,
+      assigned_at: new Date(),
+    }));
+
+    // Merge: giữ page cũ không bị mất nếu không có trong danh sách mới
+    const existingPages = employee.facebook_pages || [];
+    const mergedPages = [
+      ...normalizedPages,
+      ...existingPages.filter((old) => !normalizedPages.some((np) => np.page_id === old.page_id)),
+    ];
+
+    // Cập nhật employee bằng findOneAndUpdate (thay vì .save())
+    const updatedEmployee = await ShopUser.findOneAndUpdate(
+      { user_id: employeeObjectId, shop_id: shopObjectId },
+      { $set: { facebook_pages: mergedPages } },
+      { new: true }
+    );
+
+    // Cập nhật User.facebook_pages (và overwrite token nếu khác)
+    const shop = await Shop.findOne(shopObjectId);
+    if (shop) {
+      const updatedPages = Array.isArray(shop.facebook_pages)
+        ? [...shop.facebook_pages]
+        : [];
+
+      normalizedPages.forEach((p) => {
+        const existingIndex = updatedPages.findIndex(
+          (sp) => sp.page_id === p.page_id
+        );
+
+        if (existingIndex !== -1) {
+          // Nếu đã tồn tại page → chỉ cập nhật token nếu khác
+          if (updatedPages[existingIndex].page_token !== p.page_access_token) {
+            updatedPages[existingIndex].page_token = p.page_access_token;
+          }
+
+          // Cập nhật lại thông tin page_info (nếu có thay đổi)
+          updatedPages[existingIndex].page_info = {
+            ...updatedPages[existingIndex].page_info,
+            name: p.page_name || updatedPages[existingIndex].page_info?.name,
+            category: p.page_category || updatedPages[existingIndex].page_info?.category,
+            picture_url: p.picture_url || updatedPages[existingIndex].page_info?.picture_url,
+          };
+
+          updatedPages[existingIndex].connected_status = StatusEnum.CONNECTED;
+          updatedPages[existingIndex].last_synced_at = new Date();
+        } else {
+          // Nếu chưa có → thêm mới
+          updatedPages.push({
+            page_id: p.page_id,
+            page_token: p.page_access_token,
+            page_info: {
+              name: p.page_name,
+              category: p.page_category,
+              picture_url: p.picture_url,
+              link: p.page_link || `https://www.facebook.com/${p.page_id}`,
+            },
+            connected_status: StatusEnum.CONNECTED,
+            connected_at: new Date(),
+            last_synced_at: new Date(),
+          });
+        }
+      });
+      shop.facebook_pages = updatedPages;
+
+      shop.updated_by = currentUserId;
+
+      await shop.save();
+    }
+
+    await saveLog({
+      user_id: currentUserId,
+      shop_id: shopId,
+      action: "ASSIGN_PAGES",
+      target_type: "FacebookPage",
+      target_id: employeeId,
+      request: req.body,
+      response: updatedEmployee,
+      success: true,
+      source: "manual",
+      ip_address: req.ip,
+      meta: { assigned_pages: pages.map(p => p.page_id) },
+    });
+
+    return res.status(200).json({
+      success: true,
+      code: SuccessCode.SUCCESS_000,
+      message: getSuccessMessage(SuccessCode.SUCCESS_000, 'vi'),
+      data: updatedEmployee,
+    });
+  } catch (error) {
+    console.error("Lỗi khi phân quyền Page:", error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),
+      },
+    });
   }
 };
 
@@ -468,9 +815,21 @@ export const relinquishOwnership = async (req, res) => {
 export const deleteShopUser = async (req, res) => {
   try {
     const shopUser = await ShopUser.findByIdAndDelete(req.params.id);
-    if (!shopUser) return res.status(404).json({ message: "ShopUser not found" });
+    if (!shopUser) return res.status(404).json({
+      status: false,
+      error: {
+        code: ErrorCode.EMP_001,
+        message: getErrorMessage(ErrorCode.EMP_001, 'vi'),
+      },
+    });
     res.json({ message: "ShopUser deleted" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      status: false,
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),
+      },
+    });
   }
 };
