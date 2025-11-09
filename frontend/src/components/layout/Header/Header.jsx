@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../hooks/useAuth";
-import shopService from "../../../services/shopService";
+import { STORAGE_KEYS } from "../../../constants/app.constants";
 import "./Header.css";
 import avatar from "../../../assets/home.jpg";
 import {
@@ -13,6 +13,8 @@ import {
   Package,
   BookOpen,
   Gem,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import logo_1 from "../../../assets/Logo_Fchat.png";
 import logo_2 from "../../../assets/Logo_Fchat_2.png";
@@ -26,6 +28,9 @@ function Header({ onLoginClick }) {
   const [openMenu, setOpenMenu] = useState(null); //"avatar", "user" || null
   const [shops, setShops] = useState([]);
   const [selectedShop, setSelectedShop] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [switching, setSwitching] = useState(false);
+
   const viFlag = "https://flagcdn.com/w40/vn.png";
   const enFlag = "https://flagcdn.com/w40/us.png";
 
@@ -52,11 +57,12 @@ function Header({ onLoginClick }) {
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handleClickOutside = (e) => {
       if (
         openMenu &&
-        !event.target.closest(".user-menu") &&
-        !event.target.closest(".dropdown-language")
+        !e.target.closest(".user-menu") &&
+        !e.target.closest(".dropdown-language") &&
+        !e.target.closest(".dropdown-shop")
       ) {
         setOpenMenu(null);
       }
@@ -69,27 +75,60 @@ function Header({ onLoginClick }) {
     }
   }, [openMenu]);
 
-  // Fetch danh sách shops
+  // FETCH SHOPS + TỰ ĐỘNG CHỌN SHOP HIỆN TẠI
   useEffect(() => {
     const fetchShops = async () => {
-      if (isAuthenticated && user) {
-        try {
-          const response = await shopService.getMyShops();
+      if (!isAuthenticated || !user) return;
 
-          if (response?.items && response.items.length > 0) {
-            setShops(response.items);
-            // Lấy shop đã lưu hoặc chọn shop đầu tiên
-            const savedShopId = localStorage.getItem("selectedShopId");
-            const shopToSelect = savedShopId
-              ? response.items.find((s) => s._id === savedShopId)
-              : response.items[0];
-            if (shopToSelect) {
-              setSelectedShop(shopToSelect);
-            }
+      try {
+        setLoading(true);
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        const res = await fetch(`${base_url}/api/shops/owner`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const formattedShops = data.data.map((shop) => ({
+            id: shop._id,
+            shop_name: shop.shop_name || "Cửa hàng không tên",
+            package: shop.package || "Basic",
+            role: shop.user_role?.role_name || "Member",
+            is_current: shop.is_current || false,
+          }));
+
+          setShops(formattedShops);
+
+          // ƯU TIÊN: shop đang chọn trong localStorage
+          const savedShopId = localStorage.getItem("selectedShopId");
+          let currentShop = null;
+
+          if (savedShopId) {
+            currentShop = formattedShops.find(s => s.id === savedShopId);
           }
-        } catch (error) {
-          console.error("Error fetching shops:", error);
+
+          // Nếu không có → chọn shop có is_current: true
+          if (!currentShop) {
+            currentShop = formattedShops.find(s => s.is_current);
+          }
+
+          // Nếu vẫn không có → chọn shop đầu tiên
+          if (!currentShop && formattedShops.length > 0) {
+            currentShop = formattedShops[0];
+          }
+
+          if (currentShop) {
+            setSelectedShop(currentShop);
+            localStorage.setItem("selectedShopId", currentShop.id);
+          }
         }
+      } catch (err) {
+        console.error("Lỗi tải shops:", err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchShops();
@@ -100,10 +139,75 @@ function Header({ onLoginClick }) {
     setOpenMenu(openMenu === menu ? null : menu);
   };
 
-  //Click để đổi ngôn ngữ
-  const handleLanguageChange = (language) => {
-    i18n.changeLanguage(language);
-    toggleMenu("language");
+  const handleLanguageChange = (lang) => {
+    i18n.changeLanguage(lang);
+    setOpenMenu(null);
+  };
+
+  const handleShopSelect = async (shop) => {
+    if (!shop || switching) return; // Chống click liên tục
+
+    // Nếu đang là shop hiện tại → chỉ đóng menu
+    if (selectedShop?.id === shop.id) {
+      setOpenMenu(null);
+      return;
+    }
+
+    setSwitching(true);
+    setOpenMenu(null);
+
+    try {
+      // Gọi API switch shop
+      const res = await fetch(`${base_url}/api/shops/switch/${shop.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Cập nhật localStorage
+        localStorage.setItem("selectedShopId", shop.id);
+
+        // Cập nhật state
+        setSelectedShop(shop);
+
+        // Hiển thị thông báo đẹp (tùy bạn dùng toast/notify)
+        if (window.showToast) {
+          window.showToast?.("success", `Đã chuyển sang cửa hàng: ${shop.shop_name}`);
+        } else {
+          // Fallback nhẹ nhàng
+          console.log(`Switched to: ${shop.shop_name}`);
+        }
+
+        // Tự động reload trang shop nếu đang ở /shop/*
+        if (pathname.startsWith("/shop")) {
+          window.location.href = "/shop"; // Hard reload để cập nhật dữ liệu shop mới
+        } else if (pathname.startsWith("/dashboard") || pathname.startsWith("/analytics")) {
+          // Reload nhẹ để cập nhật context
+          window.location.reload();
+        }
+      } else {
+        // API lỗi → không đổi shop
+        if (window.showToast) {
+          window.showToast?.("error", data.message || "Không thể chuyển cửa hàng");
+        } else {
+          alert(data.message || "Không thể chuyển cửa hàng");
+        }
+      }
+    } catch (err) {
+      console.error("Switch shop error:", err);
+      if (window.showToast) {
+        window.showToast?.("error", "Lỗi kết nối server");
+      } else {
+        alert("Lỗi kết nối server");
+      }
+    } finally {
+      setSwitching(false);
+    }
   };
 
   return (
@@ -132,9 +236,8 @@ function Header({ onLoginClick }) {
             </button>
 
             <button
-              className={`nav-btn ${
-                pathname === "/account-management" ? "active" : ""
-              }`}
+              className={`nav-btn ${pathname === "/account-management" ? "active" : ""
+                }`}
               onClick={() => navigate("/account-management")}
             >
               <Megaphone size={18} />
@@ -150,9 +253,8 @@ function Header({ onLoginClick }) {
             </button>
 
             <button
-              className={`nav-btn ${
-                pathname.startsWith("/shop") ? "active" : ""
-              }`}
+              className={`nav-btn ${pathname.startsWith("/shop") ? "active" : ""
+                }`}
               onClick={() => navigate("/shop")}
             >
               <Store size={18} />
@@ -185,9 +287,8 @@ function Header({ onLoginClick }) {
 
             {isAuthenticated && (
               <button
-                className={`nav-btn-2 ${
-                  pathname === "/dashboard" ? "active" : ""
-                }`}
+                className={`nav-btn-2 ${pathname === "/dashboard" ? "active" : ""
+                  }`}
                 onClick={() => navigate("/dashboard")}
               >
                 <LayoutDashboard size={20} />
@@ -222,68 +323,57 @@ function Header({ onLoginClick }) {
           {/* Chỉ hiển thị menu user khi đã login và KHÔNG ở trang Home */}
           {isAuthenticated && pathname !== "/" && (
             <div className="user-menu">
-              {/* Tên + Dropdown menu */}
-              <div className="user-greeting-wrapper">
-                <span
-                  className="user-greeting"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => toggleMenu("shop")}
-                >
-                  <strong className="user-name-header">
-                    {user?.full_name}
-                  </strong>
-                  <p className="user-name-header-role">
-                    STARTER | Onwer{user?.role}
-                  </p>
-                </span>
-                {openMenu === "shop" && (
-                  <div className="dropdown-shop">
-                    <div className="dropdown-shop-header">
-                      <div className="dropdown-shop-list">
-                        {shops.length === 0 ? (
-                          <div className="dropdown-shop-empty">
-                            Chưa có shop
-                          </div>
-                        ) : (
-                          shops.map((shop) => (
-                            <div
-                              key={shop._id}
-                              className={`dropdown-shop-item ${
-                                selectedShop?._id === shop._id ? "active" : ""
-                              }`}
-                              onClick={() => {
-                                setSelectedShop(shop);
-                                localStorage.setItem(
-                                  "selectedShopId",
-                                  shop._id
-                                );
-                              }}
-                            >
-                              <div className="shop-item-info">
-                                <div className="shop-item-name">
-                                  {shop.shop_name}
-                                </div>
-                              </div>
-                              {selectedShop?._id === shop._id && (
-                                <span className="shop-item-check">✓</span>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
+              {/* SHOP SELECTOR */}
+              <div className="shop-selector" onClick={() => toggleMenu("shop")}>
+                {loading ? (
+                  <span>Đang tải...</span>
+                ) : selectedShop ? (
+                  <>
+                    <div className="shop-info">
+                      <strong className="shop-name">{selectedShop.shop_name}</strong>
+                      <small className="shop-role">{selectedShop.role}</small>
                     </div>
-                    <button
-                      className="btn-manage-shop"
-                      onClick={() => {
-                        navigate("/shop");
-                        setOpenMenu(null);
-                      }}
-                    >
-                      Quản lý shop
-                    </button>
-                  </div>
+                    <ChevronDown size={16} />
+                  </>
+                ) : (
+                  <span>Chọn cửa hàng</span>
                 )}
               </div>
+
+              {/* DROPDOWN SHOP */}
+              {openMenu === "shop" && (
+                <div className="dropdown-shop">
+                  <div className="dropdown-shop-header">
+                    <h4>Chọn cửa hàng</h4>
+                  </div>
+                  <div className="dropdown-shop-list">
+                    {shops.length === 0 ? (
+                      <div className="empty">Bạn chưa có cửa hàng nào</div>
+                    ) : (
+                      shops.map((shop) => (
+                        <div
+                          key={shop.id}
+                          className={`shop-item ${selectedShop?.id === shop.id ? "active" : ""} ${switching ? "disabled" : ""}`}
+                          onClick={() => !switching && handleShopSelect(shop)}
+                          style={{ opacity: switching && selectedShop?.id !== shop.id ? 0.6 : 1 }}
+                        >
+                          <div className="shop-item-name">
+                            {shop.shop_name}
+                            {switching && selectedShop?.id === shop.id && (
+                              <span style={{ marginLeft: 8, fontSize: 12 }}>Đang chuyển...</span>
+                            )}
+                          </div>
+                          <div className="shop-item-role">{shop.role}</div>
+                          {selectedShop?.id === shop.id && <Check size={16} className="check" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <button className="btn-manage-shop" onClick={() => navigate("/shop")}>
+                    Quản lý cửa hàng
+                  </button>
+                </div>
+              )}
 
               {/* Avatar + dropdown */}
               <div className="avatar-wrapper">
@@ -326,4 +416,5 @@ function Header({ onLoginClick }) {
     </header>
   );
 }
+
 export default Header;
