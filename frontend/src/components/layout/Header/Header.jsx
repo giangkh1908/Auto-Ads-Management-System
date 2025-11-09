@@ -179,15 +179,8 @@ function Header({ onLoginClick }) {
               <BookOpen size={20} />
               &nbsp;{t("header.guide")}
             </button>
-
-            <button
-              className={`nav-btn-2 ${
-                pathname === "/service-package" ? "active" : ""
-              }`}
-              onClick={() => navigate("/service-package")}
-            >
-              <Gem size={20} />
-              &nbsp;{t("header.service")}
+            <button onClick={() => navigate("/service-package")}>
+              <Gem size={20} /> {t("header.service")}
             </button>
 
             {isAuthenticated && (
