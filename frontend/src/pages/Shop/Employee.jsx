@@ -47,7 +47,7 @@ function Employee() {
     const loadShops = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:5001/api/shop-users/${shopId}`);
+        const res = await fetch(`${base_url}/api/shop-users/${shopId}`);
         const data = await res.json();
 
         if (data.success) {
@@ -81,7 +81,7 @@ function Employee() {
       };
       const newRoleId = roleMap[newRoleName];
 
-      const res = await fetch(`http://localhost:5001/api/shop-users/${shopId}`, {
+      const res = await fetch(`${base_url}/api/shop-users/${shopId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -110,7 +110,7 @@ function Employee() {
   const handleOpenPageAssignModal = async (employee) => {
     try {
       setSelectedEmployee(employee);
-    const res = await fetch(`http://localhost:5001/api/shops/facebook/pages`, {
+    const res = await fetch(`${base_url}/api/shops/facebook/pages`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -130,7 +130,7 @@ function Employee() {
   };
 
   const handleAssignPages = async () => {
-    const res = await fetch(`http://localhost:5001/api/shop-users/assign-pages`, {
+    const res = await fetch(`${base_url}/api/shop-users/assign-pages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -159,7 +159,7 @@ function Employee() {
   const handleAction = async (userId, action) => {
     try {
       if (action === "relinquish") {
-        const res = await fetch(`http://localhost:5001/api/shop-users/relinquish`, {
+        const res = await fetch(`${base_url}/api/shop-users/relinquish`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -185,7 +185,7 @@ function Employee() {
       else if (action === "deactivate") newStatus = "inactive";
       else if (action === "remove") newStatus = "removed";
 
-      const res = await fetch(`http://localhost:5001/api/shop-users/status/${shopId}`, {
+      const res = await fetch(`${base_url}/api/shop-users/status/${shopId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -220,7 +220,7 @@ function Employee() {
     }
 
     try {
-      const res = await fetch("http://localhost:5001/api/shop-users/invite", {
+      const res = await fetch(`${base_url}/api/shop-users/invite`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

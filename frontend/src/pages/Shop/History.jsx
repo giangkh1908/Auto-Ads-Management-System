@@ -38,7 +38,7 @@ function History() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const res = await fetch("http://localhost:5001/api/shops/logs", {
+        const res = await fetch(`${base_url}/api/shops/logs`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
