@@ -53,11 +53,16 @@ export const inviteEmployee = async (req, res) => {
       shop_name: shop.shop_name,
       action: "ADD_EMPLOYEE",
       target_type: "User",
-      target_id: user._id.toString(),
-      target_name: user.full_name || user.email,
-      description: `${currentUser.full_name || currentUser.email} đã thêm nhân viên "${user.full_name || user.email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
+      target_id: email,
+      target_name: email,
+      description: `${currentUser.full_name || currentUser.email} đã mời nhân viên "${email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
       request: req.body,
-      response: shopUser,
+      response: {
+        success: true,
+        invited_email: email,
+        role_name: role.role_name,
+        invitation_sent: true,
+      },
       success: true,
       source: "manual",
       ip_address: req.ip,
@@ -109,7 +114,14 @@ export const inviteEmployee = async (req, res) => {
       target_name: user.full_name || user.email,
       description: `${currentUser.full_name || currentUser.email} đã thêm nhân viên "${user.full_name || user.email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
       request: req.body,
-      response: shopUser,
+      response: {
+        success: true,
+        shop_user_id: shopUser._id.toString(),
+        user_id: user._id.toString(),
+        user_email: user.email,
+        role_name: role.role_name,
+        status: shopUser.status,
+      },
       success: true,
       source: "manual",
       ip_address: req.ip,
@@ -405,7 +417,14 @@ export const updateUserRole = async (req, res) => {
       target_name: targetUser.full_name || targetUser.email,
       description: `${currentUser.full_name || currentUser.email} đã thay đổi vai trò của "${targetUser.full_name || targetUser.email}" từ "${targetRoleName}" → "${newRole.role_name}" trong cửa hàng "${shop.shop_name}"`,
       request: req.body,
-      response: updated,
+      response: {
+        success: true,
+        user_id: userId.toString(),
+        user_email: targetUser.email,
+        old_role: targetRoleName,
+        new_role: newRole.role_name,
+        updated_at: new Date().toISOString(),
+      },
       success: true,
       source: "manual",
       ip_address: req.ip,
@@ -528,6 +547,24 @@ export const updateUserStatus = async (req, res) => {
       });
     }
 
+    // Lấy ShopUser trước khi update để lấy old_status
+    const oldShopUser = await ShopUser.findOne({
+      shop_id: shopId,
+      user_id: userId,
+    });
+
+    if (!oldShopUser) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: ErrorCode.EMP_001,
+          message: getErrorMessage(ErrorCode.EMP_001, 'vi'),
+        },
+      });
+    }
+
+    const oldStatus = oldShopUser.status;
+
     // Cập nhật trạng thái user trong shop
     const updated = await ShopUser.findOneAndUpdate(
       { shop_id: shopId, user_id: userId },
@@ -557,7 +594,15 @@ export const updateUserStatus = async (req, res) => {
       target_name: targetUser.full_name || targetUser.email,
       description: `${currentUser.full_name || currentUser.email} đã ${newStatus} nhân viên "${targetUser.full_name || targetUser.email}" trong cửa hàng "${shop.shop_name}"`,
       request: req.body,
-      response: updated,
+      response: {
+        success: true,
+        shop_user_id: updated._id.toString(),
+        user_id: userId.toString(),
+        user_email: targetUser.email,
+        old_status: oldStatus,
+        new_status: newStatus,
+        updated_at: new Date().toISOString(),
+      },
       success: true,
       source: "manual",
       ip_address: req.ip,
@@ -840,11 +885,18 @@ export const assignPagesToEmployee = async (req, res) => {
       target_name: targetUser.full_name || targetUser.email,
       description: `Phân quyền cho nhân viên ${targetUser.full_name || targetUser.email} vào các page: ${pageNames} (${pageCount} trang); Cửa hàng: ${shop.shop_name}`,
       request: req.body,
-      response: updatedEmployee,
+      response: {
+        success: true,
+        shop_user_id: updatedEmployee._id.toString(),
+        user_id: employeeId.toString(),
+        user_email: targetUser.email,
+        assigned_pages_count: pageCount,
+        assigned_page_ids: pages.map(p => p.page_id),
+        assigned_at: new Date().toISOString(),
+      },
       ip_address: req.ip,
       success: true,
       source: "manual",
-      ip_address: req.ip,
       meta: { assigned_pages: pages.map(p => p.page_id) },
     });
 

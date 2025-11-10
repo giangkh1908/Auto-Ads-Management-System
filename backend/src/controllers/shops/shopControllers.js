@@ -68,7 +68,14 @@ export const createShop = async (req, res) => {
       target_id: shop._id.toString(),
       target_name: shop.shop_name,
       request: req.body,
-      response: shop,
+      response: {
+        success: true,
+        shop_id: shop._id.toString(),
+        shop_name: shop.shop_name,
+        industry: shop.industry,
+        status: shop.status,
+        created_at: shop.created_at?.toISOString() || new Date().toISOString(),
+      },
       ip_address: req.ip,
     });
   } catch (error) {
@@ -324,22 +331,57 @@ export const getFacebookPages = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Không có Facebook access token. Vui lòng đăng nhập Facebook.' });
     }
 
+    // Lấy shop hiện tại của user
+    const currentRole = await UserRole.findOne({
+      user_id: req.user._id,
+      is_current: true,
+      revoked_at: null,
+    }).lean();
+
+    const currentShopId = currentRole?.shop_id || null;
+
     const fbResp = await fetch(`https://graph.facebook.com/me/accounts?fields=id,name,category,access_token,tasks,picture.width(200).height(200){url}&access_token=${user.facebookAccessToken}`);
     const fbData = await fbResp.json();
     if (!fbData?.data) {
       return res.status(400).json({ success: false, message: 'Không lấy được danh sách page từ Facebook', detail: fbData });
     }
 
-    const pages = fbData.data.map(p => ({
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      pageAccessToken: p.access_token,
-      tasks: p.tasks || [],
-      picture: p.picture?.data?.url || null,
-    }));
+    // Lấy danh sách tất cả shops đã kết nối với các pages
+    const allShops = await Shop.find({
+      'facebook_pages.connected_status': 'connected',
+    }).select('_id shop_name facebook_pages');
 
-    return res.status(200).json({ success: true, data: { pages } });
+    // Tạo map: page_id -> shop info
+    const pageToShopMap = new Map();
+    allShops.forEach(shop => {
+      shop.facebook_pages?.forEach(page => {
+        if (page.connected_status === 'connected') {
+          pageToShopMap.set(page.page_id, {
+            shop_id: shop._id.toString(),
+            shop_name: shop.shop_name,
+            is_current_shop: currentShopId && shop._id.toString() === currentShopId.toString(),
+          });
+        }
+      });
+    });
+
+    const pages = fbData.data.map(p => {
+      const connectedShop = pageToShopMap.get(p.id);
+      return {
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        pageAccessToken: p.access_token,
+        tasks: p.tasks || [],
+        picture: p.picture?.data?.url || null,
+        // Thông tin shop đã kết nối (nếu có)
+        connected_shop: connectedShop || null,
+        // Có thể kết nối: chưa kết nối hoặc đã kết nối với current shop
+        can_connect: !connectedShop || (connectedShop.is_current_shop),
+      };
+    });
+
+    return res.status(200).json({ success: true, data: { pages, current_shop_id: currentShopId } });
   } catch (error) {
     console.error('getFacebookPages error:', error);
     return res.status(500).json({ success: false, message: 'Lỗi hệ thống.' });
@@ -371,6 +413,20 @@ export const connectFacebookPage = async (req, res) => {
     }
 
     const shopId = currentRole.shop_id;
+
+    // Kiểm tra xem page đã được kết nối với shop khác chưa
+    const existingShop = await Shop.findOne({
+      _id: { $ne: shopId }, // Không phải shop hiện tại
+      'facebook_pages.page_id': pageId,
+      'facebook_pages.connected_status': 'connected',
+    });
+
+    if (existingShop) {
+      return res.status(400).json({
+        success: false,
+        message: `Page này đã được kết nối với shop "${existingShop.shop_name}". Mỗi page chỉ có thể kết nối với một shop duy nhất.`,
+      });
+    }
 
     // Lấy data page hiển thị lên dashboard
     let pageInfo = null;
@@ -460,7 +516,14 @@ export const connectFacebookPage = async (req, res) => {
       target_name: pageInfo?.name || pageId,
       page_info: pageInfo,
       request: req.body,
-      response: { shop, shopUser: updatedShopUser },
+      response: {
+        success: true,
+        shop_id: shopId.toString(),
+        shop_name: shop.shop_name,
+        page_id: pageId,
+        page_name: pageInfo?.name || pageId,
+        connected_at: new Date().toISOString(),
+      },
       ip_address: req.ip,
     });
 
