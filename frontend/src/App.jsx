@@ -15,6 +15,7 @@ import AccountManagement from "./pages/AccountManagement/AccountManagement.jsx";
 import AdsManagement from "./pages/AdsManagement/AdsManagement.jsx";
 import ArchiveAds from "./pages/ArchiveAds/ArchiveAds.jsx";
 import Analytics from "./pages/Analytics/Analytics.jsx";
+import AutomationRule from "./pages/AutomationRule/AutomationRule.jsx";
 import ConnectPage from "./pages/ConnectPage/ConnectPage.jsx";
 import ConnectAdAccount from "./pages/ConnectAdAccount/ConnectAdAccount.jsx";
 import ServicePackage from "./pages/ServicePackage/ServicePackage.jsx";
@@ -146,6 +147,18 @@ function AppContent() {
             <ProtectedRoute>
               <main className="page-content">
                 <Analytics />
+              </main>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Route cho Automation Rule */}
+        <Route
+          path={ROUTES.AUTOMATION_RULE}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <AutomationRule />
               </main>
             </ProtectedRoute>
           }

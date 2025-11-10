@@ -3,22 +3,52 @@ import mongoose from "mongoose";
 const adPerformanceSchema = new mongoose.Schema(
   {
     ads_id: { type: mongoose.Schema.Types.ObjectId, ref: "Ads", required: true },
-    date: { type: Date, required: true },
+    set_id: { type: mongoose.Schema.Types.ObjectId, ref: "AdsSet", index: true },
+    campaign_id: { type: mongoose.Schema.Types.ObjectId, ref: "AdsCampaign", index: true },
+    account_id: { type: mongoose.Schema.Types.ObjectId, ref: "AdsAccount", index: true },
+    date: { type: Date, required: true, index: true },
 
     impressions: { type: Number, default: 0 },
     reach: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 },
     spend: { type: Number, default: 0 },
     conversions: { type: Number, default: 0 },
+    frequency: { type: Number, default: 0 },
 
     cpc: { type: Number },
     cpm: { type: Number },
     ctr: { type: Number },
     conversion_rate: { type: Number },
+    cost_per_conversion: { type: Number },
 
-    actions: { type: [mongoose.Schema.Types.Mixed], default: [] },
-    breakdowns: { type: mongoose.Schema.Types.Mixed, default: {} },
-    attribution_windows: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // ===== Thêm các trường mới cho Analytics =====
+    
+    // Metadata fields for mapping
+    campaign_name: { type: String, trim: true },
+    adset_name: { type: String, trim: true },
+    ad_name: { type: String, trim: true },
+    page_name: { type: String, trim: true },
+    
+    // Ngân sách và tỷ lệ chi tiêu
+    daily_budget: { type: Number, default: 0 },
+    daily_spend_rate: { type: Number }, // % (spend/daily_budget * 100)
+    total_amount_spent: { type: Number, default: 0 },
+    
+    // Link-related metrics
+    link_clicks: { type: Number, default: 0 },
+    link_cpc: { type: Number }, // CPC cho link clicks
+    link_ctr: { type: Number }, // CTR cho link clicks
+    
+    // Website Purchase & ROAS
+    website_purchases: { type: Number, default: 0 }, // Meta Pixel conversions
+    website_purchase_roas: { type: Number }, // ROAS của lượt mua trên website
+    
+    // Results & Performance
+    results: { type: Number, default: 0 }, // Tổng kết quả
+    cost_per_result: { type: Number }, // Chi phí trên mỗi kết quả (CPA)
+    
+    // Audience Reach
+    audience_reach_percentage: { type: Number }, // % đối tượng tiếp cận được
 
     meta: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
@@ -26,7 +56,20 @@ const adPerformanceSchema = new mongoose.Schema(
 );
 
 adPerformanceSchema.index({ ads_id: 1, date: 1 }, { unique: true });
+adPerformanceSchema.index({ campaign_id: 1, date: 1 });
+adPerformanceSchema.index({ set_id: 1, date: 1 });
+adPerformanceSchema.index({ account_id: 1, date: 1 });
 adPerformanceSchema.index({ date: 1 });
+
+// Indexes cho search và filtering
+adPerformanceSchema.index({ campaign_name: 1 });
+adPerformanceSchema.index({ adset_name: 1 });
+adPerformanceSchema.index({ ad_name: 1 });
+adPerformanceSchema.index({ page_name: 1 });
+
+// Compound index cho aggregation queries
+adPerformanceSchema.index({ account_id: 1, campaign_id: 1, date: 1 });
+adPerformanceSchema.index({ account_id: 1, set_id: 1, date: 1 });
 
 const AdPerformance = mongoose.model("AdPerformance", adPerformanceSchema);
 export default AdPerformance;

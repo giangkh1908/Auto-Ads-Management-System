@@ -24,8 +24,8 @@ function ConnectPage() {
     const load = async () => {
       try {
         const me = await profileService.getCurrentProfile();
-        const shop = me?.data?.shop || me?.shop;
-        setShopId(shop?._id || null);
+        const shop = me?.data?.shopUser || me?.shopUser;
+        setShopId(shop?.shop_id || null);
         const connected = Array.isArray(shop?.facebook_pages)
           ? shop.facebook_pages
               .filter((p) => p.connected_status === "connected")
@@ -220,7 +220,7 @@ function ConnectPage() {
           ) : (
             <>
               {/* Search and Filter Bar */}
-              <div className="search-filter-bar-connect-page">
+              <div className="search-filter-bar">
                 <div className="search-section">
                   <input
                     type="text"
@@ -241,7 +241,7 @@ function ConnectPage() {
                     <option value="connected">{t('connect_page.filter_connected')}</option>
                     <option value="not-connected">{t('connect_page.filter_not_connected')}</option>
                   </select>
-                  <span className="page-count-connect">
+                  <span className="page-count">
                     {t('connect_page.pages_count', { count: filteredPages.length })}
                   </span>
                 </div>
@@ -313,7 +313,6 @@ function ConnectPage() {
                         onChange={() => handlePageSelect(page.id)}
                         className="page-checkbox"
                         disabled={page.status === t('connect_page.status_connected') || page.role !== "ADMIN"}
-                        title={page.status === t('connect_page.status_connected') ? t('connect_page.disable_title') : page.role !== "ADMIN" ? t('connect_page.disable_title') : ""}
                       />
                     </div>
                   </div>

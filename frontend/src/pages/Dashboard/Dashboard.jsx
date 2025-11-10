@@ -23,7 +23,7 @@ function Dashboard() {
     const load = async () => {
       try {
         const me = await profileService.getCurrentProfile();
-        const shop = me?.data?.shop || me?.shop;
+        const shop = me?.data?.shopUser || me?.shopUser;
         const pages = Array.isArray(shop?.facebook_pages)
           ? shop.facebook_pages
           : [];
@@ -90,10 +90,10 @@ function Dashboard() {
     if (itemId === "disconnect") {
       try {
         const me = await profileService.getCurrentProfile();
-        const shop = me?.data?.shop || me?.shop;
-        if (!shop?._id) return;
+        const shop = me?.data?.shopUser || me?.shopUser;
+        if (!shop?.shop_id) return;
         const res = await shopService.disconnectFacebookPage({
-          shopId: shop._id,
+          shopId: shop.shop_id,
           pageId,
         });
         // ✅ Kiểm tra phản hồi

@@ -18,7 +18,11 @@ import adsSetRoutes from "./routes/ads/adsSetRoutes.js";
 import adsRoutes from "./routes/ads/adsRoutes.js";
 import creativeRoutes from "./routes/ads/creativeRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
-import aiRoutes from "./routes/ai/aiRoutes.js"; 
+import aiRoutes from "./routes/ai/aiRoutes.js";
+import automationRuleRoutes from "./routes/automationRuleRoutes.js";
+
+// Import AutoRule Scheduler
+import { startAutoRuleScheduler } from './services/autoRuleScheduler.js'; 
 
 //Load các biến môi trường
 dotenv.config();
@@ -61,10 +65,14 @@ app.use("/api/creatives", creativeRoutes);
 app.use("/api/ads-wizard", adsWizardRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/automation-rules", automationRuleRoutes);
 
 // Connect database & start server
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server bắt đầu chạy trên cổng ${PORT}`);
+    
+    // Khởi chạy AutoRule scheduler sau khi server start
+    startAutoRuleScheduler();
   });
 });
