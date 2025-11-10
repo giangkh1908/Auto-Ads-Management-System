@@ -436,7 +436,8 @@ function Employee() {
           </div>
         </div>
       </div>
-    );
+    )
+  );
 
   // Lấy role từ cache ngay lập tức khi khởi tạo state
   const [userRoleInShop, setUserRoleInShop] = useState(() => {

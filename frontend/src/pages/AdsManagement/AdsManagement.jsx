@@ -37,6 +37,10 @@ function AdsManagement() {
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [selectedAdset, setSelectedAdset] = useState(null);
 
+  // Search and Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
+
   // Account
   const [adAccounts, setAdAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -58,8 +62,25 @@ function AdsManagement() {
     loadedAccounts: new Set() // Track accounts đã load đầy đủ data
   });
 
-  // Track tab trước đó để tránh xung đột logic
+  // Refs for optimization
   const prevActiveTabRef = useRef(activeTab);
+  const activeTabRef = useRef(activeTab);
+  const cacheRef = useRef(cache);
+  const datasetsRef = useRef(datasets);
+  const abortControllerRef = useRef(null);
+
+  // Update refs when state changes
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    cacheRef.current = cache;
+  }, [cache]);
+
+  useEffect(() => {
+    datasetsRef.current = datasets;
+  }, [datasets]);
 
   // 🔹 Pagination state (phải khai báo trước getFilteredRows)
   const [pagination, setPagination] = useState({
