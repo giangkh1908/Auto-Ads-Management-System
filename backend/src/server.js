@@ -23,6 +23,11 @@ import creativeRoutes from "./routes/ads/creativeRoutes.js";
 import adPerformanceRoutes from "./routes/ads/adPerformanceRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import aiRoutes from "./routes/ai/aiRoutes.js";
+import automationRuleRoutes from "./routes/automationRuleRoutes.js";
+
+// Import AutoRule Scheduler
+import { startAutoRuleScheduler } from './services/autoRuleScheduler.js'; 
+import aiRoutes from "./routes/ai/aiRoutes.js";
 import chatRoutes from "./routes/ai/chatRoutes.js"; 
 
 //Load các biến môi trường
@@ -66,9 +71,17 @@ app.use("/api/creatives", creativeRoutes);
 app.use("/api/ads-wizard", adsWizardRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/automation-rules", automationRuleRoutes);
 app.use("/api/ai/chat", chatRoutes);
 
 // Connect database & start server
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server bắt đầu chạy trên cổng ${PORT}`);
+    
+    // Khởi chạy AutoRule scheduler sau khi server start
+    startAutoRuleScheduler();
+  });
 connectDB();
 
 // Add a root route to check deployment status
