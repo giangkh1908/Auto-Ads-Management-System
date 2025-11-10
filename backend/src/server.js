@@ -74,20 +74,11 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/automation-rules", automationRuleRoutes);
 app.use("/api/ai/chat", chatRoutes);
 
-// Connect database & start server
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server bắt đầu chạy trên cổng ${PORT}`);
-    
-    // Khởi chạy AutoRule scheduler sau khi server start
-    startAutoRuleScheduler();
-  });
-connectDB();
-
 // Add a root route to check deployment status
 app.get("/", (req, res) => {
   res.send("Backend deployed successfully!");
 });
+startAutoRuleScheduler();
 startAdPerformanceCron(); 
 startAdHourlyInsightsCron();
 
