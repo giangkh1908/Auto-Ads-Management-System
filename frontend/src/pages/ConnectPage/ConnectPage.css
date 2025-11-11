@@ -63,9 +63,9 @@
 }
 
 /* Search and Filter Bar */
-.search-filter-bar {
+.search-filter-bar-connect-page {
   display: flex;
-  justify-content: space-between;
+  justify-content: left;
   align-items: center;
   margin-bottom: 20px;
   gap: 16px;
@@ -94,7 +94,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-right: 500px;
+  justify-content: left;
+  width: 100%;
 } 
 
 .status-filter {
@@ -106,7 +107,7 @@
   cursor: pointer;
 }
 
-.page-count {
+.page-count-connect {
   font-size: 14px;
   color: #6b7280;
   font-weight: 500;

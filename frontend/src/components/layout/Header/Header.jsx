@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../hooks/useAuth";
 import { STORAGE_KEYS } from "../../../constants/app.constants";
+import { saveShopCache, getShopCache, clearShopCache, onShopChange } from "../../../utils/shopCache";
 import "./Header.css";
 import avatar from "../../../assets/home.jpg";
 import {
@@ -78,17 +79,39 @@ function Header({ onLoginClick }) {
   // FETCH SHOPS + TỰ ĐỘNG CHỌN SHOP HIỆN TẠI
   useEffect(() => {
     const fetchShops = async () => {
-      if (!isAuthenticated || !user) return;
+      if (!isAuthenticated || !user) {
+        // Xóa cache nếu không authenticated
+        clearShopCache();
+        return;
+      }
 
       try {
         setLoading(true);
+        
+        // Kiểm tra cache trước
+        const cachedShop = getShopCache();
+        const savedShopId = localStorage.getItem("selectedShopId");
+        
+        // Nếu có cache và shopId khớp → sử dụng cache
+        if (cachedShop && cachedShop.id === savedShopId) {
+          setSelectedShop(cachedShop);
+          setLoading(false);
+          // Vẫn load danh sách shops để hiển thị dropdown, nhưng không cần đợi
+          fetchShopsList();
+          return;
+        }
+
+        // Nếu không có cache hoặc cache không khớp → load từ API
         const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-        const res = await fetch(`${base_url}/api/shops/owner`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/shops/owner`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
@@ -103,16 +126,15 @@ function Header({ onLoginClick }) {
           setShops(formattedShops);
 
           // ƯU TIÊN: shop đang chọn trong localStorage
-          const savedShopId = localStorage.getItem("selectedShopId");
           let currentShop = null;
 
           if (savedShopId) {
-            currentShop = formattedShops.find(s => s.id === savedShopId);
+            currentShop = formattedShops.find((s) => s.id === savedShopId);
           }
 
           // Nếu không có → chọn shop có is_current: true
           if (!currentShop) {
-            currentShop = formattedShops.find(s => s.is_current);
+            currentShop = formattedShops.find((s) => s.is_current);
           }
 
           // Nếu vẫn không có → chọn shop đầu tiên
@@ -123,16 +145,73 @@ function Header({ onLoginClick }) {
           if (currentShop) {
             setSelectedShop(currentShop);
             localStorage.setItem("selectedShopId", currentShop.id);
+            // Lưu vào cache
+            saveShopCache(currentShop);
           }
         }
       } catch (err) {
         console.error("Lỗi tải shops:", err);
+        // Xóa cache nếu có lỗi
+        clearShopCache();
       } finally {
         setLoading(false);
       }
     };
+
+    // Hàm load danh sách shops (không block UI)
+    const fetchShopsList = async () => {
+      try {
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/shops/owner`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const formattedShops = data.data.map((shop) => ({
+            id: shop._id,
+            shop_name: shop.shop_name || "Cửa hàng không tên",
+            package: shop.package || "Basic",
+            role: shop.user_role?.role_name || "Member",
+            is_current: shop.is_current || false,
+          }));
+          setShops(formattedShops);
+        }
+      } catch (err) {
+        console.error("Lỗi tải danh sách shops:", err);
+      }
+    };
+
     fetchShops();
   }, [isAuthenticated, user]);
+
+  // Lắng nghe sự kiện thay đổi shop từ MyShop hoặc các component khác
+  useEffect(() => {
+    const removeListener = onShopChange((newShop) => {
+      if (newShop) {
+        // Cập nhật shop hiển thị trong Header
+        setSelectedShop(newShop);
+        // Cập nhật danh sách shops nếu cần
+        setShops((prevShops) => {
+          const updated = prevShops.map((s) =>
+            s.id === newShop.id ? { ...s, ...newShop, is_current: true } : { ...s, is_current: false }
+          );
+          return updated;
+        });
+      } else {
+        // Nếu shop bị xóa, reload lại
+        setSelectedShop(null);
+      }
+    });
+
+    return removeListener;
+  }, []);
 
   //Click để mở dropdown
   const toggleMenu = (menu) => {
@@ -158,26 +237,40 @@ function Header({ onLoginClick }) {
 
     try {
       // Gọi API switch shop
-      const res = await fetch(`${base_url}/api/shops/switch/${shop.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)}`,
-        },
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/shops/switch/${shop.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem(
+              STORAGE_KEYS.AUTH_TOKEN
+            )}`,
+          },
+        }
+      );
 
       const data = await res.json();
 
       if (data.success) {
+        // Xóa cache cũ
+        clearShopCache();
+        
         // Cập nhật localStorage
         localStorage.setItem("selectedShopId", shop.id);
 
         // Cập nhật state
         setSelectedShop(shop);
+        
+        // Lưu shop mới vào cache (bao gồm role)
+        saveShopCache(shop);
 
         // Hiển thị thông báo đẹp (tùy bạn dùng toast/notify)
         if (window.showToast) {
-          window.showToast?.("success", `Đã chuyển sang cửa hàng: ${shop.shop_name}`);
+          window.showToast?.(
+            "success",
+            `Đã chuyển sang cửa hàng: ${shop.shop_name}`
+          );
         } else {
           // Fallback nhẹ nhàng
           console.log(`Switched to: ${shop.shop_name}`);
@@ -186,14 +279,20 @@ function Header({ onLoginClick }) {
         // Tự động reload trang shop nếu đang ở /shop/*
         if (pathname.startsWith("/shop")) {
           window.location.href = "/shop"; // Hard reload để cập nhật dữ liệu shop mới
-        } else if (pathname.startsWith("/dashboard") || pathname.startsWith("/analytics")) {
+        } else if (
+          pathname.startsWith("/dashboard") ||
+          pathname.startsWith("/analytics")
+        ) {
           // Reload nhẹ để cập nhật context
           window.location.reload();
         }
       } else {
         // API lỗi → không đổi shop
         if (window.showToast) {
-          window.showToast?.("error", data.message || "Không thể chuyển cửa hàng");
+          window.showToast?.(
+            "error",
+            data.message || "Không thể chuyển cửa hàng"
+          );
         } else {
           alert(data.message || "Không thể chuyển cửa hàng");
         }
@@ -236,8 +335,9 @@ function Header({ onLoginClick }) {
             </button>
 
             <button
-              className={`nav-btn ${pathname === "/account-management" ? "active" : ""
-                }`}
+              className={`nav-btn ${
+                pathname === "/account-management" ? "active" : ""
+              }`}
               onClick={() => navigate("/account-management")}
             >
               <Megaphone size={18} />
@@ -253,8 +353,9 @@ function Header({ onLoginClick }) {
             </button>
 
             <button
-              className={`nav-btn ${pathname.startsWith("/shop") ? "active" : ""
-                }`}
+              className={`nav-btn ${
+                pathname.startsWith("/shop") ? "active" : ""
+              }`}
               onClick={() => navigate("/shop")}
             >
               <Store size={18} />
@@ -262,7 +363,9 @@ function Header({ onLoginClick }) {
             </button>
 
             <button
-              className={`nav-btn ${pathname === "/service-package" ? "active" : ""}`}
+              className={`nav-btn ${
+                pathname === "/service-package" ? "active" : ""
+              }`}
               onClick={() => navigate("/service-package")}
             >
               <Package size={18} />
@@ -281,14 +384,18 @@ function Header({ onLoginClick }) {
               <BookOpen size={20} />
               &nbsp;{t("header.guide")}
             </button>
-            <button onClick={() => navigate("/service-package")}>
+            <button
+              className={`nav-btn-2 ${pathname === "/service-package" ? "active" : ""}`}
+              onClick={() => navigate("/service-package")}
+            >
               <Gem size={20} /> {t("header.service")}
             </button>
 
             {isAuthenticated && (
               <button
-                className={`nav-btn-2 ${pathname === "/dashboard" ? "active" : ""
-                  }`}
+                className={`nav-btn-2 ${
+                  pathname === "/dashboard" ? "active" : ""
+                }`}
                 onClick={() => navigate("/dashboard")}
               >
                 <LayoutDashboard size={20} />
@@ -330,10 +437,12 @@ function Header({ onLoginClick }) {
                 ) : selectedShop ? (
                   <>
                     <div className="shop-info">
-                      <strong className="shop-name">{selectedShop.shop_name}</strong>
+                      <strong className="shop-name">
+                        {selectedShop.shop_name}
+                      </strong>
                       <small className="shop-role">{selectedShop.role}</small>
                     </div>
-                    <ChevronDown size={16} />
+                    {/* <ChevronDown size={16} /> */}
                   </>
                 ) : (
                   <span>Chọn cửa hàng</span>
@@ -343,9 +452,9 @@ function Header({ onLoginClick }) {
               {/* DROPDOWN SHOP */}
               {openMenu === "shop" && (
                 <div className="dropdown-shop">
-                  <div className="dropdown-shop-header">
+                  {/* <div className="dropdown-shop-header">
                     <h4>Chọn cửa hàng</h4>
-                  </div>
+                  </div> */}
                   <div className="dropdown-shop-list">
                     {shops.length === 0 ? (
                       <div className="empty">Bạn chưa có cửa hàng nào</div>
@@ -353,23 +462,37 @@ function Header({ onLoginClick }) {
                       shops.map((shop) => (
                         <div
                           key={shop.id}
-                          className={`shop-item ${selectedShop?.id === shop.id ? "active" : ""} ${switching ? "disabled" : ""}`}
+                          className={`shop-item ${
+                            selectedShop?.id === shop.id ? "active" : ""
+                          } ${switching ? "disabled" : ""}`}
                           onClick={() => !switching && handleShopSelect(shop)}
-                          style={{ opacity: switching && selectedShop?.id !== shop.id ? 0.6 : 1 }}
+                          style={{
+                            // opacity:
+                            //   switching && selectedShop?.id !== shop.id
+                            //     ? 0.6
+                            //     : 1,
+                          }}
                         >
                           <div className="shop-item-name">
                             {shop.shop_name}
                             {switching && selectedShop?.id === shop.id && (
-                              <span style={{ marginLeft: 8, fontSize: 12 }}>Đang chuyển...</span>
+                              <span style={{ marginLeft: 8, fontSize: 12 }}>
+                                Đang chuyển...
+                              </span>
                             )}
                           </div>
-                          <div className="shop-item-role">{shop.role}</div>
-                          {selectedShop?.id === shop.id && <Check size={16} className="check" />}
+                          {/* <div className="shop-item-role">{shop.role}</div> */}
+                          {/* {selectedShop?.id === shop.id && (
+                            <Check size={16} className="check" />
+                          )} */}
                         </div>
                       ))
                     )}
                   </div>
-                  <button className="btn-manage-shop" onClick={() => navigate("/shop")}>
+                  <button
+                    className="btn-manage-shop"
+                    onClick={() => navigate("/shop")}
+                  >
                     Quản lý cửa hàng
                   </button>
                 </div>

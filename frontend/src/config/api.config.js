@@ -89,6 +89,10 @@ export const API_ENDPOINTS = {
       `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}${
         token ? `?access_token=${token}` : ""
       }`,
+    ARCHIVE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/campaigns/${id}/archive${
+        token ? `?access_token=${token}` : ""
+      }`,
     SYNC: (accountId, token) =>
       `${API_CONFIG.BASE_URL}${
         API_CONFIG.API_PREFIX
@@ -107,6 +111,10 @@ export const API_ENDPOINTS = {
       `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}${
         token ? `?access_token=${token}` : ""
       }`,
+    ARCHIVE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/adsets/${id}/archive${
+        token ? `?access_token=${token}` : ""
+      }`,
     SYNC: (accountId, token) =>
       `${API_CONFIG.BASE_URL}${
         API_CONFIG.API_PREFIX
@@ -123,6 +131,10 @@ export const API_ENDPOINTS = {
       `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}${
         token ? `?access_token=${token}` : ""
       }`,
+    ARCHIVE: (id, token) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/${id}/archive${
+        token ? `?access_token=${token}` : ""
+      }`,
     SYNC: (accountId, token) =>
       `${API_CONFIG.BASE_URL}${
         API_CONFIG.API_PREFIX
@@ -130,6 +142,19 @@ export const API_ENDPOINTS = {
         token ? `&access_token=${token}` : ""
       }`,
     STATUS: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/ads/status`,
+  },
+
+  AUTOMATION_RULES: {
+    LIST: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/automation-rules`,
+    DETAIL: (id) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/automation-rules/${id}`,
+    CREATE: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/automation-rules`,
+    UPDATE: (id) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/automation-rules/${id}`,
+    DELETE: (id) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/automation-rules/${id}`,
+    TOGGLE: (id) =>
+      `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}/automation-rules/${id}/toggle`,
   },
 };
 

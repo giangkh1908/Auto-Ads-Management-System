@@ -15,6 +15,7 @@ import AdsCampaign from "../../models/ads/adsCampaign.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
 import Ads from "../../models/ads/ads.model.js";
 import Creative from "../../models/ads/creative.model.js";
+import { convertCTAToFacebookType } from "../../utils/ctaUtils.js";
 
 /**
  * 🪄 Controller: Publish quy trình tạo quảng cáo Wizard
@@ -967,7 +968,7 @@ export async function saveDraftController(req, res) {
                         name: adData.headline || '',
                         description: adData.description || '',
                         call_to_action: {
-                          type: adData.cta || 'LEARN_MORE',
+                          type: convertCTAToFacebookType(adData.cta),
                         },
                         ...(adData.mediaUrl && { picture: adData.mediaUrl }),
                       },

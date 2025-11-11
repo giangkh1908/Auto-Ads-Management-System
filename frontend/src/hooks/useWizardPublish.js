@@ -10,6 +10,7 @@ import {
   FB_ADSET_DEFAULTS_BY_OBJECTIVE,
 } from "../constants/wizardConstants";
 import { convertCountryNamesToCodes, convertLanguageCodeToLocaleId } from "../utils/locationUtils";
+import { convertCTAToFacebookType } from "../utils/ctaUtils";
 import axiosInstance from "../utils/axios";
 
 /**
@@ -138,6 +139,7 @@ export function useFlexibleWizardPublish() {
     campaignsList,
     selectedAccountId,
     onSuccess,
+    onError, // ✅ Callback khi publish thất bại (để refresh data)
     onClose,
     updateProgress,
   }) => {
@@ -312,6 +314,9 @@ export function useFlexibleWizardPublish() {
               description: fbErrorMsg,
             });
             
+            // ✅ Refresh data để hiển thị items FAILED
+            onError?.();
+            
             // Đóng wizard sau khi hiển thị lỗi (KHÔNG gọi onSuccess)
             setTimeout(() => {
               setLoading(false);
@@ -354,6 +359,9 @@ export function useFlexibleWizardPublish() {
           description: "Có lỗi xảy ra khi tạo quảng cáo",
         });
       }
+
+      // ✅ Refresh data để hiển thị items FAILED
+      onError?.();
 
       // Đóng wizard sau khi hiển thị lỗi
       setTimeout(() => {
@@ -563,6 +571,7 @@ export function useFlexibleWizardPublish() {
     campaignsList,
     selectedAccountId,
     onSuccess,
+    onError, // ✅ Callback khi update thất bại (để refresh data)
     onClose,
     updateProgress,
   }) => {
@@ -790,6 +799,9 @@ export function useFlexibleWizardPublish() {
         });
       }
 
+      // ✅ Refresh data để hiển thị items FAILED
+      onError?.();
+
       // Đóng wizard sau khi hiển thị lỗi
       setTimeout(() => {
         setLoading(false);
@@ -967,7 +979,7 @@ function buildCreativePayload(ad, campaign, adset) {
         name: ad.headline,
         description: ad.description,
         call_to_action: {
-          type: "MESSAGE_PAGE",
+          type: convertCTAToFacebookType(ad.cta),
           value: { link: ad.destinationUrl || "https://fchat.vn" },
         },
         ...(ad.mediaUrl && { picture: ad.mediaUrl }),

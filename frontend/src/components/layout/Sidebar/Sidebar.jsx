@@ -56,7 +56,7 @@ function Sidebar() {
                             <span className="sidebar-label">{t('sidebar.ads_management')}</span>
                         </button>
                     </li>
-                    <li>
+                    {/* <li>
                         <button 
                             className={`sidebar-item ${currentRoute === 'reports' ? 'active' : ''}`} 
                             onClick={() => navigate('/reports')}
@@ -73,11 +73,11 @@ function Sidebar() {
                             <span className="sidebar-icon"><ChartLine size={16} /></span>
                             <span className="sidebar-label">{t('sidebar.statistics')}</span>
                         </button>
-                    </li>
+                    </li> */}
                     <li>
                         <button 
-                            className={`sidebar-item ${currentRoute === 'stats' ? 'active' : ''}`} 
-                            onClick={() => navigate('/')}
+                            className={`sidebar-item ${currentRoute === 'archive-ads' ? 'active' : ''}`} 
+                            onClick={() => navigate('/archive-ads')}
                         >
                             <span className="sidebar-icon"><Archive size={16} /></span>
                             <span className="sidebar-label">Lưu trữ</span>
