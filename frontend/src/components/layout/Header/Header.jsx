@@ -323,8 +323,8 @@ function Header({ onLoginClick }) {
           </h1>
         </button>
 
-        {/* Nav khi không ở Home*/}
-        {pathname !== "/" && (
+        {/* Nav khi không ở Home hoặc ở service-package đã login*/}
+        {pathname !== "/" && !(pathname === "/service-package" && !isAuthenticated) && (
           <div className="app-nav">
             <button
               className={`nav-btn ${pathname === "/dashboard" ? "active" : ""}`}
@@ -374,8 +374,8 @@ function Header({ onLoginClick }) {
           </div>
         )}
 
-        {/* Nav 2 khi ở Home*/}
-        {pathname === "/" && (
+        {/* Nav 2 khi ở Home hoặc ở service-package chưa login*/}
+        {(pathname === "/" || (pathname === "/service-package" && !isAuthenticated)) && (
           <div className="app-nav-2">
             <button
               className={`nav-btn-2 ${pathname === "/guide" ? "active" : ""}`}
@@ -427,8 +427,8 @@ function Header({ onLoginClick }) {
               </ul>
             )}
           </div>
-          {/* Chỉ hiển thị menu user khi đã login và KHÔNG ở trang Home */}
-          {isAuthenticated && pathname !== "/" && (
+          {/* Chỉ hiển thị menu user khi đã login và KHÔNG ở trang Home, và nếu ở service-package thì phải đã login */}
+          {isAuthenticated && pathname !== "/" && !(pathname === "/service-package" && !isAuthenticated) && (
             <div className="user-menu">
               {/* SHOP SELECTOR */}
               <div className="shop-selector" onClick={() => toggleMenu("shop")}>
@@ -528,8 +528,8 @@ function Header({ onLoginClick }) {
             </div>
           )}
 
-          {/* Chỉ hiển thị nút Đăng nhập nếu CHƯA đăng nhập và ở Home */}
-          {!isAuthenticated && pathname === "/" && (
+          {/* Chỉ hiển thị nút Đăng nhập nếu CHƯA đăng nhập và ở Home hoặc service-package */}
+          {!isAuthenticated && (pathname === "/" || pathname === "/service-package") && (
             <button className="btn-login" onClick={onLoginClick}>
               {t("header.login")}
             </button>

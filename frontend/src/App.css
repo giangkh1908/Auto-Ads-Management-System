@@ -7,9 +7,18 @@
 
 /* Full-width layout used when a fixed sidebar is present */
 .page-with-sidebar {
-  padding: 100px 24px 60px 24px; /* clear fixed header */
+  padding: 100px 24px 60px 24px; /* clear fixed header (top/right/bottom); left is dynamic below */
   min-height: calc(100vh - 140px);
 }
+
+/* Khi sidebar ở trạng thái thu gọn (body có class sidebar-collapsed) */
+/* body.sidebar-collapsed .page-with-sidebar {
+  padding-left: 124px;
+}
+
+body:not(.sidebar-collapsed) .page-with-sidebar {
+  padding-left: 254px;
+} */
 
 /* Auth page layout */
 .auth-page {

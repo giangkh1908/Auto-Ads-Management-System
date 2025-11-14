@@ -7,6 +7,7 @@ import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import "./AccountManagement.css";
 import { CheckCircle, XCircle, Archive, Trash2, Play, Pause } from "lucide-react";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
+import { onShopChange } from "../../utils/shopCache";
 
 function AccountManagement() {
   const { t, i18n } = useTranslation();
@@ -70,6 +71,17 @@ function AccountManagement() {
     fetchAccounts({ q: "", page, limit });
   }, [fetchAccounts, page, limit]);
 
+  /** Lắng nghe sự kiện thay đổi shop và reload accounts */
+  useEffect(() => {
+    const unsubscribe = onShopChange(() => {
+      // Khi shop thay đổi, reload danh sách accounts
+      setPage(1);
+      fetchAccounts({ q: searchText.trim(), page: 1, limit });
+    });
+    
+    return unsubscribe;
+  }, [fetchAccounts, limit, searchText]);
+
   /** Chỉ làm mới số liệu campaign/adset/ad từ Facebook (không đồng bộ DB, không reload list) */
   const handleSync = async () => {
     try {
@@ -125,7 +137,7 @@ function AccountManagement() {
     }
   }, [items, fetchAccountStats]);
 
-  /** Chuẩn hóa dữ liệu hiển thị */
+  /** Chuẩn hóa dữ liệu hiển thị (chỉ hiển thị accounts của current shop) */
   const accounts = useMemo(() => {
     return (items || []).map((acc, idx) => {
       const accountId = acc.external_id;

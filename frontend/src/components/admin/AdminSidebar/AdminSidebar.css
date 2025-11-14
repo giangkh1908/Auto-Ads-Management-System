@@ -1,0 +1,81 @@
+/* Reuse style semantics from app Sidebar, but fixed under AdminHeader */
+.app-sidebar.admin {
+  position: fixed;
+  top: 58px;
+  left: 0;
+  height: calc(100vh - 58px);
+  width: 90px;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  padding: 12px 10px;
+  transition: all 0.3s ease;
+  z-index: 900;
+  overflow: hidden;
+  cursor: pointer;
+}
+.app-sidebar.admin:not(.collapsed) { width: 220px; }
+.app-sidebar.admin.collapsed { width: 90px; }
+
+.sidebar-nav-admin ul {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  margin-top: 25px;
+}
+.sidebar-section-title {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  padding: 0 8px;
+  margin-bottom: 6px;
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 8px;
+  color: #111827;
+  border: none;
+  margin: 6px 0px;
+  background: #ffffff;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all .2s ease;
+  border-bottom: 3px solid rgba(0,0,0,0.05);
+}
+.sidebar-item:hover {
+  box-shadow: 0 0 10px rgba(116, 131, 131, 0.25);
+  background: rgba(99,102,241,0.06);
+}
+.sidebar-item.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+.sidebar-icon { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+.sidebar-label {
+  white-space: nowrap;
+  opacity: 0;
+  font-size: 15px;
+  transition: opacity .2s ease, transform .2s ease;
+  transform: translateX(-8px);
+  margin-left: 8px;
+}
+.app-sidebar.admin:not(.collapsed) .sidebar-label {
+  opacity: .9;
+  transform: translateX(0);
+}
+.app-sidebar.admin.collapsed .sidebar-label {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+
+/* Khi sidebar ở trạng thái thu gọn (body có class sidebar-collapsed) */
+/* body.sidebar-collapsed .page-with-sidebar {
+  padding-left: 124px;
+}
+
+body:not(.sidebar-collapsed) .page-with-sidebar {
+  padding-left: 254px;
+} */

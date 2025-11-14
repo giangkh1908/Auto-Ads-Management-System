@@ -16,7 +16,7 @@ const paymentTransactionSchema = new mongoose.Schema(
       required: true,
     },
 
-    // 📦 Gói dịch vụ liên quan (nếu có)
+    //  Gói dịch vụ liên quan (nếu có)
     package_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Package",
@@ -58,13 +58,13 @@ const paymentTransactionSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    // 📦 Metadata bổ sung
+    //  Metadata bổ sung
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
 
-    // 🧠 Audit
+    //  Audit
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     updated_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     deleted_at: { type: Date, default: null },
