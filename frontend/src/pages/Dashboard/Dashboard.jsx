@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import facebook_icon from "../../assets/facebook.png";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
-import { Edit3, Pause, PlugZap, RefreshCcw, Repeat, Bell, Users, MessageCircle, Bot, Play, Calendar, Key, Store, Search as SearchIcon, Plus, Link2} from "lucide-react";
+import { Edit3, Pause, PlugZap, RefreshCcw, Repeat, Bell, Users, MessageCircle, Bot, Play, Calendar, Key, Store, Search as SearchIcon, Plus, Link2 } from "lucide-react";
 import profileService from "../../services/profileService";
 import shopService from "../../services/shopService";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useMyPackage } from "../../hooks/useMyPackage.js";
 
 function Dashboard() {
   const [filterValue, setFilterValue] = useState("all");
@@ -18,6 +19,8 @@ function Dashboard() {
   const navigate = useNavigate();
   const [connectedPages, setConnectedPages] = useState([]);
   const { t } = useTranslation();
+  const { pkg, loading: pkgLoading, canAdd } = useMyPackage();
+  const canConnectPage = pkg && canAdd("pages"); // ← KIỂM TRA LIMIT PAGE
 
   useEffect(() => {
     const load = async () => {
@@ -116,7 +119,7 @@ function Dashboard() {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setOpenMenuId(null);
       }
-    };  
+    };
 
     document.addEventListener("click", handleClickOutside);
     return () => {
@@ -144,9 +147,8 @@ function Dashboard() {
           <div className="dashboard-header">
             <div className="dashboard-tabs">
               <button
-                className={`tab-button-dashboard ${
-                  activeTab === "my-bots" ? "active" : ""
-                }`}
+                className={`tab-button-dashboard ${activeTab === "my-bots" ? "active" : ""
+                  }`}
                 onClick={() => setActiveTab("my-bots")}
               >
                 {t("dashboard.my_page")}
@@ -206,13 +208,28 @@ function Dashboard() {
             <div className="pages-grid">
               {/* Add new page card */}
               <div
-                className="page-card add-page-card"
-                onClick={handleAddNewPage}
+                className={`page-card add-page-card ${!canConnectPage ? 'disabled' : ''}`}
+                onClick={() => canConnectPage && handleAddNewPage()}
+                style={{
+                  cursor: canConnectPage ? 'pointer' : 'not-allowed',
+                  opacity: canConnectPage ? 1 : 0.5,
+                }}
+                title={
+                  canConnectPage
+                    ? t("dashboard.connect_new_page")
+                    : pkg
+                      ? `Đã đạt giới hạn: ${pkg.usage.pages}/${pkg.limits.pages}`
+                      : "Cần gói dịch vụ để kết nối Page"
+                }
               >
                 <div className="add-page-content">
-                  <div className="add-icon"><Plus size={30} /></div>
+                  <div className="add-icon">
+                    <Plus size={30} />
+                  </div>
                   <div className="add-page-text">
-                    {t("dashboard.connect_new_page")} ({connectedPages.length}/10)
+                    {t("dashboard.connect_new_page")} (
+                    {pkgLoading ? "..." : pkg ? `${pkg.usage.pages}/${pkg.limits.pages}` : connectedPages.length + "/?"}
+                    )
                   </div>
                 </div>
               </div>

@@ -1,6 +1,8 @@
 import UserPackage from "../../models/userPackage.model.js";
 import PaymentTransaction from "../../models/paymentTransaction.model.js";
 import Package from "../../models/package.model.js";
+import Shop from "../../models/shops/shop.model.js";
+import ShopUser from "../../models/shops/shopUser.model.js";
 
 export const createUserPackage = async (req, res) => {
     try {
@@ -171,6 +173,63 @@ export const getUserPackageById = async (req, res) => {
             error: error.message,
         });
     }
+};
+
+export const getMyPackage = async (req, res) => {
+  try {
+    const userPackage = await UserPackage.findOne({
+      user_id: req.user._id,
+      status: { $in: ["active"] },
+    })
+      .populate("package_id")
+      .sort({ created_at: -1 });
+
+    if (!userPackage) {
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: "Chưa có gói dịch vụ",
+      });
+    }
+
+    const { package_id, pages, employees, shops, from_date, to_date, status } = userPackage;
+
+    // Đếm thực tế đã dùng
+    const shopCount = await Shop.countDocuments({ owner_id: req.user._id, deleted_at: null });
+    const employeeCount = await ShopUser.countDocuments({
+      user_id: { $ne: req.user._id }, // không tính owner
+      shop_id: { $in: await Shop.find({ owner_id: req.user._id }).distinct("_id") },
+      status: "active",
+    });
+
+    res.json({
+      success: true,
+      data: {
+        package: {
+          _id: package_id._id,
+          name: package_id.name,
+          features: package_id.features,
+          pages: package_id.pages,
+          employees: package_id.employees,
+          shops: package_id.shops,
+        },
+        limits: {
+          pages: pages,
+          employees: employees,
+          shops: shops,
+        },
+        usage: {
+          shops: shopCount,
+          employees: employeeCount,
+          pages: 0, // TODO: đếm số page đã tạo (nếu có model Page)
+        },
+        period: { from_date, to_date },
+        status,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 /**

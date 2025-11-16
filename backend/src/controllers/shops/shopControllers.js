@@ -6,6 +6,7 @@ import UserRole from "../../models/userRole.model.js";
 import ShopUser from "../../models/shops/shopUser.model.js";
 import Role from "../../models/role.model.js";
 import { saveLog } from "../../utils/log.js";
+import UserPackage from "../../models/userPackage.model.js";
 
 //  Tạo Shop
 export const createShop = async (req, res) => {
@@ -36,6 +37,36 @@ export const createShop = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `Bạn đã có một cửa hàng tên "${existingShop.shop_name}" rồi.`,
+      });
+    }
+
+    // KIỂM TRA GÓI HIỆN TẠI
+    const userPackage = await UserPackage.findOne({
+      user_id: ownerId,
+      status: "active",
+    }).populate("package_id");
+
+    if (!userPackage) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn cần có gói dịch vụ để tạo shop",
+      });
+    }
+
+    // LẤY LIMIT TỪ UserPackage (có thể mua thêm)
+    const shopLimit = userPackage.shops || 0;
+
+    // ĐẾM SỐ SHOP HIỆN TẠI (usage thực tế)
+    const currentShopCount = await Shop.countDocuments({
+      ownerId,
+      deleted_at: null,
+    });
+
+    // KIỂM TRA GIỚI HẠN
+    if (currentShopCount >= shopLimit) {
+      return res.status(403).json({
+        success: false,
+        message: `Đã đạt giới hạn shop: ${currentShopCount}/${shopLimit}`,
       });
     }
 

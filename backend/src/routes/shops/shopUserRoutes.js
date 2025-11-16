@@ -10,7 +10,7 @@ import {
     inviteEmployee,
     deleteShopUser
 } from "../../controllers/shops/shopUserControllers.js";
-import { authenticate, authorizeInShop } from "../../middlewares/auth.middleware.js";
+import { authenticate, authorizeInShop, checkPackageLimit } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
@@ -20,7 +20,7 @@ router.get("/:shopId", getUsersByShop);
 
 router.post("/", createShopUser);
 
-router.post("/invite", authenticate, inviteEmployee);
+router.post("/invite", authenticate, checkPackageLimit("employees"), inviteEmployee);
 
 router.post("/assign-pages", authenticate, assignPagesToEmployee);
 

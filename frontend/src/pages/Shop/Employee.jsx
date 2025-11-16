@@ -10,6 +10,7 @@ import { useParams } from "react-router-dom";
 import axiosInstance from "../../utils/axios.js";
 import { getShopCache, saveShopCache } from "../../utils/shopCache";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup.jsx";
+import { useMyPackage } from "../../hooks/useMyPackage.js";
 
 function Employee() {
   const { t } = useTranslation();
@@ -35,7 +36,7 @@ function Employee() {
   const [pages, setPages] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  
+
   // State cho popup xác nhận chuyển giao
   const [isRelinquishOpen, setIsRelinquishOpen] = useState(false);
   const [selectedEmployeeForRelinquish, setSelectedEmployeeForRelinquish] = useState(null);
@@ -48,6 +49,10 @@ function Employee() {
   const [oldRoleName, setOldRoleName] = useState("");
   const [isLoadingRoleChange, setIsLoadingRoleChange] = useState(false);
 
+  // === LẤY PACKAGE + KIỂM SOÁT LIMIT ===
+  const { pkg, loading: pkgLoading, canAdd } = useMyPackage();
+  const canInviteEmployee = pkg && canAdd("employees");
+
   // Lấy current shop nếu không có shopId trong URL và kiểm tra quyền truy cập
   useEffect(() => {
     const getCurrentShop = async () => {
@@ -58,7 +63,7 @@ function Employee() {
 
         if (data.success && Array.isArray(data.data)) {
           const currentShop = data.data.find((shop) => shop.is_current);
-          
+
           // Kiểm tra nếu role là Marketer thì redirect về /shop
           if (currentShop?.user_role?.role_name === "Marketer") {
             toast.error("Bạn không có quyền truy cập trang này");
@@ -131,7 +136,7 @@ function Employee() {
 
   const handleRoleChange = (userId, newRoleName) => {
     if (!actualShopId) return;
-    
+
     // Tìm employee để lấy thông tin
     const employee = employees.find(emp => emp.id === userId);
     if (!employee) return;
@@ -176,17 +181,17 @@ function Employee() {
             setUserRoleInShop(newRoleName);
           }
         }
-        
+
         // Đóng popup ngay lập tức
         setIsRoleChangeOpen(false);
         setIsLoadingRoleChange(false);
         setSelectedEmployeeForRoleChange(null);
         setNewRoleName("");
         setOldRoleName("");
-        
+
         // Hiển thị toast success
         toast.success(data.message || "Cập nhật vai trò thành công!");
-        
+
         // Reload trang sau một khoảng thời gian ngắn để đảm bảo toast hiển thị
         setTimeout(() => {
           window.location.reload();
@@ -199,9 +204,9 @@ function Employee() {
       }
     } catch (err) {
       console.error("Update role error:", err);
-      const errorMessage = err.response?.data?.error?.message || 
-                          err.response?.data?.message || 
-                          "Lỗi khi cập nhật vai trò";
+      const errorMessage = err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        "Lỗi khi cập nhật vai trò";
       toast.error(errorMessage);
       setIsLoadingRoleChange(false);
     }
@@ -277,15 +282,15 @@ function Employee() {
 
       if (data.success) {
         // Hiển thị toast với message phù hợp
-        const statusMessage = 
-          newStatus === "active" 
-            ? "Đã kích hoạt nhân viên thành công!" 
+        const statusMessage =
+          newStatus === "active"
+            ? "Đã kích hoạt nhân viên thành công!"
             : newStatus === "inactive"
-            ? "Đã vô hiệu hóa nhân viên thành công!"
-            : data.message || "Cập nhật trạng thái thành công!";
-        
+              ? "Đã vô hiệu hóa nhân viên thành công!"
+              : data.message || "Cập nhật trạng thái thành công!";
+
         toast.success(statusMessage);
-        
+
         // Cập nhật state mà không cần reload trang
         setEmployees((prev) =>
           prev.map((emp) =>
@@ -302,6 +307,10 @@ function Employee() {
   };
 
   const handleInviteEmployee = async () => {
+    if (!inviteEmail.trim()) {
+      toast.error("Vui lòng nhập email nhân viên!");
+      return;
+    }
     if (!inviteEmail.trim()) {
       toast.error("Vui lòng nhập email nhân viên!");
       return;
@@ -337,6 +346,10 @@ function Employee() {
 
   //Thêm page mới
   const handleAddNewPage = () => {
+    if (!canInviteEmployee) {
+      toast.warning(`Đã đạt giới hạn nhân viên: ${pkg?.usage.employees}/${pkg?.limits.employees}`);
+      return;
+    }
     setIsInviteOpen(true);
   };
 
@@ -364,15 +377,15 @@ function Employee() {
           });
           setUserRoleInShop("Marketing Admin");
         }
-        
+
         // Đóng popup ngay lập tức
         setIsRelinquishOpen(false);
         setIsLoadingRelinquish(false);
         setSelectedEmployeeForRelinquish(null);
-        
+
         // Hiển thị toast success
         toast.success(data.message || "Chuyển giao quyền thành công!");
-        
+
         // Reload trang sau một khoảng thời gian ngắn để đảm bảo toast hiển thị
         setTimeout(() => {
           window.location.reload();
@@ -385,9 +398,9 @@ function Employee() {
       }
     } catch (error) {
       console.error("Relinquish error:", error);
-      const errorMessage = error.response?.data?.error?.message || 
-                          error.response?.data?.message || 
-                          "Lỗi khi chuyển giao quyền";
+      const errorMessage = error.response?.data?.error?.message ||
+        error.response?.data?.message ||
+        "Lỗi khi chuyển giao quyền";
       toast.error(errorMessage);
       setIsLoadingRelinquish(false);
     }
@@ -452,7 +465,7 @@ function Employee() {
     const cachedShop = getShopCache();
     return cachedShop?.role || null;
   });
-  
+
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
@@ -463,7 +476,7 @@ function Employee() {
           if (currentShop?.user_role?.role_name) {
             const role = currentShop.user_role.role_name;
             setUserRoleInShop(role);
-            
+
             // Cập nhật cache với role mới
             const cachedShop = getShopCache();
             if (cachedShop && cachedShop.id === currentShop._id) {
@@ -483,6 +496,21 @@ function Employee() {
 
   return (
     <div className="shop-border">
+      {/* === THÔNG BÁO GÓI + LIMIT === */}
+      {pkgLoading && <div>Đang tải gói...</div>}
+
+      {!pkgLoading && !pkg && (
+        <div className="alert alert-warning" style={{ margin: "16px 0", padding: "12px", background: "#fff3cd", borderRadius: "8px" }}>
+          <strong>Bạn chưa có gói dịch vụ.</strong> Một số tính năng bị giới hạn.
+        </div>
+      )}
+
+      {!pkgLoading && pkg && (
+        <div style={{ marginBottom: "16px", fontSize: "14px", color: "#555" }}>
+          <div>Nhân viên: <strong>{pkg.usage.employees}/{pkg.limits.employees}</strong></div>
+          {pkg.status === "expiring soon" && <div style={{ color: "orange" }}>Gói sắp hết hạn!</div>}
+        </div>
+      )}
       {/* Tabs/end để active đúng tại shop, ko ăn vào cái khác */}
       <div className="shop-tabs">
         <NavLink
@@ -532,7 +560,14 @@ function Employee() {
             </select>
           </div>
 
-          <button className="btn-add-new-page" onClick={handleAddNewPage}>
+          <button className="btn-add-new-page"
+            onClick={handleAddNewPage}
+            disabled={!canInviteEmployee}
+            style={{
+              opacity: canInviteEmployee ? 1 : 0.5,
+              cursor: canInviteEmployee ? "pointer" : "not-allowed"
+            }}
+            title={!pkg ? "Cần có gói" : !canAdd("employees") ? "Đã đạt giới hạn" : "Mời nhân viên"}>
             <Plus size={16} />
             {t("shop.add_new_employee")}
           </button>
@@ -571,7 +606,7 @@ function Employee() {
                     </div>
                     <div
                       className="table-cell"
-                      // data-label={t("shop.page_count")}
+                    // data-label={t("shop.page_count")}
                     >
                       <button
                         className="btn-assign-page"
@@ -585,9 +620,9 @@ function Employee() {
                       <select
                         className="role-select"
                         value={
-                          isRoleChangeOpen && 
-                          selectedEmployeeForRoleChange?.id === employee.id
-                            ? oldRoleName 
+                          isRoleChangeOpen &&
+                            selectedEmployeeForRoleChange?.id === employee.id
+                            ? oldRoleName
                             : employee.role
                         }
                         onChange={(e) => {
@@ -636,18 +671,18 @@ function Employee() {
                           </button>
                         )}
                         {/* Button relinquish chỉ hiển thị cho Shop Owner và chỉ khi employee không phải Shop Owner */}
-                        {currentUserRole === "Shop Owner" && 
-                         employee.role !== "Shop Owner" && (
-                          <button
-                            className="shop-action-btn shop-upgrade-btn"
-                            onClick={() =>
-                              handleAction(employee.id, "relinquish")
-                            }
-                            title={t("shop.relinquish")}
-                          >
-                            <Hand size={14} />
-                          </button>
-                        )}
+                        {currentUserRole === "Shop Owner" &&
+                          employee.role !== "Shop Owner" && (
+                            <button
+                              className="shop-action-btn shop-upgrade-btn"
+                              onClick={() =>
+                                handleAction(employee.id, "relinquish")
+                              }
+                              title={t("shop.relinquish")}
+                            >
+                              <Hand size={14} />
+                            </button>
+                          )}
                       </div>
                     </div>
                   </div>

@@ -9,6 +9,7 @@ import { ErrorCode, getErrorMessage } from "../../constants/errorCode.js";
 import { SuccessCode, getSuccessMessage } from "../../constants/successCode.js";
 import { StatusEnum } from "../../constants/enum.js";
 import { saveLog } from "../../utils/log.js";
+import UserPackage from "../../models/shops/shopUser.model.js"
 
 // Thêm User vào Shop
 export const createShopUser = async (req, res) => {
@@ -45,24 +46,28 @@ export const inviteEmployee = async (req, res) => {
     if (!user) {
       // Gửi email mời
       await sendInvitationEmail(email);
+      await UserPackage.updateOne(
+        { user_id: ownerId, status: "active" },
+        { $inc: { employees: 1 } }
+      );
 
       await saveLog({
-      user_id: invitedBy,
-      user_name: currentUser.full_name || currentUser.email,
-      shop_id: shopId,
-      shop_name: shop.shop_name,
-      action: "ADD_EMPLOYEE",
-      target_type: "User",
-      target_id: user._id.toString(),
-      target_name: user.full_name || user.email,
-      description: `${currentUser.full_name || currentUser.email} đã thêm nhân viên "${user.full_name || user.email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
-      request: req.body,
-      response: shopUser,
-      success: true,
-      source: "manual",
-      ip_address: req.ip,
-      meta: { role_assigned: roleId, invited_email: email },
-    });
+        user_id: invitedBy,
+        user_name: currentUser.full_name || currentUser.email,
+        shop_id: shopId,
+        shop_name: shop.shop_name,
+        action: "ADD_EMPLOYEE",
+        target_type: "User",
+        target_id: user._id.toString(),
+        target_name: user.full_name || user.email,
+        description: `${currentUser.full_name || currentUser.email} đã thêm nhân viên "${user.full_name || user.email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
+        request: req.body,
+        response: shopUser,
+        success: true,
+        source: "manual",
+        ip_address: req.ip,
+        meta: { role_assigned: roleId, invited_email: email },
+      });
 
       return res.status(200).json({
         success: true,
@@ -764,7 +769,7 @@ export const assignPagesToEmployee = async (req, res) => {
       .filter(Boolean)
       .join(", ");
     const pageCount = normalizedPages.length;
-    
+
     const mergedPages = [
       ...normalizedPages,
       ...existingPages.filter((old) => !normalizedPages.some((np) => np.page_id === old.page_id)),

@@ -3,6 +3,8 @@ import User from '../models/user.model.js';
 import UserRole from '../models/userRole.model.js';
 import Role from '../models/role.model.js';
 import Shop from '../models/shops/shop.model.js';
+import UserPackage from "../models/userPackage.model.js"
+import ShopUser from "../models/shops/shopUser.model.js"
 /**
  * 🧩 Middleware xác thực Access Token
  */
@@ -231,51 +233,67 @@ export const authorizeInShop = (module, action) => {
   };
 };
 
-export const checkPackageFeature = (requiredFeatures = [], requireAll = true) => {
+export const checkFeature = (feature) => {
   return async (req, res, next) => {
     try {
-      // Middleware authenticate trước để có req.user
-      if (!req.user || !req.user._id) {
-        return res.status(401).json({ success: false, message: "Bạn cần đăng nhập" });
+      const subscription = await Subscription.findOne({
+        user_id: req.user._id,
+        status: "active"
+      }).populate("package_id");
+
+      if (!subscription) {
+        return res.status(403).json({ message: "Không có gói dịch vụ" });
       }
 
-      // Lấy gói active của user
+      const hasFeature = subscription.package_id.features.includes(feature);
+      if (!hasFeature) {
+        return res.status(403).json({ message: "Tính năng không khả dụng trong gói của bạn" });
+      }
+
+      req.subscription = subscription; // truyền tiếp
+      next();
+    } catch (err) {
+      res.status(500).json({ message: "Lỗi server" });
+    }
+  };
+};
+
+export const checkPackageLimit = (resource) => {
+  return async (req, res, next) => {
+    try {
       const userPackage = await UserPackage.findOne({
-        user: req.user._id,
+        user_id: req.user._id,
         status: "active",
       });
 
       if (!userPackage) {
-        return res.status(403).json({
-          success: false,
-          message: "Người dùng chưa có gói nào",
+        return res.status(403).json({ message: "Không có gói dịch vụ" });
+      }
+
+      const limit = userPackage[resource];
+      let used = 0;
+
+      if (resource === "shops") {
+        used = await Shop.countDocuments({ owner_id: req.user._id, deleted_at: null });
+      } else if (resource === "employees") {
+        const shopIds = await Shop.find({ owner_id: req.user._id }).distinct("_id");
+        used = await ShopUser.countDocuments({
+          shop_id: { $in: shopIds },
+          user_id: { $ne: req.user._id },
+          status: "active",
         });
       }
 
-      const userFeatures = userPackage.features || [];
-
-      let hasFeature;
-      if (requireAll) {
-        // kiểm tra tất cả feature có trong package
-        hasFeature = requiredFeatures.every(f => userFeatures.includes(f));
-      } else {
-        // kiểm tra ít nhất 1 feature có trong package
-        hasFeature = requiredFeatures.some(f => userFeatures.includes(f));
-      }
-
-      if (!hasFeature) {
+      if (used >= limit) {
         return res.status(403).json({
-          success: false,
-          message: `Chức năng này yêu cầu các feature: ${requiredFeatures.join(", ")}`,
+          message: `Đã đạt giới hạn ${resource}: ${used}/${limit}`,
         });
       }
 
-      // Lưu gói vào req để controller dùng
-      req.userPackage = userPackage;
+      req.packageLimit = { limit, used };
       next();
-    } catch (error) {
-      console.error("Error in checkPackageFeature middleware:", error);
-      res.status(500).json({ success: false, message: "Lỗi kiểm tra feature package" });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
     }
   };
 };

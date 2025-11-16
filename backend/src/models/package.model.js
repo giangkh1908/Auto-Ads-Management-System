@@ -50,6 +50,11 @@ const packageSchema = new mongoose.Schema(
       default: 3,
     },
 
+    shops: {
+      type: Number,
+      default: 20,
+    },
+
     conversations: {
       type: String,
       default: "∞",
