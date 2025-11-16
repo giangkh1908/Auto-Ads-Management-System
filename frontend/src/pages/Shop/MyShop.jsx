@@ -8,6 +8,7 @@ import { STORAGE_KEYS } from '../../constants/app.constants';
 import axiosInstance from "../../utils/axios.js";
 import { toast } from "sonner";
 import { clearShopCache, saveShopCache } from "../../utils/shopCache";
+import { useNavigate } from 'react-router-dom';
 
 function MyShop() {
   const { t } = useTranslation();
@@ -16,6 +17,7 @@ function MyShop() {
   const [activeTab] = useState("info");
   const [currentUser, setCurrentUser] = useState(true);
   const currentShop = shops.find((s) => s.isCurrent);
+  const navigate = useNavigate();
 
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -114,6 +116,7 @@ function MyShop() {
 
   //Hành động với page
   const handleAction = (shopId, action) => {
+    navigate("/service-package");
     console.log(`Action ${action} for shop ${shopId}`);
   };
 

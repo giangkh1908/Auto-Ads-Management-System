@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { now } from "mongoose";
 import validator from "validator";
 import crypto from "crypto";
 
@@ -110,6 +110,7 @@ const userSchema = new mongoose.Schema(
 
     // 🗑️ Soft delete
     deleted_at: { type: Date, default: null },
+    last_login_at: {type: Date, default: now}
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );

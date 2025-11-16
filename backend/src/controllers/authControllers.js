@@ -248,6 +248,8 @@ export const login = async (req, res) => {
         .json({ success: false, message: "Tài khoản chưa được kích hoạt." });
 
     const { accessToken, refreshToken } = generateTokens(user._id);
+    user.last_login_at = Date.now();
+    await user.save();
     user.password = undefined;
 
     res.status(200).json({
@@ -360,6 +362,7 @@ export const facebookLogin = async (req, res) => {
     } else {
       user.avatar = fbData.picture?.data?.url || user.avatar;
       user.facebookAccessToken = longLivedToken;
+      user.last_login_at = Date.now(); //Thêm mỗi dòng này thôi
       await user.save();
       console.log("Đăng nhập thành công  ");
     }

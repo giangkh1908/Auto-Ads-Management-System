@@ -20,6 +20,9 @@ import creativeRoutes from "./routes/ads/creativeRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import aiRoutes from "./routes/ai/aiRoutes.js";
 import automationRuleRoutes from "./routes/automationRuleRoutes.js";
+import packageRoutes from "./routes/packageRoutes.js"
+import paymentTransactionRoutes from "./routes/transaction/paymentTransactionRoutes.js"
+import userPackageRoutes from "./routes/package/userPackgeRoutes.js"
 
 // Import AutoRule Scheduler
 import { startAutoRuleScheduler } from './services/autoRuleScheduler.js'; 
@@ -54,6 +57,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/users", userRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api/user-roles", userRoleRoutes);
+app.use("/api/package", packageRoutes);
+app.use("/api/payment-transactions", paymentTransactionRoutes);
+app.use("/api/user-package", userPackageRoutes);
 app.use("/api/shops", shopRoutes);
 app.use("/api/shop-users", shopUserRoutes);
 app.use("/api/auth", authRoutes);
