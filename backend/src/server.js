@@ -27,6 +27,15 @@ import adPerformanceRoutes from "./routes/ads/adPerformanceRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import aiRoutes from "./routes/ai/aiRoutes.js";
 import automationRuleRoutes from "./routes/automationRuleRoutes.js";
+import logRoutes from "./routes/logRoutes.js";
+import systemLogRoutes from "./routes/systemLogRoutes.js";
+import noteRoutes from "./routes/noteRoutes.js";
+import leadRoutes from "./routes/leadRoutes.js";
+import packageRoutes from './routes/packageRoutes.js';
+import userPackageRoutes from './routes/package/userPackageRoutes.js';
+import paymentTransactionsRoutes from './routes/transaction/paymentTransactionsRoutes.js';
+// Import AutoRule Scheduler
+import { startAutoRuleScheduler } from './services/autoRuleScheduler.js'; 
 import chatRoutes from "./routes/ai/chatRoutes.js"; 
 import { syncPromptEmbeddings } from "./services/chat/ragService.js";
 
@@ -72,6 +81,20 @@ app.use("/api/ads-wizard", adsWizardRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/automation-rules", automationRuleRoutes);
+app.use("/api/logs", logRoutes);
+app.use("/api/system-logs", systemLogRoutes);
+app.use("/api/notes", noteRoutes);
+app.use("/api/leads", leadRoutes);
+app.use("/api/package", packageRoutes);
+app.use("/api/user-package", userPackageRoutes);
+app.use("/api/payment-transactions", paymentTransactionsRoutes);
+// Connect database & start server
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server bắt đầu chạy trên cổng ${PORT}`);
+    
+    // Khởi chạy AutoRule scheduler sau khi server start
+    startAutoRuleScheduler();
 app.use("/api/ai/chat", chatRoutes);
 
 // Add a root route to check deployment status

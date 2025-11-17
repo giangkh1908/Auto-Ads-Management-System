@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import AutomationRule from "../models/ads/autoRule.model.js";
 import { processRule } from "./autoRuleService.js";
+import { saveSystemLog } from "../utils/systemLog.js";
 
 let schedulerTask = null;
 
@@ -16,6 +17,15 @@ export function startAutoRuleScheduler() {
 
   console.log("Starting AutoRule scheduler...");
 
+  // Log scheduler started
+  saveSystemLog({
+    category: 'scheduler',
+    level: 'info',
+    action: 'SCHEDULER_STARTED',
+    description: 'Automation rule scheduler đã được khởi động',
+    success: true,
+  }).catch(err => console.error('Error logging scheduler start:', err));
+
   // Chạy mỗi phút: "* * * * *"
   schedulerTask = cron.schedule("* * * * *", async () => {
     try {
@@ -24,7 +34,6 @@ export function startAutoRuleScheduler() {
       console.error("Error in AutoRule scheduler:", error);
     }
   });
-
   console.log("AutoRule scheduler started. Running every minute.");
 }
 
@@ -36,6 +45,15 @@ export function stopAutoRuleScheduler() {
     schedulerTask.stop();
     schedulerTask = null;
     console.log("AutoRule scheduler stopped");
+    
+    // Log scheduler stopped
+    saveSystemLog({
+      category: 'scheduler',
+      level: 'info',
+      action: 'SCHEDULER_STOPPED',
+      description: 'Automation rule scheduler đã được dừng',
+      success: true,
+    }).catch(err => console.error('Error logging scheduler stop:', err));
   }
 }
 
@@ -93,6 +111,21 @@ async function processScheduledRules() {
       console.log(
         `Processed ${rules.length} rule(s): ${successCount} success, ${errorCount} errors, ${triggeredCount} triggered`
       );
+      
+      // Log batch processing results
+      saveSystemLog({
+        category: 'scheduler',
+        level: errorCount > 0 ? 'warning' : 'info',
+        action: 'SCHEDULER_BATCH_PROCESSED',
+        description: `Đã xử lý ${rules.length} automation rule(s): ${successCount} thành công, ${errorCount} lỗi, ${triggeredCount} được kích hoạt`,
+        success: errorCount === 0,
+        meta: {
+          total: rules.length,
+          success: successCount,
+          errors: errorCount,
+          triggered: triggeredCount,
+        },
+      }).catch(err => console.error('Error logging batch results:', err));
     }
   } catch (error) {
     console.error("Error in processScheduledRules:", error);
