@@ -490,8 +490,13 @@ export const connectFacebookPage = async (req, res) => {
       target_id: pageId,
       target_name: pageInfo?.name || pageId,
       page_info: pageInfo,
-      request: req.body,
-      response: { shop, shopUser: updatedShopUser },
+      request: { pageId },
+      response: { 
+        success: true, 
+        pageId, 
+        pageName: pageInfo?.name,
+        connectedPagesCount: shop.facebook_pages.length 
+      },
       ip_address: req.ip,
     });
 
