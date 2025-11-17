@@ -340,16 +340,6 @@ function Header({ onLoginClick }) {
               className={`nav-btn ${pathname === "/account-management" ? "active" : ""
                 }`}
               onClick={() => navigate("/account-management")}
-              disabled={!hasFeature("AI integration")}
-              title={
-                hasFeature("AI integration")
-                  ? t("header.facebook_ads")
-                  : "Cần gói cao cấp để sử dụng"
-              }
-              style={{
-                opacity: hasFeature("AI integration") ? 1 : 0.5,
-                cursor: hasFeature("AI integration") ? "pointer" : "not-allowed",
-              }}
             >
               <Megaphone size={18} />
               &nbsp;{t("header.facebook_ads")}

@@ -16,6 +16,7 @@ import "./AdStep.css";
 import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
 import { CTA_OPTIONS } from "../../../../constants/ctaConstants";
+import { useMyPackage } from "../../../../hooks/useMyPackage.js";
 
 function AdStepInner({ ad, setAd, adset }, ref) {
   const fileInputRef = useRef(null);
@@ -26,6 +27,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
   const [showAIConfig, setShowAIConfig] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const toast = useToast();
+  const { pkg, hasFeature, canAdd } = useMyPackage();
 
   // Get detailed requirements and guidance based on destination_type
   const getDestinationGuidance = () => {
@@ -413,6 +415,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             onClick={() => {
               setShowAIConfig(!showAIConfig);
             }}
+            disabled={!hasFeature("AI integration")}
           >
             Tạo bằng AI
           </button>

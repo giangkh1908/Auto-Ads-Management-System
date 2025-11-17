@@ -265,7 +265,7 @@ function ServicePackage() {
                 </div>
 
                 <div className="sp-card-features">
-                  <div className="sp-feature">
+                  {/* <div className="sp-feature">
                     <span className="sp-feature-text">
                       {plan.conversations} Hội thoại
                     </span>
@@ -275,7 +275,7 @@ function ServicePackage() {
                     <span className="sp-feature-text">
                       {plan.contacts} Khách hàng
                     </span>
-                  </div>
+                  </div> */}
 
                   <div className="sp-feature">
                     <span className="sp-feature-text">
@@ -286,6 +286,12 @@ function ServicePackage() {
                   <div className="sp-feature">
                     <span className="sp-feature-text">
                       {plan.employees} Nhân viên
+                    </span>
+                  </div>
+
+                  <div className="sp-feature">
+                    <span className="sp-feature-text">
+                      {plan.shops} Shop
                     </span>
                   </div>
 
