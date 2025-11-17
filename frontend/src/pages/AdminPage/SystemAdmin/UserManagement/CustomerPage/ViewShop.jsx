@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import "./CustomerPage.css";
 import axiosInstance from "../../../../../utils/axios";
 import { API_ENDPOINTS } from "../../../../../config/api.config";
+import { X } from "lucide-react";
 
 export default function ViewDetails({ isOpen, onClose, userId }) {
   const [shopData, setShopData] = useState([]);
@@ -45,37 +46,39 @@ export default function ViewDetails({ isOpen, onClose, userId }) {
       <div className="amu-shop-details-modal" onClick={(e) => e.stopPropagation()}>
         <div className="amu-shop-details-header">
           <h3 className="amu-shop-details-title">Shop Details</h3>
+          <button className="amu-shop-details-close-btn-icon" onClick={onClose}>
+            <X size={20} />
+          </button>
         </div>
         <div className="amu-shop-details-body">
           {loading ? (
-            <div style={{ padding: "20px", textAlign: "center" }}>Đang tải dữ liệu...</div>
+            <div className="amu-shop-details-loading">Đang tải dữ liệu...</div>
           ) : error ? (
-            <div style={{ padding: "20px", textAlign: "center", color: "red" }}>{error}</div>
+            <div className="amu-shop-details-error">{error}</div>
           ) : shopData.length === 0 ? (
-            <div style={{ padding: "20px", textAlign: "center" }}>User chưa thuộc shop nào</div>
+            <div className="amu-shop-details-empty">User chưa thuộc shop nào</div>
           ) : (
             <table className="amu-shop-details-table">
               <thead>
                 <tr>
-                  <th>Shop</th>
+                  <th>Shop Name</th>
                   <th>Role</th>
                 </tr>
               </thead>
               <tbody>
                 {shopData.map((item, index) => (
                   <tr key={index}>
-                    <td>{item.shop}</td>
-                    <td>{item.role}</td>
+                    <td>{item.shop || item.shop_name || "N/A"}</td>
+                    <td>
+                      <span className={`amu-shop-details-role-badge ${(item.role || "").toLowerCase()}`}>
+                        {item.role || "N/A"}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-        </div>
-        <div className="amu-shop-details-footer">
-          <button className="amu-shop-details-close-btn" onClick={onClose}>
-            Close
-          </button>
         </div>
       </div>
     </div>

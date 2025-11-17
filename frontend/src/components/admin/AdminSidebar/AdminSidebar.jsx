@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Users, UserCog, FileText, ClipboardList } from 'lucide-react';
 import './AdminSidebar.css';
@@ -6,7 +6,6 @@ import './AdminSidebar.css';
 export default function AdminSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isHovered, setIsHovered] = useState(false);
 
   const currentPath = location.pathname;
   
@@ -20,85 +19,55 @@ export default function AdminSidebar() {
   const isSystemLog = currentPath === '/admin/system-admin/system-monitoring' || currentPath === '/admin/system-admin/system-monitoring/system-log';
   const isCustomerLog = currentPath.startsWith('/admin/system-admin/system-monitoring/customer-log');
 
-  useEffect(() => {
-    const cls = 'sidebar-collapsed';
-    if (!isHovered) {
-      document.body.classList.add(cls);
-    } else {
-      document.body.classList.remove(cls);
-    }
-    return () => document.body.classList.remove(cls);
-  }, [isHovered]);
-
-  // Render User Management sidebar items
+  // Render User Management navigation tabs
   if (isUserManagement) {
     return (
-      <aside
-        className={`app-sidebar admin ${!isHovered ? 'collapsed' : ''}`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <nav className="sidebar-nav-admin">
-          <ul>
-            <li>
-              <button
-                className={`sidebar-item ${isCustomer ? 'active' : ''}`}
-                onClick={() => navigate('/admin/system-admin/user-management')}
-              >
-                <span className="sidebar-icon"><Users size={18} /></span>
-                <span className="sidebar-label">Customer</span>
-              </button>
-            </li>
-            <li>
-              <button
-                className={`sidebar-item ${isInternal ? 'active' : ''}`}
-                onClick={() => navigate('/admin/system-admin/user-management/internal')}
-              >
-                <span className="sidebar-icon"><UserCog size={18} /></span>
-                <span className="sidebar-label">Internal</span>
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </aside>
+      <nav className="admin-sidebar-nav">
+        <div className="admin-sidebar-tabs">
+          <button
+            className={`admin-sidebar-tab ${isCustomer ? 'active' : ''}`}
+            onClick={() => navigate('/admin/system-admin/user-management')}
+          >
+            <Users size={18} />
+            <span>Customer</span>
+          </button>
+          <button
+            className={`admin-sidebar-tab ${isInternal ? 'active' : ''}`}
+            onClick={() => navigate('/admin/system-admin/user-management/internal')}
+          >
+            <UserCog size={18} />
+            <span>Internal</span>
+          </button>
+        </div>
+      </nav>
     );
   }
 
-  // Render System Monitoring sidebar items
+  // Render System Monitoring navigation tabs
   if (isSystemMonitoring) {
     return (
-      <aside
-        className={`app-sidebar admin ${!isHovered ? 'collapsed' : ''}`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <nav className="sidebar-nav-admin">
-          <ul>
-            <li>
-              <button
-                className={`sidebar-item ${isSystemLog ? 'active' : ''}`}
-                onClick={() => navigate('/admin/system-admin/system-monitoring')}
-              >
-                <span className="sidebar-icon"><FileText size={18} /></span>
-                <span className="sidebar-label">System Log</span>
-              </button>
-            </li>
-            <li>
-              <button
-                className={`sidebar-item ${isCustomerLog ? 'active' : ''}`}
-                onClick={() => navigate('/admin/system-admin/system-monitoring/customer-log')}
-              >
-                <span className="sidebar-icon"><ClipboardList size={18} /></span>
-                <span className="sidebar-label">Customer Log</span>
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </aside>
+      <nav className="admin-sidebar-nav">
+        <div className="admin-sidebar-tabs">
+          <button
+            className={`admin-sidebar-tab ${isSystemLog ? 'active' : ''}`}
+            onClick={() => navigate('/admin/system-admin/system-monitoring')}
+          >
+            <FileText size={18} />
+            <span>System Log</span>
+          </button>
+          <button
+            className={`admin-sidebar-tab ${isCustomerLog ? 'active' : ''}`}
+            onClick={() => navigate('/admin/system-admin/system-monitoring/customer-log')}
+          >
+            <ClipboardList size={18} />
+            <span>Customer Log</span>
+          </button>
+        </div>
+      </nav>
     );
   }
 
-  // Default: no sidebar items
+  // Default: no navigation tabs
   return null;
 }
 

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../hooks/useAuth";
 import { useAdminRole } from "../../../hooks/useAdminRole";
 import "./AdminHeader.css";
-import avatar from "../../../assets/home.jpg";
+import avatar from "../../../assets/no-avatar.jpg";
 import logo_1 from "../../../assets/Logo_Fchat.png";
 // import logo_2 from "../../../assets/Logo_Fchat_2.png";
 

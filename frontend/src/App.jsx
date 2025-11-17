@@ -136,10 +136,10 @@ function AppContentInner() {
           element={
             <ProtectedRouteForRole allowedRole="System Admin">
               <>
-                <main className="page-with-sidebar">
+                <AdminSidebar />
+                <main className="page-with-admin-sidebar">
                   <UserManagementPage />
                 </main>
-                <AdminSidebar />
               </>
             </ProtectedRouteForRole>
           }
@@ -151,10 +151,10 @@ function AppContentInner() {
           element={
             <ProtectedRouteForRole allowedRole="System Admin">
               <>
-                <main className="page-with-sidebar">
+                <AdminSidebar />
+                <main className="page-with-admin-sidebar">
                   <InternalPage />
                 </main>
-                <AdminSidebar />
               </>
             </ProtectedRouteForRole>
           }
@@ -166,10 +166,10 @@ function AppContentInner() {
           element={
             <ProtectedRouteForRole allowedRole="System Admin">
               <>
-                <main className="page-with-sidebar">
+                <AdminSidebar />
+                <main className="page-with-admin-sidebar">
                   <SystemLog />
                 </main>
-                <AdminSidebar />
               </>
             </ProtectedRouteForRole>
           }
@@ -181,10 +181,10 @@ function AppContentInner() {
           element={
             <ProtectedRouteForRole allowedRole="System Admin">
               <>
-                <main className="page-with-sidebar">
+                <AdminSidebar />
+                <main className="page-with-admin-sidebar">
                   <CustomerLog />
                 </main>
-                <AdminSidebar />
               </>
             </ProtectedRouteForRole>
           }

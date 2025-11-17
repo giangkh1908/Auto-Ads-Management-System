@@ -1,17 +1,13 @@
 import { useMemo, useState, useEffect } from "react";
 import "./CustomerPage.css";
-import { Play, Pause, Ban, Undo, ChevronDown, Search } from "lucide-react";
+import { Play, Pause, Ban, Undo, ChevronDown, Search, Eye } from "lucide-react";
 import ConfirmationPopup from "../../../../../components/common/ConfirmationPopup/ConfirmationPopup";
-import ViewDetails from "./ViewDetails";
-import NoteEditor from "../../../../../components/common/NoteEditor/NoteEditor";
+import ViewDetails from "./ViewShop";
+import CustomerUpdate from "./CustomerUpdate";
 import axiosInstance from "../../../../../utils/axios";
 import { API_ENDPOINTS } from "../../../../../config/api.config";
 import DateRangePicker from "../../../../../components/common/DateRangePicker/DateRangePicker";
 import {
-  prepareNoteItems,
-  fetchLatestNotesBatch,
-  createNotesMap,
-  mergeNoteToEntity,
   getEntityId,
 } from "../../../../../utils/noteUtils";
 
@@ -35,6 +31,10 @@ export default function CustomerPage() {
     isOpen: false,
     userId: null,
     userName: "",
+  });
+  const [updatePopup, setUpdatePopup] = useState({
+    isOpen: false,
+    userId: null,
   });
 
   // Fetch customers từ API
@@ -86,32 +86,9 @@ export default function CustomerPage() {
                 : customer.status === "banned"
                 ? "Banned"
                 : "Inactive",
-            note: "",
-            noteId: null,
           }));
 
-          // Chuẩn bị items để query notes
-          const noteItems = prepareNoteItems(customers, "User");
-
-          // Fetch notes batch nếu có customers
-          if (noteItems.length > 0) {
-            const notesResponse = await axiosInstance.post(
-              API_ENDPOINTS.NOTES.BATCH,
-              { items: noteItems }
-            );
-
-            // Tạo Map để lookup notes
-            const notesMap = createNotesMap(notesResponse);
-
-            // Merge notes vào customers
-            const customersWithNotes = formattedCustomers.map((customer) =>
-              mergeNoteToEntity(customer, "User", notesMap)
-            );
-
-            setRows(customersWithNotes);
-          } else {
-            setRows(formattedCustomers);
-          }
+          setRows(formattedCustomers);
         }
       } catch (error) {
         console.error("Error fetching customers:", error);
@@ -290,7 +267,9 @@ export default function CustomerPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <span className="amu-search-icon"><Search size={16} /></span>
+              <span className="amu-search-icon">
+                <Search size={16} />
+              </span>
             </div>
           </div>
           <div className="amu-filter-group">
@@ -340,7 +319,6 @@ export default function CustomerPage() {
           <div className="amu-col amu-col-lastlogin">Last Login</div>
           <div className="amu-col amu-col-status">Status</div>
           <div className="amu-col amu-col-action">Action</div>
-          <div className="amu-col amu-col-note">Note</div>
         </div>
 
         {loading ? (
@@ -386,6 +364,18 @@ export default function CustomerPage() {
               </div>
               <div className="amu-col amu-col-action">
                 <div className="amu-actions">
+                  <button
+                    className="amu-action-btn amu-action-view-details"
+                    title="View & Edit Details"
+                    onClick={() =>
+                      setUpdatePopup({
+                        isOpen: true,
+                        userId: row.id,
+                      })
+                    }
+                  >
+                    <Eye size={14} />
+                  </button>
                   {row.status === "Active" && (
                     <>
                       <button
@@ -433,23 +423,6 @@ export default function CustomerPage() {
                   )}
                 </div>
               </div>
-              <div className="amu-col amu-col-note">
-                <NoteEditor
-                  targetType="User"
-                  targetId={row.id}
-                  initialNote={row.note || ""}
-                  noteId={row.noteId}
-                  onNoteSaved={(savedData) => {
-                    setRows((prev) =>
-                      prev.map((r) =>
-                        r.id === row.id
-                          ? { ...r, note: savedData.note, noteId: savedData.noteId }
-                          : r
-                      )
-                    );
-                  }}
-                />
-              </div>
             </div>
           ))
         )}
@@ -487,6 +460,39 @@ export default function CustomerPage() {
         }
         userId={viewDetailsPopup.userId}
         userName={viewDetailsPopup.userName}
+      />
+
+      {/* Customer Update Modal */}
+      <CustomerUpdate
+        isOpen={updatePopup.isOpen}
+        onClose={() =>
+          setUpdatePopup({
+            isOpen: false,
+            userId: null,
+          })
+        }
+        userId={updatePopup.userId}
+        onUpdateSuccess={(updatedUser) => {
+          // Refresh data sau khi update thành công
+          setRows((prev) =>
+            prev.map((r) => {
+              if (r.id !== updatedUser._id) return r;
+              const statusMap = {
+                active: "Active",
+                inactive: "Inactive",
+                banned: "Banned",
+                pending: "Pending",
+              };
+              return {
+                ...r,
+                name: updatedUser.full_name || r.name,
+                email: updatedUser.email || r.email,
+                phone: updatedUser.phone || r.phone,
+                status: statusMap[updatedUser.status] || r.status,
+              };
+            })
+          );
+        }}
       />
     </div>
   );

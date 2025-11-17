@@ -5,7 +5,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import { STORAGE_KEYS } from "../../../constants/app.constants";
 import { saveShopCache, getShopCache, clearShopCache, onShopChange } from "../../../utils/shopCache";
 import "./Header.css";
-import avatar from "../../../assets/home.jpg";
+import avatar from "../../../assets/no-avatar.jpg";
 import {
   LayoutDashboard,
   Megaphone,
@@ -276,16 +276,8 @@ function Header({ onLoginClick }) {
           console.log(`Switched to: ${shop.shop_name}`);
         }
 
-        // Tự động reload trang shop nếu đang ở /shop/*
-        if (pathname.startsWith("/shop")) {
-          window.location.href = "/shop"; // Hard reload để cập nhật dữ liệu shop mới
-        } else if (
-          pathname.startsWith("/dashboard") ||
-          pathname.startsWith("/analytics")
-        ) {
-          // Reload nhẹ để cập nhật context
-          window.location.reload();
-        }
+        // Reload lại trang để cập nhật dữ liệu với shop mới
+        window.location.reload();
       } else {
         // API lỗi → không đổi shop
         if (window.showToast) {

@@ -24,7 +24,9 @@ import logRoutes from "./routes/logRoutes.js";
 import systemLogRoutes from "./routes/systemLogRoutes.js";
 import noteRoutes from "./routes/noteRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
-
+import packageRoutes from './routes/packageRoutes.js';
+import userPackageRoutes from './routes/package/userPackageRoutes.js';
+import paymentTransactionsRoutes from './routes/transaction/paymentTransactionsRoutes.js';
 // Import AutoRule Scheduler
 import { startAutoRuleScheduler } from './services/autoRuleScheduler.js'; 
 
@@ -74,7 +76,9 @@ app.use("/api/logs", logRoutes);
 app.use("/api/system-logs", systemLogRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/leads", leadRoutes);
-
+app.use("/api/package", packageRoutes);
+app.use("/api/user-package", userPackageRoutes);
+app.use("/api/payment-transactions", paymentTransactionsRoutes);
 // Connect database & start server
 connectDB().then(() => {
   app.listen(PORT, () => {

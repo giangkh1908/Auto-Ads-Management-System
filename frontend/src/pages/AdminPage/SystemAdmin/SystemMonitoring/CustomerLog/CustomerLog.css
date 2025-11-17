@@ -1,18 +1,9 @@
 .customer-log {
-  padding: 10px;
-  /* Leave room for fixed sidebar, adjust margin based on sidebar state */
-  margin-left: 220px; /* expanded width sync with sidebar (220px) */
-  transition: margin-left 0.3s ease;
-}
-
-/* When sidebar is collapsed (body has class sidebar-collapsed) */
-body.sidebar-collapsed .customer-log {
-  margin-left: 90px; /* collapsed width sync with sidebar (90px) */
-}
-
-/* When sidebar is expanded (body does not have class sidebar-collapsed) */
-body:not(.sidebar-collapsed) .customer-log {
-  margin-left: 220px; /* expanded width sync with sidebar (220px) */
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .customer-log-toolbar {
@@ -196,14 +187,6 @@ body:not(.sidebar-collapsed) .customer-log {
 
 /* Responsive */
 @media (max-width: 1280px) {
-  .customer-log {
-    margin-left: 90px; /* Sidebar collapsed on smaller screens */
-  }
-  body.sidebar-collapsed .customer-log,
-  body:not(.sidebar-collapsed) .customer-log {
-    margin-left: 90px;
-  }
-  
   .customer-log-row {
     grid-template-columns: 1fr 0.8fr 1fr 0.8fr 1.2fr 1fr 0.9fr 0.8fr;
   }
@@ -214,15 +197,6 @@ body:not(.sidebar-collapsed) .customer-log {
 }
 
 @media (max-width: 992px) {
-  .customer-log {
-    margin-left: 0; /* No sidebar margin on mobile */
-    padding: 10px 16px;
-  }
-  body.sidebar-collapsed .customer-log,
-  body:not(.sidebar-collapsed) .customer-log {
-    margin-left: 0;
-  }
-  
   .customer-log-toolbar {
     flex-direction: column;
     align-items: stretch;
