@@ -218,7 +218,7 @@ function Dashboard() {
                   canConnectPage
                     ? t("dashboard.connect_new_page")
                     : pkg
-                      ? `Đã đạt giới hạn: ${pkg.usage.pages}/${pkg.limits.pages}`
+                      ? `Đã đạt giới hạn: ${pkg.usage?.pages || 0}/${pkg.limits?.pages || 0}`
                       : "Cần gói dịch vụ để kết nối Page"
                 }
               >
@@ -228,7 +228,11 @@ function Dashboard() {
                   </div>
                   <div className="add-page-text">
                     {t("dashboard.connect_new_page")} (
-                    {pkgLoading ? "..." : pkg ? `${pkg.usage.pages}/${pkg.limits.pages}` : connectedPages.length + "/?"}
+                    {pkgLoading 
+                      ? "..." 
+                      : pkg 
+                        ? `${pkg.usage?.pages || 0}/${pkg.limits?.pages || 0}` 
+                        : `${connectedPages.length}/?`}
                     )
                   </div>
                 </div>

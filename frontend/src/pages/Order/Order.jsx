@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import shopService from "../../services/shopService";
 import { ShoppingCart } from "lucide-react";
 import "./Order.css";
 import axiosInstance from '../../utils/axios';
+import { toast } from 'sonner';
 
 
 function Order() {
@@ -14,8 +14,6 @@ function Order() {
   const selectedPackageFromNav = location.state?.selectedPackage;
 
   // State management
-  // const [shops, setShops] = useState([]);
-  // const [selectedShop, setSelectedShop] = useState("");
   const [currentPackage] = useState({
     name: "STARTER",
     customers: 1,
@@ -41,16 +39,13 @@ function Order() {
     mapPackageName(selectedPackageFromNav?.name)
   );
   const [pages, setPages] = useState(selectedPackageFromNav?.pages);
-  const [customers, setCustomers] = useState(
-    selectedPackageFromNav?.customers || 10000
-  );
+
   const [employees, setEmployees] = useState(selectedPackageFromNav?.employees);
   const [duration, setDuration] = useState(
     selectedPackageFromNav?.duration || "12months"
   );
-  const [minPages, setMinPages] = useState(5);
-  const [minEmployees, setMinEmployees] = useState(3);
-  const [credit, setCredit] = useState(1000); // Credit for CHATBOT AI
+  const [minPages, setMinPages] = useState("");
+  const [minEmployees, setMinEmployees] = useState("");
 
   const [discountCode, setDiscountCode] = useState("");
   const [includeVAT, setIncludeVAT] = useState(false);
@@ -126,31 +121,10 @@ function Order() {
       setMinEmployees(matchedPackage.employees);
 
       // auto set pages / employees nếu chưa có hoặc nhỏ hơn min
-      setPages(matchedPackage.employees);
+      setPages(matchedPackage.pages);
       setEmployees(matchedPackage.employees);
     }
   }, [packageType, packages]);
-
-  // Fetch shops
-  // useEffect(() => {
-  //   const fetchShops = async () => {
-  //     try {
-  //       const response = await shopService.getMyShops();
-  //       if (response?.items && response.items.length > 0) {
-  //         setShops(response.items);
-  //         // Auto-select first shop or saved shop
-  //         const savedShopId = localStorage.getItem("selectedShopId");
-  //         const shopToSelect = savedShopId
-  //           ? response.items.find((s) => s._id === savedShopId)?._id
-  //           : response.items[0]._id;
-  //         setSelectedShop(shopToSelect || "");
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching shops:", error);
-  //     }
-  //   };
-  //   fetchShops();
-  // }, []);
 
   // Calculate total price
   const calculateTotal = () => {
@@ -159,7 +133,7 @@ function Order() {
       duration === "12months" ? 12 : duration === "6months" ? 6 : 3;
     const employee = (employees - minEmployees) * 20000 * durationMultiplier || 0;
     const page = (pages - minPages) * 20000 * durationMultiplier || 0;
-    const creditAI = credit * 1000 || 0;
+    // const creditAI = credit * 1000 || 0;
     return basePrice * durationMultiplier + employee + page;
   };
 
@@ -247,7 +221,7 @@ function Order() {
           <div className="or-form-grid">
             {/* Package Type */}
             <div className="or-form-row">
-              <label className="or-label">Gói phần mềm</label>
+              <label className="or-label">Gói dịch vụ</label>
               <select
                 className="or-select"
                 value={packageType}
@@ -276,29 +250,6 @@ function Order() {
                 </div>
               </div>
             </div>
-
-            {/* Customers - only show if NOT LIVECHAT */}
-            {/* {packageType !== "LIVECHAT" && (
-              <div className="or-form-row">
-                <label className="or-label"></label>
-                <div className="or-input-group">
-                  <div className="or-input-item">
-                    <select
-                      className="or-select"
-                      value={customers}
-                      onChange={(e) => setCustomers(Number(e.target.value))}
-                    >
-                      <option value="1000">1,000</option>
-                      <option value="5000">5,000</option>
-                      <option value="10000">10,000</option>
-                      <option value="20000">20,000</option>
-                      <option value="50000">50,000</option>
-                    </select>
-                    <span className="or-input-label">Khách hàng</span>
-                  </div>
-                </div>
-              </div>
-            )} */}
 
             <div className="or-form-row">
               <label className="or-label"></label>

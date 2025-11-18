@@ -353,6 +353,7 @@ a {
 
 .dropdown-shop-header {
   padding: 1px;
+  padding: 1px;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
@@ -371,6 +372,7 @@ a {
 
 /* List shops */
 .dropdown-shop-list {
+  padding: 10px 0px;
   padding: 10px 0px;
   max-height: 300px;
   overflow-y: auto;
@@ -414,9 +416,24 @@ a {
 
 .shop-item-name {
   padding: 10px 20px;
+  padding: 10px 20px;
   font-weight: 600;
   color: #1f2937;
   font-size: 14px;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+}
+
+.shop-item-name:hover {
+  background: #dee5eb;
+}
+
+.shop-item-name.active {
+  background: #eff6ff;
+  border-left: 3px solid #667eea;
+}
+
+/* .shop-item-category {
   border-bottom: 1px solid #e5e7eb;
   cursor: pointer;
 }
@@ -439,6 +456,10 @@ a {
   color: #667eea;
   font-size: 18px;
   font-weight: 700;
+} */
+.shop-selector{
+  cursor: pointer;
+}
 } */
 
 .btn-manage-shop {

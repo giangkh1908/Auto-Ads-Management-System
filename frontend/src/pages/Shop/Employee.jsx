@@ -10,7 +10,7 @@ import { useParams } from "react-router-dom";
 import axiosInstance from "../../utils/axios.js";
 import { getShopCache, saveShopCache } from "../../utils/shopCache";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup.jsx";
-import { useMyPackage } from "../../hooks/useMyPackage.js";
+import noAvatar from "../../assets/no-avatar.jpg";
 
 function Employee() {
   const { t } = useTranslation();
@@ -39,59 +39,104 @@ function Employee() {
 
   // State cho popup xác nhận chuyển giao
   const [isRelinquishOpen, setIsRelinquishOpen] = useState(false);
-  const [selectedEmployeeForRelinquish, setSelectedEmployeeForRelinquish] = useState(null);
+  const [selectedEmployeeForRelinquish, setSelectedEmployeeForRelinquish] =
+    useState(null);
   const [isLoadingRelinquish, setIsLoadingRelinquish] = useState(false);
 
   // State cho popup xác nhận thay đổi role
   const [isRoleChangeOpen, setIsRoleChangeOpen] = useState(false);
-  const [selectedEmployeeForRoleChange, setSelectedEmployeeForRoleChange] = useState(null);
+  const [selectedEmployeeForRoleChange, setSelectedEmployeeForRoleChange] =
+    useState(null);
   const [newRoleName, setNewRoleName] = useState("");
   const [oldRoleName, setOldRoleName] = useState("");
   const [isLoadingRoleChange, setIsLoadingRoleChange] = useState(false);
 
-  // === LẤY PACKAGE + KIỂM SOÁT LIMIT ===
-  const { pkg, loading: pkgLoading, canAdd } = useMyPackage();
-  const canInviteEmployee = pkg && canAdd("employees");
-
-  // Lấy current shop nếu không có shopId trong URL và kiểm tra quyền truy cập
+  // Lấy current shop, kiểm tra quyền truy cập và user role (gộp để tránh gọi API trùng lặp)
   useEffect(() => {
-    const getCurrentShop = async () => {
+    const getShopsAndSetShop = async () => {
       try {
-        // Lấy danh sách shops để kiểm tra role
+        // Chỉ gọi API 1 lần
         const res = await axiosInstance.get("/api/shops/owner");
         const data = res.data;
 
         if (data.success && Array.isArray(data.data)) {
-          const currentShop = data.data.find((shop) => shop.is_current);
+          // Ưu tiên lấy shop từ localStorage (shop đã được switch)
+          const savedShopId = localStorage.getItem("selectedShopId");
+          let targetShop = null;
+
+          if (savedShopId) {
+            targetShop = data.data.find((shop) => shop._id === savedShopId);
+          }
+
+          // Nếu không tìm thấy shop từ localStorage, lấy current shop
+          if (!targetShop) {
+            targetShop = data.data.find((shop) => shop.is_current);
+          }
+
+          // Nếu vẫn không có, lấy shop đầu tiên
+          if (!targetShop && data.data.length > 0) {
+            targetShop = data.data[0];
+          }
+
+          if (!targetShop) {
+            toast.error("Không tìm thấy shop hiện tại");
+            return;
+          }
 
           // Kiểm tra nếu role là Marketer thì redirect về /shop
-          if (currentShop?.user_role?.role_name === "Marketer") {
+          if (targetShop?.user_role?.role_name === "Marketer") {
             toast.error("Bạn không có quyền truy cập trang này");
             navigate(ROUTES.SHOP, { replace: true });
             return;
           }
 
-          if (shopIdFromParams) {
-            setActualShopId(shopIdFromParams);
+          // Set user role từ target shop
+          if (targetShop?.user_role?.role_name) {
+            const role = targetShop.user_role.role_name;
+            setUserRoleInShop(role);
+
+            // Cập nhật cache với role mới
+            const cachedShop = getShopCache();
+            if (cachedShop && cachedShop.id === targetShop._id) {
+              saveShopCache({
+                ...cachedShop,
+                role: role,
+              });
+            }
+          }
+
+          const targetShopId = targetShop._id;
+
+          // Nếu shopId trong URL khác với target shop → redirect đến target shop
+          if (shopIdFromParams && shopIdFromParams !== targetShopId) {
+            navigate(ROUTES.SHOP_EMPLOYEE.replace(":shopId", targetShopId), {
+              replace: true,
+            });
+            setActualShopId(targetShopId);
             return;
           }
 
-          if (currentShop) {
-            const currentShopId = currentShop._id;
-            setActualShopId(currentShopId);
-            // Redirect đến URL với shopId
-            navigate(ROUTES.SHOP_EMPLOYEE.replace(":shopId", currentShopId), { replace: true });
-          } else {
-            toast.error("Không tìm thấy shop hiện tại");
+          // Nếu không có shopId trong URL → redirect đến target shop
+          if (!shopIdFromParams) {
+            navigate(ROUTES.SHOP_EMPLOYEE.replace(":shopId", targetShopId), {
+              replace: true,
+            });
+            setActualShopId(targetShopId);
+            return;
+          }
+
+          // Nếu shopId trong URL khớp với target shop → set actualShopId
+          if (shopIdFromParams === targetShopId) {
+            setActualShopId(targetShopId);
           }
         }
       } catch (error) {
-        console.error("Error getting current shop:", error);
-        toast.error("Lỗi khi lấy shop hiện tại");
+        console.error("Error getting shops:", error);
+        toast.error("Lỗi khi lấy thông tin shop");
       }
     };
 
-    getCurrentShop();
+    getShopsAndSetShop();
   }, [shopIdFromParams, navigate]);
 
   useEffect(() => {
@@ -116,6 +161,7 @@ function Employee() {
             id: emp.user_id,
             name: emp.full_name || "Unknown",
             email: emp.email || "No email",
+            avatar: emp.avatar || null,
             role: emp.role_name || "N/A",
             status: emp.status || "Inactive",
             page: emp.page || 0,
@@ -126,7 +172,9 @@ function Employee() {
         }
       } catch (e) {
         console.error("Load employees error:", e);
-        toast.error(e.response?.data?.message || "Lỗi khi tải danh sách nhân viên");
+        toast.error(
+          e.response?.data?.message || "Lỗi khi tải danh sách nhân viên"
+        );
       } finally {
         setLoading(false);
       }
@@ -138,7 +186,7 @@ function Employee() {
     if (!actualShopId) return;
 
     // Tìm employee để lấy thông tin
-    const employee = employees.find(emp => emp.id === userId);
+    const employee = employees.find((emp) => emp.id === userId);
     if (!employee) return;
 
     // Lưu thông tin để hiển thị trong popup
@@ -198,13 +246,15 @@ function Employee() {
         }, 500);
       } else {
         // Xử lý lỗi từ API
-        const errorMessage = data.error?.message || data.message || "Không thể cập nhật vai trò";
+        const errorMessage =
+          data.error?.message || data.message || "Không thể cập nhật vai trò";
         toast.error(errorMessage);
         setIsLoadingRoleChange(false);
       }
     } catch (err) {
       console.error("Update role error:", err);
-      const errorMessage = err.response?.data?.error?.message ||
+      const errorMessage =
+        err.response?.data?.error?.message ||
         err.response?.data?.message ||
         "Lỗi khi cập nhật vai trò";
       toast.error(errorMessage);
@@ -225,7 +275,9 @@ function Employee() {
       }
     } catch (error) {
       console.error("Error loading pages:", error);
-      toast.error(error.response?.data?.message || "Lỗi khi tải danh sách Page");
+      toast.error(
+        error.response?.data?.message || "Lỗi khi tải danh sách Page"
+      );
     }
   };
 
@@ -262,7 +314,7 @@ function Employee() {
     try {
       if (action === "relinquish") {
         // Tìm employee để lấy thông tin hiển thị trong popup
-        const employee = employees.find(emp => emp.id === userId);
+        const employee = employees.find((emp) => emp.id === userId);
         setSelectedEmployeeForRelinquish(employee);
         setIsRelinquishOpen(true);
         return;
@@ -272,11 +324,14 @@ function Employee() {
       else if (action === "deactivate") newStatus = "inactive";
       else if (action === "remove") newStatus = "removed";
 
-      const res = await axiosInstance.put(`/api/shop-users/status/${actualShopId}`, {
-        userId,
-        newStatus,
-        currentUserId,
-      });
+      const res = await axiosInstance.put(
+        `/api/shop-users/status/${actualShopId}`,
+        {
+          userId,
+          newStatus,
+          currentUserId,
+        }
+      );
 
       const data = res.data;
 
@@ -286,8 +341,8 @@ function Employee() {
           newStatus === "active"
             ? "Đã kích hoạt nhân viên thành công!"
             : newStatus === "inactive"
-              ? "Đã vô hiệu hóa nhân viên thành công!"
-              : data.message || "Cập nhật trạng thái thành công!";
+            ? "Đã vô hiệu hóa nhân viên thành công!"
+            : data.message || "Cập nhật trạng thái thành công!";
 
         toast.success(statusMessage);
 
@@ -302,15 +357,13 @@ function Employee() {
       }
     } catch (error) {
       console.error("Update status error:", error);
-      toast.error(error.response?.data?.message || "Lỗi khi cập nhật trạng thái");
+      toast.error(
+        error.response?.data?.message || "Lỗi khi cập nhật trạng thái"
+      );
     }
   };
 
   const handleInviteEmployee = async () => {
-    if (!inviteEmail.trim()) {
-      toast.error("Vui lòng nhập email nhân viên!");
-      return;
-    }
     if (!inviteEmail.trim()) {
       toast.error("Vui lòng nhập email nhân viên!");
       return;
@@ -346,10 +399,6 @@ function Employee() {
 
   //Thêm page mới
   const handleAddNewPage = () => {
-    if (!canInviteEmployee) {
-      toast.warning(`Đã đạt giới hạn nhân viên: ${pkg?.usage.employees}/${pkg?.limits.employees}`);
-      return;
-    }
     setIsInviteOpen(true);
   };
 
@@ -366,7 +415,10 @@ function Employee() {
 
       const data = res.data;
       // Kiểm tra thành công: có success: true hoặc status 200 và có message/code
-      if (data.success === true || (res.status === 200 && (data.message || data.code))) {
+      if (
+        data.success === true ||
+        (res.status === 200 && (data.message || data.code))
+      ) {
         // Khi chuyển giao quyền, role của user hiện tại sẽ thành "Marketing Admin"
         // Cập nhật cache với role mới
         const cachedShop = getShopCache();
@@ -392,13 +444,15 @@ function Employee() {
         }, 500);
       } else {
         // Xử lý lỗi từ API
-        const errorMessage = data.error?.message || data.message || "Không thể chuyển quyền";
+        const errorMessage =
+          data.error?.message || data.message || "Không thể chuyển quyền";
         toast.error(errorMessage);
         setIsLoadingRelinquish(false);
       }
     } catch (error) {
       console.error("Relinquish error:", error);
-      const errorMessage = error.response?.data?.error?.message ||
+      const errorMessage =
+        error.response?.data?.error?.message ||
         error.response?.data?.message ||
         "Lỗi khi chuyển giao quyền";
       toast.error(errorMessage);
@@ -421,7 +475,10 @@ function Employee() {
   const renderInviteModal = () =>
     isInviteOpen && (
       <div className="modal-overlay" onClick={() => setIsInviteOpen(false)}>
-        <div className="modal-content-shop" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-content-shop"
+          onClick={(e) => e.stopPropagation()}
+        >
           <h3>Thêm nhân viên mới</h3>
 
           <div className="modal-field">
@@ -466,34 +523,6 @@ function Employee() {
     return cachedShop?.role || null;
   });
 
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        const res = await axiosInstance.get("/api/shops/owner");
-        const data = res.data;
-        if (data.success && Array.isArray(data.data)) {
-          const currentShop = data.data.find((shop) => shop.is_current);
-          if (currentShop?.user_role?.role_name) {
-            const role = currentShop.user_role.role_name;
-            setUserRoleInShop(role);
-
-            // Cập nhật cache với role mới
-            const cachedShop = getShopCache();
-            if (cachedShop && cachedShop.id === currentShop._id) {
-              saveShopCache({
-                ...cachedShop,
-                role: role,
-              });
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching user role:", error);
-      }
-    };
-    fetchUserRole();
-  }, []);
-
   return (
     <div className="shop-border">
       {/* === THÔNG BÁO GÓI + LIMIT === */}
@@ -523,14 +552,22 @@ function Employee() {
         {/* Chỉ hiển thị tab Employee nếu role không phải Marketer */}
         {userRoleInShop !== "Marketer" && (
           <NavLink
-            to={actualShopId ? ROUTES.SHOP_EMPLOYEE.replace(":shopId", actualShopId) : ROUTES.SHOP}
+            to={
+              actualShopId
+                ? ROUTES.SHOP_EMPLOYEE.replace(":shopId", actualShopId)
+                : ROUTES.SHOP
+            }
             className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
           >
             {t("shop.employee")}
           </NavLink>
         )}
         <NavLink
-          to={actualShopId ? ROUTES.SHOP_HISTORY.replace(":shopId", actualShopId) : ROUTES.SHOP}
+          to={
+            actualShopId
+              ? ROUTES.SHOP_HISTORY.replace(":shopId", actualShopId)
+              : ROUTES.SHOP
+          }
           className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
         >
           {t("shop.history")}
@@ -583,21 +620,44 @@ function Employee() {
             ) : (
               <div className="shops-table">
                 <div className="table-header-employee">
-                  <div className="table-cell-name">{t("shop.name")}</div>
+                  <div className="table-cell"></div>
+                  <div className="table-cell-name">{t("shop.employee")}</div>
                   <div className="table-cell">{t("shop.email")}</div>
                   <div className="table-cell">{t("shop.page_count")}</div>
                   <div className="table-cell">{t("shop.role")}</div>
-                  <div className="table-cell">{t("shop.status")}</div>
+                  {/* <div className="table-cell">{t("shop.status")}</div> */}
                   <div className="table-cell">{t("shop.action")}</div>
                 </div>
 
                 {filteredEmployees.map((employee) => (
                   <div key={employee.id} className="table-row-employee">
-                    <div className="table-cell-name" data-label={t("shop.name")}>
-                      <div className="shop-name">
-                        <div className="shop-avatar">
-                          {employee.name ? employee.name.charAt(0) : "?"}
+                  <div className="employee-avatar">
+                          <img
+                            src={employee.avatar || noAvatar}
+                            alt={employee.name}
+                            onError={(e) => {
+                              // Nếu cả avatar và fallback đều lỗi, hiển thị chữ cái đầu
+                              e.target.style.display = "none";
+                              const fallback =
+                                e.target.parentElement.querySelector(
+                                  ".avatar-fallback"
+                                );
+                              if (fallback) fallback.style.display = "flex";
+                            }}
+                          />
+                          <span
+                            className="avatar-fallback"
+                            style={{ display: "none" }}
+                          >
+                            {employee.name ? employee.name.charAt(0) : "?"}
+                          </span>
                         </div>
+                    <div
+                      className="table-cell-name"
+                      data-label={t("shop.name")}
+                    >
+                      <div className="shop-name">
+                        
                         <span>{employee.name}</span>
                       </div>
                     </div>
@@ -606,7 +666,7 @@ function Employee() {
                     </div>
                     <div
                       className="table-cell"
-                    // data-label={t("shop.page_count")}
+                      // data-label={t("shop.page_count")}
                     >
                       <button
                         className="btn-assign-page"
@@ -621,7 +681,7 @@ function Employee() {
                         className="role-select"
                         value={
                           isRoleChangeOpen &&
-                            selectedEmployeeForRoleChange?.id === employee.id
+                          selectedEmployeeForRoleChange?.id === employee.id
                             ? oldRoleName
                             : employee.role
                         }
@@ -637,20 +697,22 @@ function Employee() {
                         <option value="Marketer">Marketer</option>
                       </select>
                     </div>
-                    <div className="table-cell" data-label={t("shop.status")}>
+                    {/* <div className="table-cell" data-label={t("shop.status")}>
                       <span
                         className={`status-badge status-${employee.status.toLowerCase()}`}
                       >
                         {employee.status}
                       </span>
-                    </div>
+                    </div> */}
                     <div className="table-cell" data-label={t("shop.action")}>
                       <div className="action-buttons">
                         {/* Chỉ hiển thị button activate nếu status không phải active */}
                         {employee.status?.toLowerCase() !== "active" && (
                           <button
                             className="shop-action-btn shop-activate-btn"
-                            onClick={() => handleAction(employee.id, "activate")}
+                            onClick={() =>
+                              handleAction(employee.id, "activate")
+                            }
                             title={t("shop.activate")}
                             disabled={employee.role === "Shop Owner"}
                           >
@@ -695,24 +757,48 @@ function Employee() {
       {renderInviteModal()}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content-shop" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-content-shop"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-header-shop">
               <h3>Phân quyền Page cho nhân viên</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+              <button
+                className="modal-close"
+                onClick={() => setShowModal(false)}
+              >
+                ×
+              </button>
             </div>
             <div className="modal-body-shop">
               {pages.map((p) => (
-                <label key={p.id} style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                <label
+                  key={p.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    marginBottom: "12px",
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={selectedPages.some((sp) => sp.id === p.id)}
                     onChange={(e) => {
-                      if (e.target.checked) setSelectedPages([...selectedPages, p]);
+                      if (e.target.checked)
+                        setSelectedPages([...selectedPages, p]);
                       else
-                        setSelectedPages(selectedPages.filter((sp) => sp.id !== p.id));
+                        setSelectedPages(
+                          selectedPages.filter((sp) => sp.id !== p.id)
+                        );
                     }}
                   />
-                  <img src={p.picture} alt="" width={24} style={{ borderRadius: "4px" }} />
+                  <img
+                    src={p.picture}
+                    alt=""
+                    width={24}
+                    style={{ borderRadius: "4px" }}
+                  />
                   <span>{p.name}</span>
                 </label>
               ))}
@@ -721,7 +807,10 @@ function Employee() {
               <button className="btn btn-primary" onClick={handleAssignPages}>
                 Lưu phân quyền
               </button>
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowModal(false)}
+              >
                 Hủy
               </button>
             </div>

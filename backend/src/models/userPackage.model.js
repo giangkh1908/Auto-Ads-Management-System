@@ -38,7 +38,7 @@ const userPackageSchema = new mongoose.Schema(
     // Trạng thái
     status: {
       type: String,
-      enum: ["active", "expired", "cancelled", "pending", "expiring soon", "recently expired", "new signup"],
+      enum: ["active", "expired", "canceled", "pending", "expiring soon", "recently expired", "new signup"],
       default: "pending",
     },
 

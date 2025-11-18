@@ -1,4 +1,5 @@
 import PaymentTransaction from "../../models/paymentTransaction.model.js";
+import UserPackage from "../../models/userPackage.model.js";
 import mongoose from "mongoose";
 
 
@@ -47,8 +48,8 @@ export const getPaymentTransactions = async (req, res) => {
     if (package_id) filter.package_id = package_id;
 
     const transactions = await PaymentTransaction.find(filter)
-      .populate("user_id", "name email")
-      .populate("package_id", "name price")
+      .populate("user_id", "_id full_name email phone facebookId")
+      .populate("package_id", "name price planType")
       .sort({ created_at: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
@@ -78,7 +79,7 @@ export const getPaymentTransactions = async (req, res) => {
 export const getPaymentTransactionById = async (req, res) => {
   try {
     const transaction = await PaymentTransaction.findById(req.params.id)
-      .populate("user_id", "name email")
+      .populate("user_id", "_id name email")
       .populate("package_id", "name price");
 
     if (!transaction) {
@@ -105,14 +106,32 @@ export const getPaymentTransactionById = async (req, res) => {
 export const updatePaymentTransaction = async (req, res) => {
   try {
     const data = req.body;
+    
+    // Lấy transaction hiện tại để lấy user_id và package_id
+    const currentTransaction = await PaymentTransaction.findById(req.params.id);
+    if (!currentTransaction) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy giao dịch",
+      });
+    }
+
+    // Nếu có metadata trong request, cần merge với metadata hiện tại thay vì replace
+    let updateData = { ...data };
+    if (data.metadata && typeof data.metadata === 'object') {
+      updateData.metadata = {
+        ...(currentTransaction.metadata || {}),
+        ...data.metadata,
+      };
+    }
 
     const transaction = await PaymentTransaction.findByIdAndUpdate(
       req.params.id,
       {
-        ...data,
+        ...updateData,
         updated_by: req.user?._id || null,
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     if (!transaction) {
@@ -120,6 +139,59 @@ export const updatePaymentTransaction = async (req, res) => {
         success: false,
         message: "Không tìm thấy giao dịch",
       });
+    }
+
+    // ✅ Cập nhật status của UserPackage khi approve/reject transaction
+    if (data.status === "success" || data.status === "canceled") {
+      try {
+        // Tìm UserPackage có user_id và package_id tương ứng
+        // - Khi approve: chỉ tìm status = "pending"
+        // - Khi reject: tìm status = "pending" hoặc "active" (nếu đã approve trước đó)
+        const statusFilter = data.status === "success" 
+          ? { status: "pending" }
+          : { status: { $in: ["pending", "active"] } };
+        
+        // Tìm UserPackage mới nhất (theo created_at) để tránh trường hợp có nhiều UserPackage
+        const userPackage = await UserPackage.findOne({
+          user_id: currentTransaction.user_id,
+          package_id: currentTransaction.package_id,
+          ...statusFilter,
+        }).sort({ created_at: -1 });
+
+        if (userPackage) {
+          // Update status của UserPackage
+          const newStatus = data.status === "success" ? "active" : "cancelled";
+          
+          // Nếu approve (success), cần set from_date và to_date nếu chưa có
+          const userPackageUpdateData = {
+            status: newStatus,
+            updated_by: req.user?._id || null,
+          };
+
+          if (data.status === "success" && !userPackage.from_date) {
+            // Set from_date = hiện tại, to_date dựa trên duration trong metadata
+            const duration = currentTransaction.metadata?.duration || "12months";
+            const durationDays = duration === "12months" ? 365 : duration === "6months" ? 180 : 90;
+            
+            userPackageUpdateData.from_date = new Date();
+            userPackageUpdateData.to_date = new Date();
+            userPackageUpdateData.to_date.setDate(userPackageUpdateData.to_date.getDate() + durationDays);
+          }
+
+          await UserPackage.findByIdAndUpdate(
+            userPackage._id,
+            userPackageUpdateData,
+            { new: true }
+          );
+
+          console.log(`✅ Đã cập nhật UserPackage ${userPackage._id} status từ "${userPackage.status}" thành "${newStatus}"`);
+        } else {
+          console.log(`⚠️ Không tìm thấy UserPackage phù hợp cho user ${currentTransaction.user_id} và package ${currentTransaction.package_id}`);
+        }
+      } catch (userPackageError) {
+        console.error("Lỗi cập nhật UserPackage:", userPackageError);
+        // Không throw error để không ảnh hưởng đến response của transaction
+      }
     }
 
     res.status(200).json({

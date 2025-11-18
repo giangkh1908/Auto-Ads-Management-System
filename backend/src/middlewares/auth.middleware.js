@@ -121,6 +121,11 @@ export const requireEmailVerification = (req, res, next) => {
 export const authorize = (moduleName, action) => {
   return async (req, res, next) => {
     try {
+      // System Admin có quyền truy cập tất cả
+      if (req.user.internal_role === "System Admin") {
+        return next();
+      }
+
       const userId = req.user._id;
       const shopId = req.headers['x-shop-id'] || req.query.shop_id || null;
 
@@ -156,9 +161,9 @@ export const authorizeInShop = (module, action) => {
       const userId = req.user._id;
 
       if (!shopId) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           success: false,
-          message: "Shop ID is required for this action."
+          message: "Shop ID is required for this action." 
         });
       }
 
@@ -171,18 +176,18 @@ export const authorizeInShop = (module, action) => {
       // 2. Nếu không có UserRole, kiểm tra user có phải là owner không
       if (!userRole) {
         const shop = await Shop.findById(shopId);
-
+        
         if (!shop) {
-          return res.status(404).json({
+          return res.status(404).json({ 
             success: false,
-            message: "Shop not found."
+            message: "Shop not found." 
           });
         }
 
         // Nếu user là owner, lấy role "Shop Owner" để kiểm tra permission
         if (shop.owner_id && shop.owner_id.toString() === userId.toString()) {
           const ownerRole = await Role.findOne({ role_name: "Shop Owner" });
-
+          
           if (ownerRole) {
             // Tạo object giả để kiểm tra permission
             userRole = {
@@ -196,9 +201,9 @@ export const authorizeInShop = (module, action) => {
           }
         } else {
           // User không phải owner và không có UserRole
-          return res.status(403).json({
+          return res.status(403).json({ 
             success: false,
-            message: "You are not part of this shop. ShopId: " + shopId + " UserId: " + userId
+            message: "You are not part of this shop. ShopId: " + shopId + " UserId: " + userId 
           });
         }
       }
@@ -220,14 +225,14 @@ export const authorizeInShop = (module, action) => {
 
       // Lưu shopId vào request để controller sử dụng
       req.shopId = shopId;
-
+      
       next();
     } catch (error) {
       console.error("Authorization error:", error);
-      return res.status(500).json({
+      return res.status(500).json({ 
         success: false,
         message: "Internal authorization error.",
-        error: error.message
+        error: error.message 
       });
     }
   };

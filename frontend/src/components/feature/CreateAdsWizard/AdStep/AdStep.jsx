@@ -16,6 +16,7 @@ import "./AdStep.css";
 import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
 import { CTA_OPTIONS } from "../../../../constants/ctaConstants";
+import { CTA_OPTIONS } from "../../../../constants/ctaConstants";
 import { useMyPackage } from "../../../../hooks/useMyPackage.js";
 
 function AdStepInner({ ad, setAd, adset }, ref) {
@@ -49,6 +50,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             '✅ Tỷ lệ: 9:16 (Stories), 1:1 (Feed), 16:9 (Landscape)',
           ],
           ctaRecommendations: ['Tìm hiểu thêm', 'Xem khuyến mãi', 'Nghe ngay'],
+          ctaRecommendations: ['Tìm hiểu thêm', 'Xem khuyến mãi', 'Nghe ngay'],
           destinationNote: 'URL đích sẽ hiển thị khi người dùng nhấp vào video hoặc CTA'
         };
         
@@ -65,6 +67,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             '✅ Video: Độ dài 15-30 giây cho tương tác tốt nhất',
             '✅ Sử dụng câu hỏi hoặc call-to-action trong văn bản',
           ],
+          ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
           ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
           destinationNote: 'Tập trung vào engagement, URL đích là phụ (có thể dẫn đến trang fanpage hoặc website)'
         };
@@ -83,6 +86,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             '✅ Văn bản chính: Mô tả ngắn gọn về trang',
           ],
           ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
+          ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
           destinationNote: '🎯 Quảng cáo sẽ hiển thị nút "Thích trang" trực tiếp, URL đích thường là link trang Facebook'
         };
         
@@ -99,6 +103,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             '✅ Văn bản chính: Mô tả highlights của sự kiện',
             '✅ Tạo cảm giác FOMO (Fear of Missing Out)',
           ],
+          ctaRecommendations: ['Đăng ký ngay', 'Đặt ngay', 'Nhận ưu đãi'],
           ctaRecommendations: ['Đăng ký ngay', 'Đặt ngay', 'Nhận ưu đãi'],
           destinationNote: '🎯 Quảng cáo sẽ hiển thị nút phản hồi sự kiện (Quan tâm/Tham gia), URL đích thường là link sự kiện Facebook'
         };
@@ -117,6 +122,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             '✅ Chuẩn bị auto-reply hoặc chatbot để phản hồi nhanh',
           ],
           ctaRecommendations: ['Liên hệ ngay', 'Nhận ưu đãi', 'Tìm hiểu thêm'],
+          ctaRecommendations: ['Liên hệ ngay', 'Nhận ưu đãi', 'Tìm hiểu thêm'],
           destinationNote: '🎯 Quảng cáo sẽ có nút "Nhắn tin" mở Messenger, URL đích không quan trọng (có thể để link fanpage)'
         };
         
@@ -132,6 +138,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             '✅ Ảnh: Độ phân giải tối thiểu 1080x1080px',
             '✅ Video: Độ dài 15-60 giây',
           ],
+          ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
           ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
           destinationNote: 'URL đích là trang bạn muốn người dùng truy cập'
         };
@@ -388,21 +395,28 @@ function AdStepInner({ ad, setAd, adset }, ref) {
         {adset?.destination_type && (
           <div className="guidance-banner">
             <h3 className="guidance-banner-title">
+          <div className="guidance-banner">
+            <h3 className="guidance-banner-title">
               {guidance.title}
             </h3>
+            <div className="guidance-banner-box">
+              <h4 className="guidance-banner-box-header">
             <div className="guidance-banner-box">
               <h4 className="guidance-banner-box-header">
                 📋 Yêu cầu nội dung:
               </h4>
               {guidance.requirements.map((req, idx) => (
                 <div key={idx} className="guidance-banner-requirement">
+                <div key={idx} className="guidance-banner-requirement">
                   {req}
                 </div>
               ))}
             </div>
             <div className="guidance-banner-cta-box">
+            <div className="guidance-banner-cta-box">
               <strong>💡 Gợi ý CTA:</strong> {guidance.ctaRecommendations.join(', ')}
             </div>
+            <div className="guidance-banner-note">
             <div className="guidance-banner-note">
               ℹ️ {guidance.destinationNote}
             </div>
@@ -500,10 +514,12 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             {/* Headline */}
             <div className="field-group">
               <div className="field-label-container">
+              <div className="field-label-container">
                 <label className="field-label">Tiêu đề</label>
                 <button
                   onClick={() => generateAIContent('headline', 40)}
                   disabled={isGenerating.headline || !contextId}
+                  className="ai-generate-btn"
                   className="ai-generate-btn"
                 >
                   <Bot size={14} />
@@ -524,10 +540,12 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             {/* Primary Text */}
             <div className="field-group">
               <div className="field-label-container">
+              <div className="field-label-container">
                 <label className="field-label">Văn bản chính</label>
                 <button
                   onClick={() => generateAIContent('primaryText', 125)}
                   disabled={isGenerating.primaryText || !contextId}
+                  className="ai-generate-btn"
                   className="ai-generate-btn"
                 >
                   <Bot size={14} />
@@ -548,10 +566,12 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             {/* Description */}
             <div className="field-group">
               <div className="field-label-container">
+              <div className="field-label-container">
                 <label className="field-label">Mô tả</label>
                 <button
                   onClick={() => generateAIContent('description', 30)}
                   disabled={isGenerating.description || !contextId}
+                  className="ai-generate-btn"
                   className="ai-generate-btn"
                 >
                   <Bot size={14} />
@@ -572,6 +592,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             {/* Call to Action */}
             <div className="field-group">
               <div className="field-label-container">
+              <div className="field-label-container">
                 <label className="field-label">Nút kêu gọi hành động</label>
               </div>
               <select
@@ -581,6 +602,11 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                   setAd((prev) => ({ ...prev, cta: e.target.value }))
                 }
               >
+                {CTA_OPTIONS.map((cta) => (
+                  <option key={cta} value={cta}>
+                    {cta}
+                  </option>
+                ))}
                 {CTA_OPTIONS.map((cta) => (
                   <option key={cta} value={cta}>
                     {cta}
@@ -609,6 +635,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             {/* Media File */}
             <div className="field-group">
               <label className="field-label">* File phương tiện ({guidance.mediaLabel})</label>
+              <small className="media-description-hint">
               <small className="media-description-hint">
                 {guidance.mediaDescription}
               </small>
@@ -725,6 +752,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                   <video
                     src={ad.mediaUrl}
                     controls
+                    className="video-preview"
                     className="video-preview"
                   />
                 </div>

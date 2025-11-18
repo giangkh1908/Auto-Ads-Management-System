@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import './ServicePackage.css';
 import axiosInstance from '../../utils/axios';
+import { toast } from 'sonner';
 
 function ServicePackage() {
   const navigate = useNavigate();
@@ -33,153 +34,6 @@ function ServicePackage() {
 
     fetchPackages();
   }, [activeTab]);
-
-  // const pricingPlans = {
-  //   '3months': [
-  //     {
-  //       name: 'Miễn Phí',
-  //       badge: 'FREE',
-  //       badgeColor: 'cyan',
-  //       price: '0đ',
-  //       period: '3 Tháng',
-  //       pages: '3',
-  //       conversations: '1,000',
-  //       contacts: '2,000',
-  //       features: ['3 Nhân viên', 'LiveFail'],
-  //       buttonText: 'Miễn phí',
-  //       buttonVariant: 'secondary',
-  //       popular: false
-  //     },
-  //     {
-  //       name: 'LiveChat',
-  //       badge: 'LIVECHAT',
-  //       badgeColor: 'green',
-  //       price: '98,000đ',
-  //       period: '3 Tháng',
-  //       pages: '5',
-  //       conversations: '10,000',
-  //       contacts: '20,000',
-  //       features: ['Không giới hạn số lần đăng', '3 Nhân viên'],
-  //       buttonText: 'Mua Ngay',
-  //       buttonVariant: 'primary',
-  //       popular: false
-  //     },
-  //     {
-  //       name: 'Chatbot',
-  //       badge: 'CHATBOT',
-  //       badgeColor: 'blue',
-  //       price: '290,000đ',
-  //       period: '3 Tháng',
-  //       pages: '15',
-  //       conversations: '15,000',
-  //       contacts: '30,000',
-  //       features: ['Không giới hạn số lần đăng', '3 Nhân viên', 'LiveFail', 'ChatBot'],
-  //       buttonText: 'Mua Ngay',
-  //       buttonVariant: 'primary',
-  //       popular: false
-  //     },
-  //     {
-  //       name: 'Chatbot AI',
-  //       badge: 'CHATBOT AI',
-  //       badgeColor: 'purple',
-  //       price: '980,000đ',
-  //       period: '3 Tháng',
-  //       pages: '∞',
-  //       conversations: '20,000',
-  //       contacts: '40,000',
-  //       features: ['Không giới hạn số lần đăng', '5 Nhân viên', 'LiveFail', 'ChatBot', 'OpenAI', 'API & CRM', 'Tùy chỉnh nâng cao'],
-  //       buttonText: 'Mua Ngay',
-  //       buttonVariant: 'primary',
-  //       popular: true
-  //     }
-  //   ],
-  //   '1year': [
-  //     {
-  //       name: 'Miễn Phí',
-  //       badge: 'FREE',
-  //       badgeColor: 'cyan',
-  //       price: '0đ',
-  //       period: '1 Năm',
-  //       pages: '3',
-  //       conversations: '1,000',
-  //       contacts: '2,000',
-  //       features: ['3 Nhân viên', 'LiveFail'],
-  //       buttonText: 'Miễn phí',
-  //       buttonVariant: 'secondary',
-  //       popular: false
-  //     },
-  //     {
-  //       name: 'LiveChat',
-  //       badge: 'LIVECHAT',
-  //       badgeColor: 'green',
-  //       price: '350,000đ',
-  //       period: '1 Năm',
-  //       pages: '5',
-  //       conversations: '10,000',
-  //       contacts: '20,000',
-  //       features: ['Không giới hạn số lần đăng', '3 Nhân viên'],
-  //       buttonText: 'Mua Ngay',
-  //       buttonVariant: 'primary',
-  //       popular: false
-  //     },
-  //     {
-  //       name: 'Chatbot',
-  //       badge: 'CHATBOT',
-  //       badgeColor: 'blue',
-  //       price: '1,050,000đ',
-  //       period: '1 Năm',
-  //       pages: '15',
-  //       conversations: '15,000',
-  //       contacts: '30,000',
-  //       features: ['Không giới hạn số lần đăng', '3 Nhân viên', 'LiveFail', 'ChatBot'],
-  //       buttonText: 'Mua Ngay',
-  //       buttonVariant: 'primary',
-  //       popular: false
-  //     },
-  //     {
-  //       name: 'Chatbot AI',
-  //       badge: 'CHATBOT AI',
-  //       badgeColor: 'purple',
-  //       price: '3,500,000đ',
-  //       period: '1 Năm',
-  //       pages: '∞',
-  //       conversations: '20,000',
-  //       contacts: '40,000',
-  //       features: ['Không giới hạn số lần đăng', '5 Nhân viên', 'LiveFail', 'ChatBot', 'OpenAI', 'API & CRM', 'Tùy chỉnh nâng cao'],
-  //       buttonText: 'Mua Ngay',
-  //       buttonVariant: 'primary',
-  //       popular: true
-  //     }
-  //   ]
-  // };
-
-  // const features = [
-  //   { name: 'Tự động trả lời comment và video', free: '✓', livechat: '✓', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Tự động tin nhắn hàng loạt cuộc khách', free: '✓', livechat: '✓', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Livechat đa kênh ®', free: '-', livechat: '✓', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Google Sheets ®', free: '1', livechat: '1', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Kiểm tra Popup', free: '1', livechat: '1', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'User Input - Nút nhập từ ®', free: '1', livechat: '1', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Webform - form đăng ký', free: '1', livechat: '1', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'AMT - api mua hàng nông cộng', free: '1', livechat: '-', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'SMIT - hàng web có giỏ hàng', free: '1', livechat: '-', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Link ref', free: '10', livechat: '10', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'QR Code', free: '10', livechat: '10', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Socks tin nhắn', free: '10', livechat: '10', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Dòng tin nhắn', free: '5', livechat: '5', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Keyword ®', free: '1', livechat: '1', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Discounts ®', free: '1', livechat: '1', chatbot: '✓', chatbotai: '✓' },
-  //   { name: 'Chăm dịch ®', free: '5', livechat: '5', chatbot: '✓', chatbotai: '✓' },
-  // ];
-
-  // const additionalServices = [
-  //   { name: '+1 Page', duration: 'Thêm', price: '20K', period: 'Tháng' },
-  //   { name: '+1 Tài khoản Nhân viên', duration: 'Thêm', price: '20K', period: 'Tháng' },
-  //   { name: '+3,000 Cuộc trò chuyện Thêm', duration: 'Thêm', price: '150K', period: 'Tháng' },
-  //   { name: '+500 Liên hệ', duration: 'Thêm', price: '40K', period: 'Tháng' },
-  //   { name: '+2 API CHATGPT', duration: 'Thêm', price: '1,500K', period: 'Năm' },
-  //   { name: '+1,000 Aura', duration: 'Thêm', price: '80K', period: 'Tháng' },
-  // ];
 
   // Handle buy button click
   const handleBuyClick = (plan) => {
@@ -211,10 +65,6 @@ function ServicePackage() {
           <p className="sp-hero-subtitle">
             Fchat Miễn Phí Trọn Đời! Bạn chỉ trả tiền khi thấy hiệu quả!
           </p>
-          <p className="sp-hero-description">
-            Bạn sẽ được tặng thêm 30 ngày để sử dụng thử!
-          </p>
-          <button className="sp-hero-cta">Dùng thử</button>
         </div>
       </section>
 
