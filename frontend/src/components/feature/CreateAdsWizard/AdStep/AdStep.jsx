@@ -566,12 +566,10 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             {/* Description */}
             <div className="field-group">
               <div className="field-label-container">
-              <div className="field-label-container">
                 <label className="field-label">Mô tả</label>
                 <button
                   onClick={() => generateAIContent('description', 30)}
                   disabled={isGenerating.description || !contextId}
-                  className="ai-generate-btn"
                   className="ai-generate-btn"
                 >
                   <Bot size={14} />
@@ -592,7 +590,6 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             {/* Call to Action */}
             <div className="field-group">
               <div className="field-label-container">
-              <div className="field-label-container">
                 <label className="field-label">Nút kêu gọi hành động</label>
               </div>
               <select
@@ -602,11 +599,6 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                   setAd((prev) => ({ ...prev, cta: e.target.value }))
                 }
               >
-                {CTA_OPTIONS.map((cta) => (
-                  <option key={cta} value={cta}>
-                    {cta}
-                  </option>
-                ))}
                 {CTA_OPTIONS.map((cta) => (
                   <option key={cta} value={cta}>
                     {cta}
@@ -635,7 +627,6 @@ function AdStepInner({ ad, setAd, adset }, ref) {
             {/* Media File */}
             <div className="field-group">
               <label className="field-label">* File phương tiện ({guidance.mediaLabel})</label>
-              <small className="media-description-hint">
               <small className="media-description-hint">
                 {guidance.mediaDescription}
               </small>
@@ -752,7 +743,6 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                   <video
                     src={ad.mediaUrl}
                     controls
-                    className="video-preview"
                     className="video-preview"
                   />
                 </div>
