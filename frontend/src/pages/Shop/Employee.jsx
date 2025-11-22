@@ -4,8 +4,8 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { Plus, Edit, Play, Pause, Hand, Flag } from "lucide-react";
 import { ROUTES } from "../../constants/app.constants";
 import "./Shop.css";
-import { toast } from "sonner";
-import { STORAGE_KEYS } from "../../constants/app.constants";
+import { toast } from "react-toastify";
+import { STORAGE_KEYS } from '../../constants/app.constants';
 import { useParams } from "react-router-dom";
 import axiosInstance from "../../utils/axios.js";
 import { getShopCache, saveShopCache } from "../../utils/shopCache";
@@ -141,7 +141,7 @@ function Employee() {
 
   useEffect(() => {
     if (employees.length > 0 && currentUserId) {
-      const currentEmp = employees.find((emp) => emp.id === currentUserId);
+      const currentEmp = employees.find(emp => emp.id === currentUserId);
       setCurrentUserRole(currentEmp?.role || null);
     }
   }, [employees, currentUserId]);
@@ -205,7 +205,7 @@ function Employee() {
       const roleMap = {
         "Shop Owner": "68ff6cab6ef1d167ed39c6fa",
         "Marketing Admin": "68ff6cab6ef1d167ed39c6f9",
-        Marketer: "68ff6cab6ef1d167ed39c6f8",
+        "Marketer": "68ff6cab6ef1d167ed39c6f8",
       };
       const newRoleId = roleMap[newRoleName];
 
@@ -461,9 +461,7 @@ function Employee() {
   };
 
   const filteredEmployees = employees.filter((emp) => {
-    const matchesEmail = emp.email
-      ?.toLowerCase()
-      .includes(searchEmail.toLowerCase());
+    const matchesEmail = emp.email?.toLowerCase().includes(searchEmail.toLowerCase());
     const matchesRole =
       roleFilter === "all"
         ? true
@@ -472,7 +470,7 @@ function Employee() {
     return matchesEmail && matchesRole;
   });
 
-  const renderInviteModal = () =>
+  const renderInviteModal = () => (
     isInviteOpen && (
       <div className="modal-overlay" onClick={() => setIsInviteOpen(false)}>
         <div
@@ -503,19 +501,13 @@ function Employee() {
           </div>
 
           <div className="modal-actions">
-            <button onClick={handleInviteEmployee} className="btn btn-primary">
-              Gửi lời mời
-            </button>
-            <button
-              onClick={() => setIsInviteOpen(false)}
-              className="btn btn-secondary"
-            >
-              Hủy
-            </button>
+            <button onClick={handleInviteEmployee} className="btn btn-primary">Gửi lời mời</button>
+            <button onClick={() => setIsInviteOpen(false)} className="btn btn-secondary">Hủy</button>
           </div>
         </div>
       </div>
-    );
+    )
+  );
 
   // Lấy role từ cache ngay lập tức khi khởi tạo state
   const [userRoleInShop, setUserRoleInShop] = useState(() => {
@@ -575,13 +567,14 @@ function Employee() {
       </div>
 
       <div className="shop-page">
+
         {/* Filters + Add */}
         <div className="top-table-employee">
           <div className="employee-filters">
             <input
               type="text"
               className="filter-input"
-              placeholder={t("shop.search_email")}
+              placeholder={t('shop.search_email')}
               value={searchEmail}
               onChange={(e) => setSearchEmail(e.target.value)}
             />
@@ -590,7 +583,7 @@ function Employee() {
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
             >
-              <option value="all">{t("shop.all_roles")}</option>
+              <option value="all">{t('shop.all_roles')}</option>
               <option value="Shop Owner">Shop Owner</option>
               <option value="Marketing Admin">Marketing Admin</option>
               <option value="Marketer">Marketer</option>
@@ -606,7 +599,7 @@ function Employee() {
             }}
             title={!pkg ? "Cần có gói" : !canAdd("employees") ? "Đã đạt giới hạn" : "Mời nhân viên"}>
             <Plus size={16} />
-            {t("shop.add_new_employee")}
+            {t('shop.add_new_employee')}
           </button>
         </div>
 
@@ -615,7 +608,7 @@ function Employee() {
           <div className="shop-content">
             {loading ? (
               <div className="loading-state">
-                <p>{t("shop.loading_employees")}</p>
+                <p>{t('shop.loading_employees')}</p>
               </div>
             ) : (
               <div className="shops-table">
@@ -661,7 +654,7 @@ function Employee() {
                         <span>{employee.name}</span>
                       </div>
                     </div>
-                    <div className="table-cell" data-label={t("shop.email")}>
+                    <div className="table-cell" data-label={t('shop.email')}>
                       <span>{employee.email}</span>
                     </div>
                     <div
@@ -676,7 +669,7 @@ function Employee() {
                         <Flag size={18} />
                       </button>
                     </div>
-                    <div className="table-cell" data-label={t("shop.role")}>
+                    <div className="table-cell" data-label={t('shop.role')}>
                       <select
                         className="role-select"
                         value={

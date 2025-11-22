@@ -1,8 +1,7 @@
 import UserPackage from "../../models/userPackage.model.js";
 import PaymentTransaction from "../../models/paymentTransaction.model.js";
 import Package from "../../models/package.model.js";
-import Shop from "../../models/shops/shop.model.js";
-import ShopUser from "../../models/shops/shopUser.model.js";
+import { getUserEntitlements } from "../../services/entitlementService.js";
 
 export const createUserPackage = async (req, res) => {
     try {
@@ -177,14 +176,11 @@ export const getUserPackageById = async (req, res) => {
 
 export const getMyPackage = async (req, res) => {
   try {
-    const userPackage = await UserPackage.findOne({
-      user_id: req.user._id,
-      status: { $in: ["active"] },
-    })
-      .populate("package_id")
-      .sort({ created_at: -1 });
+    const entitlements = await getUserEntitlements(req.user._id, {
+      forceRefresh: true,
+    });
 
-    if (!userPackage) {
+    if (!entitlements) {
       return res.status(200).json({
         success: true,
         data: null,
@@ -192,56 +188,9 @@ export const getMyPackage = async (req, res) => {
       });
     }
 
-    const { package_id, pages, employees, shops, from_date, to_date, status } = userPackage;
-
-    // Đếm thực tế đã dùng
-    const shopCount = await Shop.countDocuments({ owner_id: req.user._id, deleted_at: null });
-    const employeeCount = await ShopUser.countDocuments({
-      user_id: { $ne: req.user._id }, // không tính owner
-      shop_id: { $in: await Shop.find({ owner_id: req.user._id }).distinct("_id") },
-      status: "active",
-    });
-
-    // ✅ Đếm số pages đã kết nối từ tất cả shops của user
-    const userShops = await Shop.find({ owner_id: req.user._id, deleted_at: null });
-    let pageCount = 0;
-    userShops.forEach(shop => {
-      if (Array.isArray(shop.facebook_pages)) {
-        pageCount += shop.facebook_pages.filter(
-          p => p.connected_status === "connected"
-        ).length;
-      }
-    });
-
-    // ✅ Đảm bảo limits có giá trị: ưu tiên từ userPackage (đã mua), nếu không có thì lấy từ package template
-    const limitsPages = pages || package_id?.pages || 0;
-    const limitsEmployees = employees || package_id?.employees || 0;
-    const limitsShops = shops || package_id?.shops || 0;
-
     res.json({
       success: true,
-      data: {
-        package: {
-          _id: package_id._id,
-          name: package_id.name,
-          features: package_id.features,
-          pages: package_id.pages,
-          employees: package_id.employees,
-          shops: package_id.shops,
-        },
-        limits: {
-          pages: limitsPages,        // ✅ Sử dụng giá trị đã mua hoặc mặc định
-          employees: limitsEmployees, // ✅ Sử dụng giá trị đã mua hoặc mặc định
-          shops: limitsShops,        // ✅ Sử dụng giá trị đã mua hoặc mặc định
-        },
-        usage: {
-          shops: shopCount,
-          employees: employeeCount,
-          pages: pageCount,          // ✅ Sửa từ 0 thành pageCount thực tế
-        },
-        period: { from_date, to_date },
-        status,
-      },
+      data: entitlements,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

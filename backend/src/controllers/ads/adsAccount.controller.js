@@ -20,6 +20,7 @@ import {
   fetchAdsetsFromFacebook,
   fetchAdsFromFacebook,
   fetchAccountInsights,
+  saveInsightsToAdPerformance,
 } from "../../services/fbAdsService.js";
 import axios from "axios";
 import { upsertOneAdAccount } from "../../services/adsAccountService.js";
@@ -476,13 +477,20 @@ export async function connectAdAccountCtrl(req, res) {
 export async function getAccountInsightsCtrl(req, res) {
   try {
     const { id } = req.params;
-    const { breakdowns = 'age', date_start, date_stop, time_range } = req.query;
+    const { 
+      breakdowns, 
+      date_start, 
+      date_stop, 
+      time_range,
+      needActions = 'true',
+      actionBreakdowns = 'action_type,action_destination',
+      level = 'ad'
+    } = req.query;
 
     if (!id) {
       return res.status(400).json({ message: "Thiếu account ID" });
     }
 
-    // Lấy access token
     let accessToken = req.query.access_token;
     if (!accessToken) {
       const user = await User.findById(req.user?._id).select("+facebookAccessToken");
@@ -496,7 +504,6 @@ export async function getAccountInsightsCtrl(req, res) {
       });
     }
 
-    // Tìm account trong DB để lấy external_id
     const account = await getAdsAccountById(id);
     if (!account) {
       return res.status(404).json({ message: "Không tìm thấy tài khoản quảng cáo" });
@@ -504,12 +511,16 @@ export async function getAccountInsightsCtrl(req, res) {
 
     const externalId = account.external_id || account._id;
 
-    // Build options
     const options = {
-      breakdowns,
+      level,
+      needActions: needActions === 'true',
+      actionBreakdowns: needActions === 'true' ? actionBreakdowns : undefined,
     };
 
-    // Xử lý time range
+    if (breakdowns && needActions === 'true') {
+      options.breakdowns = breakdowns;
+    }
+
     if (date_start && date_stop) {
       options.timeRange = {
         since: date_start,
@@ -519,12 +530,39 @@ export async function getAccountInsightsCtrl(req, res) {
       options.timeRange = time_range;
     }
 
-    // Fetch insights từ Facebook
     const insightsData = await fetchAccountInsights(accessToken, externalId, options);
+
+    // Map page_name từ adset/campaign trong DB vào insightsData để hiển thị ngay
+    if (insightsData.length > 0) {
+      const adsetExternalIds = [...new Set(insightsData.map(item => item.adset_id).filter(Boolean))];
+      const campaignExternalIds = [...new Set(insightsData.map(item => item.campaign_id).filter(Boolean))];
+
+      const [adsetsDocs, campaignsDocs] = await Promise.all([
+        AdsSet.find({ external_id: { $in: adsetExternalIds } }).select('external_id page_name'),
+        AdsCampaign.find({ external_id: { $in: campaignExternalIds } }).select('external_id page_name')
+      ]);
+
+      const adsetsMap = new Map(adsetsDocs.map(adset => [adset.external_id, adset]));
+      const campaignsMap = new Map(campaignsDocs.map(campaign => [campaign.external_id, campaign]));
+
+      insightsData.forEach(item => {
+        const adset = item.adset_id ? adsetsMap.get(item.adset_id) : null;
+        const campaign = item.campaign_id ? campaignsMap.get(item.campaign_id) : null;
+        item.page_name = adset?.page_name || campaign?.page_name || null;
+      });
+    }
+
+    try {
+      const saveResult = await saveInsightsToAdPerformance(insightsData, id);
+      console.log(`✅ Saved ${saveResult.saved} insights, skipped ${saveResult.skipped}`);
+    } catch (saveErr) {
+      console.warn('⚠️ Error saving insights to DB:', saveErr.message);
+    }
 
     return res.status(200).json({
       account_id: id,
-      breakdowns,
+      breakdowns: breakdowns || null,
+      needActions: options.needActions,
       items: insightsData,
       total: insightsData.length,
     });

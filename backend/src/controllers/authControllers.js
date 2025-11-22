@@ -776,6 +776,7 @@ export const getCurrentUser = async (req, res) => {
     const user = req.user;
     let shop = null;
     let shopId = null;
+    let shopUser = null;
 
     // Ưu tiên 1: Lấy shop_id từ UserRole với is_current = true (shop đang active)
     const currentUserRole = await UserRole.findOne({
@@ -804,6 +805,14 @@ export const getCurrentUser = async (req, res) => {
       }
     }
 
+    if (shopId) {
+      shopUser = await ShopUser.findOne({
+        user_id: user._id,
+        shop_id: shopId,
+        status: "active",
+      }).lean();
+    }
+
     // Thêm shop_id vào user object để frontend dùng
     const userWithShop = {
       ...user.toObject(),
@@ -815,6 +824,7 @@ export const getCurrentUser = async (req, res) => {
       data: {
         user: userWithShop,
         shop,
+        shopUser,
       },
     });
   } catch (error) {

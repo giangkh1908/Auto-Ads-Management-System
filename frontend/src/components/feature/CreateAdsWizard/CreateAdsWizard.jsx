@@ -21,6 +21,7 @@ import { useEditMode } from "../../../hooks/useEditMode.js";
 import { useFlexibleWizardPublish } from "../../../hooks/useWizardPublish.js";
 import { useProgressState } from "../../../hooks/useProgressState.js";
 import { useToast } from "../../../hooks/useToast.js";
+import { useMyPackage } from "../../../hooks/useMyPackage.js";
 
 // Import utils and constants
 import { getInitialWizardStep } from "../../../utils/wizardUtils.js";
@@ -98,6 +99,8 @@ function CreateAdsWizard({
 
   const facebookPages = useFacebookPages();
   const toast = useToast();
+  const { hasFeature } = useMyPackage();
+  const contentAiEnabled = hasFeature("content_ai");
 
   // Sử dụng logic publish mới (linh hoạt)
   const {
@@ -726,6 +729,7 @@ function CreateAdsWizard({
                 campaign={campaign}
                 adsList={adsList}
                 setAdsList={setAdsList}
+                contentAiEnabled={contentAiEnabled}
               />
             )}
 
