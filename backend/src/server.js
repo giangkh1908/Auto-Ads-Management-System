@@ -36,7 +36,7 @@ import noteRoutes from "./routes/noteRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
 import packageRoutes from './routes/packageRoutes.js';
 import userPackageRoutes from './routes/package/userPackageRoutes.js';
-import paymentTransactionsRoutes from './routes/transaction/paymentTransactionsRoutes.js';
+import paymentTransactionsRoutes from './routes/transaction/paymentTransactionRoutes.js';
 import stripeTransactionsRoutes from './routes/transaction/stripeTransactionsRoutes.js';
 
 //Load các biến môi trường
@@ -69,7 +69,6 @@ app.use("/api/users", userRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api/user-roles", userRoleRoutes);
 app.use("/api/package", packageRoutes);
-app.use("/api/payment-transactions", paymentTransactionRoutes);
 app.use("/api/user-package", userPackageRoutes);
 app.use("/api/shops", shopRoutes);
 app.use("/api/shop-users", shopUserRoutes);

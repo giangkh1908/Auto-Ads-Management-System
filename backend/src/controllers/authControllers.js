@@ -8,10 +8,6 @@ import Shop from "../models/shops/shop.model.js";
 import ShopUser from "../models/shops/shopUser.model.js";
 import UserRole from "../models/userRole.model.js";
 import { RoleEnum } from "../constants/enum.js";
-import Shop from "../models/shops/shop.model.js";
-import ShopUser from "../models/shops/shopUser.model.js";
-import UserRole from "../models/userRole.model.js";
-import { RoleEnum } from "../constants/enum.js";
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
