@@ -78,9 +78,9 @@ function Order() {
                 lower.includes("chatbot") ? "CHATBOT" : null;
 
             const duration =
-              lower.includes("3") ? "3months" :
-                lower.includes("6") ? "6months" :
-                  lower.includes("12") ? "12months" : null;
+              pkg.planType.includes("3") ? "3months" :
+                pkg.planType.includes("6") ? "6months" :
+                  pkg.planType.includes("12") ? "12months" : null;
 
             if (type && duration) {
               mappedPrice[type][duration] = pkg.price;

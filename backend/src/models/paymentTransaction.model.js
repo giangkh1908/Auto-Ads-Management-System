@@ -51,6 +51,8 @@ const paymentTransactionSchema = new mongoose.Schema(
       trim: true,
     },
 
+    webhook_events: [{ type: String }],
+
     // Trạng thái giao dịch
     status: {
       type: String,

@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "react-hook-form": "^7.63.0"
+    "react-hook-form": "^7.63.0",
+    "stripe": "^20.0.0"
   }
 }
