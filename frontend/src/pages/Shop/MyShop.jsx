@@ -17,23 +17,27 @@ function MyShop() {
   const [currentUser, setCurrentUser] = useState(true);
   const currentShop = shops.find((s) => s.isCurrent);
 
-  // Modal
+  // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
 
-  // Forms
+  // Forms Add
   const [addForm, setAddForm] = useState({
     shopName: "",
+    email: "",
+    phone: "",
     category: "other",
   });
 
+  //Forms Update
   const [updateForm, setUpdateForm] = useState({
     id: null,
     shopName: "",
+    email: "",
+    phone: "",
     category: "other",
   });
 
-  // === LẤY USER ===
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -113,45 +117,20 @@ function MyShop() {
     console.log(`Action ${action} for shop ${shopId}`);
   };
 
-  // === KIỂM TRA QUYỀN TẠO SHOP ===
-  const canCreateShop = pkg && canAdd("shops");
-
-  // === MỞ MODAL THÊM SHOP ===
+  //Thêm page mới
   const handleAddNewPage = () => {
-    if (!canCreateShop) {
-      toast.warning("Bạn cần nâng cấp gói để thêm shop!");
-      return;
-    }
     setIsAddOpen(true);
   };
 
   return (
     <div className="shop-border">
-
-      {/* === THÔNG BÁO GÓI === */}
-      {pkgLoading && <div>Đang tải gói dịch vụ...</div>}
-
-      {!pkgLoading && !pkg && (
-        <div className="alert alert-warning" style={{ margin: "16px 0", padding: "12px", background: "#fff3cd", borderRadius: "8px" }}>
-          <strong>Bạn chưa có gói dịch vụ.</strong>{" "}
-          <Link to="/service-package" style={{ color: "#d39e00" }}>Chọn gói ngay</Link> để mở khóa AI, thêm shop, v.v.
-        </div>
-      )}
-
-      {!pkgLoading && pkg && (
-        <div style={{ marginBottom: "16px" }}>
-          <h3>{pkg.package.name}</h3>
-          <div style={{ fontSize: "14px", color: "#555" }}>
-            <div>Shops: {pkg.usage.shops}/{pkg.limits.shops}</div>
-            <div>Nhân viên: {pkg.usage.employees}/{pkg.limits.employees}</div>
-          </div>
-          {pkg.status === "expiring soon" && <div style={{ color: "orange" }}>Sắp hết hạn!</div>}
-        </div>
-      )}
-
-      {/* === TABS === */}
+      {/* Tabs */}
       <div className="shop-tabs">
-        <NavLink end to={ROUTES.SHOP} className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}>
+        <NavLink
+          end
+          to={ROUTES.SHOP}
+          className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
+        >
           {t('shop.my_shop')}
         </NavLink>
         {/* Chỉ hiển thị tab Employee nếu role không phải Marketer và có quyền view employee */}
@@ -176,22 +155,14 @@ function MyShop() {
         </NavLink>
       </div>
 
-      {/* === NÚT THÊM SHOP === */}
-      <div className="btn-add" style={{ margin: "16px 0" }}>
-        <button
-          className="btn-add-new-page"
-          onClick={handleAddNewPage}
-          disabled={!canCreateShop}
-          style={{
-            opacity: canCreateShop ? 1 : 0.5,
-            cursor: canCreateShop ? "pointer" : "not-allowed"
-          }}
-          title={!pkg ? "Cần có gói" : !canAdd("shops") ? "Đã đạt giới hạn" : "Thêm shop"}
-        >
-          <Plus size={16} />
-          {t('shop.add_new_shop')}
-        </button>
-      </div>
+      <div className="shop-page">
+        {/* Tạo page mới */}
+        <div className="btn-add">
+          <button className="btn-add-new-page" onClick={handleAddNewPage}>
+            <Plus size={16} />
+            {t('shop.add_new_shop')}
+          </button>
+        </div>
 
         {/* Table  */}
         <div className="shop-container">
@@ -354,8 +325,8 @@ function MyShop() {
         </div>
       </div>
 
-      {/* === MODAL THÊM SHOP === */}
-      {isAddOpen && canCreateShop && (
+      {/* Add New Page Modal */}
+      {isAddOpen && (
         <div className="modal-overlay" onClick={() => setIsAddOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">

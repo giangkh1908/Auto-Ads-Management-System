@@ -588,17 +588,13 @@ export const facebookLogin = async (req, res) => {
           tasks: page.tasks || [],
         }));
         console.log(`Found ${pages.length} pages.`);
-        console.log(`Found ${pages.length} pages.`);
       } else {
-        console.log("No pages found or missing permission:", pagesData);
         console.log("No pages found or missing permission:", pagesData);
       }
     } catch (pageError) {
       console.error("Failed to fetch Facebook Pages:", pageError);
-      console.error("Failed to fetch Facebook Pages:", pageError);
     }
 
-    // Tạo token đăng nhập
     // Tạo token đăng nhập
     const { accessToken: at, refreshToken: rt } = generateTokens(user._id);
 

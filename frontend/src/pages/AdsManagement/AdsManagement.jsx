@@ -6,9 +6,7 @@ import "./AdsManagement.css";
 import CreateAdsWizard from "../../components/feature/CreateAdsWizard/CreateAdsWizard";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 import ProgressPopup from "../../components/common/ProgressPopup/Progress";
-import DateRangePicker from "../../components/common/DateRangePicker/DateRangePicker";
 import { handleSelectAll, handleSelectItem } from "../../utils/selectionUtils";
-import { ROUTES } from "../../constants/app.constants";
 import {
   deleteCampaign,
   deleteAdSet,
@@ -85,14 +83,6 @@ function AdsManagement() {
   // Refs
   const abortControllerRef = useRef(null);
   const prevActiveTabRef = useRef(activeTab);
-
-  // 🔹 Pagination state (phải khai báo trước getFilteredRows)
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1
-  });
 
   // Sync hook
   const { syncData } = useAdsSync(cache, setCache, activeTab);
@@ -255,32 +245,6 @@ function AdsManagement() {
     const displayStatus = newStatus ? "Hoạt động" : "Tạm dừng";
 
     setTogglingItems((prev) => new Set(prev).add(id));
-
-    // Tìm các entity con cần toggle (khi OFF)
-    let childAdsets = [];
-    let childAds = [];
-
-    if (entityType === "campaign" && !newStatus) {
-      // Khi OFF campaign: tìm tất cả adsets và ads thuộc campaign
-      childAdsets = datasets.adsets.filter(
-        (adset) => String(adset.campaignId) === String(row.id) && adset.external_id
-      );
-      const adsetIds = childAdsets.map((a) => String(a.id));
-      childAds = datasets.ads.filter(
-        (ad) => adsetIds.includes(String(ad.adsetId)) && ad.external_id
-      );
-    } else if (entityType === "adset" && !newStatus) {
-      // Khi OFF adset: tìm tất cả ads thuộc adset
-      childAds = datasets.ads.filter(
-        (ad) => String(ad.adsetId) === String(row.id) && ad.external_id
-      );
-    }
-
-    // Thêm tất cả child entities vào loading state
-    const allTogglingIds = new Set([id]);
-    childAdsets.forEach((adset) => allTogglingIds.add(adset.id));
-    childAds.forEach((ad) => allTogglingIds.add(ad.id));
-    setTogglingItems((prev) => new Set([...prev, ...allTogglingIds]));
 
     let childAdsets = [];
     let childAds = [];

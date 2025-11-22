@@ -517,21 +517,6 @@ function Employee() {
 
   return (
     <div className="shop-border">
-      {/* === THÔNG BÁO GÓI + LIMIT === */}
-      {pkgLoading && <div>Đang tải gói...</div>}
-
-      {!pkgLoading && !pkg && (
-        <div className="alert alert-warning" style={{ margin: "16px 0", padding: "12px", background: "#fff3cd", borderRadius: "8px" }}>
-          <strong>Bạn chưa có gói dịch vụ.</strong> Một số tính năng bị giới hạn.
-        </div>
-      )}
-
-      {!pkgLoading && pkg && (
-        <div style={{ marginBottom: "16px", fontSize: "14px", color: "#555" }}>
-          <div>Nhân viên: <strong>{pkg.usage.employees}/{pkg.limits.employees}</strong></div>
-          {pkg.status === "expiring soon" && <div style={{ color: "orange" }}>Gói sắp hết hạn!</div>}
-        </div>
-      )}
       {/* Tabs/end để active đúng tại shop, ko ăn vào cái khác */}
       <div className="shop-tabs">
         <NavLink
@@ -590,14 +575,7 @@ function Employee() {
             </select>
           </div>
 
-          <button className="btn-add-new-page"
-            onClick={handleAddNewPage}
-            disabled={!canInviteEmployee}
-            style={{
-              opacity: canInviteEmployee ? 1 : 0.5,
-              cursor: canInviteEmployee ? "pointer" : "not-allowed"
-            }}
-            title={!pkg ? "Cần có gói" : !canAdd("employees") ? "Đã đạt giới hạn" : "Mời nhân viên"}>
+          <button className="btn-add-new-page" onClick={handleAddNewPage}>
             <Plus size={16} />
             {t('shop.add_new_employee')}
           </button>

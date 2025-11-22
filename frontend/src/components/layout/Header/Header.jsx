@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import logo_1 from "../../../assets/Logo_Fchat.png";
 import logo_2 from "../../../assets/Logo_Fchat_2.png";
-import { useMyPackage } from "../../../hooks/useMyPackage.js";
 
 function Header({ onLoginClick }) {
   const navigate = useNavigate();
@@ -328,19 +327,10 @@ function Header({ onLoginClick }) {
             </button>
 
             <button
-              className={`nav-btn ${pathname === "/account-management" ? "active" : ""
-                }`}
+              className={`nav-btn ${
+                pathname === "/account-management" ? "active" : ""
+              }`}
               onClick={() => navigate("/account-management")}
-              disabled={!hasFeature("Tạo ads thủ công")}
-              title={
-                hasFeature("Tạo ads thủ công")
-                  ? t("header.facebook_ads")
-                  : "Cần gói cao cấp để sử dụng"
-              }
-              style={{
-                opacity: hasFeature("Tạo ads thủ công") ? 1 : 0.5,
-                cursor: hasFeature("Tạo ads thủ công") ? "pointer" : "not-allowed",
-              }}
             >
               <Megaphone size={18} />
               &nbsp;{t("header.facebook_ads")}
@@ -349,24 +339,15 @@ function Header({ onLoginClick }) {
             <button
               className={`nav-btn ${pathname === "/analytics" ? "active" : ""}`}
               onClick={() => navigate("/analytics")}
-              disabled={!hasFeature("ChatBot")}
-              title={
-                hasFeature("ChatBot")
-                  ? t("header.analytics")
-                  : "Cần gói cao cấp để sử dụng"
-              }
-              style={{
-                opacity: hasFeature("ChatBot") ? 1 : 0.5,
-                cursor: hasFeature("ChatBot") ? "pointer" : "not-allowed",
-              }}
             >
               <BarChart3 size={18} />
               &nbsp;{t("header.analytics")}
             </button>
 
             <button
-              className={`nav-btn ${pathname.startsWith("/shop") ? "active" : ""
-                }`}
+              className={`nav-btn ${
+                pathname.startsWith("/shop") ? "active" : ""
+              }`}
               onClick={() => navigate("/shop")}
             >
               <Store size={18} />
@@ -404,8 +385,9 @@ function Header({ onLoginClick }) {
 
             {isAuthenticated && (
               <button
-                className={`nav-btn-2 ${pathname === "/dashboard" ? "active" : ""
-                  }`}
+                className={`nav-btn-2 ${
+                  pathname === "/dashboard" ? "active" : ""
+                }`}
                 onClick={() => navigate("/dashboard")}
               >
                 <LayoutDashboard size={20} />

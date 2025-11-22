@@ -15,7 +15,7 @@ import {
     disconnectFacebookPage, 
     refreshFacebookToken 
 } from "../../controllers/shops/shopControllers.js";
-import { authenticate, authorizeInShop, checkPackageLimit } from "../../middlewares/auth.middleware.js";
+import { authenticate, authorizeInShop } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 router.use(authenticate);
@@ -27,7 +27,7 @@ router.get("/logs", getShopLogs);
 router.get("/:id", getShopById);
 
 
-router.post("/", checkPackageLimit("shops"), createShop);
+router.post("/", createShop);
 
 router.put("/:id", authorizeInShop("shop", "update_details"), updateShop);
 
