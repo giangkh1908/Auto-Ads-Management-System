@@ -47,6 +47,37 @@ function CheckOut() {
       // }
 
       // const paymentId = result.data._id; // ⬅ Chính là orderId thực tế trong DB
+      if (paymentMethod === "vnpay") {
+        const methodRes = await axiosInstance.patch(
+          `/api/payment-transactions/${orderId}/set-method`,
+          { method: "vnpay" }
+        );
+
+        if (!methodRes.data.success) {
+          toast.error("Không thể chọn VNPay");
+          return;
+        }
+
+        const vnpayRes = await axiosInstance.post(
+          `/api/vnpay/${orderId}/create`,
+          {
+            orderData: {
+              name: orderData.packageType,
+              pages: orderData.pages,
+              employees: orderData.employees,
+              packagePricing: orderData.totalPrice,
+              duration: orderData.duration,
+            },
+          }
+        );
+
+        if (vnpayRes.data.success && vnpayRes.data.data?.paymentUrl) {
+          window.location.href = vnpayRes.data.data.paymentUrl;
+        } else {
+          toast.error("Không thể tạo thanh toán VNPay");
+        }
+        return;
+      }
 
       if (paymentMethod === "stripe") {
         const res = await axiosInstance.patch(
@@ -60,27 +91,63 @@ function CheckOut() {
           return;
         }
 
-          // Gọi sang stripe để tạo session
-          const sessionRes = await axiosInstance.post(
-            `http://localhost:5001/api/stripe-transactions/${orderId}/create-checkout-session`,
-            {
-              orderData: {
-                name: orderData.packageType,
-                pages: orderData.pages,
-                employees: orderData.employees,
-                packagePricing: orderData.totalPrice,
-                duration: orderData.duration,
-              },
-              successUrl: `${window.location.origin}/dashboard`,
-              cancelUrl: `${window.location.origin}/dashboard`,
+        // Gọi sang stripe để tạo session
+        const sessionRes = await axiosInstance.post(
+          `http://localhost:5001/api/stripe-transactions/${orderId}/create-checkout-session`,
+          {
+            orderData: {
+              name: orderData.packageType,
+              pages: orderData.pages,
+              employees: orderData.employees,
+              packagePricing: orderData.totalPrice,
+              duration: orderData.duration,
             },
-          );
-          const sessionData = sessionRes.data;
-          if (sessionData.success && sessionData.data?.url) {
+            successUrl: `${window.location.origin}/dashboard`,
+            cancelUrl: `${window.location.origin}/dashboard`,
+          },
+        );
+        const sessionData = sessionRes.data;
+        if (sessionData.success && sessionData.data?.url) {
           // Chuyển hướng người dùng đến Stripe Checkout
           window.location.href = sessionData.data.url;
         } else {
           toast.error(sessionData.message || "Không thể tạo phiên thanh toán Stripe");
+        }
+        return;
+      }
+
+      if (paymentMethod === "zalopay") {
+        // 1. Cập nhật method
+        const methodRes = await axiosInstance.patch(
+          `/api/payment-transactions/${orderId}/set-method`,
+          { method: "zalopay" }
+        );
+
+        if (!methodRes.data.success) {
+          toast.error("Không thể cập nhật phương thức");
+          return;
+        }
+
+        // 2. Tạo ZaloPay order
+        const zaloRes = await axiosInstance.post(
+          `/api/zalo-pay/${orderId}/create`,
+          {
+            orderData: {
+              name: orderData.packageType,
+              pages: orderData.pages,
+              employees: orderData.employees,
+              packagePricing: orderData.totalPrice,
+              duration: orderData.duration,
+            },
+          }
+        );
+
+        const zaloData = zaloRes.data;
+        if (zaloData.success && zaloData.data?.orderUrl) {
+          // Redirect đến ZaloPay
+          window.location.href = zaloData.data.orderUrl;
+        } else {
+          toast.error(zaloData.message || "Không thể tạo thanh toán ZaloPay");
         }
         return;
       }
@@ -108,7 +175,7 @@ function CheckOut() {
     } catch (error) {
       console.error("Payment error:", error);
       alert("Có lỗi xảy ra khi xử lý thanh toán!");
-     }
+    }
   };
 
   return (
@@ -160,7 +227,7 @@ function CheckOut() {
             </label>
 
             {/* Visa/Mastercard */}
-            <label className="co-payment-option">
+            {/* <label className="co-payment-option">
               <input
                 type="radio"
                 name="payment"
@@ -179,10 +246,31 @@ function CheckOut() {
                   <CreditCard size={40} />
                 </div>
               </div>
+            </label> */}
+
+            <label className="co-payment-option">
+              <input
+                type="radio"
+                name="payment"
+                value="zalopay"
+                checked={paymentMethod === "zalopay"}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              />
+              <div className="co-payment-content">
+                <div className="co-payment-info">
+                  <div className="co-payment-name">ZaloPay</div>
+                  <div className="co-payment-desc">
+                    Thanh toán qua ví điện tử ZaloPay
+                  </div>
+                </div>
+                <div className="co-payment-icon co-payment-icon-cards">
+                  <CreditCard size={40} />
+                </div>
+              </div>
             </label>
 
             {/* MoMo */}
-            <label className="co-payment-option">
+            {/* <label className="co-payment-option">
               <input
                 type="radio"
                 name="payment"
@@ -194,6 +282,25 @@ function CheckOut() {
                 <div className="co-payment-info">
                   <div className="co-payment-name">VÍ ĐIỆN TỬ MOMO</div>
                   <div className="co-payment-desc">Bạn cần có app Momo</div>
+                </div>
+                <div className="co-payment-icon co-payment-icon-momo">
+                  <img src={momoIcon} alt="Momo Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+            </label> */}
+
+            <label className="co-payment-option">
+              <input
+                type="radio"
+                name="payment"
+                value="vnpay"
+                checked={paymentMethod === "vnpay"}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              />
+              <div className="co-payment-content">
+                <div className="co-payment-info">
+                  <div className="co-payment-name">VÍ ĐIỆN TỬ VNPAY</div>
+                  <div className="co-payment-desc">Bạn cần có app VNPAY</div>
                 </div>
                 <div className="co-payment-icon co-payment-icon-momo">
                   <img src={momoIcon} alt="Momo Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />

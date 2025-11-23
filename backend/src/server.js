@@ -38,6 +38,8 @@ import packageRoutes from './routes/packageRoutes.js';
 import userPackageRoutes from './routes/package/userPackageRoutes.js';
 import paymentTransactionsRoutes from './routes/transaction/paymentTransactionsRoutes.js';
 import stripeTransactionsRoutes from './routes/transaction/stripeTransactionsRoutes.js';
+import zaloPayTransactionsRoutes from './routes/transaction/zaloPayTransactionsRoutes.js';
+import vnPayTransactionsRoutes from './routes/transaction/vnPayTransactionsRoutes.js';
 
 //Load các biến môi trường
 dotenv.config();
@@ -90,6 +92,8 @@ app.use("/api/package", packageRoutes);
 app.use("/api/user-package", userPackageRoutes);
 app.use("/api/payment-transactions", paymentTransactionsRoutes);
 app.use("/api/stripe-transactions", stripeTransactionsRoutes);
+app.use('/api/zalo-pay', zaloPayTransactionsRoutes);
+app.use('/api/vnpay', vnPayTransactionsRoutes);
 
 // Add a root route to check deployment status
 app.get("/", (req, res) => {
