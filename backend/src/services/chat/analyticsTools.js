@@ -145,7 +145,10 @@ export const queryDataTool = tool(
           adset: AdsSet,
           ad: Ads,
         };
-        const count = await modelMap[entity_type || "campaign"].countDocuments({ account_id: accountObjId });
+        const count = await modelMap[entity_type || "campaign"].countDocuments({ 
+          account_id: accountObjId,
+          status: { $ne: "DELETED" }
+        });
         writer?.(`✅ Tìm thấy ${count} ${entity_type || "campaign"}`);
 
         return JSON.stringify({
@@ -163,7 +166,10 @@ export const queryDataTool = tool(
           ad: Ads,
         };
         const entities = await modelMap[entity_type || "campaign"]
-          .find({ account_id: accountObjId })
+          .find({ 
+            account_id: accountObjId,
+            status: { $ne: "DELETED" }
+          })
           .select("name external_id status")
           .limit(limit || 20)
           .lean();
@@ -189,12 +195,31 @@ export const queryDataTool = tool(
           ad: { group: "$external_ad_id", name: "$ad_name" },
         };
 
+        // Get list of non-deleted entity IDs
+        const modelMap = {
+          campaign: AdsCampaign,
+          adset: AdsSet,
+          ad: Ads,
+        };
+        const activeEntities = await modelMap[entity_type || "campaign"]
+          .find({ 
+            account_id: accountObjId,
+            status: { $ne: "DELETED" }
+          })
+          .select("external_id")
+          .lean();
+        
+        const activeIds = activeEntities.map(e => e.external_id);
+        const entityIdField = entity_type === "campaign" ? "external_campaign_id" : 
+                              entity_type === "adset" ? "external_adset_id" : "external_ad_id";
+
         const sortField = metric === "spend" ? "total_spend" : `avg_${metric}`;
         const results = await AdPerformance.aggregate([
           {
             $match: {
               account_id: accountObjId,
               date: { $gte: new Date(date_from), $lte: new Date(date_to) },
+              [entityIdField]: { $in: activeIds },
             },
           },
           {
@@ -384,6 +409,22 @@ export const compareEntitiesTool = tool(
 
       const accountObjId = await getAccountObjectId(account_id);
       
+      // Get list of non-deleted entity IDs
+      const modelMap = {
+        campaign: AdsCampaign,
+        adset: AdsSet,
+        ad: Ads,
+      };
+      const activeEntities = await modelMap[_entity_type]
+        .find({ 
+          account_id: accountObjId,
+          status: { $ne: "DELETED" }
+        })
+        .select("external_id")
+        .lean();
+      
+      const activeIds = activeEntities.map(e => e.external_id);
+      
       const matchStage = {
         account_id: accountObjId,
         date: {
@@ -397,18 +438,24 @@ export const compareEntitiesTool = tool(
         case "adset":
           groupField = "$external_adset_id";
           nameField = "$adset_name";
-          if (entity_ids && entity_ids.length > 0) matchStage.external_adset_id = { $in: entity_ids };
+          matchStage.external_adset_id = entity_ids && entity_ids.length > 0 
+            ? { $in: entity_ids.filter(id => activeIds.includes(id)) }
+            : { $in: activeIds };
           break;
         case "ad":
           groupField = "$external_ad_id";
           nameField = "$ad_name";
-           if (entity_ids && entity_ids.length > 0) matchStage.external_ad_id = { $in: entity_ids };
+          matchStage.external_ad_id = entity_ids && entity_ids.length > 0 
+            ? { $in: entity_ids.filter(id => activeIds.includes(id)) }
+            : { $in: activeIds };
           break;
         case "campaign":
         default:
           groupField = "$external_campaign_id";
           nameField = "$campaign_name";
-           if (entity_ids && entity_ids.length > 0) matchStage.external_campaign_id = { $in: entity_ids };
+          matchStage.external_campaign_id = entity_ids && entity_ids.length > 0 
+            ? { $in: entity_ids.filter(id => activeIds.includes(id)) }
+            : { $in: activeIds };
           break;
       }
 
@@ -701,12 +748,31 @@ export const getRankingTool = tool(
 
       const accountObjId = await getAccountObjectId(account_id);
 
+      // Get list of non-deleted entity IDs
+      const modelMap = {
+        campaign: AdsCampaign,
+        adset: AdsSet,
+        ad: Ads,
+      };
+      const activeEntities = await modelMap[_entity_type]
+        .find({ 
+          account_id: accountObjId,
+          status: { $ne: "DELETED" }
+        })
+        .select("external_id")
+        .lean();
+      
+      const activeIds = activeEntities.map(e => e.external_id);
+      const entityIdField = _entity_type === "campaign" ? "external_campaign_id" : 
+                            _entity_type === "adset" ? "external_adset_id" : "external_ad_id";
+
       const matchStage = {
         account_id: accountObjId,
         date: {
           $gte: new Date(date_from),
           $lte: new Date(date_to),
         },
+        [entityIdField]: { $in: activeIds },
       };
 
       if (_entity_type === "campaign") {
