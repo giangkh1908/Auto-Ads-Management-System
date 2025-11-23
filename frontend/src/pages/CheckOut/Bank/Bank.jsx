@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, Copy, Check } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import "./Bank.css";
 import axiosInstance from "../../../utils/axios.js";
+import { toast } from "sonner";
 // import { STORAGE_KEYS } from "../../constants/app.constants";
 
 function Bank() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -88,18 +91,18 @@ function Bank() {
       );
 
       if (res.data.success) {
-        alert("Cảm ơn bạn! Chúng tôi sẽ xác nhận thanh toán trong ít phút.");
+        toast.success(t("bank.messages.success"));
         navigate("/dashboard");
       }
     } catch (error) {
       console.error("Lỗi xác nhận chuyển khoản:", error);
       if (error.response?.status === 404) {
-        alert("Không tìm thấy giao dịch. Vui lòng thử lại.");
+        toast.error(t("bank.messages.transactionNotFound"));
       } else if (error.response?.status === 401) {
-        alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        toast.error(t("bank.messages.sessionExpired"));
         navigate("/login");
       } else {
-        alert("Có lỗi xảy ra. Vui lòng thử lại sau.");
+        toast.error(t("bank.messages.error"));
       }
     }
   };
@@ -114,22 +117,22 @@ function Bank() {
           <div className="bk-success-icon">
             <CheckCircle2 size={60} />
           </div>
-          <h1 className="bk-title">Đặt hàng thành công</h1>
+          <h1 className="bk-title">{t("bank.title")}</h1>
           <div className="bk-timer">
-            Thời gian còn: <strong>{formatTime(timeLeft)}</strong> phút
+            {t("bank.timer")} <strong>{formatTime(timeLeft)}</strong> {t("bank.timerUnit")}
           </div>
         </div>
 
         {/* Bank Transfer Info */}
         <div className="bk-info-card">
           <p className="bk-instruction">
-            Vui lòng chuyển khoản theo thông tin:
+            {t("bank.instruction")}
           </p>
 
           <div className="bk-details">
             {/* Bank Name */}
             <div className="bk-detail-row">
-              <span className="bk-detail-label">Ngân hàng</span>
+              <span className="bk-detail-label">{t("bank.labels.bankName")}</span>
               <span className="bk-detail-value bk-bank-name">
                 {bankDetails.bankName}
               </span>
@@ -137,7 +140,7 @@ function Bank() {
 
             {/* Account Number */}
             <div className="bk-detail-row">
-              <span className="bk-detail-label">Số tài khoản</span>
+              <span className="bk-detail-label">{t("bank.labels.accountNumber")}</span>
               <div className="bk-detail-value-copy">
                 <span className="bk-detail-value">
                   {bankDetails.accountNumber}
@@ -153,20 +156,20 @@ function Bank() {
                   ) : (
                     <Copy size={16} />
                   )}
-                  Copy
+                  {t("bank.buttons.copy")}
                 </button>
               </div>
             </div>
 
             {/* Account Name */}
             <div className="bk-detail-row">
-              <span className="bk-detail-label">Tên tài khoản</span>
+              <span className="bk-detail-label">{t("bank.labels.accountName")}</span>
               <span className="bk-detail-value">{bankDetails.accountName}</span>
             </div>
 
             {/* Transfer Content */}
             <div className="bk-detail-row">
-              <span className="bk-detail-label">Nội dung</span>
+              <span className="bk-detail-label">{t("bank.labels.content")}</span>
               <div className="bk-detail-value-copy">
                 <span className="bk-detail-value bk-content-highlight">
                   {bankDetails.transferContent}
@@ -182,14 +185,14 @@ function Bank() {
                   ) : (
                     <Copy size={16} />
                   )}
-                  Copy
+                  {t("bank.buttons.copy")}
                 </button>
               </div>
             </div>
 
             {/* Amount */}
             <div className="bk-detail-row bk-amount-row">
-              <span className="bk-detail-label">Số tiền</span>
+              <span className="bk-detail-label">{t("bank.labels.amount")}</span>
               <span className="bk-amount">
                 {bankDetails.amount.toLocaleString("vi-VN")} vnd
               </span>
@@ -199,7 +202,7 @@ function Bank() {
 
         {/* QR Code Section */}
         <div className="bk-qr-section">
-          <p className="bk-qr-title">Hoặc quét mã QR để thanh toán</p>
+          <p className="bk-qr-title">{t("bank.qr.title")}</p>
           <div className="bk-qr-container">
             <div className="bk-qr-code">
               {/* VietQR image */}
@@ -210,13 +213,9 @@ function Bank() {
 
         {/* Confirmation Section */}
         <div className="bk-confirm-section">
-          <p className="bk-confirm-text">
-            Sau khi chuyển khoản thành công,
-            <br />
-            bạn bấm vào nút bên dưới
-          </p>
+          <p className="bk-confirm-text" dangerouslySetInnerHTML={{ __html: t("bank.confirm.text") }} />
           <button className="bk-confirm-btn" onClick={handleConfirm}>
-            TÔI ĐÃ CHUYỂN KHOẢN
+            {t("bank.buttons.confirm")}
           </button>
         </div>
       </div>

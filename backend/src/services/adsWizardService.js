@@ -2,6 +2,7 @@ import AdsCampaign from "../models/ads/adsCampaign.model.js";
 import AdsSet from "../models/ads/adsSet.model.js";
 import Ads from "../models/ads/ads.model.js";
 import Creative from "../models/ads/creative.model.js";
+import AdsAccount from "../models/ads/adsAccount.model.js";
 import {
   createCampaign,
   createAdSet,
@@ -12,6 +13,7 @@ import {
   updateAdset,
   updateAd,
 } from "./fbAdsService.js";
+import { transformAdsetTargeting } from "./targetingBuilder.js";
 import axios from "axios";
 
 /* =========================
@@ -238,23 +240,73 @@ async function updateOrCreateAdset({
       created_by: existingAdset.created_by || adset.created_by,
     };
     
-    // Build updates
+    // 🎯 Transform targeting trước khi update (giống create)
+    let transformedMergedAdset = mergedAdset;
+    try {
+      transformedMergedAdset = await transformAdsetTargeting(mergedAdset, access_token);
+      console.log('✅ [Update Existing Adset] Adset after transform:', JSON.stringify({
+        name: transformedMergedAdset.name,
+        targeting: transformedMergedAdset.targeting
+      }, null, 2));
+    } catch (targetingError) {
+      console.error('❌ [Update Existing Adset] Error transforming targeting:', targetingError.message);
+      throw new Error(`Targeting validation failed: ${targetingError.message}`);
+    }
+    
+    // Build promoted_object theo format create (xóa null/undefined)
+    let promotedObject = null;
+    if (transformedMergedAdset.promoted_object) {
+      const obj = { ...transformedMergedAdset.promoted_object };
+      Object.keys(obj).forEach(key => {
+        if (obj[key] === null || obj[key] === undefined) {
+          delete obj[key];
+        }
+      });
+      if (Object.keys(obj).length > 0) {
+        promotedObject = obj;
+      }
+    }
+    
+    // Loại bỏ field 'locations' và '_regionNames' khỏi targeting (không hợp lệ với Facebook)
+    let cleanTargeting = transformedMergedAdset.targeting || {};
+    if (cleanTargeting.locations || cleanTargeting._regionNames) {
+      const { locations, _regionNames, ...rest } = cleanTargeting;
+      cleanTargeting = rest;
+    }
+    
+    // Đảm bảo geo_locations có ít nhất một location
+    if (!cleanTargeting.geo_locations || 
+        (!cleanTargeting.geo_locations.countries && 
+         !cleanTargeting.geo_locations.regions && 
+         !cleanTargeting.geo_locations.cities && 
+         !cleanTargeting.geo_locations.custom_locations)) {
+      cleanTargeting.geo_locations = { countries: ['VN'] };
+      console.log('⚠️ [Update Existing Adset] No geo_locations found, adding default: countries: ["VN"]');
+    }
+    
+    // Format update giống hệt format create (trừ campaign_id và status)
     const updates = {
-      ...(mergedAdset.name && { name: mergedAdset.name }),
-      // ...(mergedAdset.status && { status: mergedAdset.status }),
-      ...(mergedAdset.daily_budget !== undefined && { daily_budget: mergedAdset.daily_budget }),
-      ...(mergedAdset.lifetime_budget !== undefined && { lifetime_budget: mergedAdset.lifetime_budget }),
-      ...(mergedAdset.end_time && { end_time: mergedAdset.end_time }),
-      ...(mergedAdset.targeting && { targeting: mergedAdset.targeting }),
-      ...(mergedAdset.optimization_goal && { optimization_goal: mergedAdset.optimization_goal }),
-      ...(mergedAdset.bid_strategy && { bid_strategy: mergedAdset.bid_strategy }),
-      ...(mergedAdset.bid_amount !== undefined && { bid_amount: mergedAdset.bid_amount }),
-      ...(mergedAdset.billing_event && { billing_event: mergedAdset.billing_event }),
-      ...(mergedAdset.conversion_event && { conversion_event: mergedAdset.conversion_event }),
-      ...(mergedAdset.page_id && { page_id: mergedAdset.page_id }),
-      ...(mergedAdset.page_name && { page_name: mergedAdset.page_name }),
+      ...(transformedMergedAdset.name && { name: transformedMergedAdset.name }),
+      ...(transformedMergedAdset.optimization_goal && { optimization_goal: transformedMergedAdset.optimization_goal }),
+      ...(transformedMergedAdset.billing_event && { billing_event: transformedMergedAdset.billing_event }),
+      ...(transformedMergedAdset.bid_strategy && { bid_strategy: transformedMergedAdset.bid_strategy }),
+      ...(transformedMergedAdset.bid_amount !== undefined && { bid_amount: transformedMergedAdset.bid_amount }),
+      ...(transformedMergedAdset.daily_budget !== undefined && { daily_budget: transformedMergedAdset.daily_budget }),
+      ...(transformedMergedAdset.lifetime_budget !== undefined && { lifetime_budget: transformedMergedAdset.lifetime_budget }),
+      targeting: cleanTargeting, // Clean targeting with geo_locations
+      // start_time không thể update nếu adset đã bắt đầu
+      ...(transformedMergedAdset.end_time && { end_time: transformedMergedAdset.end_time }),
+      ...(promotedObject && { promoted_object: promotedObject }),
+      ...(transformedMergedAdset.pixel_id && { pixel_id: transformedMergedAdset.pixel_id }),
+      ...(transformedMergedAdset.conversion_event && { conversion_event: transformedMergedAdset.conversion_event }),
+      // Map traffic_destination sang destination_type (giống create)
+      ...(transformedMergedAdset.traffic_destination && { destination_type: transformedMergedAdset.traffic_destination }),
+      ...(transformedMergedAdset.destination_type && !transformedMergedAdset.traffic_destination && { destination_type: transformedMergedAdset.destination_type }),
       updated_at: now,
     };
+    
+    console.log(`📋 Updating Adset ${existingAdset.external_id} với fields:`, Object.keys(updates));
+    console.log(`📍 Targeting geo_locations:`, JSON.stringify(updates.targeting?.geo_locations, null, 2));
     
     // Update trên Facebook nếu có external_id
     if (existingAdset.external_id) {
@@ -265,8 +317,17 @@ async function updateOrCreateAdset({
       }
     }
     
-    // Update trong MongoDB
-    await AdsSet.findByIdAndUpdate(existingAdset._id, updates);
+    // Update trong MongoDB (keep locations with names for edit mode)
+    // Save original locations for database storage
+    const originalLocationsForUpdate = mergedAdset.targeting?.locations ? { ...mergedAdset.targeting.locations } : null;
+    const targetingForDatabaseUpdate = originalLocationsForUpdate 
+      ? { ...cleanTargeting, locations: originalLocationsForUpdate }
+      : cleanTargeting;
+    
+    await AdsSet.findByIdAndUpdate(existingAdset._id, {
+      ...updates,
+      targeting: targetingForDatabaseUpdate, // Use targeting with locations preserved
+    });
     
     return { 
       action: 'updated',
@@ -1173,6 +1234,36 @@ export async function publishAdsetService({
   const now = new Date();
   let fbAdSetId;
 
+  // 🎯 Save original locations (with names) for database storage
+  const originalLocations = adset.targeting?.locations ? { ...adset.targeting.locations } : null;
+  
+  // 🎯 Transform targeting if it has locations structure
+  console.log('🎯 [publishAdsetService] Adset before transform:', JSON.stringify({
+    name: adset.name,
+    targeting: adset.targeting
+  }, null, 2));
+  
+  let transformedAdset;
+  try {
+    // Pass access_token for Mapbox->Facebook key mapping
+    transformedAdset = await transformAdsetTargeting(adset, access_token);
+    console.log('✅ [publishAdsetService] Adset after transform:', JSON.stringify({
+      name: transformedAdset.name,
+      targeting: transformedAdset.targeting
+    }, null, 2));
+  } catch (targetingError) {
+    console.error('❌ Error transforming targeting:', targetingError.message);
+    throw new Error(`Targeting validation failed: ${targetingError.message}`);
+  }
+
+  // 🎯 Create targeting for database (keep locations with names)
+  const targetingForDatabase = originalLocations 
+    ? { ...transformedAdset.targeting, locations: originalLocations }
+    : transformedAdset.targeting;
+  
+  // Use transformed adset for Facebook API, but keep original locations for DB
+  adset = transformedAdset;
+
   // 🧱 1) Tìm hoặc tạo draft (nháp) với đầy đủ thông tin
   let draftSet;
   
@@ -1194,25 +1285,73 @@ export async function publishAdsetService({
     // ✅ Nếu đã có external_id → Update thay vì tạo mới
     if (draftSet.external_id) {
       console.log(`🔄 Draft đã có external_id (${draftSet.external_id}), sẽ update thay vì tạo mới`);
+      
+      // 🎯 Transform targeting trước khi update (giống create)
+      let updateAdset = adset;
+      try {
+        updateAdset = await transformAdsetTargeting(adset, access_token);
+        console.log('✅ [Update Adset] Adset after transform:', JSON.stringify({
+          name: updateAdset.name,
+          targeting: updateAdset.targeting
+        }, null, 2));
+      } catch (targetingError) {
+        console.error('❌ [Update Adset] Error transforming targeting:', targetingError.message);
+        throw new Error(`Targeting validation failed: ${targetingError.message}`);
+      }
+      
+      // Build promoted_object theo format create (xóa null/undefined)
+      let promotedObject = null;
+      if (updateAdset.promoted_object) {
+        const obj = { ...updateAdset.promoted_object };
+        Object.keys(obj).forEach(key => {
+          if (obj[key] === null || obj[key] === undefined) {
+            delete obj[key];
+          }
+        });
+        if (Object.keys(obj).length > 0) {
+          promotedObject = obj;
+        }
+      }
+      
+      // Loại bỏ field 'locations' và '_regionNames' khỏi targeting (không hợp lệ với Facebook)
+      let cleanTargeting = updateAdset.targeting || {};
+      if (cleanTargeting.locations || cleanTargeting._regionNames) {
+        const { locations, _regionNames, ...rest } = cleanTargeting;
+        cleanTargeting = rest;
+      }
+      
+      // Đảm bảo geo_locations có ít nhất một location
+      if (!cleanTargeting.geo_locations || 
+          (!cleanTargeting.geo_locations.countries && 
+           !cleanTargeting.geo_locations.regions && 
+           !cleanTargeting.geo_locations.cities && 
+           !cleanTargeting.geo_locations.custom_locations)) {
+        cleanTargeting.geo_locations = { countries: ['VN'] };
+        console.log('⚠️ [Update Adset] No geo_locations found, adding default: countries: ["VN"]');
+      }
+      
+      // Format update giống hệt format create (trừ campaign_id và status)
       const updates = {
-        name: adset.name,
-        optimization_goal: adset.optimization_goal,
-        conversion_event: adset.conversion_event,
-        billing_event: adset.billing_event,
-        bid_strategy: adset.bid_strategy,
-        bid_amount: adset.bid_amount,
-        ...(adset.daily_budget !== undefined && { daily_budget: adset.daily_budget }),
-        ...(adset.lifetime_budget !== undefined && { lifetime_budget: adset.lifetime_budget }),
-        ...(adset.start_time && { start_time: adset.start_time }),
-        ...(adset.end_time && { end_time: adset.end_time }),
-        ...(adset.targeting && { targeting: adset.targeting }),
-        ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
-        traffic_destination: adset.traffic_destination || adset.destination_type || null,
-        promoted_object: adset.promoted_object || null,
-        ...(adset.page_id && { page_id: adset.page_id }),
-        ...(adset.page_name && { page_name: adset.page_name }),
-        updated_at: new Date(),
+        name: updateAdset.name,
+        optimization_goal: updateAdset.optimization_goal,
+        billing_event: updateAdset.billing_event,
+        bid_strategy: updateAdset.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
+        ...(updateAdset.bid_amount !== undefined && { bid_amount: updateAdset.bid_amount }),
+        ...(updateAdset.daily_budget !== undefined && { daily_budget: updateAdset.daily_budget }),
+        ...(updateAdset.lifetime_budget !== undefined && { lifetime_budget: updateAdset.lifetime_budget }),
+        targeting: cleanTargeting, // Clean targeting with geo_locations
+        // ...(updateAdset.start_time && { start_time: updateAdset.start_time }),
+        ...(updateAdset.end_time && { end_time: updateAdset.end_time }),
+        ...(promotedObject && { promoted_object: promotedObject }),
+        ...(updateAdset.pixel_id && { pixel_id: updateAdset.pixel_id }),
+        ...(updateAdset.conversion_event && { conversion_event: updateAdset.conversion_event }),
+        // Map traffic_destination sang destination_type (giống create)
+        ...(updateAdset.traffic_destination && { destination_type: updateAdset.traffic_destination }),
+        ...(updateAdset.destination_type && !updateAdset.traffic_destination && { destination_type: updateAdset.destination_type }),
       };
+      
+      console.log(`📋 Updating Adset ${draftSet.external_id} với fields:`, Object.keys(updates));
+      console.log(`📍 Targeting geo_locations:`, JSON.stringify(updates.targeting?.geo_locations, null, 2));
       
       // Update trên Facebook
       try {
@@ -1221,10 +1360,32 @@ export async function publishAdsetService({
         console.warn(`⚠️ Facebook update adset failed:`, fbError.response?.data || fbError.message);
       }
       
-      // Update trong MongoDB
+      // Update trong MongoDB (keep locations with names for edit mode)
+      // Save original locations for database storage
+      const originalLocationsForUpdate = adset.targeting?.locations ? { ...adset.targeting.locations } : null;
+      const targetingForDatabaseUpdate = originalLocationsForUpdate 
+        ? { ...cleanTargeting, locations: originalLocationsForUpdate }
+        : cleanTargeting;
+      
       await AdsSet.findByIdAndUpdate(draftSet._id, {
-        ...updates,
+        name: updateAdset.name,
+        optimization_goal: updateAdset.optimization_goal,
+        conversion_event: updateAdset.conversion_event,
+        billing_event: updateAdset.billing_event,
+        bid_strategy: updateAdset.bid_strategy,
+        bid_amount: updateAdset.bid_amount,
+        ...(updateAdset.daily_budget !== undefined && { daily_budget: updateAdset.daily_budget }),
+        ...(updateAdset.lifetime_budget !== undefined && { lifetime_budget: updateAdset.lifetime_budget }),
+        // start_time không thể update nếu adset đã bắt đầu
+        ...(updateAdset.end_time && { end_time: updateAdset.end_time }),
+        targeting: targetingForDatabaseUpdate, // Use targeting with locations preserved
+        ...(updateAdset.pixel_id && { pixel_id: updateAdset.pixel_id }),
+        traffic_destination: updateAdset.traffic_destination || updateAdset.destination_type || null,
+        promoted_object: updateAdset.promoted_object || null,
+        ...(updateAdset.page_id && { page_id: updateAdset.page_id }),
+        ...(updateAdset.page_name && { page_name: updateAdset.page_name }),
         status: "PAUSED", // Đảm bảo status là PAUSED sau khi update
+        updated_at: new Date(),
       });
       
       return {
@@ -1248,7 +1409,7 @@ export async function publishAdsetService({
       ...(adset.lifetime_budget && { lifetime_budget: adset.lifetime_budget }),
       ...(adset.start_time && { start_time: adset.start_time }),
       ...(adset.end_time && { end_time: adset.end_time }),
-      ...(adset.targeting && { targeting: adset.targeting }),
+      targeting: targetingForDatabase, // Use targeting with locations preserved
       ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
       traffic_destination: adset.traffic_destination || adset.destination_type || null,
       promoted_object: adset.promoted_object || null,
@@ -1259,7 +1420,17 @@ export async function publishAdsetService({
     });
   } else {
     // ✅ CHỈ TẠO MỚI KHI KHÔNG CÓ DRAFTID (trường hợp tạo mới hoàn toàn)
+    // 🔍 TÌM account_id (MongoDB _id) từ ad_account_id (external_id)
+    const adsAccount = await AdsAccount.findOne({
+      external_id: { $in: [ad_account_id, `act_${ad_account_id}`, ad_account_id.replace('act_', '')] }
+    });
+    
+    if (!adsAccount) {
+      throw new Error(`Không tìm thấy AdsAccount với external_id: ${ad_account_id}`);
+    }
+    
     draftSet = await AdsSet.create({
+      account_id: adsAccount._id, // ✅ THÊM account_id (MongoDB _id)
       campaign_id: campaignDbId, // MongoDB _id của campaign
       name: adset?.name,
       status: "DRAFT",
@@ -1271,7 +1442,7 @@ export async function publishAdsetService({
       lifetime_budget: adset?.lifetime_budget,
       start_time: adset?.start_time,
       end_time: adset?.end_time,
-      targeting: adset?.targeting,
+      targeting: targetingForDatabase, // Use targeting with locations preserved
       conversion_event: adset?.conversion_event,
       pixel_id: adset?.pixel_id,
       traffic_destination: adset?.traffic_destination || adset?.destination_type || null,
@@ -1361,6 +1532,7 @@ export async function publishAdsetService({
       optimization_goal: adset.optimization_goal,
       conversion_event: adset.conversion_event,
       billing_event: adset.billing_event,
+      targeting: targetingForDatabase, // Keep locations with names for edit mode
       traffic_destination: adset.traffic_destination || adset.destination_type || null,
       promoted_object: adset.promoted_object || null,
       // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)

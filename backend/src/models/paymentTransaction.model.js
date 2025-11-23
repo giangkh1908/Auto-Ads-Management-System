@@ -64,6 +64,13 @@ const paymentTransactionSchema = new mongoose.Schema(
       default: {},
     },
 
+    // Nhân viên CS được gán xử lý giao dịch
+    assigned_to: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
     // Audit
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     updated_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

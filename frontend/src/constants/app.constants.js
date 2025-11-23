@@ -23,10 +23,12 @@ export const TIMING = {
 // Route paths
 export const ROUTES = {
   HOME: '/',
+  GUIDE: '/guide',
   DASHBOARD: '/dashboard',
   ACCOUNT_MANAGEMENT: '/account-management',
   ADS_MANAGEMENT: '/ads',
   ARCHIVE_ADS: '/archive-ads',
+  CHAT_AI: '/chat-ai',
   ANALYTICS: '/analytics',
   REPORTS: '/reports',
   STATS: '/stats',
@@ -51,10 +53,12 @@ export const ROUTES = {
 // Valid routes for header display
 export const HEADER_ROUTES = [
   ROUTES.HOME,
+  ROUTES.GUIDE,
   ROUTES.DASHBOARD,
   ROUTES.ACCOUNT_MANAGEMENT,
   ROUTES.ADS_MANAGEMENT,
   ROUTES.ARCHIVE_ADS,
+  ROUTES.CHAT_AI,
   ROUTES.ANALYTICS,
   ROUTES.REPORTS,
   ROUTES.STATS,
@@ -99,4 +103,16 @@ export const API_STATUS = {
   SUCCESS: 'success',
   ERROR: 'error',
   LOADING: 'loading',
+}
+
+// Feature keys mapping to Vietnamese labels
+export const FEATURE_LABELS_VI = {
+  analytics_chat_ai: 'ChatBot AI',
+  content_ai: 'AI tạo nội dung',
+  ads_auto_run: 'Quảng cáo tự động',
+}
+
+// Helper function to get Vietnamese label for feature
+export const getFeatureLabel = (featureKey) => {
+  return FEATURE_LABELS_VI[featureKey] || featureKey
 }

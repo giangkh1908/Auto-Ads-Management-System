@@ -98,7 +98,13 @@ export const INITIAL_ADSET_STATE = {
   end_time: null,
   targeting: {
     geo_locations: {
-      countries: ["VN"],
+      countries: ["VN"],  // Giữ default country
+    },
+    locations: {
+      regions: [],
+      cities: [],
+      custom_locations: [],
+      excluded_ids: []
     },
     age_min: 18,
     age_max: 65,

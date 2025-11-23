@@ -15,6 +15,7 @@ import {
   archiveAdSet,
   archiveAd,
 } from "../../services/adService";
+// import { getAdPerformance, refreshAdPerformance } from "../../services/adPerformanceService";
 import { toggleEntityStatus } from "../../services/toggleStatusService";
 import { useToast } from "../../hooks/useToast";
 import { useProgressState } from "../../hooks/useProgressState";
@@ -75,7 +76,8 @@ function AdsManagement() {
   // Cache state
   const [cache, setCache] = useState({
     lastSync: null,
-    lastFetch: {}
+    lastFetch: {},
+    loadedAccounts: new Set() // Track accounts đã load đầy đủ data
   });
 
   // Refs
@@ -884,6 +886,7 @@ function AdsManagement() {
         progress={progressState.progress}
         onClose={closeProgress}
       />
+
     </div>
   );
 }

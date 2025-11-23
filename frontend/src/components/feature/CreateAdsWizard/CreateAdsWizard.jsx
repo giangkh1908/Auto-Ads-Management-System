@@ -21,6 +21,7 @@ import { useEditMode } from "../../../hooks/useEditMode.js";
 import { useFlexibleWizardPublish } from "../../../hooks/useWizardPublish.js";
 import { useProgressState } from "../../../hooks/useProgressState.js";
 import { useToast } from "../../../hooks/useToast.js";
+import { useMyPackage } from "../../../hooks/useMyPackage.js";
 
 // Import utils and constants
 import { getInitialWizardStep } from "../../../utils/wizardUtils.js";
@@ -33,6 +34,7 @@ import { saveDraft } from "../../../services/adsWizardService.js";
 import { FB_OBJECTIVE_MAP, ADSET_CONFIG_BY_OBJECTIVE, INITIAL_DATA } from "../../../constants/wizardConstants.js";
 import axiosInstance from "../../../utils/axios.js";
 import { convertCountryCodesToNames, convertLocaleIdToLanguageCode } from "../../../utils/locationUtils.js";
+import { parseGeoLocationsToFrontend } from "../../../utils/locationParseUtils.js";
 
 function CreateAdsWizard({
   onClose,
@@ -98,6 +100,8 @@ function CreateAdsWizard({
 
   const facebookPages = useFacebookPages();
   const toast = useToast();
+  const { hasFeature } = useMyPackage();
+  const contentAiEnabled = hasFeature("content_ai");
 
   // Sử dụng logic publish mới (linh hoạt)
   const {
@@ -499,10 +503,8 @@ function CreateAdsWizard({
               : "",
           },
           targeting: {
-            // Map geo_locations.countries từ DB (country codes) sang locations (country names) cho FE
-            locations: adsetData.targeting?.geo_locations?.countries
-              ? convertCountryCodesToNames(adsetData.targeting.geo_locations.countries)
-              : ["Viet Nam"],
+            // ✅ NEW: Parse targeting (prioritizes locations with names, falls back to geo_locations)
+            locations: parseGeoLocationsToFrontend(adsetData.targeting),
             ageMin: adsetData.targeting?.age_min || 18,
             ageMax: adsetData.targeting?.age_max || 65,
             // Map gender và language từ DB
@@ -712,6 +714,7 @@ function CreateAdsWizard({
                 setAdsetsList={setAdsetsList}
                 facebookPages={facebookPages}
                 campaign={campaign}
+                selectedAccountId={selectedAccountId}
               />
             )}
 
@@ -726,6 +729,7 @@ function CreateAdsWizard({
                 campaign={campaign}
                 adsList={adsList}
                 setAdsList={setAdsList}
+                contentAiEnabled={contentAiEnabled}
               />
             )}
 

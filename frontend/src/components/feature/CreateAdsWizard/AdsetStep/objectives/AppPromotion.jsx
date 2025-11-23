@@ -211,15 +211,29 @@ const BILLING_EVENT_LABELS = {
     },
     {
       id: "location",
-      title: "Vị trí",
+      title: "Vị trí địa lý",
       icon: "MapPin",
       fields: [
         {
-          type: "tags-country",
+          type: "location",
           name: "targeting.locations",
-          label: "Quốc gia",
-          placeholder: "Tìm kiếm vị trí (quốc gia)",
-          default: ["Viet Nam"],
+          placeholder: "Tìm kiếm thành phố, tỉnh thành...",
+          default: {
+            regions: [],
+            cities: [],
+            custom_locations: [],
+            excluded_ids: []
+          },
+          validate: (value) => {
+            if (!value || (!value.regions?.length && !value.cities?.length && !value.custom_locations?.length)) {
+              return "Vui lòng chọn ít nhất 1 vị trí";
+            }
+            const total = (value.regions?.length || 0) + (value.cities?.length || 0);
+            if (total > 250) {
+              return "Tối đa 250 vị trí được cho phép";
+            }
+            return true;
+          }
         },
       ],
     },

@@ -1,8 +1,7 @@
 import UserPackage from "../../models/userPackage.model.js";
 import PaymentTransaction from "../../models/paymentTransaction.model.js";
 import Package from "../../models/package.model.js";
-import Shop from "../../models/shops/shop.model.js";
-import ShopUser from "../../models/shops/shopUser.model.js";
+import { getUserEntitlements } from "../../services/entitlementService.js";
 
 export const createUserPackage = async (req, res) => {
     try {
@@ -44,15 +43,21 @@ export const createOrder = async (req, res) => {
             companyName,      // chưa có → null tại bước checkout
         } = req.body;
 
-        // 1. Lấy package_id từ bảng Package
+        // 1. Lấy package_id từ bảng Package (phải match cả name và planType)
+        // Map duration từ UI sang planType trong DB
+        const planType = duration === "12months" || duration === "1year" ? "12months" : "3months";
+        
         const pkg = await Package.findOne({
             name: { $regex: packageType, $options: "i" },
+            planType: planType,
+            status: "active",
+            deleted_at: null,
         });
 
         if (!pkg) {
             return res.status(404).json({
                 success: false,
-                message: "Không tìm thấy gói phần mềm",
+                message: `Không tìm thấy gói phần mềm ${packageType} với thời hạn ${duration}`,
             });
         }
 
@@ -119,9 +124,9 @@ export const getUserPackages = async (req, res) => {
         if (status) filter.status = status;
 
         const data = await UserPackage.find(filter)
-            .populate("user_id", "name email")
+            .populate("user_id", "full_name name email phone")
             .populate("package_id", "name price duration pages employees")
-            .populate("salesman_id", "name email")
+            .populate("salesman_id", "full_name name email")
             .sort({ created_at: -1 })
             .skip((page - 1) * limit)
             .limit(Number(limit));
@@ -151,8 +156,9 @@ export const getUserPackages = async (req, res) => {
 export const getUserPackageById = async (req, res) => {
     try {
         const data = await UserPackage.findById(req.params.id)
-            .populate("user_id", "name email")
-            .populate("package_id", "name price");
+            .populate("user_id", "full_name name email phone")
+            .populate("package_id", "name price")
+            .populate("salesman_id", "full_name name email");
 
         if (!data) {
             return res.status(404).json({
@@ -177,14 +183,11 @@ export const getUserPackageById = async (req, res) => {
 
 export const getMyPackage = async (req, res) => {
   try {
-    const userPackage = await UserPackage.findOne({
-      user_id: req.user._id,
-      status: { $in: ["active"] },
-    })
-      .populate("package_id")
-      .sort({ created_at: -1 });
+    const entitlements = await getUserEntitlements(req.user._id, {
+      forceRefresh: true,
+    });
 
-    if (!userPackage) {
+    if (!entitlements) {
       return res.status(200).json({
         success: true,
         data: null,
@@ -192,56 +195,9 @@ export const getMyPackage = async (req, res) => {
       });
     }
 
-    const { package_id, pages, employees, shops, from_date, to_date, status } = userPackage;
-
-    // Đếm thực tế đã dùng
-    const shopCount = await Shop.countDocuments({ owner_id: req.user._id, deleted_at: null });
-    const employeeCount = await ShopUser.countDocuments({
-      user_id: { $ne: req.user._id }, // không tính owner
-      shop_id: { $in: await Shop.find({ owner_id: req.user._id }).distinct("_id") },
-      status: "active",
-    });
-
-    // ✅ Đếm số pages đã kết nối từ tất cả shops của user
-    const userShops = await Shop.find({ owner_id: req.user._id, deleted_at: null });
-    let pageCount = 0;
-    userShops.forEach(shop => {
-      if (Array.isArray(shop.facebook_pages)) {
-        pageCount += shop.facebook_pages.filter(
-          p => p.connected_status === "connected"
-        ).length;
-      }
-    });
-
-    // ✅ Đảm bảo limits có giá trị: ưu tiên từ userPackage (đã mua), nếu không có thì lấy từ package template
-    const limitsPages = pages || package_id?.pages || 0;
-    const limitsEmployees = employees || package_id?.employees || 0;
-    const limitsShops = shops || package_id?.shops || 0;
-
     res.json({
       success: true,
-      data: {
-        package: {
-          _id: package_id._id,
-          name: package_id.name,
-          features: package_id.features,
-          pages: package_id.pages,
-          employees: package_id.employees,
-          shops: package_id.shops,
-        },
-        limits: {
-          pages: limitsPages,        // ✅ Sử dụng giá trị đã mua hoặc mặc định
-          employees: limitsEmployees, // ✅ Sử dụng giá trị đã mua hoặc mặc định
-          shops: limitsShops,        // ✅ Sử dụng giá trị đã mua hoặc mặc định
-        },
-        usage: {
-          shops: shopCount,
-          employees: employeeCount,
-          pages: pageCount,          // ✅ Sửa từ 0 thành pageCount thực tế
-        },
-        period: { from_date, to_date },
-        status,
-      },
+      data: entitlements,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -254,6 +210,14 @@ export const getMyPackage = async (req, res) => {
 export const updateUserPackage = async (req, res) => {
     try {
         const data = req.body;
+
+        const oldUserPackage = await UserPackage.findById(req.params.id);
+        if (!oldUserPackage) {
+            return res.status(404).json({
+                success: false,
+                message: "Không tìm thấy user package",
+            });
+        }
 
         const updated = await UserPackage.findByIdAndUpdate(
             req.params.id,
@@ -269,6 +233,17 @@ export const updateUserPackage = async (req, res) => {
                 success: false,
                 message: "Không tìm thấy user package",
             });
+        }
+
+        // Nếu status được cập nhật thành active, đồng bộ shop packages
+        if (data.status === "active" || (updated.status === "active" && oldUserPackage.status !== "active")) {
+            try {
+                const { syncShopPackagesWithOwner } = await import("../../services/shopPackageSyncService.js");
+                await syncShopPackagesWithOwner(updated.user_id.toString());
+            } catch (syncError) {
+                console.error("⚠️ Lỗi khi sync shop packages:", syncError);
+                // Không throw error để không ảnh hưởng đến flow chính
+            }
         }
 
         res.status(200).json({

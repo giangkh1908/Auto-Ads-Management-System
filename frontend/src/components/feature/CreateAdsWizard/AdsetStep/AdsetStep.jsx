@@ -44,6 +44,7 @@ import EngagementSchema from "./objectives/Engagement";
 import LeadsSchema from "./objectives/Leads";
 import SalesSchema from "./objectives/Sales";
 import AppPromotionSchema from "./objectives/AppPromotion";
+import HybridLocationSelector from "./LocationSelector/HybridLocationSelector";
 
 const SCHEMA_MAP = {
   AWARENESS: AwarenessSchema,
@@ -116,7 +117,7 @@ const formatDisplay = (value) => {
   return `${dd}/${MM}/${yyyy} ${HH}:${mm}`;
 };
 
-function FieldRenderer({ field, adset, setAdset, objective, mode }) {
+function FieldRenderer({ field, adset, setAdset, objective, mode, selectedAccountId = null }) {
   const toast = useToast();
   const value = getValue(adset, field.name || field.nameMin);
   const countries = getNames() || [];
@@ -591,6 +592,20 @@ function FieldRenderer({ field, adset, setAdset, objective, mode }) {
         </div>
       );
     }
+    case "location": {
+      // Get ad account ID from various sources (priority order)
+      // 1. From props (selectedAccountId from AdsManagement via CreateAdsWizard)
+      // 2. From adset (external_account_id or account_id)
+      // 3. From localStorage cache (selectedAdAccount)
+      return (
+        <HybridLocationSelector
+          key={field.name}
+          value={value}
+          onChange={handleChange}
+          placeholder={field.placeholder}
+        />
+      );
+    }
     case "info": {
       const content =
         typeof field.content === "function"
@@ -612,7 +627,7 @@ function FieldRenderer({ field, adset, setAdset, objective, mode }) {
   }
 }
 const AdsetStepInner = forwardRef(
-  ({ adset, setAdset, objective, mode, facebookPages = [] }, ref) => {
+  ({ adset, setAdset, objective, mode, facebookPages = [], selectedAccountId = null }, ref) => {
     const toast = useToast();
     const schema = SCHEMA_MAP[objective] || SCHEMA_MAP.AWARENESS;
     const [showPageSelect, setShowPageSelect] = useState(false);
@@ -831,6 +846,7 @@ const AdsetStepInner = forwardRef(
                             setAdset={setAdset}
                             objective={objective}
                             mode={mode}
+                            selectedAccountId={selectedAccountId}
                           />
                         </div>
                       )}
@@ -850,6 +866,7 @@ const AdsetStepInner = forwardRef(
                             setAdset={setAdset}
                             objective={objective}
                             mode={mode}
+                            selectedAccountId={selectedAccountId}
                           />
                         </div>
                       )}
@@ -882,6 +899,7 @@ const AdsetStepInner = forwardRef(
                             setAdset={setAdset}
                             objective={objective}
                             mode={mode}
+                            selectedAccountId={selectedAccountId}
                           />
                         ))}
                       </div>
@@ -895,6 +913,7 @@ const AdsetStepInner = forwardRef(
                             setAdset={setAdset}
                             objective={objective}
                             mode={mode}
+                            selectedAccountId={selectedAccountId}
                           />
                         ))}
                       </div>
@@ -907,6 +926,7 @@ const AdsetStepInner = forwardRef(
                           setAdset={setAdset}
                           objective={objective}
                           mode={mode}
+                          selectedAccountId={selectedAccountId}
                         />
                       ))
                     )}

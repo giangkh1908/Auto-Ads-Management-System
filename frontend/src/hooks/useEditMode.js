@@ -4,6 +4,7 @@ import { useToast } from "./useToast";
 import { extractObjectId, findIdInObject } from "../utils/wizardUtils";
 import { convertCountryCodesToNames, convertLocaleIdToLanguageCode } from "../utils/locationUtils";
 import { convertFacebookTypeToCTA } from "../utils/ctaUtils";
+import { parseGeoLocationsToFrontend } from "../utils/locationParseUtils";
 
 /**
  * Custom hook để xử lý logic edit mode
@@ -222,10 +223,8 @@ export function useEditMode({
             },
             placement: "AUTOMATIC",
             targeting: {
-              // ✅ Map geo_locations.countries từ DB (country codes) sang locations (country names) cho FE
-              locations: adsetDbData.targeting?.geo_locations?.countries
-                ? convertCountryCodesToNames(adsetDbData.targeting.geo_locations.countries)
-                : ["Viet Nam"],
+              // ✅ NEW: Parse targeting (prioritizes locations with names, falls back to geo_locations)
+              locations: parseGeoLocationsToFrontend(adsetDbData.targeting),
               ageMin: adsetDbData.targeting?.age_min || 18,
               ageMax: adsetDbData.targeting?.age_max || 65,
               // ✅ THÊM: Map gender và language từ DB

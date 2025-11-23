@@ -1,4 +1,4 @@
-import { useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import {
   Circle,
   Image,
@@ -8,24 +8,40 @@ import {
   Bot,
   MousePointer,
   X,
+  Settings,
+  Crown,
 } from "lucide-react";
 import AiPopup from "../AiPopup/AiPopup";
+import AiPromptConfig from "../AiPromptConfig/AiPromptConfig";
+import AiConfigManager from "../AiConfigManager/AiConfigManager";
 import "../AiPopup/AiPopup.css";
 import axiosInstance from "../../../../utils/axios";
 import "./AdStep.css";
 import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
 import { CTA_OPTIONS } from "../../../../constants/ctaConstants";
+import { aiConfigService } from "../../../../services/aiConfigService";
+import { toast } from "sonner";
 
-function AdStepInner({ ad, setAd, adset }, ref) {
+function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [showAIGeneration, setShowAIGeneration] = useState(false);
   const [aiImages, setAiImages] = useState([]);
   const [selectedAiImages, setSelectedAiImages] = useState([]);
   const [showAIConfig, setShowAIConfig] = useState(false);
+  const [showAiPromptConfig, setShowAiPromptConfig] = useState(false);
+  const [showAiConfigManager, setShowAiConfigManager] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [aiPromptConfig, setAiPromptConfig] = useState(null);
+  const [defaultConfigId, setDefaultConfigId] = useState(null);
   const toast = useToast();
+
+  const ensureContentAi = () => {
+    if (contentAiEnabled) return true;
+    toast.warning("Tính năng AI nội dung chỉ khả dụng ở gói Chatbot AI+");
+    return false;
+  };
 
   // Get detailed requirements and guidance based on destination_type
   const getDestinationGuidance = () => {
@@ -141,34 +157,117 @@ function AdStepInner({ ad, setAd, adset }, ref) {
   // AI context tracking
   const [aiProvider, setAiProvider] = useState('openai');
   const [contextId, setContextId] = useState(null);
+  const [selectedConfigId, setSelectedConfigId] = useState(null);
   const [isGenerating, setIsGenerating] = useState({
     headline: false,
     primaryText: false,
     description: false,
   });
 
+  const getAiActionTooltip = () => {
+    if (!contentAiEnabled) {
+      return "Nâng cấp lên Chatbot AI+ để dùng AI nội dung";
+    }
+    if (!contextId) {
+      return "Thiết lập AI trước khi tạo nội dung";
+    }
+    return "Sinh nội dung bằng AI";
+  };
+
+  useEffect(() => {
+    loadDefaultConfig();
+  }, []);
+
+  const loadDefaultConfig = async () => {
+    try {
+      const response = await aiConfigService.getConfigs('own');
+      if (response.success && response.configs) {
+        const defaultConfig = response.configs.find(c => c.is_default);
+        if (defaultConfig) {
+          setDefaultConfigId(defaultConfig._id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading default config:', error);
+    }
+  };
+
   // Function to handle file upload
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // ✅ Validate file type based on destination type
+    const fileType = file.type || "";
+    const isVideoFile = fileType.startsWith("video/");
+
+    // Check if media type matches requirement
+    if (guidance.mediaType === 'video' && !isVideoFile) {
+      toast.error("Mục tiêu này yêu cầu file video (.mp4, .mov, .avi, .webm)");
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // ✅ Validate file size (max 100MB for video, 10MB for image)
+    const maxSizeVideo = 100 * 1024 * 1024; // 100MB
+    const maxSizeImage = 10 * 1024 * 1024;  // 10MB
+    const maxSize = isVideoFile ? maxSizeVideo : maxSizeImage;
+
+    if (file.size > maxSize) {
+      const maxSizeMB = maxSize / (1024 * 1024);
+      toast.error(`File quá lớn. Kích thước tối đa: ${maxSizeMB}MB`);
+      e.target.value = '';
+      return;
+    }
+
+    // ✅ For video files, validate duration (optional - requires reading video metadata)
+    if (isVideoFile) {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      video.onloadedmetadata = async function() {
+        window.URL.revokeObjectURL(video.src);
+        const duration = video.duration;
+        
+        // Facebook recommends 15-240 seconds for video ads
+        if (duration > 240) {
+          toast.warning("Video dài hơn 4 phút. Facebook khuyến nghị video 15-240 giây để tối ưu hiệu suất.");
+        }
+        
+        console.log(`📹 Video duration: ${duration.toFixed(1)}s`);
+      };
+      
+      video.src = URL.createObjectURL(file);
+    }
+
     const formData = new FormData();
     formData.append("file", file);
+    
     try {
       setUploading(true);
+      
+      // Show different messages for video vs image
+      if (isVideoFile) {
+        toast.info("Đang upload video... Vui lòng đợi", { duration: 5000 });
+      }
+      
       const res = await axiosInstance.post("/api/upload/media", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`Upload progress: ${percentCompleted}%`);
+        }
       });
 
       if (res.data?.success && res.data?.url) {
-        // Lấy file đầu tiên trong formData
-        const file = formData.get("file") || formData.get("media");
-        const fileType = file?.type || "";
+        // Lấy file từ formData
+        const uploadedFile = formData.get("file") || formData.get("media");
+        const uploadedFileType = uploadedFile?.type || "";
 
         // Xác định loại media
-        const mediaType = fileType.startsWith("video/")
+        const mediaType = uploadedFileType.startsWith("video/")
           ? "video"
-          : fileType.startsWith("image/")
+          : uploadedFileType.startsWith("image/")
             ? "image"
             : "unknown";
 
@@ -178,7 +277,11 @@ function AdStepInner({ ad, setAd, adset }, ref) {
           mediaUrl: res.data.url,
         }));
 
-        toast.success("Tải file thành công");
+        toast.success(
+          mediaType === "video" 
+            ? "✅ Upload video thành công!" 
+            : "✅ Upload ảnh thành công!"
+        );
       } else {
         toast.error(res.data?.message || "Upload thất bại");
       }
@@ -187,11 +290,13 @@ function AdStepInner({ ad, setAd, adset }, ref) {
       toast.error("Không thể upload file. Vui lòng thử lại.");
     } finally {
       setUploading(false);
+      e.target.value = ''; // Reset input để có thể chọn lại file khác
     }
   };
 
   // Function to generate text content using AI
   const generateAIContent = async (field, maxLength = 100) => {
+    if (!ensureContentAi()) return;
     if (!contextId) {
       toast.warning("Vui lòng thiết lập AI trước", {
         description: "Hãy nhấn 'Tạo bằng AI' để thiết lập tham số AI",
@@ -234,6 +339,7 @@ function AdStepInner({ ad, setAd, adset }, ref) {
 
   // Function to generate AI images based on context
   const generateAIImages = async () => {
+    if (!ensureContentAi()) return;
     if (!contextId) {
       toast.warning("Vui lòng thiết lập AI trước", {
         description: "Hãy nhấn 'Tạo bằng AI' để thiết lập tham số AI",
@@ -409,25 +515,46 @@ function AdStepInner({ ad, setAd, adset }, ref) {
 
         <div className="btn-generate-ai-container">
           <button
-            className="btn-generate-ai"
+            className={`btn-generate-ai ${!contentAiEnabled ? 'premium-feature' : ''}`}
             onClick={() => {
+              if (!contentAiEnabled) {
+                toast.error("Tính năng này yêu cầu gói ChatBot AI");
+                return;
+              }
+              if (!ensureContentAi()) return;
               setShowAIConfig(!showAIConfig);
             }}
           >
             Tạo bằng AI
+            {!contentAiEnabled && (
+              <span className="premium-badge">
+                <Crown size={12} />
+              </span>
+            )}
+          </button>
+
+          <button
+            className="btn-ai-settings"
+            disabled={!contentAiEnabled}
+            onClick={() => {
+              if (!ensureContentAi()) return;
+              setShowAiConfigManager(true);
+            }}
+            title={
+              contentAiEnabled
+                ? "Quản lý AI Configs"
+                : "Nâng cấp lên Chatbot AI+ để dùng AI nội dung"
+            }
+          >
+            <Settings size={18} />
           </button>
 
           {/* AI Config Modal */}
           <AiPopup
             isOpen={showAIConfig}
             onClose={() => setShowAIConfig(false)}
+            defaultConfigId={defaultConfigId}
             onConfirm={(config) => {
-              // Xử lý config và gọi API để lấy context_id
-              const languageMap = {
-                "Tiếng Việt": "vi",
-                "English": "en",
-                "中文": "zh"
-              };
               const toArray = (v) =>
                 Array.isArray(v)
                   ? v
@@ -435,37 +562,76 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                     .split(',')
                     .map(s => s.trim())
                     .filter(Boolean);
+              
               const mainKeywords = [
                 ...toArray(config.mainKeywords),
                 ...toArray(config.synonymousKeywords),
-                ...toArray(config.main_keywords),           // phòng trường hợp FE đã gửi dạng array
+                ...toArray(config.main_keywords),
               ];
 
-              if (mainKeywords.length === 0) {
+              if (mainKeywords.length === 0 && !config.config_id) {
                 toast.warning("Vui lòng nhập ít nhất một từ khóa chính");
                 return;
               }
-              setAiProvider(config.ai_provider || 'openai');
-              // Gọi API để xác nhận context
+
+              if (config.config_id) {
+                setSelectedConfigId(config.config_id);
+              } else {
+                setSelectedConfigId(null);
+              }
+
+              const modelToSend = config.config_id 
+                ? null 
+                : (config.ai_provider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini');
+
               axiosInstance.post('/api/ai/context/confirm', {
-                language: languageMap[config.language] || "vi",
-                tone: config.tone,
-                personalization: config.personalization,
-                main_keywords: mainKeywords
+                ...config,
+                main_keywords: mainKeywords.length > 0 ? mainKeywords : undefined,
+                model: modelToSend
               })
                 .then(response => {
                   if (response.data && response.data.success) {
                     setContextId(response.data.context_id);
+                    
+                    if (response.data.model) {
+                      const provider = response.data.model.includes('gemini') ? 'gemini' : 'openai';
+                      setAiProvider(provider);
+                    } else if (config.ai_provider) {
+                      setAiProvider(config.ai_provider);
+                    }
+                    
                     toast.success("Đã thiết lập AI thành công");
                   }
                 })
                 .catch(error => {
                   console.error("Error confirming AI context:", error);
                   toast.error("Không thể thiết lập AI", {
-                    description: error.message
+                    description: error.response?.data?.message || error.message
                   });
                 });
             }}
+          />
+
+          {/* AI Config Manager Modal */}
+          <AiConfigManager
+            isOpen={showAiConfigManager}
+            onClose={() => setShowAiConfigManager(false)}
+            onConfigSelect={(config) => {
+              setDefaultConfigId(config._id);
+              loadDefaultConfig();
+              toast.success(`Đã chọn config: ${config.name}`);
+            }}
+          />
+
+          {/* AI Prompt Config Modal */}
+          <AiPromptConfig
+            isOpen={showAiPromptConfig}
+            onClose={() => setShowAiPromptConfig(false)}
+            onSave={(config) => {
+              setAiPromptConfig(config);
+              toast.success("Đã lưu cấu hình AI Prompt");
+            }}
+            initialConfig={aiPromptConfig || {}}
           />
         </div>
 
@@ -500,8 +666,11 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                 <label className="field-label">Tiêu đề</label>
                 <button
                   onClick={() => generateAIContent('headline', 40)}
-                  disabled={isGenerating.headline || !contextId}
+                  disabled={
+                    !contentAiEnabled || isGenerating.headline || !contextId
+                  }
                   className="ai-generate-btn"
+                  title={getAiActionTooltip()}
                 >
                   <Bot size={14} />
                   {isGenerating.headline ? 'Đang tạo...' : 'AI'}
@@ -524,8 +693,11 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                 <label className="field-label">Văn bản chính</label>
                 <button
                   onClick={() => generateAIContent('primaryText', 125)}
-                  disabled={isGenerating.primaryText || !contextId}
+                  disabled={
+                    !contentAiEnabled || isGenerating.primaryText || !contextId
+                  }
                   className="ai-generate-btn"
+                  title={getAiActionTooltip()}
                 >
                   <Bot size={14} />
                   {isGenerating.primaryText ? 'Đang tạo...' : 'AI'}
@@ -548,8 +720,11 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                 <label className="field-label">Mô tả</label>
                 <button
                   onClick={() => generateAIContent('description', 30)}
-                  disabled={isGenerating.description || !contextId}
+                  disabled={
+                    !contentAiEnabled || isGenerating.description || !contextId
+                  }
                   className="ai-generate-btn"
+                  title={getAiActionTooltip()}
                 >
                   <Bot size={14} />
                   {isGenerating.description ? 'Đang tạo...' : 'AI'}
@@ -609,6 +784,17 @@ function AdStepInner({ ad, setAd, adset }, ref) {
               <small className="media-description-hint">
                 {guidance.mediaDescription}
               </small>
+              
+              {/* ✅ Hiển thị thông tin file đã chọn */}
+              {ad.mediaUrl && (
+                <div className="selected-file-info">
+                  <span className="file-type-badge">
+                    {ad.media === 'video' ? '🎥 Video' : '🖼️ Ảnh'}
+                  </span>
+                  <span className="file-status">Đã upload thành công</span>
+                </div>
+              )}
+              
               <div className="media-buttons-container">
                 <button
                   className="media-button upload-button"
@@ -620,13 +806,14 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                   {uploading
                     ? "Đang tải lên..."
                     : ad.mediaUrl
-                      ? "Đã chọn file"
+                      ? `Thay đổi ${guidance.mediaLabel.toLowerCase()}`
                       : `Thêm ${guidance.mediaLabel.toLowerCase()}`}
                 </button>
                 {guidance.mediaType !== 'video' && (
                   <button
                     className="media-button ai-button"
                     onClick={() => {
+                      if (!ensureContentAi()) return;
                       if (!contextId) {
                         toast.warning("Vui lòng thiết lập AI trước", {
                           description: "Hãy nhấn 'Tạo bằng AI' để thiết lập tham số AI",
@@ -637,7 +824,10 @@ function AdStepInner({ ad, setAd, adset }, ref) {
                       // Gọi hàm tạo ảnh ngay lập tức
                       generateAIImages();
                     }}
-                    disabled={uploading || isGeneratingImages}
+                    disabled={
+                      !contentAiEnabled || uploading || isGeneratingImages
+                    }
+                    title={getAiActionTooltip()}
                   >
                     <Image size={18} className="button-icon" />
                     {isGeneratingImages ? "Đang tạo ảnh..." : "AI tạo ảnh"}

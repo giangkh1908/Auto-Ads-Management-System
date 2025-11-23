@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { CreditCard, Building2, Wallet, DollarSign } from "lucide-react";
 import bankIcon from "../../assets/cknh.png";
-import momoIcon from "../../assets/momo.png";
+// import momoIcon from "../../assets/momo.png";
 import "./CheckOut.css";
 import axiosInstance from "../../utils/axios.js";
 import { STORAGE_KEYS } from "../../constants/app.constants";
+import { toast } from "sonner";
 
 function CheckOut() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const orderData = location.state?.orderData;
@@ -51,13 +54,8 @@ function CheckOut() {
       // 2. Nếu payment method = bank → cập nhật method trong DB
       if (paymentMethod === "bank") {
         const res = await axiosInstance.patch(
-          `http://localhost:5001/api/payment-transactions/${orderId}/set-method`,
-          { method: "manual banking" },   // BODY
-          // {
-          //   headers: {
-          //     Authorization: `Bearer ${localStorage.getItem("token")}`,
-          //   },
-          // }
+          `/api/payment-transactions/${orderId}/set-method`,
+          { method: "manual banking" }, 
         );
         const data = res.data;
         if (data.success) {
@@ -73,10 +71,10 @@ function CheckOut() {
         return;
       }
 
-      alert("Phương thức này đang được phát triển!");
+      toast.error(t("checkout.messages.methodInDevelopment"));
     } catch (error) {
       console.error("Payment error:", error);
-      alert("Có lỗi xảy ra khi xử lý thanh toán!");
+      toast.error(t("checkout.messages.paymentError"));
     }
   };
 
@@ -85,14 +83,14 @@ function CheckOut() {
       <div className="co-container">
         {/* Order Info Card */}
         <div className="co-order-info">
-          <h1 className="co-title">THÔNG TIN ĐƠN HÀNG</h1>
+          <h1 className="co-title">{t("checkout.title")}</h1>
           <div className="co-order-details">
             <div className="co-order-row">
-              <span className="co-order-label">Mã đơn:</span>
+              <span className="co-order-label">{t("checkout.orderId")}</span>
               <span className="co-order-value">{orderId}</span>
             </div>
             <div className="co-order-row">
-              <span className="co-order-label">Tổng tiền:</span>
+              <span className="co-order-label">{t("checkout.total")}</span>
               <span className="co-order-price">
                 {orderData.totalPrice.toLocaleString("vi-VN")}đ
               </span>
@@ -102,7 +100,7 @@ function CheckOut() {
 
         {/* Payment Methods Card */}
         <div className="co-payment-card">
-          <h2 className="co-payment-title">Phương thức thanh toán</h2>
+          <h2 className="co-payment-title">{t("checkout.paymentTitle")}</h2>
 
           <div className="co-payment-methods">
             {/* Bank Transfer */}
@@ -116,10 +114,9 @@ function CheckOut() {
               />
               <div className="co-payment-content">
                 <div className="co-payment-info">
-                  <div className="co-payment-name">CHUYỂN KHOẢN NGÂN HÀNG</div>
+                  <div className="co-payment-name">{t("checkout.methods.bank.name")}</div>
                   <div className="co-payment-desc">
-                    Vui lòng chuyển khoản đúng cú pháp nội dung để được kích hoạt
-                    đơn hàng tự động
+                    {t("checkout.methods.bank.description")}
                   </div>
                 </div>
                 <div className="co-payment-icon">
@@ -129,7 +126,7 @@ function CheckOut() {
             </label>
 
             {/* Visa/Mastercard */}
-            <label className="co-payment-option">
+            {/* <label className="co-payment-option">
               <input
                 type="radio"
                 name="payment"
@@ -148,10 +145,10 @@ function CheckOut() {
                   <CreditCard size={40} />
                 </div>
               </div>
-            </label>
+            </label> */}
 
             {/* MoMo */}
-            <label className="co-payment-option">
+            {/* <label className="co-payment-option">
               <input
                 type="radio"
                 name="payment"
@@ -168,10 +165,10 @@ function CheckOut() {
                   <img src={momoIcon} alt="Momo Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
               </div>
-            </label>
+            </label> */}
 
             {/* PayPal */}
-            <label className="co-payment-option">
+            {/* <label className="co-payment-option">
               <input
                 type="radio"
                 name="payment"
@@ -190,10 +187,10 @@ function CheckOut() {
                   <DollarSign size={40} />
                 </div>
               </div>
-            </label>
+            </label> */}
 
             {/* Service Wallet */}
-            <label className="co-payment-option">
+            {/* <label className="co-payment-option">
               <input
                 type="radio"
                 name="payment"
@@ -210,12 +207,12 @@ function CheckOut() {
                   <Wallet size={40} />
                 </div>
               </div>
-            </label>
+            </label> */}
           </div>
 
           {/* Payment Button */}
           <button className="co-payment-btn" onClick={handlePayment}>
-            THANH TOÁN
+            {t("checkout.buttons.pay")}
           </button>
         </div>
       </div>

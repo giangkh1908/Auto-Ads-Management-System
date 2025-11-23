@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Eye, Trash, RotateCcw, RefreshCw } from "lucide-react";
 import Pagination from "../../components/common/Pagination/Pagination";
+import DateRangePicker from "../../components/common/DateRangePicker/DateRangePicker";
 import "./ArchiveAds.css";
 import CreateAdsWizard from "../../components/feature/CreateAdsWizard/CreateAdsWizard";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
@@ -33,6 +34,9 @@ function ArchiveAds() {
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  
+  // Date range filter
+  const [dateRange, setDateRange] = useState("");
 
   // Data - lưu TẤT CẢ data đã fetch từ BE (chưa phân trang ở FE)
   // Dùng cho việc sort và phân trang ở Frontend
@@ -829,11 +833,11 @@ function ArchiveAds() {
               </div>
 
               <div className="filters">
-                <span>{t('management.from')}</span>
-                <input type="date" />
-                <span>{t('management.to')}</span>
-                <input type="date" />
-                <button className="btn-filter">{t('management.search')}</button>
+                <DateRangePicker
+                  value={dateRange}
+                  onChange={(value) => setDateRange(value)}
+                  placeholder={t('management.dateRangePlaceholder') || "dd/mm/yyyy - dd/mm/yyyy"}
+                />
               </div>
             </div>
 
