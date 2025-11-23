@@ -33,6 +33,7 @@ import leadRoutes from "./routes/leadRoutes.js";
 import packageRoutes from './routes/packageRoutes.js';
 import userPackageRoutes from './routes/package/userPackageRoutes.js';
 import paymentTransactionsRoutes from './routes/transaction/paymentTransactionsRoutes.js';
+import stripeTransactionsRoutes from './routes/transaction/stripeTransactionsRoutes.js';
 
 //Load các biến môi trường
 dotenv.config();
@@ -84,6 +85,7 @@ app.use("/api/leads", leadRoutes);
 app.use("/api/package", packageRoutes);
 app.use("/api/user-package", userPackageRoutes);
 app.use("/api/payment-transactions", paymentTransactionsRoutes);
+app.use("/api/stripe-transactions", stripeTransactionsRoutes);
 
 // Add a root route to check deployment status
 app.get("/", (req, res) => {

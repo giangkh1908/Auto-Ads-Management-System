@@ -48,16 +48,47 @@ function CheckOut() {
 
       // const paymentId = result.data._id; // ⬅ Chính là orderId thực tế trong DB
 
-      // 2. Nếu payment method = bank → cập nhật method trong DB
+      if (paymentMethod === "stripe") {
+        const res = await axiosInstance.patch(
+          `http://localhost:5001/api/payment-transactions/${orderId}/set-method`,
+          { method: "stripe" },
+        );
+        const data = res.data;
+
+        if (!data.success) {
+          toast.error("Không thể cập nhật phương thức thanh toán");
+          return;
+        }
+
+          // Gọi sang stripe để tạo session
+          const sessionRes = await axiosInstance.post(
+            `http://localhost:5001/api/stripe-transactions/${orderId}/create-checkout-session`,
+            {
+              orderData: {
+                name: orderData.packageType,
+                pages: orderData.pages,
+                employees: orderData.employees,
+                packagePricing: orderData.totalPrice,
+                duration: orderData.duration,
+              },
+              successUrl: `${window.location.origin}/dashboard`,
+              cancelUrl: `${window.location.origin}/dashboard`,
+            },
+          );
+          const sessionData = sessionRes.data;
+          if (sessionData.success && sessionData.data?.url) {
+          // Chuyển hướng người dùng đến Stripe Checkout
+          window.location.href = sessionData.data.url;
+        } else {
+          toast.error(sessionData.message || "Không thể tạo phiên thanh toán Stripe");
+        }
+        return;
+      }
+
       if (paymentMethod === "bank") {
         const res = await axiosInstance.patch(
           `http://localhost:5001/api/payment-transactions/${orderId}/set-method`,
           { method: "manual banking" },   // BODY
-          // {
-          //   headers: {
-          //     Authorization: `Bearer ${localStorage.getItem("token")}`,
-          //   },
-          // }
         );
         const data = res.data;
         if (data.success) {
@@ -77,7 +108,7 @@ function CheckOut() {
     } catch (error) {
       console.error("Payment error:", error);
       alert("Có lỗi xảy ra khi xử lý thanh toán!");
-    }
+     }
   };
 
   return (
@@ -170,7 +201,7 @@ function CheckOut() {
               </div>
             </label>
 
-            {/* PayPal */}
+            {/* PayPal
             <label className="co-payment-option">
               <input
                 type="radio"
@@ -184,6 +215,28 @@ function CheckOut() {
                   <div className="co-payment-name">THANH TOÁN QUA PAYPAL</div>
                   <div className="co-payment-desc">
                     Bạn cần có tài khoản ví điện tử Paypal
+                  </div>
+                </div>
+                <div className="co-payment-icon co-payment-icon-paypal">
+                  <DollarSign size={40} />
+                </div>
+              </div>
+            </label> */}
+
+            {/* Stripe */}
+            <label className="co-payment-option">
+              <input
+                type="radio"
+                name="payment"
+                value="stripe"
+                checked={paymentMethod === "stripe"}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              />
+              <div className="co-payment-content">
+                <div className="co-payment-info">
+                  <div className="co-payment-name">THANH TOÁN QUA STRIPE</div>
+                  <div className="co-payment-desc">
+                    Bạn cần có tài khoản ví điện tử Stripe
                   </div>
                 </div>
                 <div className="co-payment-icon co-payment-icon-paypal">
