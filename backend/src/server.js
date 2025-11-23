@@ -7,11 +7,6 @@ import path from "path";
 import { startAdPerformanceCron } from "./jobs/adPerformance.job.js"; 
 import { startAdHourlyInsightsCron } from "./jobs/adHourlyInsights.job.js";
 import { startAutoRuleScheduler } from './services/autoRuleScheduler.js';
-import { startPopulateDailySummaryCron } from "./jobs/populateDailySummary.job.js";
-import { startPopulateCampaignDailyCron } from "./jobs/populateCampaignDaily.job.js";
-import { startPopulateTrendDailyCron } from "./jobs/populateTrendDaily.job.js";
-import chatRoutes from "./routes/ai/chatRoutes.js"; 
-import { syncPromptEmbeddings } from "./services/chat/ragService.js";
 
 //Import Routes
 import userRoutes from './routes/userRoutes.js';
@@ -29,6 +24,7 @@ import creativeRoutes from "./routes/ads/creativeRoutes.js";
 import adPerformanceRoutes from "./routes/ads/adPerformanceRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import aiRoutes from "./routes/ai/aiRoutes.js";
+import chatRoutes from "./routes/ai/chatRoutes.js";
 import automationRuleRoutes from "./routes/automationRuleRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
 import systemLogRoutes from "./routes/systemLogRoutes.js";
@@ -106,14 +102,10 @@ app.get("/health", (req, res) => {
 const startServer = async () => {
   try {
     await connectDB();
-    await syncPromptEmbeddings();
 
     startAutoRuleScheduler();
     startAdPerformanceCron(); 
     startAdHourlyInsightsCron();
-    startPopulateDailySummaryCron();
-    startPopulateCampaignDailyCron();
-    startPopulateTrendDailyCron();
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

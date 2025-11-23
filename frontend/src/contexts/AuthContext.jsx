@@ -39,10 +39,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.USER_DATA)
     localStorage.removeItem(STORAGE_KEYS.FB_PAGES)
+
+    // Xóa tất cả chat session trong sessionStorage khi logout
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('chat_session_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+
     setUser(null)
     setIsAuthenticated(false)
     setFbPages([])
-    
+
     if (showToast) {
       toast.success('Đăng xuất thành công!')
     }
@@ -158,7 +166,7 @@ export const AuthProvider = ({ children }) => {
           const userWithShop = await refreshUserWithShopId()
           finalUser = userWithShop || user
         }
-        
+
         setUser(finalUser)
         setIsAuthenticated(true)
 
@@ -170,7 +178,7 @@ export const AuthProvider = ({ children }) => {
             navigate(redirectTo)
           } else {
             const internalRole = finalUser?.internal_role
-            
+
             if (internalRole) {
               // User có internal_role -> redirect về admin page tương ứng
               const adminRoute = getDefaultAdminRoute(internalRole)
@@ -179,7 +187,7 @@ export const AuthProvider = ({ children }) => {
                 return
               }
             }
-            
+
             // User không có internal_role -> redirect về Dashboard
             navigate(ROUTES.DASHBOARD)
           }
@@ -261,7 +269,7 @@ export const AuthProvider = ({ children }) => {
         navigate(redirectTo)
       } else {
         const internalRole = loggedInUser?.internal_role
-        
+
         if (internalRole) {
           // User có internal_role -> redirect về admin page tương ứng
           const adminRoute = getDefaultAdminRoute(internalRole)
@@ -270,7 +278,7 @@ export const AuthProvider = ({ children }) => {
             return
           }
         }
-        
+
         // User không có internal_role -> redirect về Dashboard
         navigate(ROUTES.DASHBOARD)
       }
