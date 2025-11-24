@@ -81,7 +81,7 @@ function CheckOut() {
 
       if (paymentMethod === "stripe") {
         const res = await axiosInstance.patch(
-          `http://localhost:5001/api/payment-transactions/${orderId}/set-method`,
+          `/api/payment-transactions/${orderId}/set-method`,
           { method: "stripe" },
         );
         const data = res.data;
@@ -93,7 +93,7 @@ function CheckOut() {
 
         // Gọi sang stripe để tạo session
         const sessionRes = await axiosInstance.post(
-          `http://localhost:5001/api/stripe-transactions/${orderId}/create-checkout-session`,
+          `/api/stripe-transactions/${orderId}/create-checkout-session`,
           {
             orderData: {
               name: orderData.packageType,
@@ -154,7 +154,7 @@ function CheckOut() {
 
       if (paymentMethod === "bank") {
         const res = await axiosInstance.patch(
-          `http://localhost:5001/api/payment-transactions/${orderId}/set-method`,
+          `/api/payment-transactions/${orderId}/set-method`,
           { method: "manual banking" },   // BODY
         );
         const data = res.data;
