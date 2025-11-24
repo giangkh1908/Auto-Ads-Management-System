@@ -1628,7 +1628,8 @@ export async function saveInsightsToAdPerformance(insightsData, accountId) {
           adset_name: item.adset_name || null,
           ad_name: item.ad_name || null,
           page_name: item.page_name || adset?.page_name || campaign?.page_name || null,
-          
+          objective: item.objective || campaign?.objective || null,
+
           daily_budget: null,
           daily_spend_rate: null,
           total_amount_spent: parseFloat(item.spend) || 0,

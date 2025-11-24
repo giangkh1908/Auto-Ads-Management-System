@@ -10,6 +10,7 @@ import { startAutoRuleScheduler } from './services/autoRuleScheduler.js';
 import { startPopulateDailySummaryCron } from "./jobs/populateDailySummary.job.js";
 import { startPopulateCampaignDailyCron } from "./jobs/populateCampaignDaily.job.js";
 import { startPopulateTrendDailyCron } from "./jobs/populateTrendDaily.job.js";
+import { startCancelExpiredPaymentsCron } from "./jobs/cancelExpiredPayments.job.js";
 import chatRoutes from "./routes/ai/chatRoutes.js"; 
 import { syncPromptEmbeddings } from "./services/chat/ragService.js";
 
@@ -38,6 +39,9 @@ import leadRoutes from "./routes/leadRoutes.js";
 import packageRoutes from './routes/packageRoutes.js';
 import userPackageRoutes from './routes/package/userPackageRoutes.js';
 import paymentTransactionsRoutes from './routes/transaction/paymentTransactionsRoutes.js';
+import stripeTransactionsRoutes from './routes/transaction/stripeTransactionsRoutes.js';
+import zaloPayTransactionsRoutes from './routes/transaction/zaloPayTransactionsRoutes.js';
+import vnPayTransactionsRoutes from './routes/transaction/vnPayTransactionsRoutes.js';
 import invoiceRoutes from './routes/invoice/invoiceRoutes.js';
 
 //Load các biến môi trường
@@ -91,6 +95,9 @@ app.use("/api/leads", leadRoutes);
 app.use("/api/package", packageRoutes);
 app.use("/api/user-package", userPackageRoutes);
 app.use("/api/payment-transactions", paymentTransactionsRoutes);
+app.use("/api/stripe-transactions", stripeTransactionsRoutes);
+app.use('/api/zalo-pay', zaloPayTransactionsRoutes);
+app.use('/api/vnpay', vnPayTransactionsRoutes);
 app.use("/api/invoices", invoiceRoutes);
 
 // Add a root route to check deployment status
@@ -99,7 +106,7 @@ app.get("/", (req, res) => {
 });
 // Health check endpoint cho monitoring services (UptimeRobot, Cron-Job, etc.)
 app.get("/health", (req, res) => {
-  res.json({ 
+  res.json({
     status: "healthy",
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
@@ -118,6 +125,7 @@ const startServer = async () => {
     startPopulateDailySummaryCron();
     startPopulateCampaignDailyCron();
     startPopulateTrendDailyCron();
+    startCancelExpiredPaymentsCron();
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

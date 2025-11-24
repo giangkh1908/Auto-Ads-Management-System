@@ -232,61 +232,61 @@ function ArchiveAds() {
   };
 
   // 🔹 Restore (unarchive)
-  const handleRestore = (id) => {
-    const key =
-      activeTab === "campaigns"
-        ? "campaigns"
-        : activeTab === "adsets"
-        ? "adsets"
-        : "ads";
+  // const handleRestore = (id) => {
+  //   const key =
+  //     activeTab === "campaigns"
+  //       ? "campaigns"
+  //       : activeTab === "adsets"
+  //       ? "adsets"
+  //       : "ads";
 
-    const idsToRestore = id
-      ? [id]
-      : datasets[key].filter((item) => item.isChecked).map((item) => item.id);
+  //   const idsToRestore = id
+  //     ? [id]
+  //     : datasets[key].filter((item) => item.isChecked).map((item) => item.id);
 
-    if (idsToRestore.length === 0) {
-      toast.warning(t('toasts.select_item_archive_warning'));
-      return;
-    }
+  //   if (idsToRestore.length === 0) {
+  //     toast.warning(t('toasts.select_item_archive_warning'));
+  //     return;
+  //   }
 
-    const entityName = getEntityName(key);
+  //   const entityName = getEntityName(key);
 
-    setConfirmationPopup({
-      isOpen: true,
-      type: "archive", // Dùng type archive nhưng với message khác
-      title: `Khôi phục ${idsToRestore.length} ${entityName}`,
-      message: `Bạn có chắc muốn khôi phục ${idsToRestore.length} ${entityName} từ kho lưu trữ?`,
-      onConfirm: () => executeRestore(idsToRestore),
-      isLoading: false,
-    });
-  };
+  //   setConfirmationPopup({
+  //     isOpen: true,
+  //     type: "archive", // Dùng type archive nhưng với message khác
+  //     title: `Khôi phục ${idsToRestore.length} ${entityName}`,
+  //     message: `Bạn có chắc muốn khôi phục ${idsToRestore.length} ${entityName} từ kho lưu trữ?`,
+  //     onConfirm: () => executeRestore(idsToRestore),
+  //     isLoading: false,
+  //   });
+  // };
 
-  const executeRestore = async (idsToRestore) => {
-    setConfirmationPopup((prev) => ({ ...prev, isLoading: true }));
+  // const executeRestore = async (idsToRestore) => {
+  //   setConfirmationPopup((prev) => ({ ...prev, isLoading: true }));
 
-    try {
-      // TODO: Implement restore API calls
-      console.log(`Khôi phục ${idsToRestore.length} items:`, idsToRestore);
+  //   try {
+  //     // TODO: Implement restore API calls
+  //     console.log(`Khôi phục ${idsToRestore.length} items:`, idsToRestore);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     // Simulate API call
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      const entityName = getEntityName(activeTab);
-      toast.success(`Đã khôi phục ${idsToRestore.length} ${entityName} thành công!`);
+  //     const entityName = getEntityName(activeTab);
+  //     toast.success(`Đã khôi phục ${idsToRestore.length} ${entityName} thành công!`);
 
-      // Refresh data
-      handleRefresh();
-    } catch (error) {
-      console.error("❌ Lỗi khi khôi phục:", error);
-      toast.error("Khôi phục thất bại, vui lòng thử lại!");
-    } finally {
-      setConfirmationPopup((prev) => ({
-        ...prev,
-        isLoading: false,
-        isOpen: false,
-      }));
-    }
-  };
+  //     // Refresh data
+  //     handleRefresh();
+  //   } catch (error) {
+  //     console.error("❌ Lỗi khi khôi phục:", error);
+  //     toast.error("Khôi phục thất bại, vui lòng thử lại!");
+  //   } finally {
+  //     setConfirmationPopup((prev) => ({
+  //       ...prev,
+  //       isLoading: false,
+  //       isOpen: false,
+  //     }));
+  //   }
+  // };
 
   // 🔹 Delete (main)
   const handleDelete = (id) => {
@@ -917,13 +917,13 @@ function ArchiveAds() {
 
               {hasSelectedItems && (
                 <div className="icon-beside-tab">
-                  <button
+                  {/* <button
                     className="archive-ads-action-btn archive-ads-restore-btn"
                     onClick={() => handleRestore()}
                     title="Khôi phục"
                   >
                     <RotateCcw size={15} />
-                  </button>
+                  </button> */}
                   <button
                     className="archive-ads-action-btn archive-ads-delete-btn"
                     onClick={() => handleDelete()}
@@ -964,7 +964,7 @@ function ArchiveAds() {
                     <th>{t('management.impressions')}</th>
                     <th>{t('management.reach')}</th>
                     <th>{t('management.results')}</th>
-                    <th>{t('management.quality')}</th>
+                    {/* <th>{t('management.quality')}</th> */}
                     <th>{t('management.creator')}</th>
                     <th>{t('management.actions')}</th>
                   </tr>
@@ -1052,7 +1052,7 @@ function ArchiveAds() {
                       <td className="text-center">{row.impressions || "0"}</td>
                       <td className="text-center">{row.reach || "0"}</td>
                       <td className="text-center">{row.results || "0"}</td>
-                      <td className="text-center">{row.quality || "0"}</td>
+                      {/* <td className="text-center">{row.quality || "0"}</td> */}
                       <td className="text-center">
                         {row.created_by?.full_name || row.created_by?.email || t('labels.not_set')}
                       </td>
@@ -1065,13 +1065,13 @@ function ArchiveAds() {
                           >
                             <Eye size={14} />
                           </button>
-                          <button
+                          {/* <button
                             className="archive-ads-action-btn archive-ads-restore-btn"
                             onClick={() => handleRestore(row.id)}
                             title="Khôi phục"
                           >
                             <RotateCcw size={14} />
-                          </button>
+                          </button> */}
                           <button
                             className="archive-ads-action-btn archive-ads-delete-btn"
                             onClick={() => handleDelete(row.id)}

@@ -585,7 +585,8 @@
         "success": "Please wait a moment, your request has been sent. We will confirm payment in a few minutes.",
         "transactionNotFound": "Transaction not found. Please try again.",
         "sessionExpired": "Session expired. Please login again.",
-        "error": "An error occurred. Please try again later."
+        "error": "An error occurred. Please try again later.",
+        "timeout": "Order has been canceled due to timeout!"
       }
     }
   }

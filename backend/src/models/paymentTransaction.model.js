@@ -54,7 +54,7 @@ const paymentTransactionSchema = new mongoose.Schema(
     // Trạng thái giao dịch
     status: {
       type: String,
-      enum: ["pending", "success", "failed", "canceled", "initializing"],
+      enum: ["pending", "success", "failed", "canceled", "rejected", "initializing"],
       default: "initializing",
     },
 
@@ -88,6 +88,8 @@ paymentTransactionSchema.index({ user_id: 1 });
 paymentTransactionSchema.index({ package_id: 1 });
 paymentTransactionSchema.index({ status: 1 });
 paymentTransactionSchema.index({ created_at: -1 });
+// Composite index for expired payments cron job query optimization
+paymentTransactionSchema.index({ status: 1, expired_date: 1 });
 
 const PaymentTransaction = mongoose.model("PaymentTransaction", paymentTransactionSchema);
 export default PaymentTransaction;

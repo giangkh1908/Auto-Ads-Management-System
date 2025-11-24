@@ -4,6 +4,7 @@ const BILLING_EVENT_LABELS = {
   IMPRESSIONS: "Hiển thị (lượt xem quảng cáo)",
   LINK_CLICKS: "Nhấp vào liên kết",
   APP_INSTALLS: "Cài đặt ứng dụng",
+  CONVERSATIONS: "Cuộc trò chuyện",
 };
 
  const AppPromotionSchema = {
@@ -42,11 +43,17 @@ const BILLING_EVENT_LABELS = {
           label: "Mục tiêu tối ưu",
           options: (objective) => {
             const config = ADSET_CONFIG_BY_OBJECTIVE[objective];
-            return config?.optimization_goals || [];
+            const goals = config?.optimization_goals || [];
+            return [
+              { value: "", label: "~ Chọn mục tiêu ~" },
+              ...goals
+            ];
           },
-          default: "APP_INSTALLS",
+          default: "",
           validate: (value) => {
-            if (!value) return "Thiếu mục tiêu tối ưu hóa";
+            if (!value || value === "") {
+              return "Vui lòng chọn mục tiêu";
+            }
             return true;
           },
         },
@@ -205,7 +212,7 @@ const BILLING_EVENT_LABELS = {
             ];
             return languages.map(l => ({ value: l.code, label: l.name }));
           },
-          default: "vi",
+          default: "all",
         },
       ],
     },

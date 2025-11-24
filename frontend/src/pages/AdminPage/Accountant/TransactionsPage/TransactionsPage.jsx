@@ -45,6 +45,7 @@ export default function TransactionsPage() {
       failed: t("paymentManagement.statuses.failed"),
       canceled: t("paymentManagement.statuses.canceled"),
       cancelled: t("paymentManagement.statuses.canceled"),
+      rejected: t("paymentManagement.statuses.rejected"),
       initializing: t("paymentManagement.statuses.initializing"),
     };
 
@@ -332,9 +333,9 @@ export default function TransactionsPage() {
       const allValue = t("common.all");
       // Convert translated status back to original status for API
       if (status !== "All" && status !== allValue) {
-        const statusIndex = [t("paymentManagement.statuses.pending"), t("paymentManagement.statuses.success"), t("paymentManagement.statuses.failed"), t("paymentManagement.statuses.canceled"), t("paymentManagement.statuses.initializing")].indexOf(status);
+        const statusIndex = [t("paymentManagement.statuses.pending"), t("paymentManagement.statuses.success"), t("paymentManagement.statuses.failed"), t("paymentManagement.statuses.canceled"), t("paymentManagement.statuses.rejected"), t("paymentManagement.statuses.initializing")].indexOf(status);
         if (statusIndex >= 0) {
-          const originalStatuses = ["pending", "success", "failed", "canceled", "initializing"];
+          const originalStatuses = ["pending", "success", "failed", "canceled", "rejected", "initializing"];
           params.status = originalStatuses[statusIndex];
         }
       }
@@ -461,9 +462,9 @@ export default function TransactionsPage() {
   const counters = useMemo(() => {
     const pending = rows.filter((r) => r.status === t("common.pending")).length;
     const approved = rows.filter((r) => r.status === t("paymentManagement.statuses.success")).length;
-    const rejected = rows.filter((r) => r.status === t("paymentManagement.statuses.canceled")).length;
+    const rejected = rows.filter((r) => r.status === t("paymentManagement.statuses.rejected")).length;
     const failed = rows.filter((r) => r.status === t("paymentManagement.statuses.failed")).length;
-    const cancelled = rejected; // Same as rejected
+    const cancelled = rows.filter((r) => r.status === t("paymentManagement.statuses.canceled")).length;
     const total = rows.length;
     return { pending, approved, rejected, failed, cancelled, total };
   }, [rows, t]);

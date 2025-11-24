@@ -148,7 +148,7 @@ export const updatePaymentTransaction = async (req, res) => {
     }
 
     // ✅ Cập nhật status của UserPackage khi approve/reject transaction
-    if (data.status === "success" || data.status === "canceled") {
+    if (data.status === "success" || data.status === "canceled" || data.status === "rejected") {
       try {
         // Tìm UserPackage có user_id và package_id tương ứng
         // - Khi approve: chỉ tìm status = "pending"
@@ -312,12 +312,22 @@ export const setPaymentMethod = async (req, res) => {
     const id = req.params.id;
     const objectId = new mongoose.Types.ObjectId(id);
 
+    // Prepare update data
+    const updateData = {
+      method,
+      updated_by: req.user._id,
+    };
+
+    // Nếu method là "manual banking", set expired_date (10 phút từ bây giờ)
+    if (method === "manual banking") {
+      const expiredDate = new Date();
+      expiredDate.setMinutes(expiredDate.getMinutes() + 10);
+      updateData.expired_date = expiredDate;
+    }
+
     const updated = await PaymentTransaction.findByIdAndUpdate(
       objectId,
-      {
-        method,
-        updated_by: req.user._id,
-      },
+      updateData,
       { new: true }
     );
 

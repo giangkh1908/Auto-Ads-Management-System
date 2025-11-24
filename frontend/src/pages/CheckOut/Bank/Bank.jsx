@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Copy, Check } from "lucide-react";
@@ -6,6 +6,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import "./Bank.css";
 import axiosInstance from "../../../utils/axios.js";
 import { toast } from "sonner";
+import paymentTransactionService from "../../../services/paymentTransactionService";
 // import { STORAGE_KEYS } from "../../constants/app.constants";
 
 function Bank() {
@@ -18,6 +19,9 @@ function Bank() {
   // Countdown timer (10 minutes = 600 seconds)
   const [timeLeft, setTimeLeft] = useState(600);
   const [copiedField, setCopiedField] = useState("");
+  const [isCanceled, setIsCanceled] = useState(false);
+  const pollIntervalRef = useRef(null);
+  const hasNavigatedRef = useRef(false);
 
   // Get user identifier (phone or username)
   const userIdentifier = user?.phone || user?.username || user?.email || "USER";
@@ -26,7 +30,7 @@ function Bank() {
   const bankDetails = {
     bankName: "VPBank",
     accountNumber: "0353383745",
-    accountName: "Nguyễn Thành Long",
+    accountName: "NGUYEN THANH LONG",
     transferContent: `FCHAT ${orderId} ${userIdentifier}`,
     amount: orderData?.totalPrice || 0,
   };
@@ -61,6 +65,55 @@ function Bank() {
 
     return () => clearInterval(timer);
   }, [timeLeft]);
+
+  // Poll transaction status to check if order was canceled
+  useEffect(() => {
+    if (!orderId || isCanceled || hasNavigatedRef.current) return;
+
+    // Poll every 5 seconds
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await paymentTransactionService.getPaymentTransactionById(orderId);
+        
+        if (response.success && response.data) {
+          const status = response.data.status;
+          
+          // If order is canceled, show toast and navigate
+          if (status === "canceled" && !hasNavigatedRef.current) {
+            hasNavigatedRef.current = true;
+            setIsCanceled(true);
+            
+            // Clear polling interval
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
+            
+            // Show toast notification
+            toast.error(
+              t("bank.messages.timeout") || 
+              "Đơn hàng đã bị hủy do hết thời gian thanh toán"
+            );
+            
+            // Navigate to service-package page after 2 seconds
+            setTimeout(() => {
+              navigate("/service-package");
+            }, 2000);
+          }
+        }
+      } catch (error) {
+        console.error("Error polling transaction status:", error);
+        // Continue polling even if there's an error
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [orderId, isCanceled, navigate, t]);
 
   // Format time (MM:SS)
   const formatTime = (seconds) => {

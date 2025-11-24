@@ -899,6 +899,10 @@ function buildAdsetPayload(adset, campaign) {
     bid_amount: 1000,
   };
 
+  // ✅ Tách riêng optimization_goal và billing_event để không override giá trị từ adset
+  // eslint-disable-next-line no-unused-vars
+  const { optimization_goal, billing_event, ...restDefaults } = adsetDefaults;
+
   return {
     // ✅ CHỈ SET _id NẾU LÀ MongoDB ObjectId HỢP LỆ (không phải temp ID)
     ...(adset._id && !isTempId(adset._id) && isValidMongoId(adset._id) && { _id: adset._id }),
@@ -906,7 +910,7 @@ function buildAdsetPayload(adset, campaign) {
     name: adset.name,
     daily_budget: adset.budgetAmount,
     status: "PAUSED",
-    ...adsetDefaults,
+    ...restDefaults, // ✅ Chỉ spread các field khác, không bao gồm optimization_goal và billing_event
     targeting: {
       age_min: adset.targeting.ageMin || 18,
       age_max: adset.targeting.ageMax || 65,
@@ -955,9 +959,13 @@ function buildAdsetPayload(adset, campaign) {
     bid_strategy: adset.bid_strategy,
     bid_amount: adset.bid_amount,
     ...(adset.promoted_object && { promoted_object: adset.promoted_object }),
-    ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
+    // ✅ Extract pixel_id từ promoted_object nếu có (cho LINK_CLICKS - WEBSITE)
+    ...(adset.pixel_id || adset.promoted_object?.pixel_id
+      ? { pixel_id: adset.pixel_id || adset.promoted_object.pixel_id }
+      : {}),
     ...(adset.traffic_destination && { traffic_destination: adset.traffic_destination }),
-    ...(adset.destination_type && !adset.traffic_destination && { destination_type: adset.destination_type }),
+    ...(adset.engagement_destination && { engagement_destination: adset.engagement_destination }),
+    ...(adset.destination_type && { destination_type: adset.destination_type }),
     // ✅ THÊM page_id và page_name từ adset (đã di chuyển từ campaign)
     ...(adset.facebookPageId && { page_id: adset.facebookPageId }),
     ...(adset.facebookPage && { page_name: adset.facebookPage }),

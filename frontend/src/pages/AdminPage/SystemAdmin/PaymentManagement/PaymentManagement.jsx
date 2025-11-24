@@ -52,6 +52,7 @@ export default function PaymentManagement() {
       failed: t("paymentManagement.statuses.failed"),
       canceled: t("paymentManagement.statuses.canceled"),
       cancelled: t("paymentManagement.statuses.canceled"),
+      rejected: t("paymentManagement.statuses.rejected"),
       initializing: t("paymentManagement.statuses.initializing"),
     };
 
@@ -63,9 +64,9 @@ export default function PaymentManagement() {
       "manual banking": "Manual Banking",
     };
 
-    // Xác định note: nếu status là canceled/cancelled và có rejectReason thì hiển thị rejectReason
+    // Xác định note: nếu status là canceled/cancelled/rejected và có rejectReason thì hiển thị rejectReason
     const status = (txn.status || "").toLowerCase();
-    const isCanceled = status === "canceled" || status === "cancelled";
+    const isCanceled = status === "canceled" || status === "cancelled" || status === "rejected";
     const note = isCanceled && txn.metadata?.rejectReason 
       ? txn.metadata.rejectReason 
       : txn.metadata?.note || "";
@@ -96,6 +97,7 @@ export default function PaymentManagement() {
     t("paymentManagement.statuses.success"),
     t("paymentManagement.statuses.failed"),
     t("paymentManagement.statuses.canceled"),
+    t("paymentManagement.statuses.rejected"),
     t("paymentManagement.statuses.initializing"),
   ], [t]);
   
@@ -148,7 +150,7 @@ export default function PaymentManagement() {
         const statusIndex = STATUSES.indexOf(statusFilter);
         if (statusIndex > 0) {
           // Map index to original status
-          const originalStatuses = ["pending", "success", "failed", "canceled", "initializing"];
+          const originalStatuses = ["pending", "success", "failed", "canceled", "rejected", "initializing"];
           const originalStatus = originalStatuses[statusIndex - 1]; // -1 because index 0 is "All"
           if (originalStatus) {
             params.status = originalStatus;
@@ -217,11 +219,14 @@ export default function PaymentManagement() {
     const cancelled = transactions.filter(
       (txn) => txn.status === t("paymentManagement.statuses.canceled")
     ).length;
+    const rejected = transactions.filter(
+      (txn) => txn.status === t("paymentManagement.statuses.rejected")
+    ).length;
     const initializing = transactions.filter(
       (txn) => txn.status === t("paymentManagement.statuses.initializing")
     ).length;
     const total = transactions.length;
-    return { pending, approved, failed, cancelled, initializing, total };
+    return { pending, approved, failed, cancelled, rejected, initializing, total };
   }, [transactions, t]);
 
   const filtered = useMemo(() => {

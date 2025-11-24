@@ -585,7 +585,8 @@
         "success": "Hãy chờ một chút, yêu cầu đã được gửi đi. Chúng tôi sẽ xác nhận thanh toán trong ít phút.",
         "transactionNotFound": "Không tìm thấy giao dịch. Vui lòng thử lại.",
         "sessionExpired": "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
-        "error": "Có lỗi xảy ra. Vui lòng thử lại sau."
+        "error": "Có lỗi xảy ra. Vui lòng thử lại sau.",
+        "timeout": "Đơn hàng đã bị hủy do hết thời gian thanh toán!"
       }
     }
   }
