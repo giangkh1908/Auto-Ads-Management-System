@@ -6,6 +6,7 @@ import path from "path";
 
 import { startAdPerformanceCron } from "./jobs/adPerformance.job.js"; 
 import { startAdHourlyInsightsCron } from "./jobs/adHourlyInsights.job.js";
+import { startAnalyticsSnapshotCron } from "./jobs/analyticsSnapshot.job.js";
 import { startAutoRuleScheduler } from './services/autoRuleScheduler.js';
 
 //Import Routes
@@ -22,6 +23,7 @@ import adsSetRoutes from "./routes/ads/adsSetRoutes.js";
 import adsRoutes from "./routes/ads/adsRoutes.js";
 import creativeRoutes from "./routes/ads/creativeRoutes.js";
 import adPerformanceRoutes from "./routes/ads/adPerformanceRoutes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import aiRoutes from "./routes/ai/aiRoutes.js";
 import chatRoutes from "./routes/ai/chatRoutes.js";
@@ -71,6 +73,7 @@ app.use("/api/campaigns", adsCampaignRoutes);
 app.use("/api/adsets", adsSetRoutes);
 app.use("/api/ads", adsRoutes);
 app.use("/api/ads/performance", adPerformanceRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/creatives", creativeRoutes);
 app.use("/api/ads-wizard", adsWizardRoutes);
 app.use("/api/upload", uploadRoutes);
@@ -106,6 +109,7 @@ const startServer = async () => {
     startAutoRuleScheduler();
     startAdPerformanceCron(); 
     startAdHourlyInsightsCron();
+    startAnalyticsSnapshotCron();
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -62,6 +62,18 @@ const adPerformanceSchema = new mongoose.Schema(
     // Audience Reach
     audience_reach_percentage: { type: Number }, // % đối tượng tiếp cận được
 
+    // Quality & Engagement
+    quality_ranking: { type: String },
+    post_engagement: { type: Number, default: 0 },
+    
+    // Leads
+    leads: { type: Number, default: 0 },
+    cost_per_lead: { type: Number },
+    
+    // Mobile App
+    mobile_app_install: { type: Number, default: 0 },
+    cost_per_mobile_app_install: { type: Number },
+
     meta: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: { createdAt: "created_at", updatedAt: false } }
