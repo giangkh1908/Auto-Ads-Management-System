@@ -7,9 +7,6 @@ import path from "path";
 import { startAdPerformanceCron } from "./jobs/adPerformance.job.js"; 
 import { startAdHourlyInsightsCron } from "./jobs/adHourlyInsights.job.js";
 import { startAutoRuleScheduler } from './services/autoRuleScheduler.js';
-import { startPopulateDailySummaryCron } from "./jobs/populateDailySummary.job.js";
-import { startPopulateCampaignDailyCron } from "./jobs/populateCampaignDaily.job.js";
-import { startPopulateTrendDailyCron } from "./jobs/populateTrendDaily.job.js";
 import { startCancelExpiredPaymentsCron } from "./jobs/cancelExpiredPayments.job.js";
 import chatRoutes from "./routes/ai/chatRoutes.js"; 
 import { syncPromptEmbeddings } from "./services/chat/ragService.js";
@@ -122,9 +119,6 @@ const startServer = async () => {
     startAutoRuleScheduler();
     startAdPerformanceCron(); 
     startAdHourlyInsightsCron();
-    startPopulateDailySummaryCron();
-    startPopulateCampaignDailyCron();
-    startPopulateTrendDailyCron();
     startCancelExpiredPaymentsCron();
 
     app.listen(PORT, () => {

@@ -12,7 +12,7 @@ const config = {
   vnp_Url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
   vnp_ReturnUrl: `http://auto-ads-ai.vercel.app/dashboard`,
   vnp_QueryUrl: "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction",
-  vnp_IpAddr: "127.0.0.1",
+  vnp_IpAddr: process.env.VNPAY_IP_ADDR || "127.0.0.1",
 };
 
 /* ============== HÀM TẠO CHỮ KÝ CHUẨN MỚI 2025 ============== */
@@ -142,7 +142,7 @@ export async function queryVnpayTransaction(txnRef, transactionDate) {
       txnRef,
       transactionDate,
       vnp_CreateDate,
-      "127.0.0.1",
+      process.env.VNPAY_IP_ADDR || "127.0.0.1",
       "Kiem tra giao dich VNPAY",
     ].join("|");
 
@@ -156,7 +156,7 @@ export async function queryVnpayTransaction(txnRef, transactionDate) {
       vnp_TxnRef: txnRef,
       vnp_TransactionDate: transactionDate,
       vnp_CreateDate,
-      vnp_IpAddr: "127.0.0.1",
+      vnp_IpAddr: process.env.VNPAY_IP_ADDR || req.ip || "127.0.0.1",
       vnp_OrderInfo: "Kiem tra giao dich VNPAY",
       vnp_SecureHash,
     };

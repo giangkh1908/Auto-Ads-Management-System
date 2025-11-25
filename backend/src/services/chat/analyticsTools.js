@@ -1,9 +1,6 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import AdPerformance from "../../models/ads/adPerformance.model.js";
-import AdPerformanceDailySummary from "../../models/ads/adPerformanceDailySummary.model.js";
-import AdPerformanceCampaignDaily from "../../models/ads/adPerformanceCampaignDaily.model.js";
-import AdPerformanceTrendDaily from "../../models/ads/adPerformanceTrendDaily.model.js";
 import AdHourlyInsight from "../../models/ads/adHourlyInsight.model.js";
 import AdsAccount from "../../models/ads/adsAccount.model.js";
 import AdsCampaign from "../../models/ads/adsCampaign.model.js";
