@@ -61,6 +61,7 @@ export const AuthProvider = ({ children }) => {
         navigate(ROUTES.HOME)
       }
     }, 2000)
+  }, [navigate, toast])
 
     // Kiểm tra xác thực khi mount
     useEffect(() => {
