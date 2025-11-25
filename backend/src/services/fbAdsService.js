@@ -9,6 +9,8 @@ import AdsSet from "../models/ads/adsSet.model.js";
 import Ads from "../models/ads/ads.model.js";
 import AdPerformance from "../models/ads/adPerformance.model.js";
 import AdHourlyInsight from "../models/ads/adHourlyInsight.model.js";
+import AdPerformance from "../models/ads/adPerformance.model.js";
+import AdHourlyInsight from "../models/ads/adHourlyInsight.model.js";
 
 const FB_API = "https://graph.facebook.com/v23.0";
 
@@ -159,6 +161,77 @@ export async function createCreative(adAccountId, accessToken, body) {
     console.log(`🖼️ Detected IMAGE creative`);
   }
   
+  // 🔍 DETECT VIDEO: Check if media is video
+  let creativePayload = { ...body };
+  const linkData = body?.object_story_spec?.link_data;
+  const pictureUrl = linkData?.picture;
+  
+  const isVideo = pictureUrl && (
+    pictureUrl.includes('/video/') ||
+    pictureUrl.endsWith('.mp4') ||
+    pictureUrl.endsWith('.mov') ||
+    pictureUrl.endsWith('.avi') ||
+    pictureUrl.endsWith('.webm')
+  );
+  
+  if (isVideo) {
+    console.log(`🎥 Detected VIDEO creative: ${pictureUrl}`);
+    
+    try {
+      // Step 1: Upload video to Facebook Ad Account
+      console.log('📤 Uploading video to Facebook...');
+      const videoUploadResponse = await axios.post(
+        `${FB_API}/${withPrefix}/advideos`,
+        {
+          file_url: pictureUrl,
+          name: body.name || 'Ad Video',
+        },
+        { params: buildFbAuthParams(accessToken) }
+      );
+      
+      const videoId = videoUploadResponse.data.id;
+      console.log(`✅ Video uploaded successfully. Video ID: ${videoId}`);
+      
+      // Step 2: Get video details to retrieve thumbnail
+      console.log('🖼️ Fetching video thumbnail...');
+      const videoDetailsResponse = await axios.get(
+        `${FB_API}/${videoId}`,
+        { 
+          params: {
+            ...buildFbAuthParams(accessToken),
+            fields: 'id,picture,thumbnails'
+          }
+        }
+      );
+      
+      const thumbnailUrl = videoDetailsResponse.data.picture || videoDetailsResponse.data.thumbnails?.data?.[0]?.uri;
+      console.log(`✅ Thumbnail URL: ${thumbnailUrl}`);
+      
+      // Step 3: Create creative with video_data using video_id and thumbnail
+      creativePayload = {
+        name: body.name,
+        object_story_spec: {
+          page_id: body.object_story_spec.page_id,
+          video_data: {
+            video_id: videoId,
+            image_url: thumbnailUrl, // ✅ Required: thumbnail for video
+            message: linkData.message,
+            title: linkData.name,
+            link_description: linkData.description,
+            call_to_action: linkData.call_to_action,
+          }
+        }
+      };
+      
+      console.log('🎬 Converted to video_data format with video_id and thumbnail');
+    } catch (uploadError) {
+      console.error('❌ Failed to upload video to Facebook:', uploadError);
+      throw new Error(`Video upload failed: ${uploadError.response?.data?.error?.message || uploadError.message}`);
+    }
+  } else {
+    console.log(`🖼️ Detected IMAGE creative`);
+  }
+  
   // ✅ Whitelist: Chỉ gửi các field Facebook chấp nhận
   const allowedFields = [
     'name',
@@ -176,7 +249,10 @@ export async function createCreative(adAccountId, accessToken, body) {
   
   const filteredBody = Object.keys(creativePayload)
     .filter(key => allowedFields.includes(key) && creativePayload[key] !== undefined)
+  const filteredBody = Object.keys(creativePayload)
+    .filter(key => allowedFields.includes(key) && creativePayload[key] !== undefined)
     .reduce((obj, key) => {
+      obj[key] = creativePayload[key];
       obj[key] = creativePayload[key];
       return obj;
     }, {});
@@ -1159,9 +1235,13 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
     const { withPrefix } = normalizeAccountPair(adAccountId);
     
     const baseFields = [
+    const baseFields = [
       'campaign_name',
       'adset_name',
       'ad_name',
+      'ad_id',
+      'adset_id',
+      'campaign_id',
       'ad_id',
       'adset_id',
       'campaign_id',
@@ -1175,7 +1255,16 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
       'cpm',
       'clicks',
       'cpc',
+      'clicks',
+      'cpc',
       'ctr',
+      'inline_link_clicks',
+      'inline_link_click_ctr',
+      'cost_per_inline_link_click',
+      'results',
+      'cost_per_result',
+      'conversions',
+      'cost_per_conversion',
       'inline_link_clicks',
       'inline_link_click_ctr',
       'cost_per_inline_link_click',
@@ -1196,6 +1285,7 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
     const url = `${FB_API}/${withPrefix}/insights`;
     const params = new URLSearchParams({
       fields: insightsFields,
+      level: options.level || 'ad',
       level: options.level || 'ad',
       access_token: accessToken
     });
@@ -1248,6 +1338,22 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
 
     const response = await axios.get(`${url}?${params.toString()}`);
     const insightsData = response.data?.data || [];
+    
+    // ✅ LOG: Kiểm tra response từ Facebook API
+    console.log(`[fbAdsService] 📊 API Response: ${insightsData.length} records`, {
+      firstRecord: insightsData[0] ? {
+        ad_id: insightsData[0].ad_id,
+        date_start: insightsData[0].date_start,
+        date_stop: insightsData[0].date_stop,
+        spend: insightsData[0].spend,
+        impressions: insightsData[0].impressions
+      } : null,
+      sampleDates: insightsData.slice(0, 3).map(item => ({
+        ad_id: item.ad_id,
+        date_start: item.date_start,
+        date_stop: item.date_stop
+      }))
+    });
     
     // ✅ LOG: Kiểm tra response từ Facebook API
     console.log(`[fbAdsService] 📊 API Response: ${insightsData.length} records`, {
@@ -1319,9 +1425,54 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
             if (Array.isArray(item.conversions)) {
               const totalConversions = item.conversions.reduce((sum, conv) => sum + Number(conv.value || 0), 0);
               item.conversions = totalConversions;
+            
+            item.link_clicks = Number(item.inline_link_clicks || 0);
+            item.link_ctr = item.inline_link_click_ctr !== undefined ? Number(item.inline_link_click_ctr) : null;
+            item.link_cpc = item.cost_per_inline_link_click !== undefined ? Number(item.cost_per_inline_link_click) : null;
+
+            if (item.clicks && item.spend) {
+              item.cpc = item.cpc !== undefined ? Number(item.cpc) : (Number(item.spend) / Number(item.clicks));
+            }
+
+            if (item.clicks && item.impressions) {
+              item.ctr = item.ctr !== undefined ? Number(item.ctr) : ((Number(item.clicks) / Number(item.impressions)) * 100);
+            }
+
+            if (Array.isArray(item.conversions)) {
+              const totalConversions = item.conversions.reduce((sum, conv) => sum + Number(conv.value || 0), 0);
+              item.conversions = totalConversions;
             } else {
               item.conversions = item.conversions ? Number(item.conversions) : 0;
+              item.conversions = item.conversions ? Number(item.conversions) : 0;
             }
+
+            if (Array.isArray(item.cost_per_conversion)) {
+              item.cost_per_conversion = item.cost_per_conversion[0]?.value ? Number(item.cost_per_conversion[0].value) : null;
+            } else {
+              item.cost_per_conversion = item.cost_per_conversion ? Number(item.cost_per_conversion) : null;
+            }
+
+            if (Array.isArray(item.results)) {
+              const totalResults = item.results.reduce((sum, res) => {
+                const value = res.value !== undefined ? Number(res.value || 0) : 0;
+                return sum + value;
+              }, 0);
+              item.results = totalResults;
+            } else {
+              item.results = item.results ? Number(item.results) : 0;
+            }
+
+            if (item.conversions > 0 && item.clicks > 0) {
+              item.conversion_rate = (item.conversions / item.clicks) * 100;
+            }
+
+            if (item.results && item.spend) {
+              item.cost_per_result = item.cost_per_result !== undefined 
+                ? Number(item.cost_per_result) 
+                : (Number(item.spend) / Number(item.results));
+            }
+
+            item.audience_reach_percentage = null;
 
             if (Array.isArray(item.cost_per_conversion)) {
               item.cost_per_conversion = item.cost_per_conversion[0]?.value ? Number(item.cost_per_conversion[0].value) : null;
@@ -1401,12 +1552,102 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
                 : (Number(item.spend) / Number(item.results));
             }
             item.audience_reach_percentage = null;
+            item.link_clicks = Number(item.inline_link_clicks || 0);
+            item.link_ctr = item.inline_link_click_ctr !== undefined ? Number(item.inline_link_click_ctr) : null;
+            item.link_cpc = item.cost_per_inline_link_click !== undefined ? Number(item.cost_per_inline_link_click) : null;
+
+            if (item.clicks && item.spend) {
+              item.cpc = item.cpc !== undefined ? Number(item.cpc) : (Number(item.spend) / Number(item.clicks));
+            }
+
+            if (item.clicks && item.impressions) {
+              item.ctr = item.ctr !== undefined ? Number(item.ctr) : ((Number(item.clicks) / Number(item.impressions)) * 100);
+            }
+
+            if (Array.isArray(item.conversions)) {
+              const totalConversions = item.conversions.reduce((sum, conv) => sum + Number(conv.value || 0), 0);
+              item.conversions = totalConversions;
+            } else {
+              item.conversions = item.conversions ? Number(item.conversions) : 0;
+            }
+
+            if (Array.isArray(item.cost_per_conversion)) {
+              item.cost_per_conversion = item.cost_per_conversion[0]?.value ? Number(item.cost_per_conversion[0].value) : null;
+            } else {
+              item.cost_per_conversion = item.cost_per_conversion ? Number(item.cost_per_conversion) : null;
+            }
+
+            if (Array.isArray(item.results)) {
+              const totalResults = item.results.reduce((sum, res) => {
+                const value = res.value !== undefined ? Number(res.value || 0) : 0;
+                return sum + value;
+              }, 0);
+              item.results = totalResults;
+            } else {
+              item.results = item.results ? Number(item.results) : 0;
+            }
+
+            if (item.conversions > 0 && item.clicks > 0) {
+              item.conversion_rate = (item.conversions / item.clicks) * 100;
+            }
+
+            if (item.results && item.spend) {
+              item.cost_per_result = item.cost_per_result !== undefined 
+                ? Number(item.cost_per_result) 
+                : (Number(item.spend) / Number(item.results));
+            }
+            item.audience_reach_percentage = null;
             item.delivery = item.impressions > 0 ? 'active' : '';
           });
         }
       } else {
         insightsData.forEach(item => {
           item.ad_creative_body = '';
+          item.link_clicks = Number(item.inline_link_clicks || 0);
+          item.link_ctr = item.inline_link_click_ctr !== undefined ? Number(item.inline_link_click_ctr) : null;
+          item.link_cpc = item.cost_per_inline_link_click !== undefined ? Number(item.cost_per_inline_link_click) : null;
+
+          if (item.clicks && item.spend) {
+            item.cpc = item.cpc !== undefined ? Number(item.cpc) : (Number(item.spend) / Number(item.clicks));
+          }
+
+          if (item.clicks && item.impressions) {
+            item.ctr = item.ctr !== undefined ? Number(item.ctr) : ((Number(item.clicks) / Number(item.impressions)) * 100);
+          }
+
+          if (Array.isArray(item.conversions)) {
+            const totalConversions = item.conversions.reduce((sum, conv) => sum + Number(conv.value || 0), 0);
+            item.conversions = totalConversions;
+          } else {
+            item.conversions = item.conversions ? Number(item.conversions) : 0;
+          }
+
+          if (Array.isArray(item.cost_per_conversion)) {
+            item.cost_per_conversion = item.cost_per_conversion[0]?.value ? Number(item.cost_per_conversion[0].value) : null;
+          } else {
+            item.cost_per_conversion = item.cost_per_conversion ? Number(item.cost_per_conversion) : null;
+          }
+
+          if (Array.isArray(item.results)) {
+            const totalResults = item.results.reduce((sum, res) => {
+              const value = res.value !== undefined ? Number(res.value || 0) : 0;
+              return sum + value;
+            }, 0);
+            item.results = totalResults;
+          } else {
+            item.results = item.results ? Number(item.results) : 0;
+          }
+
+          if (item.conversions > 0 && item.clicks > 0) {
+            item.conversion_rate = (item.conversions / item.clicks) * 100;
+          }
+
+          if (item.results && item.spend) {
+            item.cost_per_result = item.cost_per_result !== undefined 
+              ? Number(item.cost_per_result) 
+              : (Number(item.spend) / Number(item.results));
+          }
+          item.audience_reach_percentage = null;
           item.link_clicks = Number(item.inline_link_clicks || 0);
           item.link_ctr = item.inline_link_click_ctr !== undefined ? Number(item.inline_link_click_ctr) : null;
           item.link_cpc = item.cost_per_inline_link_click !== undefined ? Number(item.cost_per_inline_link_click) : null;

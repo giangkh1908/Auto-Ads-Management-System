@@ -84,6 +84,7 @@ const packageSchema = new mongoose.Schema(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );
 
+packageSchema.index({ name: 1, planType: 1 }, { unique: true });
 // packageSchema.index({ name: 1 }, { unique: true });
 packageSchema.index({ planType: 1 });
 packageSchema.index({ status: 1 });

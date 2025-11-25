@@ -40,7 +40,8 @@ const adPerformanceSchema = new mongoose.Schema(
     adset_name: { type: String, trim: true },
     ad_name: { type: String, trim: true },
     page_name: { type: String, trim: true },
-    
+    objective: { type: String, trim: true },
+
     // Ngân sách và tỷ lệ chi tiêu
     daily_budget: { type: Number, default: 0 },
     daily_spend_rate: { type: Number }, // % (spend/daily_budget * 100)
@@ -91,6 +92,7 @@ adPerformanceSchema.index({ campaign_name: 1 });
 adPerformanceSchema.index({ adset_name: 1 });
 adPerformanceSchema.index({ ad_name: 1 });
 adPerformanceSchema.index({ page_name: 1 });
+adPerformanceSchema.index({ objective: 1 });
 
 // Compound index cho aggregation queries
 adPerformanceSchema.index({ account_id: 1, campaign_id: 1, date: 1 });

@@ -9,6 +9,13 @@ import { startAdHourlyInsightsCron } from "./jobs/adHourlyInsights.job.js";
 import { startAnalyticsSnapshotCron } from "./jobs/analyticsSnapshot.job.js";
 import { startAutoRuleScheduler } from './services/autoRuleScheduler.js';
 
+import { startAdPerformanceCron } from "./jobs/adPerformance.job.js"; 
+import { startAdHourlyInsightsCron } from "./jobs/adHourlyInsights.job.js";
+import { startAutoRuleScheduler } from './services/autoRuleScheduler.js';
+import { startCancelExpiredPaymentsCron } from "./jobs/cancelExpiredPayments.job.js";
+import chatRoutes from "./routes/ai/chatRoutes.js"; 
+import { syncPromptEmbeddings } from "./services/chat/ragService.js";
+
 //Import Routes
 import userRoutes from './routes/userRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
@@ -24,6 +31,8 @@ import adsRoutes from "./routes/ads/adsRoutes.js";
 import creativeRoutes from "./routes/ads/creativeRoutes.js";
 import adPerformanceRoutes from "./routes/ads/adPerformanceRoutes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import adPerformanceRoutes from "./routes/ads/adPerformanceRoutes.js";
+import locationRoutes from "./routes/ads/locationRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import aiRoutes from "./routes/ai/aiRoutes.js";
 import chatRoutes from "./routes/ai/chatRoutes.js";
@@ -35,6 +44,10 @@ import leadRoutes from "./routes/leadRoutes.js";
 import packageRoutes from './routes/packageRoutes.js';
 import userPackageRoutes from './routes/package/userPackageRoutes.js';
 import paymentTransactionsRoutes from './routes/transaction/paymentTransactionsRoutes.js';
+import stripeTransactionsRoutes from './routes/transaction/stripeTransactionsRoutes.js';
+import zaloPayTransactionsRoutes from './routes/transaction/zaloPayTransactionsRoutes.js';
+import vnPayTransactionsRoutes from './routes/transaction/vnPayTransactionsRoutes.js';
+import invoiceRoutes from './routes/invoice/invoiceRoutes.js';
 
 //Load các biến môi trường
 dotenv.config();
@@ -46,6 +59,7 @@ const app = express();
 
 // Bật CORS cho frontend
 app.use(cors({ 
+  origin: true,
   origin: true,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -74,10 +88,13 @@ app.use("/api/adsets", adsSetRoutes);
 app.use("/api/ads", adsRoutes);
 app.use("/api/ads/performance", adPerformanceRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/ads/performance", adPerformanceRoutes);
 app.use("/api/creatives", creativeRoutes);
+app.use("/api/location", locationRoutes);
 app.use("/api/ads-wizard", adsWizardRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/ai/chat", chatRoutes);
 app.use("/api/ai/chat", chatRoutes);
 app.use("/api/automation-rules", automationRuleRoutes);
 app.use("/api/logs", logRoutes);
@@ -99,6 +116,22 @@ app.get("/health", (req, res) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     message: "Server is running"
+app.use("/api/stripe-transactions", stripeTransactionsRoutes);
+app.use('/api/zalo-pay', zaloPayTransactionsRoutes);
+app.use('/api/vnpay', vnPayTransactionsRoutes);
+app.use("/api/invoices", invoiceRoutes);
+
+// Add a root route to check deployment status
+app.get("/", (req, res) => {
+  res.send("Backend deployed successfully!");
+});
+// Health check endpoint cho monitoring services (UptimeRobot, Cron-Job, etc.)
+app.get("/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    message: "Server is running"
   });
 });
 
@@ -110,6 +143,30 @@ const startServer = async () => {
     startAdPerformanceCron(); 
     startAdHourlyInsightsCron();
     startAnalyticsSnapshotCron();
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("🚨 Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+export default app;
+
+
+const startServer = async () => {
+  try {
+    await connectDB();
+    await syncPromptEmbeddings();
+
+    startAutoRuleScheduler();
+    startAdPerformanceCron(); 
+    startAdHourlyInsightsCron();
+    startCancelExpiredPaymentsCron();
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
