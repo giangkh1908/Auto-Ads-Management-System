@@ -54,7 +54,7 @@ function CheckOut() {
         );
 
         if (!methodRes.data.success) {
-          toast.error("Không thể chọn VNPay");
+          alert("Không thể chọn VNPay");
           return;
         }
 
@@ -71,10 +71,10 @@ function CheckOut() {
           }
         );
 
-        if (vnpayRes.data.success && vnpayRes.data.data?.paymentUrl) {
-          window.location.href = vnpayRes.data.data.paymentUrl;
+        if (vnpayRes.data?.success && vnpayRes.data?.paymentUrl) {
+          window.location.href = vnpayRes.data.paymentUrl;
         } else {
-          toast.error("Không thể tạo thanh toán VNPay");
+          alert("Không thể tạo thanh toán VNPay");
         }
         return;
       }
@@ -87,7 +87,7 @@ function CheckOut() {
         const data = res.data;
 
         if (!data.success) {
-          toast.error("Không thể cập nhật phương thức thanh toán");
+          alert("Không thể cập nhật phương thức thanh toán");
           return;
         }
 
@@ -111,7 +111,7 @@ function CheckOut() {
           // Chuyển hướng người dùng đến Stripe Checkout
           window.location.href = sessionData.data.url;
         } else {
-          toast.error(sessionData.message || "Không thể tạo phiên thanh toán Stripe");
+          alert(sessionData.message || "Không thể tạo phiên thanh toán Stripe");
         }
         return;
       }
@@ -124,7 +124,7 @@ function CheckOut() {
         );
 
         if (!methodRes.data.success) {
-          toast.error("Không thể cập nhật phương thức");
+          alert("Không thể cập nhật phương thức");
           return;
         }
 
@@ -147,7 +147,7 @@ function CheckOut() {
           // Redirect đến ZaloPay
           window.location.href = zaloData.data.orderUrl;
         } else {
-          toast.error(zaloData.message || "Không thể tạo thanh toán ZaloPay");
+          alert(zaloData.message || "Không thể tạo thanh toán ZaloPay");
         }
         return;
       }
