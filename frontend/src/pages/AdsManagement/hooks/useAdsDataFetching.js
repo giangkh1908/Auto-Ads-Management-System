@@ -13,7 +13,7 @@ import {
 } from "../services/adsCacheService";
 
 const BATCH_SIZE = 50;
-const CACHE_TTL = 120000;
+const CACHE_TTL = Number.POSITIVE_INFINITY;
 
 /**
  * Custom hook to manage data fetching for campaigns, adsets, and ads
@@ -61,8 +61,19 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
   /**
    * Fetch campaigns for account
    */
-  const fetchCampaignsForAccount = useCallback(async (accountId) => {
+  const fetchCampaignsForAccount = useCallback(async (accountId, options = {}) => {
     if (!accountId) return;
+    const { force = false } = options;
+    const cacheKey = getCacheKey(accountId, 'campaigns');
+    const currentCache = cacheRef.current;
+    const currentDatasets = datasetsRef.current;
+    const lastFetch = currentCache.lastFetch?.[cacheKey];
+    if (!force && isCacheValid(lastFetch, CACHE_TTL)) {
+      if (currentDatasets.campaigns.length > 0) {
+        console.log(`✅ Using cached campaigns for account ${accountId}`);
+        return;
+      }
+    }
     
     try {
       const response = await axiosInstance.get(`/api/campaigns`, {
@@ -93,24 +104,26 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
           ...prev,
           campaigns: merged,
         }));
+        setCache(prev => updateCacheTimestamp(prev, cacheKey));
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
     }
-  }, [fetchInsightsBatch, setDatasets]);
+  }, [fetchInsightsBatch, setDatasets, setCache]);
 
   /**
    * Fetch adsets for campaign
    */
-  const fetchAdsetsForCampaign = useCallback(async (campaignId, accountId) => {
+  const fetchAdsetsForCampaign = useCallback(async (campaignId, accountId, options = {}) => {
     if (!campaignId || !accountId) return;
+    const { force = false } = options;
     
     const cacheKey = getCacheKey(accountId, 'adsets', campaignId);
     const currentCache = cacheRef.current;
     const currentDatasets = datasetsRef.current;
     
     const lastFetch = currentCache.lastFetch?.[cacheKey];
-    if (isCacheValid(lastFetch, CACHE_TTL)) {
+    if (!force && isCacheValid(lastFetch, CACHE_TTL)) {
       const cachedAdsets = currentDatasets.adsets.filter(
         a => String(a.campaignId) === String(campaignId) && 
              a.status !== "DELETED" && 
@@ -169,15 +182,16 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
   /**
    * Fetch ads for adset
    */
-  const fetchAdsForAdset = useCallback(async (adsetId, accountId = null) => {
+  const fetchAdsForAdset = useCallback(async (adsetId, accountId = null, options = {}) => {
     if (!adsetId) return;
+    const { force = false } = options;
     
     const cacheKey = getCacheKey(accountId, 'ads', adsetId);
     const currentCache = cacheRef.current;
     const currentDatasets = datasetsRef.current;
     
     const lastFetch = currentCache.lastFetch?.[cacheKey];
-    if (isCacheValid(lastFetch, CACHE_TTL)) {
+    if (!force && isCacheValid(lastFetch, CACHE_TTL)) {
       const cachedAds = currentDatasets.ads.filter(
         a => String(a.adsetId) === String(adsetId) && 
              a.status !== "DELETED" && 
@@ -240,15 +254,16 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
   /**
    * Fetch all adsets for account
    */
-  const fetchAllAdsetsForAccount = useCallback(async (accountId) => {
+  const fetchAllAdsetsForAccount = useCallback(async (accountId, options = {}) => {
     if (!accountId) return;
+    const { force = false } = options;
     
     const cacheKey = getCacheKey(accountId, 'adsets');
     const currentCache = cacheRef.current;
     const currentDatasets = datasetsRef.current;
     
     const lastFetch = currentCache.lastFetch?.[cacheKey];
-    if (isCacheValid(lastFetch, CACHE_TTL)) {
+    if (!force && isCacheValid(lastFetch, CACHE_TTL)) {
       const cachedAdsets = currentDatasets.adsets.filter(
         a => a.status !== "DELETED" && a.status !== "ARCHIVED"
       );
@@ -299,15 +314,16 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
   /**
    * Fetch all ads for account
    */
-  const fetchAllAdsForAccount = useCallback(async (accountId) => {
+  const fetchAllAdsForAccount = useCallback(async (accountId, options = {}) => {
     if (!accountId) return;
+    const { force = false } = options;
     
     const cacheKey = getCacheKey(accountId, 'ads');
     const currentCache = cacheRef.current;
     const currentDatasets = datasetsRef.current;
     
     const lastFetch = currentCache.lastFetch?.[cacheKey];
-    if (isCacheValid(lastFetch, CACHE_TTL)) {
+    if (!force && isCacheValid(lastFetch, CACHE_TTL)) {
       const cachedAds = currentDatasets.ads.filter(
         a => a.status !== "DELETED" && a.status !== "ARCHIVED"
       );

@@ -711,18 +711,18 @@ function AdsManagement() {
       await syncData(selectedAccountId, true);
       
       if (activeTab === "campaigns") {
-        await fetchCampaignsForAccount(selectedAccountId);
+        await fetchCampaignsForAccount(selectedAccountId, { force: true });
       } else if (activeTab === "adsets") {
         if (selectedCampaign) {
-          await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId);
+          await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId, { force: true });
         } else {
-          await fetchAllAdsetsForAccount(selectedAccountId);
+          await fetchAllAdsetsForAccount(selectedAccountId, { force: true });
         }
       } else if (activeTab === "ads") {
         if (selectedAdset) {
-          await fetchAdsForAdset(selectedAdset.id, selectedAccountId);
+          await fetchAdsForAdset(selectedAdset.id, selectedAccountId, { force: true });
         } else {
-          await fetchAllAdsForAccount(selectedAccountId);
+          await fetchAllAdsForAccount(selectedAccountId, { force: true });
         }
       }
 
@@ -741,18 +741,18 @@ function AdsManagement() {
 
     try {
       if (activeTab === "campaigns") {
-        await fetchCampaignsForAccount(selectedAccountId);
+        await fetchCampaignsForAccount(selectedAccountId, { force: true });
       } else if (activeTab === "adsets") {
         if (selectedCampaign) {
-          await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId);
+          await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId, { force: true });
         } else {
-          await fetchAllAdsetsForAccount(selectedAccountId);
+          await fetchAllAdsetsForAccount(selectedAccountId, { force: true });
         }
       } else if (activeTab === "ads") {
         if (selectedAdset) {
-          await fetchAdsForAdset(selectedAdset.id, selectedAccountId);
+          await fetchAdsForAdset(selectedAdset.id, selectedAccountId, { force: true });
         } else {
-          await fetchAllAdsForAccount(selectedAccountId);
+          await fetchAllAdsForAccount(selectedAccountId, { force: true });
         }
       }
     } catch (error) {
