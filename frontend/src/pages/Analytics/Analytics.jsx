@@ -168,6 +168,15 @@ function Analytics() {
   useEffect(() => {
     if (selectedAccount) {
       fetchAds();
+
+      // ✅ THÊM: Auto-sync lần đầu để đảm bảo data mới nhất
+      // (vì AnalyticsSnapshot chỉ sync daily lúc 4 AM)
+      const hasAutoSynced = sessionStorage.getItem(`analytics_synced_${selectedAccount}`);
+      if (!hasAutoSynced) {
+        console.log(`[Analytics] Auto-syncing snapshots for account ${selectedAccount}...`);
+        syncAnalytics();
+        sessionStorage.setItem(`analytics_synced_${selectedAccount}`, 'true');
+      }
     }
   }, [selectedAccount]);
 
@@ -257,20 +266,37 @@ function Analytics() {
       return;
     }
 
+    if (syncing) {
+      return;
+    }
+
     setSyncing(true);
     try {
       const response = await axiosInstance.post("/api/analytics/snapshots/sync", {
-        account_id: selectedAccount, // external_id
+        account_id: selectedAccount,
       });
 
       if (response.data) {
-        alert(`Sync hoàn tất!\nĐã sync: ${response.data.synced} ads\nLỗi: ${response.data.errors}`);
-        // Refresh data after sync
-        await fetchAds();
+        const { synced, errors, rateLimitReached, retryAfter } = response.data;
+
+        if (rateLimitReached) {
+          alert(`⚠️ ${response.data.message}\nVui lòng thử lại sau ${retryAfter} giây.`);
+        } else {
+          alert(`✅ Sync hoàn tất!\nĐã sync: ${synced} ads\nLỗi: ${errors}`);
+          setTimeout(() => {
+            fetchAds();
+          }, 5000);
+        }
       }
     } catch (error) {
       console.error("Error syncing analytics:", error);
-      alert(`Lỗi khi sync: ${error.response?.data?.message || error.message}`);
+      const errorResponse = error.response?.data;
+
+      if (errorResponse?.rateLimitReached) {
+        alert(`⚠️ ${errorResponse.message}\nVui lòng thử lại sau ${errorResponse.retryAfter || 60} giây.`);
+      } else {
+        alert(`❌ Lỗi khi sync: ${errorResponse?.message || error.message}`);
+      }
     } finally {
       setSyncing(false);
     }
@@ -295,7 +321,19 @@ function Analytics() {
     const matchesObjective = selectedObjective === "ALL" ||
       adObjective === selectedObjective;
 
-    return matchesSearch && matchesObjective;
+    // ✅ THÊM: Chỉ hiển thị ads có số liệu thực tế (không phải tất cả = 0)
+    const hasData = ad.spend > 0 ||
+      ad.impressions > 0 ||
+      ad.clicks > 0 ||
+      ad.reach > 0 ||
+      ad.link_clicks > 0 ||
+      ad.post_engagement > 0 ||
+      ad.leads > 0 ||
+      ad.conversions > 0 ||
+      ad.website_purchases > 0 ||
+      ad.mobile_app_install > 0;
+
+    return matchesSearch && matchesObjective && hasData;
   });
 
   // Calculate highlighters

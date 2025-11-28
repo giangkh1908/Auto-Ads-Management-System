@@ -11,6 +11,7 @@ const CACHE_TTL = 120000; // 120 seconds
 export function useAdsSync(cache, setCache, activeTab) {
   const activeTabRef = useRef(activeTab);
   const cacheRef = useRef(cache);
+  const syncingRef = useRef(false);
 
   // Update refs when state changes
   useEffect(() => {
@@ -21,9 +22,22 @@ export function useAdsSync(cache, setCache, activeTab) {
   const syncData = useCallback(async (accountId, forceSync = false, syncTypes = null) => {
     if (!accountId) return;
     
+    if (syncingRef.current) {
+      console.log("⏭️ Skip sync - already syncing");
+      return;
+    }
+    
     const now = Date.now();
     const currentActiveTab = activeTabRef.current;
     const currentCache = cacheRef.current;
+    
+    // Check if account was just synced recently (within 5 minutes) - skip to avoid rate limit
+    const lastSync = currentCache.lastSync;
+    const SYNC_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+    if (!forceSync && lastSync && (now - lastSync) < SYNC_COOLDOWN) {
+      console.log(`⏭️ Skip sync - synced ${Math.round((now - lastSync) / 1000)}s ago (cooldown: ${SYNC_COOLDOWN / 1000}s)`);
+      return;
+    }
     
     // Auto-determine syncTypes based on activeTab if not provided
     if (!syncTypes) {
@@ -51,26 +65,17 @@ export function useAdsSync(cache, setCache, activeTab) {
       return;
     }
     
+    syncingRef.current = true;
+    
     try {
-      // Batch sync if all entities need sync
-      if (needsSync.length === 3) {
-        await axiosInstance.get(`/api/campaigns/sync-all?account_id=${accountId}`);
-        console.log("✅ Batch sync completed");
-      } else {
-        // Sync individual entities
-        const syncPromises = needsSync.map(type => {
-          const endpointMap = {
-            campaigns: 'campaigns',
-            adsets: 'adsets',
-            ads: 'ads'
-          };
-          return axiosInstance.get(`/api/${endpointMap[type]}/sync?account_id=${accountId}`);
-        });
-        await Promise.all(syncPromises);
-        console.log(`✅ Synced ${needsSync.length} entities:`, needsSync);
-      }
+      // Call new unified entity sync API (backend will auto-resolve access token)
+      await axiosInstance.post("/api/sync/entities", {
+        accountId: accountId,
+      });
       
-      // Update cache
+      console.log(`✅ Entity sync completed (${needsSync.length} entities needed: ${needsSync.join(', ')})`);
+      
+      // Update cache for all synced entity types
       setCache(prev => {
         let updatedCache = { ...prev.lastFetch };
         needsSync.forEach(type => {
@@ -84,10 +89,22 @@ export function useAdsSync(cache, setCache, activeTab) {
         };
       });
     } catch (error) {
-      console.error("Sync error:", error);
-      throw error;
+      const errorResponse = error.response?.data;
+      
+      if (errorResponse?.alreadySyncing) {
+        console.log("⏭️ Sync already in progress");
+      } else if (errorResponse?.rateLimitReached) {
+        console.warn(`⏳ Rate limit reached: ${errorResponse.message}`);
+      } else {
+        console.error("Sync error:", error);
+      }
+      
+      // Don't throw error to prevent breaking the UI
+      // User can still use the app, data will be fetched from DB
+    } finally {
+      syncingRef.current = false;
     }
-  }, [cache, setCache]);
+  }, [setCache]);
 
   return { syncData };
 }

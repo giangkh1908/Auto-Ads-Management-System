@@ -7,8 +7,8 @@ import { filterAccountsByFeature } from "../services/accountFeatureGuard.js";
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const startAnalyticsSnapshotCron = () => {
-  // Run every 30 minutes
-  cron.schedule("*/30 * * * *", async () => {
+  // Run once daily at 4:00 AM (analytics data ít thay đổi, không cần sync thường xuyên)
+  cron.schedule("0 4 * * *", async () => {
     const startTime = new Date().toISOString();
     console.log(`[${startTime}] 🚀 Starting analytics snapshot sync job...`);
 
@@ -16,8 +16,7 @@ export const startAnalyticsSnapshotCron = () => {
       const activeAccounts = await AdsAccount.find({
         status: "ACTIVE",
       })
-        .select("_id external_id name shop_admin_id")
-        .populate({ path: "shop_admin_id", select: "+facebookAccessToken" })
+        .select("_id external_id name")
         .lean();
 
       const { eligibleAccounts, skippedAccounts } = await filterAccountsByFeature(
@@ -55,6 +54,7 @@ export const startAnalyticsSnapshotCron = () => {
 
         try {
           const result = await syncAnalyticsSnapshots(account);
+          
           totalSynced += result.synced;
           totalErrors += result.errors;
 
@@ -69,9 +69,9 @@ export const startAnalyticsSnapshotCron = () => {
           totalErrors++;
         }
 
-        // Rate limit protection: wait 2 seconds between accounts
+        // Small delay to avoid overwhelming DB (aggregation is fast, but still good practice)
         if (i < eligibleAccounts.length - 1) {
-          await delay(2000);
+          await delay(500); // Reduced from 2000ms since we're only aggregating from DB
         }
       }
 
@@ -87,5 +87,5 @@ export const startAnalyticsSnapshotCron = () => {
     }
   });
 
-  console.log("✅ Analytics snapshot cron job registered (runs every 30 minutes)");
+  console.log("✅ Analytics snapshot cron job registered (runs daily at 4:00 AM)");
 };
