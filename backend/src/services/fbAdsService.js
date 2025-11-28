@@ -11,6 +11,7 @@ import AdPerformance from "../models/ads/adPerformance.model.js";
 import AdHourlyInsight from "../models/ads/adHourlyInsight.model.js";
 
 const FB_API = "https://graph.facebook.com/v23.0";
+const MAX_PAGE_LIMIT = 500;
 
 function buildFbAuthParams(accessToken) {
   const appSecret = process.env.FB_APP_SECRET || process.env.FACEBOOK_APP_SECRET || process.env.APP_SECRET;
@@ -408,69 +409,74 @@ export async function updateAd(entityId, accessToken, updates) {
  *  FETCH HELPERS (giữ nguyên fields)
  * ========================= */
 
-export async function fetchCampaignsFromFacebook(accessToken, adAccountId) {
-  try {
-    const { withPrefix } = normalizeAccountPair(adAccountId);
-    const url = `${FB_API}/${withPrefix}/campaigns`;
-    const response = await axios.get(url, {
-      params: {
-        fields:
-          "id,name,status,objective,special_ad_categories,daily_budget,lifetime_budget,start_time,stop_time,effective_status",
-        access_token: accessToken,
-        limit: 100,
-      },
-    });
-    return response.data?.data || [];
-  } catch (err) {
-    console.error(
-      `Error fetching campaigns from Facebook for account ${adAccountId}:`,
-      err.response?.data || err.message
-    );
-    return [];
+async function fetchAllEntitiesFromFacebook(accessToken, adAccountId, entityPath, fields, extraParams = {}) {
+  const results = [];
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  let afterCursor = null;
+  let page = 1;
+
+  while (true) {
+    try {
+      const url = `${FB_API}/${withPrefix}/${entityPath}`;
+      const response = await axios.get(url, {
+        params: {
+          fields,
+          access_token: accessToken,
+          limit: MAX_PAGE_LIMIT,
+          ...extraParams,
+          ...(afterCursor ? { after: afterCursor } : {}),
+        },
+      });
+
+      const pageItems = response.data?.data || [];
+      results.push(...pageItems);
+
+      const paging = response.data?.paging;
+      afterCursor = paging?.cursors?.after || null;
+
+      console.log(
+        `[fbAdsService] ${entityPath} page ${page} fetched ${pageItems.length} items (total ${results.length})`
+      );
+
+      page += 1;
+      if (!afterCursor) break;
+    } catch (err) {
+      console.error(
+        `Error fetching ${entityPath} from Facebook for account ${adAccountId}:`,
+        err.response?.data || err.message
+      );
+      break;
+    }
   }
+
+  return results;
+}
+
+export async function fetchCampaignsFromFacebook(accessToken, adAccountId) {
+  return fetchAllEntitiesFromFacebook(
+    accessToken,
+    adAccountId,
+    "campaigns",
+    "id,name,status,objective,special_ad_categories,daily_budget,lifetime_budget,start_time,stop_time,effective_status"
+  );
 }
 
 export async function fetchAdsetsFromFacebook(accessToken, adAccountId) {
-  try {
-    const { withPrefix } = normalizeAccountPair(adAccountId);
-    const url = `${FB_API}/${withPrefix}/adsets`;
-    const response = await axios.get(url, {
-      params: {
-        fields:
-          "id,name,status,campaign_id,daily_budget,lifetime_budget,optimization_goal,targeting,start_time,end_time,effective_status",
-        access_token: accessToken,
-        limit: 100,
-      },
-    });
-    return response.data?.data || [];
-  } catch (err) {
-    console.error(
-      `Error fetching adsets from Facebook for account ${adAccountId}:`,
-      err.response?.data || err.message
-    );
-    return [];
-  }
+  return fetchAllEntitiesFromFacebook(
+    accessToken,
+    adAccountId,
+    "adsets",
+    "id,name,status,campaign_id,daily_budget,lifetime_budget,optimization_goal,targeting,start_time,end_time,effective_status"
+  );
 }
 
 export async function fetchAdsFromFacebook(accessToken, adAccountId) {
-  try {
-    const { withPrefix } = normalizeAccountPair(adAccountId);
-    const url = `${FB_API}/${withPrefix}/ads`;
-    const response = await axios.get(url, {
-      params: {
-        fields: "id,name,status,adset_id,creative,effective_status",
-        access_token: accessToken,
-        limit: 100,
-      },
-    });
-    return response.data?.data || [];
-  } catch (err) {
-    console.error(
-      `Error fetching ads from Facebook for account ${adAccountId}:`,
-      err.response?.data || err.message
-    );
-    return [];
-  }
+  return fetchAllEntitiesFromFacebook(
+    accessToken,
+    adAccountId,
+    "ads",
+    "id,name,status,adset_id,creative,effective_status"
+  );
 }
 
 /* =========================
@@ -878,46 +884,20 @@ export async function fetchInsightsForEntities(entityIds, accessToken) {
  */
 export async function syncAllFromFacebook(accessToken, adAccountId) {
   try {
-    const { withPrefix } = normalizeAccountPair(adAccountId);
-    const url = `${FB_API}/`;
-    
-    // ✅ Batch request: Gộp 3 API calls thành 1
-    const batch = [
-      {
-        method: 'GET',
-        relative_url: `${withPrefix}/campaigns?fields=id,name,status,objective,special_ad_categories,daily_budget,lifetime_budget,start_time,stop_time,effective_status&limit=500`
-      },
-      {
-        method: 'GET',
-        relative_url: `${withPrefix}/adsets?fields=id,name,status,campaign_id,daily_budget,lifetime_budget,optimization_goal,targeting,start_time,end_time,effective_status&limit=500`
-      },
-      {
-        method: 'GET',
-        relative_url: `${withPrefix}/ads?fields=id,name,status,adset_id,creative,effective_status&limit=500`
-      }
-    ];
+    const [
+      campaignsData,
+      adsetsData,
+      adsData,
+    ] = await Promise.all([
+      fetchCampaignsFromFacebook(accessToken, adAccountId),
+      fetchAdsetsFromFacebook(accessToken, adAccountId),
+      fetchAdsFromFacebook(accessToken, adAccountId),
+    ]);
 
-    const response = await axios.post(url, {
-      batch: JSON.stringify(batch),
-      include_headers: false
-    }, {
-      params: { access_token: accessToken }
-    });
+    console.log(
+      `📊 Full sync fetched: ${campaignsData.length} campaigns, ${adsetsData.length} adsets, ${adsData.length} ads`
+    );
 
-    // Parse kết quả từ batch response
-    const [campaignsData, adsetsData, adsData] = response.data.map((res, index) => {
-      if (res.code === 200) {
-        return JSON.parse(res.body).data || [];
-      }
-      const entityType = ['campaigns', 'adsets', 'ads'][index];
-      const errorBody = res.body ? JSON.parse(res.body) : {};
-      console.warn(`⚠️ Batch sync ${entityType} failed:`, errorBody);
-      return [];
-    });
-
-    console.log(`📊 Batch fetched: ${campaignsData.length} campaigns, ${adsetsData.length} adsets, ${adsData.length} ads`);
-
-    // Xử lý campaigns trước (cần để map relationship)
     const adsAccount = await findAdsAccountByExternalId(adAccountId);
     if (!adsAccount) {
       console.warn(`⚠️ Không tìm thấy AdsAccount cho ${adAccountId}`);
@@ -925,19 +905,14 @@ export async function syncAllFromFacebook(accessToken, adAccountId) {
     }
 
     const { withoutPrefix } = normalizeAccountPair(adAccountId);
-    
-    // ✅ Xử lý trực tiếp từ batch data (không gọi lại fetch từ Facebook)
+
     const campaigns = await processCampaignsBatch(campaignsData, adsAccount, withoutPrefix);
-    
-    // Xử lý adsets (cần campaigns đã được lưu)
     const adsets = await processAdsetsBatch(adsetsData, withoutPrefix);
-    
-    // Xử lý ads (cần adsets đã được lưu)
     const ads = await processAdsBatch(adsData, withoutPrefix);
 
     return { campaigns, adsets, ads };
   } catch (err) {
-    console.error(`Error batch syncing for account ${adAccountId}:`, err.message);
+    console.error(`Error syncing all entities for account ${adAccountId}:`, err.message);
     throw err;
   }
 }

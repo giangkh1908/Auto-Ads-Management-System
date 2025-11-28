@@ -13,6 +13,7 @@ import {
 } from "../services/adsCacheService";
 
 const BATCH_SIZE = 50;
+const PAGE_SIZE = 200;
 const CACHE_TTL = Number.POSITIVE_INFINITY;
 
 /**
@@ -58,6 +59,39 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
     return insightsMap;
   }, []);
 
+  const fetchPaginated = useCallback(async (endpoint, params, onChunk) => {
+    let page = 1;
+    let keepFetching = true;
+
+    while (keepFetching) {
+      const response = await axiosInstance.get(endpoint, {
+        params: {
+          ...params,
+          page,
+          limit: PAGE_SIZE,
+        },
+      });
+
+      const data = response.data || {};
+      const items = data.items || [];
+      const pages = data.pages || null;
+
+      await onChunk(items, {
+        page,
+        total: data.total || 0,
+      });
+
+      if (pages) {
+        keepFetching = page < pages;
+      } else {
+        keepFetching = items.length === PAGE_SIZE;
+      }
+
+      if (!keepFetching) break;
+      page += 1;
+    }
+  }, []);
+
   /**
    * Fetch campaigns for account
    */
@@ -75,41 +109,47 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
       }
     }
     
+    setDatasets(prev => ({ ...prev, campaigns: [] }));
+
+    const aggregated = [];
+
     try {
-      const response = await axiosInstance.get(`/api/campaigns`, {
-        params: {
+      await fetchPaginated(
+        `/api/campaigns`,
+        {
           account_id: accountId,
-          fetch_all: true
+          fetch_all: false,
+        },
+        async (items) => {
+          if (items.length === 0) return;
+
+          if (import.meta.env.DEV) {
+            const statusCount = items.reduce((acc, item) => {
+              acc[item.status] = (acc[item.status] || 0) + 1;
+              return acc;
+            }, {});
+            console.log(`📊 Backend returned campaigns by status:`, statusCount);
+          }
+
+          const mapped = items.map(transformCampaign);
+          const campaignIds = mapped.map((c) => c.external_id).filter(Boolean);
+          const insightsMap = await fetchInsightsBatch(campaignIds, '/api/campaigns/insights');
+          
+          const merged = mapped.map((c) => mergeInsights(c, insightsMap[c.external_id] || {}));
+          aggregated.push(...merged);
+
+          setDatasets(prev => ({
+            ...prev,
+            campaigns: [...aggregated],
+          }));
         }
-      });
-      
-      if (response.data) {
-        const { items } = response.data;
-        
-        if (import.meta.env.DEV) {
-          const statusCount = items.reduce((acc, item) => {
-            acc[item.status] = (acc[item.status] || 0) + 1;
-            return acc;
-          }, {});
-          console.log(`📊 Backend returned campaigns by status:`, statusCount);
-        }
-        
-        const mapped = items.map(transformCampaign);
-        const campaignIds = mapped.map((c) => c.external_id).filter(Boolean);
-        const insightsMap = await fetchInsightsBatch(campaignIds, '/api/campaigns/insights');
-        
-        const merged = mapped.map((c) => mergeInsights(c, insightsMap[c.external_id] || {}));
-        
-        setDatasets(prev => ({
-          ...prev,
-          campaigns: merged,
-        }));
-        setCache(prev => updateCacheTimestamp(prev, cacheKey));
-      }
+      );
+
+      setCache(prev => updateCacheTimestamp(prev, cacheKey));
     } catch (error) {
       console.error("Error fetching campaigns:", error);
     }
-  }, [fetchInsightsBatch, setDatasets, setCache]);
+  }, [fetchInsightsBatch, setDatasets, setCache, fetchPaginated]);
 
   /**
    * Fetch adsets for campaign
@@ -135,49 +175,55 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
       }
     }
     
+    const preservedAdsets = datasetsRef.current.adsets.filter(
+      a => String(a.campaignId) !== String(campaignId)
+    );
+
+    setDatasets(prev => ({
+      ...prev,
+      adsets: preservedAdsets,
+    }));
+
+    const aggregated = [];
+
     try {
-      const response = await axiosInstance.get(`/api/adsets`, {
-        params: {
+      await fetchPaginated(
+        `/api/adsets`,
+        {
           campaign_id: campaignId,
-          fetch_all: true
-        }
-      });
-      
-      if (response.data) {
-        const { items } = response.data;
-        
-        if (import.meta.env.DEV) {
-          const statusCount = items.reduce((acc, item) => {
-            acc[item.status] = (acc[item.status] || 0) + 1;
-            return acc;
-          }, {});
-          console.log(`📊 Backend returned adsets by status:`, statusCount);
-        }
-        
-        const mapped = items.map((adset) => transformAdset(adset, campaignId));
-        const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
-        const insightsMap = await fetchInsightsBatch(adsetIds, '/api/adsets/insights');
-        
-        const merged = mapped.map((a) => mergeInsights(a, insightsMap[a.external_id] || {}));
-        
-        // Merge: Keep adsets from other campaigns, only update this campaign
-        setDatasets((prev) => {
-          const otherAdsets = prev.adsets.filter(
-            a => String(a.campaignId) !== String(campaignId)
-          );
-          return {
+          account_id: accountId,
+          fetch_all: false,
+        },
+        async (items) => {
+          if (items.length === 0) return;
+
+          if (import.meta.env.DEV) {
+            const statusCount = items.reduce((acc, item) => {
+              acc[item.status] = (acc[item.status] || 0) + 1;
+              return acc;
+            }, {});
+            console.log(`📊 Backend returned adsets by status:`, statusCount);
+          }
+
+          const mapped = items.map((adset) => transformAdset(adset, campaignId));
+          const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
+          const insightsMap = await fetchInsightsBatch(adsetIds, '/api/adsets/insights');
+          
+          const merged = mapped.map((a) => mergeInsights(a, insightsMap[a.external_id] || {}));
+          aggregated.push(...merged);
+
+          setDatasets((prev) => ({
             ...prev,
-            adsets: [...otherAdsets, ...merged]
-          };
-        });
-        
-        // Update cache
-        setCache(prev => updateCacheTimestamp(prev, cacheKey));
-      }
+            adsets: [...preservedAdsets, ...aggregated],
+          }));
+        }
+      );
+
+      setCache(prev => updateCacheTimestamp(prev, cacheKey));
     } catch (error) {
       console.error("Error fetching adsets:", error);
     }
-  }, [fetchInsightsBatch, setDatasets, setCache]);
+  }, [fetchInsightsBatch, setDatasets, setCache, fetchPaginated]);
 
   /**
    * Fetch ads for adset
@@ -203,53 +249,58 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
       }
     }
     
+    const preservedAds = datasetsRef.current.ads.filter(
+      a => String(a.adsetId) !== String(adsetId)
+    );
+
+    setDatasets(prev => ({
+      ...prev,
+      ads: preservedAds,
+    }));
+
+    const aggregated = [];
+
     try {
-      const response = await axiosInstance.get(`/api/ads`, {
-        params: {
+      await fetchPaginated(
+        `/api/ads`,
+        {
           adset_id: adsetId,
-          ...(accountId && { account_id: accountId }),
-          fetch_all: true
-        }
-      });
-      
-      if (response.data) {
-        const { items } = response.data;
-        
-        if (import.meta.env.DEV) {
-          const statusCount = items.reduce((acc, item) => {
-            acc[item.status] = (acc[item.status] || 0) + 1;
-            return acc;
-          }, {});
-          console.log(`📊 Backend returned ads by status:`, statusCount);
-        }
-        
-        const mapped = items.map((ad) => transformAd(ad, adsetId));
-        const adIds = mapped.map((a) => a.external_id).filter(Boolean);
-        const insightsMap = await fetchInsightsBatch(adIds, '/api/ads/insights');
-        
-        const merged = mapped.map((a) => ({
-          ...mergeInsights(a, insightsMap[a.external_id] || {}),
-          updated_at: a.updated_at || a.updatedAt,
-        }));
-        
-        // Merge: Keep ads from other adsets, only update this adset
-        setDatasets((prev) => {
-          const otherAds = prev.ads.filter(
-            a => String(a.adsetId) !== String(adsetId)
-          );
-          return {
+          account_id: accountId,
+          fetch_all: false,
+        },
+        async (items) => {
+          if (items.length === 0) return;
+
+          if (import.meta.env.DEV) {
+            const statusCount = items.reduce((acc, item) => {
+              acc[item.status] = (acc[item.status] || 0) + 1;
+              return acc;
+            }, {});
+            console.log(`📊 Backend returned ads by status:`, statusCount);
+          }
+
+          const mapped = items.map((ad) => transformAd(ad, adsetId));
+          const adIds = mapped.map((a) => a.external_id).filter(Boolean);
+          const insightsMap = await fetchInsightsBatch(adIds, '/api/ads/insights');
+          
+          const merged = mapped.map((a) => ({
+            ...mergeInsights(a, insightsMap[a.external_id] || {}),
+            updated_at: a.updated_at || a.updatedAt,
+          }));
+          aggregated.push(...merged);
+
+          setDatasets((prev) => ({
             ...prev,
-            ads: [...otherAds, ...merged]
-          };
-        });
-        
-        // Update cache
-        setCache(prev => updateCacheTimestamp(prev, cacheKey));
-      }
+            ads: [...preservedAds, ...aggregated],
+          }));
+        }
+      );
+
+      setCache(prev => updateCacheTimestamp(prev, cacheKey));
     } catch (error) {
       console.error("Error fetching ads:", error);
     }
-  }, [fetchInsightsBatch, setDatasets, setCache]);
+  }, [fetchInsightsBatch, setDatasets, setCache, fetchPaginated]);
 
   /**
    * Fetch all adsets for account
@@ -273,43 +324,46 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
       }
     }
     
+    setDatasets(prev => ({ ...prev, adsets: [] }));
+    const aggregated = [];
+
     try {
-      const response = await axiosInstance.get(`/api/adsets`, {
-        params: {
+      await fetchPaginated(
+        `/api/adsets`,
+        {
           account_id: accountId,
-          fetch_all: true
+          fetch_all: false,
+        },
+        async (items) => {
+          if (items.length === 0) return;
+
+          if (import.meta.env.DEV) {
+            const statusCount = items.reduce((acc, item) => {
+              acc[item.status] = (acc[item.status] || 0) + 1;
+              return acc;
+            }, {});
+            console.log(`📊 Backend returned adsets by status:`, statusCount);
+          }
+
+          const mapped = items.map((adset) => transformAdset(adset));
+          const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
+          const insightsMap = await fetchInsightsBatch(adsetIds, '/api/adsets/insights');
+          
+          const merged = mapped.map((a) => mergeInsights(a, insightsMap[a.external_id] || {}));
+          aggregated.push(...merged);
+
+          setDatasets((prev) => ({
+            ...prev,
+            adsets: [...aggregated],
+          }));
         }
-      });
-      
-      if (response.data) {
-        const { items } = response.data;
-        
-        if (import.meta.env.DEV) {
-          const statusCount = items.reduce((acc, item) => {
-            acc[item.status] = (acc[item.status] || 0) + 1;
-            return acc;
-          }, {});
-          console.log(`📊 Backend returned adsets by status:`, statusCount);
-        }
-        
-        const mapped = items.map((adset) => transformAdset(adset));
-        const adsetIds = mapped.map((a) => a.external_id).filter(Boolean);
-        const insightsMap = await fetchInsightsBatch(adsetIds, '/api/adsets/insights');
-        
-        const merged = mapped.map((a) => mergeInsights(a, insightsMap[a.external_id] || {}));
-        
-        setDatasets((prev) => ({
-          ...prev,
-          adsets: merged,
-        }));
-        
-        // Update cache
-        setCache(prev => updateCacheTimestamp(prev, cacheKey));
-      }
+      );
+
+      setCache(prev => updateCacheTimestamp(prev, cacheKey));
     } catch (error) {
       console.error("Error fetching adsets:", error);
     }
-  }, [fetchInsightsBatch, setDatasets, setCache]);
+  }, [fetchInsightsBatch, setDatasets, setCache, fetchPaginated]);
 
   /**
    * Fetch all ads for account
@@ -333,43 +387,49 @@ export function useAdsDataFetching(datasets, setDatasets, cache, setCache) {
       }
     }
     
+    setDatasets(prev => ({ ...prev, ads: [] }));
+    const aggregated = [];
+
     try {
-      const response = await axiosInstance.get(`/api/ads`, {
-        params: {
+      await fetchPaginated(
+        `/api/ads`,
+        {
           account_id: accountId,
-          fetch_all: true
+          fetch_all: false,
+        },
+        async (items) => {
+          if (items.length === 0) return;
+
+          if (import.meta.env.DEV) {
+            const statusCount = items.reduce((acc, item) => {
+              acc[item.status] = (acc[item.status] || 0) + 1;
+              return acc;
+            }, {});
+            console.log(`📊 Backend returned ads by status:`, statusCount);
+          }
+
+          const mapped = items.map((ad) => transformAd(ad));
+          const adIds = mapped.map((a) => a.external_id).filter(Boolean);
+          const insightsMap = await fetchInsightsBatch(adIds, '/api/ads/insights');
+          
+          const merged = mapped.map((a) => ({
+            ...mergeInsights(a, insightsMap[a.external_id] || {}),
+            updated_at: a.updated_at || a.updatedAt,
+          }));
+          aggregated.push(...merged);
+
+          setDatasets((prev) => ({
+            ...prev,
+            ads: [...aggregated],
+          }));
         }
-      });
-      
-      if (response.data) {
-        const { items } = response.data;
-        
-        if (import.meta.env.DEV) {
-          const statusCount = items.reduce((acc, item) => {
-            acc[item.status] = (acc[item.status] || 0) + 1;
-            return acc;
-          }, {});
-          console.log(`📊 Backend returned ads by status:`, statusCount);
-        }
-        
-        const mapped = items.map((ad) => transformAd(ad));
-        const adIds = mapped.map((a) => a.external_id).filter(Boolean);
-        const insightsMap = await fetchInsightsBatch(adIds, '/api/ads/insights');
-        
-        const merged = mapped.map((a) => ({
-          ...mergeInsights(a, insightsMap[a.external_id] || {}),
-          updated_at: a.updated_at || a.updatedAt,
-        }));
-        
-        setDatasets((prev) => ({ ...prev, ads: merged }));
-        
-        // Update cache
-        setCache(prev => updateCacheTimestamp(prev, cacheKey));
-      }
+      );
+
+      setCache(prev => updateCacheTimestamp(prev, cacheKey));
     } catch (error) {
       console.error("Error fetching ads:", error);
     }
-  }, [fetchInsightsBatch, setDatasets, setCache]);
+  }, [fetchInsightsBatch, setDatasets, setCache, fetchPaginated]);
 
   return {
     fetchCampaignsForAccount,
