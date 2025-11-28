@@ -89,6 +89,7 @@ export const API_ENDPOINTS = {
     DISCONNECT: `${API_CONFIG.BASE_URL}/api/shops/facebook/disconnect`,
     UPDATE_PAGE_STATUS: `${API_CONFIG.BASE_URL}/api/shops/facebook/page-status`,
     REFRESH_TOKEN: `${API_CONFIG.BASE_URL}/api/shops/facebook/refresh-token`,
+    REFRESH_USER_PAGES: `${API_CONFIG.BASE_URL}/api/shops/facebook/refresh-user-pages`,
   },
 
   SHOP_USERS: {

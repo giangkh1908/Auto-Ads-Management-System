@@ -513,7 +513,7 @@ export async function syncCampaignsFromFacebook(accessToken, adAccountId) {
     for (const c of campaigns) {
       try {
         const data = {
-          shop_id: adsAccount.shop_id, // required by schema
+          shop_id: adsAccount.shop_id || null, // Optional, can be null
           account_id: adsAccount._id, // required by schema
           name: c.name,
           status: c.status,

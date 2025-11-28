@@ -6,6 +6,7 @@ import { STORAGE_KEYS, ROUTES } from '../constants/app.constants'
 import { AuthContext } from './AuthContext.js'
 import { getDefaultAdminRoute } from '../constants/adminConstants'
 import { clearShopCache } from '../utils/shopCache'
+import axiosInstance from '../utils/axios'
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -164,6 +165,21 @@ const logout = useCallback((showToast = true) => {
         
         setUser(finalUser)
         setIsAuthenticated(true)
+
+        // ✅ THÊM: Tự động sync ads accounts khi login thành công
+        // Chỉ sync cho user không có internal_role (không phải admin system)
+        if (!finalUser.internal_role && finalUser.facebookAccessToken) {
+          // Chạy sync trong background, không block login flow
+          axiosInstance.get('/api/ads-accounts/sync')
+            .then(() => {
+              console.log('✅ Ads accounts synced automatically after login');
+            })
+            .catch((syncError) => {
+              // Không block login nếu sync fail, chỉ log warning
+              console.warn('⚠️ Failed to sync ads accounts on login:', syncError);
+              // Không hiển thị error toast để không làm gián đoạn UX
+            });
+        }
 
         toast.success(response.message || 'Đăng nhập thành công!')
 

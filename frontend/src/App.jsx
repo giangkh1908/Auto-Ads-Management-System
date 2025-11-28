@@ -22,7 +22,7 @@ import ArchiveAds from "./pages/ArchiveAds/ArchiveAds.jsx";
 import Analytics from "./pages/Analytics/Analytics.jsx";
 import AutomationRule from "./pages/AutomationRule/AutomationRule.jsx";
 import ConnectPage from "./pages/ConnectPage/ConnectPage.jsx";
-import ConnectAdAccount from "./pages/ConnectAdAccount/ConnectAdAccount.jsx";
+// import ConnectAdAccount from "./pages/ConnectAdAccount/ConnectAdAccount.jsx"; // Removed: auto sync on login
 import ServicePackage from "./pages/ServicePackage/ServicePackage.jsx";
 import Order from "./pages/Order/Order.jsx";
 import CheckOut from "./pages/CheckOut/CheckOut.jsx";
@@ -471,15 +471,15 @@ function AppContentInner() {
           } 
         />
 
-        {/* Route cho Connect Ad Account */}
-        <Route
+        {/* Route cho Connect Ad Account - Removed: auto sync on login */}
+        {/* <Route
           path={ROUTES.CONNECT_AD_ACCOUNT}
           element={
             <AdminRouteGuard>
               <ConnectAdAccount />
             </AdminRouteGuard>
           }
-        />
+        /> */}
 
         {/* Auth routes */}
         <Route
