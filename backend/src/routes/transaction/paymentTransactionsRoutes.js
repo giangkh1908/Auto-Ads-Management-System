@@ -20,9 +20,6 @@ router.post("/", createPaymentTransaction);
 // Lấy danh sách filter values
 router.get("/filters/options", getPaymentTransactionFilters);
 
-// Lấy danh sách filter values
-router.get("/filters/options", getPaymentTransactionFilters);
-
 // Routes admin (cần authenticate và log)
 router.use(authenticate);
 router.use(adminActionLogger); // Log admin actions

@@ -30,7 +30,7 @@ export default function InternalPage() {
   // Pagination state
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: 25,
     total: 0,
     totalPages: 0
   });
@@ -63,18 +63,43 @@ export default function InternalPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const STATUSES = useMemo(() => [t("common.all"), t("common.active"), t("common.inactive")], [t]);
-  const ROLES = useMemo(() => [
-    t("common.all"),
-    t("internalPage.roles.systemAdmin"),
-    t("internalPage.roles.csStaff"),
-    t("internalPage.roles.accountant")
-  ], [t]);
+  const [rolesList, setRolesList] = useState([t("common.all")]);
+
+  // role translation map to reuse when translating backend values
+  const roleTranslateMap = useMemo(() => ({
+    "System Admin": t("internalPage.roles.systemAdmin"),
+    "CS Staff": t("internalPage.roles.csStaff"),
+    "Accountant": t("internalPage.roles.accountant"),
+  }), [t]);
 
   // Reset filters khi đổi ngôn ngữ
   useEffect(() => {
     setStatus(t("common.all"));
     setRole(t("common.all"));
+    // Rebuild role list translations when language changes
+    setRolesList(prev => prev.map(r => (r === t("common.all") ? t("common.all") : roleTranslateMap[r] || r)));
   }, [i18n.language, t]);
+
+  // Fetch available internal roles from backend
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await axiosInstance.get(API_ENDPOINTS.USERS.INTERNAL_ROLES);
+        if (!mounted) return;
+        if (res.data && res.data.success) {
+          const backendRoles = Array.isArray(res.data.data) ? res.data.data.filter(r => r) : [];
+          // translate values where possible
+          const translated = backendRoles.map(r => roleTranslateMap[r] || r);
+          setRolesList([t("common.all"), ...translated]);
+        }
+      } catch (err) {
+        console.error('Error fetching internal roles:', err);
+        // leave default rolesList
+      }
+    })();
+    return () => { mounted = false; };
+  }, [roleTranslateMap, t]);
 
   // Helper function để map staff data với translation
   const mapStaffData = useCallback((user) => {
@@ -245,9 +270,7 @@ export default function InternalPage() {
         setRows(formattedStaff);
       }
 
-      // Reset filters về "All" khi đổi ngôn ngữ
-      setStatus(t("common.all"));
-      setRole(t("common.all"));
+      // Note: do not reset filters here (would override user selection on each fetch)
     }
   }, [i18n.language, rawStaff, mapStaffData, t]);
 
@@ -465,7 +488,7 @@ export default function InternalPage() {
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
               >
-                {ROLES.map((r) => (
+                {rolesList.map((r) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
@@ -595,7 +618,7 @@ export default function InternalPage() {
         pageSize={pagination.limit}
         onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
         onPageSizeChange={(limit) => setPagination(prev => ({ ...prev, limit, page: 1 }))}
-        pageSizeOptions={[20, 50, 75, 100]}
+        pageSizeOptions={[25, 50, 75, 100]}
       />
 
       {/* Confirmation Popup */}

@@ -192,6 +192,23 @@ export const getInternalStaff = async (req, res) => {
   }
 };
 
+/**
+ * Lấy danh sách các giá trị `internal_role` có trong collection users
+ * Trả về mảng các string (ví dụ: ["System Admin", "CS Staff", "Accountant"])
+ */
+export const getInternalRoles = async (req, res) => {
+  try {
+    // Lấy distinct internal_role, loại bỏ null/undefined
+    const roles = await User.distinct('internal_role', { internal_role: { $ne: null } });
+    // Optionally filter out empty strings and sort
+    const cleaned = roles.filter(r => r && typeof r === 'string').sort();
+    res.status(200).json({ success: true, data: cleaned });
+  } catch (error) {
+    console.error('❌ Get internal roles error:', error);
+    res.status(500).json({ success: false, message: 'Không thể lấy danh sách internal roles.' });
+  }
+};
+
 // 📄 Lấy thông tin user theo ID
 export const getUserById = async (req, res) => {
   try {

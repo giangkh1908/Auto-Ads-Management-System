@@ -20,10 +20,10 @@ export default function PaymentPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [packageFilter, setPackageFilter] = useState(t("common.all"));
-  const [paymentMethod, setPaymentMethod] = useState(t("common.all"));
-  const [status, setStatus] = useState(t("common.all"));
-  const [assignedStatus, setAssignedStatus] = useState(t("common.all"));
+  const [packageFilter, setPackageFilter] = useState("All");
+  const [paymentMethod, setPaymentMethod] = useState("All");
+  const [status, setStatus] = useState("All");
+  const [assignedStatus, setAssignedStatus] = useState("All");
   const [dateRange, setDateRange] = useState("");
   const [invoiceModal, setInvoiceModal] = useState({
     isOpen: false,
@@ -37,6 +37,11 @@ export default function PaymentPage() {
   });
 
   const ASSIGNED_STATUSES = useMemo(() => [t("common.all"), t("common.assigned"), t("common.unassigned")], [t]);
+
+  // Server-provided filter options
+  const [serverPackages, setServerPackages] = useState([]);
+  const [serverMethods, setServerMethods] = useState([]);
+  const [serverStatuses, setServerStatuses] = useState([]);
 
   // Helper function để map dữ liệu từ backend sang format UI
   const mapPaymentData = useCallback((txn) => {
@@ -64,6 +69,7 @@ export default function PaymentPage() {
       failed: t("paymentManagement.statuses.failed"),
       canceled: t("paymentManagement.statuses.canceled"),
       cancelled: t("paymentManagement.statuses.canceled"),
+      rejected: t("paymentManagement.statuses.rejected"),
       initializing: t("paymentManagement.statuses.initializing"),
     };
 
@@ -126,24 +132,25 @@ export default function PaymentPage() {
   const fetchPayments = useCallback(async () => {
     setLoading(true);
     try {
+      const allValue = t("common.all");
       const params = {
         page: pagination.page,
         limit: pagination.limit,
         search: search.trim() || undefined,
-        package_id: packageFilter !== t("common.all") ? packageFilter : undefined,
-        method: paymentMethod !== t("common.all") ? paymentMethod : undefined,
-        assigned_status: assignedStatus !== t("common.all") ? assignedStatus : undefined,
+        package_id: packageFilter !== allValue ? packageFilter : undefined,
+        method: paymentMethod !== allValue ? paymentMethod : undefined,
         startDate: dateRange.split("-")[0]?.trim(),
         endDate: dateRange.split("-")[1]?.trim(),
       };
-      const allValue = t("common.all");
-      // Convert translated status back to original status for API
+
+      // Status: when user picks a status we send the raw status key
       if (status !== "All" && status !== allValue) {
-        const statusIndex = [t("paymentManagement.statuses.pending"), t("paymentManagement.statuses.success"), t("paymentManagement.statuses.failed"), t("paymentManagement.statuses.canceled"), t("paymentManagement.statuses.initializing")].indexOf(status);
-        if (statusIndex >= 0) {
-          const originalStatuses = ["pending", "success", "failed", "canceled", "initializing"];
-          params.status = originalStatuses[statusIndex];
-        }
+        params.status = status;
+      }
+
+      // Assigned status: convert from translated label to raw value expected by backend
+      if (assignedStatus !== "All" && assignedStatus !== allValue) {
+        params.assigned_status = assignedStatus === t("common.assigned") ? "assigned" : "unassigned";
       }
 
       const response = await paymentTransactionService.getPaymentTransactions(
@@ -199,53 +206,111 @@ export default function PaymentPage() {
     fetchPayments();
   }, [fetchPayments]);
 
+  // Load filter options (packages, methods, statuses) from server
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        const res = await paymentTransactionService.getFilterOptions();
+        if (res?.success && res.data) {
+          setServerPackages(res.data.packages || []);
+          setServerMethods(res.data.methods || []);
+          setServerStatuses(res.data.statuses || []);
+        }
+      } catch (err) {
+        console.error("Error loading payment filter options:", err);
+        setServerPackages([]);
+        setServerMethods([]);
+        setServerStatuses([]);
+      }
+    };
+    loadFilters();
+  }, []);
+
   // Re-map data khi ngôn ngữ thay đổi
   useEffect(() => {
     if (rawPayments.length > 0) {
       const mappedPayments = rawPayments.map((txn) => mapPaymentData(txn));
       setRows(mappedPayments);
       // Reset filters về "All" khi đổi ngôn ngữ
-      setPackageFilter(t("common.all"));
-      setPaymentMethod(t("common.all"));
-      setStatus(t("common.all"));
-      setAssignedStatus(t("common.all"));
+      // setPackageFilter(t("common.all"));
+      // setPaymentMethod(t("common.all"));
+      // setStatus(t("common.all"));
+      // setAssignedStatus(t("common.all"));
     }
   }, [i18n.language, rawPayments, mapPaymentData, t]);
 
-  // Dynamic filters
+  // Dynamic filters: prefer server-provided options, otherwise fallback to deriving from rows
   const packagesList = useMemo(() => {
-    const packages = new Set(rows.map((r) => r.package).filter(Boolean));
-    return [t("common.all"), ...Array.from(packages).sort()];
-  }, [rows, t]);
+    if (serverPackages && serverPackages.length > 0) {
+      const arr = serverPackages.map(p => ({ value: p, label: p }));
+      arr.sort((a,b) => a.label.localeCompare(b.label));
+      return [{ value: "All", label: t("common.all") }, ...arr];
+    }
+    const setPackages = new Set(rows.map((r) => r.package).filter(Boolean));
+    const arr = Array.from(setPackages).map(p => ({ value: p, label: p }));
+    arr.sort((a,b) => a.label.localeCompare(b.label));
+    return [{ value: "All", label: t("common.all") }, ...arr];
+  }, [rows, t, serverPackages]);
 
   const methodsList = useMemo(() => {
-    const methods = new Set(rows.map((r) => r.method).filter(Boolean));
-    return [t("common.all"), ...Array.from(methods).sort()];
-  }, [rows, t]);
+    const methodMap = {
+      momo: "Momo",
+      vnpay: "VietQR",
+      vietqr: "VietQR",
+      "manual banking": "Manual Banking",
+    };
+    if (serverMethods && serverMethods.length > 0) {
+      const arr = serverMethods.map(m => ({ value: m, label: methodMap[(m || "").toLowerCase()] || m }));
+      arr.sort((a,b) => a.label.localeCompare(b.label));
+      return [{ value: "All", label: t("common.all") }, ...arr];
+    }
+    const setMethods = new Set(rows.map((r) => r.originalData?.method || r.method).filter(Boolean));
+    const arr = Array.from(setMethods).map(m => ({ value: m, label: methodMap[(m || "").toLowerCase()] || m }));
+    arr.sort((a,b) => a.label.localeCompare(b.label));
+    return [{ value: "All", label: t("common.all") }, ...arr];
+  }, [rows, t, serverMethods]);
 
   const statusesList = useMemo(() => {
-    const statuses = new Set(rows.map((r) => r.status).filter(Boolean));
-    return [t("common.all"), ...Array.from(statuses).sort()];
-  }, [rows, t]);
+    const statusMap = {
+      pending: t("paymentManagement.statuses.pending"),
+      success: t("paymentManagement.statuses.success"),
+      failed: t("paymentManagement.statuses.failed"),
+      canceled: t("paymentManagement.statuses.canceled"),
+      cancelled: t("paymentManagement.statuses.canceled"),
+      initializing: t("paymentManagement.statuses.initializing"),
+    };
+    if (serverStatuses && serverStatuses.length > 0) {
+      const arr = serverStatuses.map(s => ({ value: s, label: statusMap[(s || "").toLowerCase()] || s }));
+      arr.sort((a,b) => a.label.localeCompare(b.label));
+      return [{ value: "All", label: t("common.all") }, ...arr];
+    }
+    const setStatuses = new Set(rows.map((r) => r.originalData?.status || r.status).filter(Boolean));
+    const arr = Array.from(setStatuses).map(s => ({ value: s, label: statusMap[(s || "").toLowerCase()] || s }));
+    arr.sort((a,b) => a.label.localeCompare(b.label));
+    return [{ value: "All", label: t("common.all") }, ...arr];
+  }, [rows, t, serverStatuses]);
 
   // Reset filters nếu giá trị không còn trong list
   useEffect(() => {
     const allValue = t("common.all");
-    if (packageFilter !== "All" && packageFilter !== allValue && !packagesList.includes(packageFilter)) {
+    const vals = packagesList.map(p => (p && typeof p === 'object' ? p.value : p));
+    if (packageFilter !== "All" && packageFilter !== allValue && !vals.includes(packageFilter)) {
       setPackageFilter(allValue);
     }
   }, [packagesList, packageFilter, t]);
 
   useEffect(() => {
     const allValue = t("common.all");
-    if (paymentMethod !== "All" && paymentMethod !== allValue && !methodsList.includes(paymentMethod)) {
+    const vals = methodsList.map(p => (p && typeof p === 'object' ? p.value : p));
+    if (paymentMethod !== "All" && paymentMethod !== allValue && !vals.includes(paymentMethod)) {
       setPaymentMethod(allValue);
     }
   }, [methodsList, paymentMethod, t]);
 
   useEffect(() => {
     const allValue = t("common.all");
-    if (status !== "All" && status !== allValue && !statusesList.includes(status)) {
+    const vals = statusesList.map(p => (p && typeof p === 'object' ? p.value : p));
+    if (status !== "All" && status !== allValue && !vals.includes(status)) {
       setStatus(allValue);
     }
   }, [statusesList, status, t]);
@@ -273,17 +338,24 @@ export default function PaymentPage() {
         (row.phone || "").toLowerCase().includes(s) ||
         (row.email || "").toLowerCase().includes(s);
 
-      // Lọc theo package
+      // Lọc theo package (compare raw package name from originalData)
       const allValue = t("common.all");
       const matchPackage =
-        packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
+        packageFilter === "All" || packageFilter === allValue
+          ? true
+          : (String(row.originalData?.package_id?.name || "").toLowerCase() === String(packageFilter || "").toLowerCase());
 
-      // Lọc theo payment method
+      // Lọc theo payment method (compare raw method from originalData)
       const matchMethod =
-        paymentMethod === "All" || paymentMethod === allValue ? true : row.method === paymentMethod;
+        paymentMethod === "All" || paymentMethod === allValue
+          ? true
+          : String(row.originalData?.method || "").toLowerCase() === String(paymentMethod || "").toLowerCase();
 
-      // Lọc theo status
-      const matchStatus = status === "All" || status === allValue ? true : row.status === status;
+      // Lọc theo status (compare raw status from originalData)
+      const matchStatus =
+        status === "All" || status === allValue
+          ? true
+          : String(row.originalData?.status || "").toLowerCase() === String(status || "").toLowerCase();
 
       // Lọc theo assigned status
       const matchAssignedStatus =
@@ -392,8 +464,8 @@ export default function PaymentPage() {
                 }}
               >
                 {packagesList.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
+                  <option key={p?.value ?? p} value={p?.value ?? p}>
+                    {p?.label ?? p}
                   </option>
                 ))}
               </select>
@@ -413,8 +485,8 @@ export default function PaymentPage() {
                 }}
               >
                 {methodsList.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
+                  <option key={m?.value ?? m} value={m?.value ?? m}>
+                    {m?.label ?? m}
                   </option>
                 ))}
               </select>
@@ -434,8 +506,8 @@ export default function PaymentPage() {
                 }}
               >
                 {statusesList.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
+                  <option key={s?.value ?? s} value={s?.value ?? s}>
+                    {s?.label ?? s}
                   </option>
                 ))}
               </select>

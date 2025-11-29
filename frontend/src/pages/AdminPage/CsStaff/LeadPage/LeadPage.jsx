@@ -43,7 +43,7 @@ export default function LeadPage() {
   const [dateRange, setDateRange] = useState("");
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: 25,
     total: 0,
     totalPages: 0
   });
@@ -231,8 +231,8 @@ export default function LeadPage() {
       }));
       setRows(mappedLeads);
       // Reset filters về "All" khi đổi ngôn ngữ
-      setStatus(t("common.all"));
-      setAssignedStatus(t("common.all"));
+      // setStatus(t("common.all"));
+      // setAssignedStatus(t("common.all"));
     }
   }, [i18n.language, rawLeads, t, user]);
 

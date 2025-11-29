@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import "./TransactionsPage.css";
-import { Search, ChevronDown, Eye } from "lucide-react";
+import { Search, ChevronDown, Eye, Download } from "lucide-react";
 import Pagination from "../../../../components/common/Pagination/Pagination";
 import DateRangePicker from "../../../../components/common/DateRangePicker/DateRangePicker";
 import NoteEditor from "../../../../components/common/NoteEditor/NoteEditor";
@@ -45,7 +45,7 @@ export default function TransactionsPage() {
       success: t("paymentManagement.statuses.success"),
       failed: t("paymentManagement.statuses.failed"),
       canceled: t("paymentManagement.statuses.canceled"),
-      cancelled: t("paymentManagement.statuses.canceled"),
+      rejected: t("paymentManagement.statuses.rejected"),
       initializing: t("paymentManagement.statuses.initializing"),
     };
 
@@ -135,11 +135,13 @@ export default function TransactionsPage() {
         setFilterLoading(true);
         const response = await paymentTransactionService.getFilterOptions();
         if (response.success) {
+          console.log("Filter options fetched:", response.data);
           setFilterOptions(response.data);
-          // Set default values là "All"
-          setPackageFilter(t("common.all"));
-          setPaymentMethod(t("common.all"));
-          setStatus(t("common.all"));
+          // Initialize filters sau khi load options (nếu chưa được set)
+          // Giữ nguyên giá trị nếu đã có từ trước (khi mount lần đầu, tất cả là "")
+          if (!packageFilter) setPackageFilter("");
+          if (!paymentMethod) setPaymentMethod("");
+          if (!status) setStatus("");
         }
       } catch (error) {
         console.error("Error fetching filter options:", error);
@@ -148,7 +150,7 @@ export default function TransactionsPage() {
       }
     };
     fetchFilterOptions();
-  }, [t]);
+  }, []);
 
   // Function để download PDF trực tiếp mà không cần mở modal
   const handleDownloadInvoicePDF = useCallback(async (transactionId) => {
@@ -367,21 +369,12 @@ export default function TransactionsPage() {
         page: pagination.page,
         limit: pagination.limit,
         search: search.trim() || undefined,
-        package_id: packageFilter !== t("common.all") ? packageFilter : undefined,
-        method: paymentMethod !== t("common.all") ? paymentMethod : undefined,
-        status: status !== t("common.all") ? status : undefined,
+        package_id: packageFilter ? packageFilter : undefined,
+        method: paymentMethod ? paymentMethod : undefined,
+        status: status ? status : undefined,
         startDate: dateRange.split("-")[0]?.trim(),
         endDate: dateRange.split("-")[1]?.trim(),
       };
-      const allValue = t("common.all");
-      // Convert translated status back to original status for API
-      if (status !== "All" && status !== allValue) {
-        const statusIndex = [t("paymentManagement.statuses.pending"), t("paymentManagement.statuses.success"), t("paymentManagement.statuses.failed"), t("paymentManagement.statuses.canceled"), t("paymentManagement.statuses.initializing")].indexOf(status);
-        if (statusIndex >= 0) {
-          const originalStatuses = ["pending", "success", "failed", "canceled", "initializing"];
-          params.status = originalStatuses[statusIndex];
-        }
-      }
 
       const response = await paymentTransactionService.getPaymentTransactions(
         params
@@ -459,56 +452,9 @@ export default function TransactionsPage() {
         });
         setRows(transactionsWithNotes);
       });
-
-      // Reset filters về "All" khi đổi ngôn ngữ
-      setPackageFilter(t("common.all"));
-      setPaymentMethod(t("common.all"));
-      setStatus(t("common.all"));
+      // Không reset filters khi đổi ngôn ngữ - chỉ re-map dữ liệu
     }
-  }, [i18n.language, rawTransactions, mapTransactionData, t]);
-
-  // Dynamic filters từ API filterOptions, không từ rows hiện tại
-  const packagesList = useMemo(() => {
-    return [t("common.all"), ...filterOptions.packages];
-  }, [filterOptions.packages, t]);
-
-  const methodsList = useMemo(() => {
-    return [t("common.all"), ...filterOptions.methods];
-  }, [filterOptions.methods, t]);
-
-  const statusesList = useMemo(() => {
-    const statusTranslations = {
-      pending: t("paymentManagement.statuses.pending"),
-      success: t("paymentManagement.statuses.success"),
-      failed: t("paymentManagement.statuses.failed"),
-      canceled: t("paymentManagement.statuses.canceled"),
-      initializing: t("paymentManagement.statuses.initializing"),
-    };
-    
-    return [t("common.all"), ...filterOptions.statuses.map(s => statusTranslations[s] || s)];
-  }, [filterOptions.statuses, t]);
-
-  // Reset filters nếu giá trị không còn trong list
-  useEffect(() => {
-    const allValue = t("common.all");
-    if (packageFilter !== "All" && packageFilter !== allValue && !packagesList.includes(packageFilter)) {
-      setPackageFilter(allValue);
-    }
-  }, [packagesList, packageFilter, t]);
-
-  useEffect(() => {
-    const allValue = t("common.all");
-    if (paymentMethod !== "All" && paymentMethod !== allValue && !methodsList.includes(paymentMethod)) {
-      setPaymentMethod(allValue);
-    }
-  }, [methodsList, paymentMethod, t]);
-
-  useEffect(() => {
-    const allValue = t("common.all");
-    if (status !== "All" && status !== allValue && !statusesList.includes(status)) {
-      setStatus(allValue);
-    }
-  }, [statusesList, status, t]);
+  }, [i18n.language, rawTransactions, mapTransactionData]);
 
   // Tính toán counters
   const counters = useMemo(() => {
@@ -533,15 +479,14 @@ export default function TransactionsPage() {
         (row.phone || "").toLowerCase().includes(s) ||
         (row.email || "").toLowerCase().includes(s);
 
-      // Lọc theo package
-      const allValue = t("common.all");
-      const matchPackage = packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
+      // Lọc theo package - nếu packageFilter rỗng thì lấy tất cả
+      const matchPackage = !packageFilter || row.package === packageFilter;
 
-      // Lọc theo payment method
-      const matchMethod = paymentMethod === "All" || paymentMethod === allValue ? true : row.method === paymentMethod;
+      // Lọc theo payment method - nếu paymentMethod rỗng thì lấy tất cả
+      const matchMethod = !paymentMethod || row.method === paymentMethod;
 
-      // Lọc theo status
-      const matchStatus = status === "All" || status === allValue ? true : row.status === status;
+      // Lọc theo status - so sánh với statusKey (database value) thay vì status (translated)
+      const matchStatus = !status || row.statusKey === status;
 
       // Lọc theo khoảng ngày
       let matchDate = true;
@@ -568,7 +513,7 @@ export default function TransactionsPage() {
 
       return matchSearch && matchPackage && matchMethod && matchStatus && matchDate;
     });
-  }, [search, packageFilter, paymentMethod, status, dateRange, rows, t]);
+  }, [search, packageFilter, paymentMethod, status, dateRange, rows]);
 
   return (
     <div className="acc-trans-page">
@@ -603,7 +548,8 @@ export default function TransactionsPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
-                {packagesList.map((p) => (
+                <option value="">{t("common.all")}</option>
+                {filterOptions.packages.map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
@@ -624,7 +570,8 @@ export default function TransactionsPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
-                {methodsList.map((m) => (
+                <option value="">{t("common.all")}</option>
+                {filterOptions.methods.map((m) => (
                   <option key={m} value={m}>
                     {m}
                   </option>
@@ -645,11 +592,23 @@ export default function TransactionsPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
-                {statusesList.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
+                <option value="">{t("common.all")}</option>
+                {filterOptions.statuses.map((s) => {
+                  const statusTranslations = {
+                    pending: t("paymentManagement.statuses.pending"),
+                    success: t("paymentManagement.statuses.success"),
+                    failed: t("paymentManagement.statuses.failed"),
+                    canceled: t("paymentManagement.statuses.canceled"),
+                    rejected: t("paymentManagement.statuses.rejected"),
+                    initializing: t("paymentManagement.statuses.initializing"),
+                  };
+                  const displayText = statusTranslations[s] || s;
+                  return (
+                    <option key={s} value={s}>
+                      {displayText}
+                    </option>
+                  );
+                })}
               </select>
               <ChevronDown size={16} className="acc-trans-select-icon" />
             </div>

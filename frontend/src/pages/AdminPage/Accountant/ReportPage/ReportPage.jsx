@@ -196,6 +196,7 @@ export default function ReportPage() {
   return (
     <div className="acc-report-page">
       <div className="acc-report-toolbar">
+        <div className="acc-report-toolbar-right"></div>
         <div className="acc-report-toolbar-left">
           <div className="acc-report-filter-group">
             <label className="acc-report-filter-label">{t("reportPage.paymentMethod")}</label>
@@ -272,7 +273,7 @@ export default function ReportPage() {
         </div>
       </div>
 
-      <Pagination
+      {/* <Pagination
         currentPage={pagination.page}
         totalPages={pagination.totalPages}
         totalItems={pagination.total}
@@ -280,7 +281,7 @@ export default function ReportPage() {
         onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
         onPageSizeChange={(limit) => setPagination(prev => ({ ...prev, limit, page: 1 }))}
         pageSizeOptions={[25, 50, 75, 100]}
-      />
+      /> */}
     </div>
   );
 }

@@ -27,7 +27,7 @@ export default function CustomerPage() {
   // Pagination state
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: 25,
     total: 0,
     totalPages: 0
   });
@@ -512,7 +512,7 @@ export default function CustomerPage() {
         pageSize={pagination.limit}
         onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
         onPageSizeChange={(limit) => setPagination(prev => ({ ...prev, limit, page: 1 }))}
-        pageSizeOptions={[20, 50, 75, 100]}
+        pageSizeOptions={[25, 50, 75, 100]}
       />
 
       {/* Confirmation Popup */}

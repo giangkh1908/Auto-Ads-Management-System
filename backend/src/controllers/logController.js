@@ -3,12 +3,14 @@ import User from "../models/user.model.js";
 import UserRole from "../models/userRole.model.js";
 import Role from "../models/role.model.js";
 import Shop from "../models/shops/shop.model.js";
+import mongoose from "mongoose";
 
 // 📋 Lấy danh sách customer logs (logs liên quan đến customers/users không có internal_role)
 // 📋 Lấy danh sách customer logs (logs liên quan đến customers/users không có internal_role)
 export const getCustomerLogs = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = "", dateRange } = req.query;
+    const { page = 1, search = "", dateRange } = req.query;
+    const limit = parseInt(req.query.limit) || 10;
 
     const pipeline = [
       // 1. Filter by target_type first
@@ -99,10 +101,15 @@ export const getCustomerLogs = async (req, res) => {
     const total = countResult ? countResult.total : 0;
 
     // 8. Apply Pagination and Sort
+    const lastLogId = req.query.lastLogId;
+
+    if (lastLogId && mongoose.isValidObjectId(lastLogId)) {
+      // when sorting by created_at descending, fetch older logs by _id < lastLogId
+      pipeline.push({ $match: { _id: { $lt: new mongoose.Types.ObjectId(lastLogId) } } });
+    }
     pipeline.push(
       { $sort: { created_at: -1 } },
-      { $skip: (parseInt(page) - 1) * parseInt(limit) },
-      { $limit: parseInt(limit) }
+      { $limit: limit }
     );
 
     const logs = await Log.aggregate(pipeline);
