@@ -4,7 +4,6 @@ import { connectDB } from "./config/db.js";
 import cors from "cors";
 import path from "path";
 
-import { startAdHourlyInsightsCron } from "./jobs/adHourlyInsights.job.js";
 import { startAnalyticsSnapshotCron } from "./jobs/analyticsSnapshot.job.js";
 import { startAutoRuleScheduler } from "./services/autoRuleScheduler.js";
 import { startCancelExpiredPaymentsCron } from "./jobs/cancelExpiredPayments.job.js";
@@ -121,7 +120,6 @@ const startServer = async () => {
     await connectDB();
 
     startAutoRuleScheduler();
-    startAdHourlyInsightsCron();
     startAnalyticsSnapshotCron();
     startCancelExpiredPaymentsCron();
     startSyncCronJobs();
