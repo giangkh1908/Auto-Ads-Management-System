@@ -1,5 +1,6 @@
 import PaymentTransaction from "../../models/paymentTransaction.model.js";
 import UserPackage from "../../models/userPackage.model.js";
+import Package from "../../models/package.model.js";
 import mongoose from "mongoose";
 
 
@@ -45,7 +46,29 @@ export const getPaymentTransactions = async (req, res) => {
 
     if (status) filter.status = status;
     if (user_id) filter.user_id = user_id;
-    if (package_id) filter.package_id = package_id;
+    
+    // Handle package_id: nếu là string (package name) → tìm ObjectId
+    if (package_id) {
+      // Check if it's a valid ObjectId
+      if (mongoose.Types.ObjectId.isValid(package_id)) {
+        filter.package_id = package_id;
+      } else {
+        // Nếu không phải ObjectId, tìm package theo name
+        const pkg = await Package.findOne({ name: package_id });
+        if (pkg) {
+          filter.package_id = pkg._id;
+        } else {
+          // Package không tìm thấy → return empty result
+          return res.status(200).json({
+            success: true,
+            total: 0,
+            page: Number(page),
+            pages: 0,
+            data: [],
+          });
+        }
+      }
+    }
 
     const transactions = await PaymentTransaction.find(filter)
       .populate("user_id", "_id full_name email phone facebookId")
@@ -68,6 +91,56 @@ export const getPaymentTransactions = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Lỗi lấy danh sách giao dịch",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * 🟢 Lấy danh sách giá trị filter (packages, methods, statuses)
+ */
+export const getPaymentTransactionFilters = async (req, res) => {
+  try {
+    // Lấy distinct packages
+    const packageIds = await PaymentTransaction.distinct("package_id", { deleted_at: null });
+    const packages = await Promise.all(
+      packageIds
+        .filter(id => id != null)
+        .map(id => 
+          PaymentTransaction.findOne({ package_id: id, deleted_at: null }).populate("package_id", "name")
+        )
+    );
+    const packageNames = packages
+      .filter(txn => txn?.package_id)
+      .map(txn => txn.package_id.name)
+      .filter((v, i, arr) => arr.indexOf(v) === i) // Remove duplicates
+      .sort();
+
+    // Lấy distinct payment methods
+    const methods = await PaymentTransaction.distinct("method", { deleted_at: null });
+    const methodsList = (methods || [])
+      .filter(m => m != null)
+      .sort();
+
+    // Lấy distinct statuses
+    const statuses = await PaymentTransaction.distinct("status", { deleted_at: null });
+    const statusesList = (statuses || [])
+      .filter(s => s != null)
+      .sort();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        packages: packageNames,
+        methods: methodsList,
+        statuses: statusesList,
+      },
+    });
+  } catch (error) {
+    console.error("Lỗi lấy filter values:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi lấy filter values",
       error: error.message,
     });
   }

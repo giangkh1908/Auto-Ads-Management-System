@@ -2,6 +2,7 @@ import express from "express";
 import {
   createPaymentTransaction,
   getPaymentTransactions,
+  getPaymentTransactionFilters,
   getPaymentTransactionById,
   updatePaymentTransaction,
   deletePaymentTransaction,
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // Tạo mới giao dịch
 router.post("/", createPaymentTransaction);
+
+// Lấy danh sách filter values
+router.get("/filters/options", getPaymentTransactionFilters);
 
 // Lấy danh sách giao dịch
 router.get("/", getPaymentTransactions);
