@@ -1,7 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useMemo, useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import "./CustomerPage.css";
 import { Play, Pause, Ban, Undo, ChevronDown, Search, Eye } from "lucide-react";
 import ConfirmationPopup from "../../../../../components/common/ConfirmationPopup/ConfirmationPopup";
@@ -15,11 +13,8 @@ import {
   getEntityId,
 } from "../../../../../utils/noteUtils";
 import { toast } from "sonner";
-import { toast } from "sonner";
 
 export default function CustomerPage() {
-  const { t, i18n } = useTranslation("admin");
-  const [rawCustomers, setRawCustomers] = useState([]);
   const { t, i18n } = useTranslation("admin");
   const [rawCustomers, setRawCustomers] = useState([]);
   const [rows, setRows] = useState([]);
@@ -239,24 +234,12 @@ export default function CustomerPage() {
           })
         );
 
-        // Cập nhật rawCustomers để đồng bộ dữ liệu
-        setRawCustomers((prev) =>
-          prev.map((c) => {
-            const customerId = getEntityId(c);
-            if (customerId !== row.id) return c;
-            return { ...c, status: newStatus };
-          })
-        );
-
         // Đồng bộ status trong UI
         setRows((prev) =>
           prev.map((r) => {
             if (r.id !== row.id) return r;
             // Map status từ DB (active/inactive/banned) sang UI format (Active/Inactive/Banned)
             const statusMap = {
-              active: t("common.active"),
-              inactive: t("common.inactive"),
-              banned: t("customerPage.statuses.banned"),
               active: t("common.active"),
               inactive: t("common.inactive"),
               banned: t("customerPage.statuses.banned"),
@@ -268,17 +251,6 @@ export default function CustomerPage() {
             };
           })
         );
-
-        // Hiển thị toast success theo từng action
-        if (type === activateText) {
-          toast.success(t("customerPage.messages.activateSuccess", { name: row.name }));
-        } else if (type === deactivateText) {
-          toast.success(t("customerPage.messages.deactivateSuccess", { name: row.name }));
-        } else if (type === banText) {
-          toast.success(t("customerPage.messages.banSuccess", { name: row.name }));
-        } else if (type === unbanText) {
-          toast.success(t("customerPage.messages.unbanSuccess", { name: row.name }));
-        }
 
         // Hiển thị toast success theo từng action
         if (type === activateText) {
@@ -303,7 +275,6 @@ export default function CustomerPage() {
       } else {
         throw new Error(
           response.data.message || t("customerPage.messages.updateStatusError")
-          response.data.message || t("customerPage.messages.updateStatusError")
         );
       }
     } catch (error) {
@@ -311,8 +282,6 @@ export default function CustomerPage() {
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
-        t("customerPage.messages.updateStatusError");
-      toast.error(errorMessage);
         t("customerPage.messages.updateStatusError");
       toast.error(errorMessage);
       setConfirmationPopup((prev) => ({ ...prev, isLoading: false }));
@@ -327,34 +296,22 @@ export default function CustomerPage() {
 
     const actionConfig = {
       [activateText]: {
-      [activateText]: {
         type: "activate",
         title: t("customerPage.messages.confirmActivate"),
         message: t("customerPage.messages.confirmActivateMessage", { name: row.name }),
-        title: t("customerPage.messages.confirmActivate"),
-        message: t("customerPage.messages.confirmActivateMessage", { name: row.name }),
       },
-      [deactivateText]: {
       [deactivateText]: {
         type: "deactivate",
         title: t("customerPage.messages.confirmDeactivate"),
         message: t("customerPage.messages.confirmDeactivateMessage", { name: row.name }),
-        title: t("customerPage.messages.confirmDeactivate"),
-        message: t("customerPage.messages.confirmDeactivateMessage", { name: row.name }),
       },
-      [banText]: {
       [banText]: {
         type: "ban",
         title: t("customerPage.messages.confirmBan"),
         message: t("customerPage.messages.confirmBanMessage", { name: row.name }),
-        title: t("customerPage.messages.confirmBan"),
-        message: t("customerPage.messages.confirmBanMessage", { name: row.name }),
       },
       [unbanText]: {
-      [unbanText]: {
         type: "unban",
-        title: t("customerPage.messages.confirmUnban"),
-        message: t("customerPage.messages.confirmUnbanMessage", { name: row.name }),
         title: t("customerPage.messages.confirmUnban"),
         message: t("customerPage.messages.confirmUnbanMessage", { name: row.name }),
       },
@@ -379,11 +336,9 @@ export default function CustomerPage() {
         <div className="amu-toolbar-left">
           <div className="amu-filter-group">
             <label className="amu-filter-label">{t("customerPage.search")}</label>
-            <label className="amu-filter-label">{t("customerPage.search")}</label>
             <div className="amu-search">
               <input
                 className="amu-search-input"
-                placeholder={t("customerPage.searchPlaceholder")}
                 placeholder={t("customerPage.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -394,7 +349,6 @@ export default function CustomerPage() {
             </div>
           </div>
           <div className="amu-filter-group">
-            <label className="amu-filter-label">{t("customerPage.status")}</label>
             <label className="amu-filter-label">{t("customerPage.status")}</label>
             <div className="amu-select-wrapper">
               <select
@@ -413,11 +367,9 @@ export default function CustomerPage() {
           </div>
           <div className="amu-filter-group">
             <label className="amu-filter-label">{t("customerPage.dateRange")}</label>
-            <label className="amu-filter-label">{t("customerPage.dateRange")}</label>
             <DateRangePicker
               value={dateRange}
               onChange={(value) => setDateRange(value)}
-              placeholder={t("customerPage.dateRangePlaceholder")}
               placeholder={t("customerPage.dateRangePlaceholder")}
             />
           </div>
@@ -426,8 +378,6 @@ export default function CustomerPage() {
         <div className="amu-toolbar-right">
           <div className="amu-counters">
             <span>
-              {t("customerPage.counters.active")}: {counters.active} | {t("customerPage.counters.inactive")}: {counters.inactive} |
-              {t("customerPage.counters.banned")}: {counters.banned} | {t("customerPage.counters.total")}: {counters.total}
               {t("customerPage.counters.active")}: {counters.active} | {t("customerPage.counters.inactive")}: {counters.inactive} |
               {t("customerPage.counters.banned")}: {counters.banned} | {t("customerPage.counters.total")}: {counters.total}
             </span>
@@ -445,32 +395,20 @@ export default function CustomerPage() {
           {/* <div className="amu-col amu-col-lastlogin">{t("customerPage.columns.lastLogin")}</div> */}
           <div className="amu-col amu-col-status">{t("customerPage.columns.status")}</div>
           <div className="amu-col amu-col-action">{t("customerPage.columns.action")}</div>
-          <div className="amu-col amu-col-name">{t("customerPage.columns.name")}</div>
-          {/* <div className="amu-col amu-col-phone">{t("customerPage.columns.phone")}</div>
-          <div className="amu-col amu-col-email">{t("customerPage.columns.email")}</div> */}
-          <div className="amu-col amu-col-shop">{t("customerPage.columns.shop")}</div>
-          <div className="amu-col amu-col-created">{t("customerPage.columns.createdAt")}</div>
-          {/* <div className="amu-col amu-col-lastlogin">{t("customerPage.columns.lastLogin")}</div> */}
-          <div className="amu-col amu-col-status">{t("customerPage.columns.status")}</div>
-          <div className="amu-col amu-col-action">{t("customerPage.columns.action")}</div>
         </div>
 
         {loading ? (
           <div style={{ padding: "20px", textAlign: "center" }}>
             {t("customerPage.messages.loading")}
-            {t("customerPage.messages.loading")}
           </div>
         ) : rows.length === 0 ? (
           <div style={{ padding: "20px", textAlign: "center" }}>
-            {t("customerPage.messages.noData")}
             {t("customerPage.messages.noData")}
           </div>
         ) : (
           rows.map((row) => (
             <div className="amu-row" key={row.id}>
               <div className="amu-col amu-col-name">{row.name}</div>
-              {/* <div className="amu-col amu-col-phone">{row.phone}</div>
-              <div className="amu-col amu-col-email">{row.email}</div> */}
               {/* <div className="amu-col amu-col-phone">{row.phone}</div>
               <div className="amu-col amu-col-email">{row.email}</div> */}
               <div className="amu-col amu-col-shop">
@@ -485,7 +423,6 @@ export default function CustomerPage() {
                   }
                 >
                   {t("customerPage.actions.viewDetails")}
-                  {t("customerPage.actions.viewDetails")}
                 </button>
               </div>
               <div className="amu-col amu-col-created">
@@ -493,13 +430,10 @@ export default function CustomerPage() {
                 <div className="amu-sub">{row.createdAt.split(" ")[1]}</div>
               </div>
               {/* <div className="amu-col amu-col-lastlogin">
-              {/* <div className="amu-col amu-col-lastlogin">
                 <div>{row.lastLogin.split(" ")[0]}</div>
                 <div className="amu-sub">{row.lastLogin.split(" ")[1]}</div>
               </div> */}
-              </div> */}
               <div className="amu-col amu-col-status">
-                <span className={`amu-badge ${row.statusKey || "inactive"}`}>
                 <span className={`amu-badge ${row.statusKey || "inactive"}`}>
                   {row.status}
                 </span>
@@ -508,7 +442,6 @@ export default function CustomerPage() {
                 <div className="amu-actions">
                   <button
                     className="amu-action-btn amu-action-view-details"
-                    title={t("customerPage.actions.viewEditDetails")}
                     title={t("customerPage.actions.viewEditDetails")}
                     onClick={() =>
                       setUpdatePopup({
@@ -520,12 +453,9 @@ export default function CustomerPage() {
                     <Eye size={14} />
                   </button>
                   {row.status === t("common.active") && (
-                  {row.status === t("common.active") && (
                     <>
                       <button
                         className="amu-action-btn amu-action-deactivate"
-                        title={t("customerPage.actions.deactivate")}
-                        onClick={() => showConfirmDialog(row, t("customerPage.actions.deactivate"))}
                         title={t("customerPage.actions.deactivate")}
                         onClick={() => showConfirmDialog(row, t("customerPage.actions.deactivate"))}
                       >
@@ -535,20 +465,15 @@ export default function CustomerPage() {
                         className="amu-action-btn amu-action-ban"
                         title={t("customerPage.actions.ban")}
                         onClick={() => showConfirmDialog(row, t("customerPage.actions.ban"))}
-                        title={t("customerPage.actions.ban")}
-                        onClick={() => showConfirmDialog(row, t("customerPage.actions.ban"))}
                       >
                         <Ban size={14} />
                       </button>
                     </>
                   )}
                   {row.status === t("common.inactive") && (
-                  {row.status === t("common.inactive") && (
                     <>
                       <button
                         className="amu-action-btn amu-action-activate"
-                        title={t("customerPage.actions.activate")}
-                        onClick={() => showConfirmDialog(row, t("customerPage.actions.activate"))}
                         title={t("customerPage.actions.activate")}
                         onClick={() => showConfirmDialog(row, t("customerPage.actions.activate"))}
                       >
@@ -558,19 +483,14 @@ export default function CustomerPage() {
                         className="amu-action-btn amu-action-ban"
                         title={t("customerPage.actions.ban")}
                         onClick={() => showConfirmDialog(row, t("customerPage.actions.ban"))}
-                        title={t("customerPage.actions.ban")}
-                        onClick={() => showConfirmDialog(row, t("customerPage.actions.ban"))}
                       >
                         <Ban size={14} />
                       </button>
                     </>
                   )}
                   {row.status === t("customerPage.statuses.banned") && (
-                  {row.status === t("customerPage.statuses.banned") && (
                     <button
                       className="amu-action-btn amu-action-unban"
-                      title={t("customerPage.actions.unban")}
-                      onClick={() => showConfirmDialog(row, t("customerPage.actions.unban"))}
                       title={t("customerPage.actions.unban")}
                       onClick={() => showConfirmDialog(row, t("customerPage.actions.unban"))}
                     >
@@ -655,29 +575,10 @@ export default function CustomerPage() {
             })
           );
           // Re-map với translation mới
-          // Update raw data và re-map với translation
-          setRawCustomers((prev) =>
-            prev.map((c) => {
-              const customerId = getEntityId(c);
-              if (customerId !== updatedUser._id) return c;
-              return {
-                ...c,
-                full_name: updatedUser.full_name || c.full_name,
-                email: updatedUser.email || c.email,
-                phone: updatedUser.phone || c.phone,
-                status: updatedUser.status || c.status,
-              };
-            })
-          );
-          // Re-map với translation mới
           setRows((prev) =>
             prev.map((r) => {
               if (r.id !== updatedUser._id) return r;
               const statusMap = {
-                active: t("common.active"),
-                inactive: t("common.inactive"),
-                banned: t("customerPage.statuses.banned"),
-                pending: t("common.pending"),
                 active: t("common.active"),
                 inactive: t("common.inactive"),
                 banned: t("customerPage.statuses.banned"),
@@ -689,7 +590,6 @@ export default function CustomerPage() {
                 email: updatedUser.email || r.email,
                 phone: updatedUser.phone || r.phone,
                 status: statusMap[updatedUser.status] || r.status,
-                statusKey: updatedUser.status || r.statusKey || "inactive",
                 statusKey: updatedUser.status || r.statusKey || "inactive",
               };
             })

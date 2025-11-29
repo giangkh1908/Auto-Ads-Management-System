@@ -1,7 +1,6 @@
 
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useTranslation } from "react-i18next";
 import "./PaymentManagement.css";
 import { Search, ChevronDown, Check, X, FileText } from "lucide-react";
 import DateRangePicker from "../../../../components/common/DateRangePicker/DateRangePicker";
@@ -62,18 +61,6 @@ export default function PaymentManagement() {
       const seconds = String(d.getSeconds()).padStart(2, "0");
       return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
     };
-    // Format payment time
-    const formatDate = (date) => {
-      if (!date) return "-";
-      const d = new Date(date);
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const year = d.getFullYear();
-      const hours = String(d.getHours()).padStart(2, "0");
-      const minutes = String(d.getMinutes()).padStart(2, "0");
-      const seconds = String(d.getSeconds()).padStart(2, "0");
-      return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
-    };
 
     // Map status từ lowercase sang translated format
     const statusMap = {
@@ -85,13 +72,6 @@ export default function PaymentManagement() {
       initializing: t("paymentManagement.statuses.initializing"),
     };
 
-    // Map method từ DB sang UI
-    const methodMap = {
-      momo: "Momo",
-      vnpay: "VietQR",
-      vietqr: "VietQR",
-      "manual banking": "Manual Banking",
-    };
     // Map method từ DB sang UI
     const methodMap = {
       momo: "Momo",
@@ -209,12 +189,10 @@ export default function PaymentManagement() {
         }));
       } else {
         toast.error(response.message || t("paymentManagement.messages.fetchErrorGeneric"));
-        toast.error(response.message || t("paymentManagement.messages.fetchErrorGeneric"));
         setTransactions([]);
       }
     } catch (error) {
       console.error("Error fetching payment transactions:", error);
-      toast.error(t("paymentManagement.messages.fetchError"));
       toast.error(t("paymentManagement.messages.fetchError"));
       setTransactions([]);
     } finally {
@@ -271,12 +249,6 @@ export default function PaymentManagement() {
         inputValue: rejectReason,
         onInputChange: setRejectReason,
         inputRequired: true,
-        showInput: true,
-        inputLabel: t("paymentManagement.messages.rejectReasonLabel"),
-        inputPlaceholder: t("paymentManagement.messages.rejectReasonPlaceholder"),
-        inputValue: rejectReason,
-        onInputChange: setRejectReason,
-        inputRequired: true,
       });
     } else if (actionType === "view-invoice") {
       setInvoiceModal({
@@ -293,17 +265,14 @@ export default function PaymentManagement() {
       const response = await paymentTransactionService.approveTransaction(transaction.id);
       if (response.success) {
         toast.success(t("paymentManagement.messages.approveSuccess"));
-        toast.success(t("paymentManagement.messages.approveSuccess"));
         setConfirmationPopup(prev => ({ ...prev, isOpen: false, isLoading: false }));
         await fetchTransactions();
       } else {
-        toast.error(response.message || t("paymentManagement.messages.approveError"));
         toast.error(response.message || t("paymentManagement.messages.approveError"));
         setConfirmationPopup(prev => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
       console.error("Error approving transaction:", error);
-      toast.error(t("paymentManagement.messages.approveErrorGeneric"));
       toast.error(t("paymentManagement.messages.approveErrorGeneric"));
       setConfirmationPopup(prev => ({ ...prev, isLoading: false }));
     }
@@ -317,19 +286,16 @@ export default function PaymentManagement() {
       const response = await paymentTransactionService.rejectTransaction(transaction.id, note);
       if (response.success) {
         toast.success(t("paymentManagement.messages.rejectSuccess"));
-        toast.success(t("paymentManagement.messages.rejectSuccess"));
         setConfirmationPopup(prev => ({ ...prev, isOpen: false, isLoading: false }));
         setRejectReason("");
         rejectReasonRef.current = "";
         await fetchTransactions();
       } else {
         toast.error(response.message || t("paymentManagement.messages.rejectError"));
-        toast.error(response.message || t("paymentManagement.messages.rejectError"));
         setConfirmationPopup(prev => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
       console.error("Error rejecting transaction:", error);
-      toast.error(t("paymentManagement.messages.rejectErrorGeneric"));
       toast.error(t("paymentManagement.messages.rejectErrorGeneric"));
       setConfirmationPopup(prev => ({ ...prev, isLoading: false }));
     }
@@ -347,11 +313,9 @@ export default function PaymentManagement() {
         <div className="payment-mgmt-toolbar-left">
           <div className="payment-mgmt-filter-group">
             <label className="payment-mgmt-filter-label">{t("paymentManagement.search")}</label>
-            <label className="payment-mgmt-filter-label">{t("paymentManagement.search")}</label>
             <div className="payment-mgmt-search">
               <input
                 className="payment-mgmt-search-input"
-                placeholder={t("paymentManagement.searchPlaceholder")}
                 placeholder={t("paymentManagement.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -362,7 +326,6 @@ export default function PaymentManagement() {
             </div>
           </div>
           <div className="payment-mgmt-filter-group">
-            <label className="payment-mgmt-filter-label">{t("paymentManagement.package")}</label>
             <label className="payment-mgmt-filter-label">{t("paymentManagement.package")}</label>
             <div className="payment-mgmt-select-wrapper">
               <select
@@ -385,7 +348,6 @@ export default function PaymentManagement() {
 
           <div className="payment-mgmt-filter-group">
             <label className="payment-mgmt-filter-label">{t("paymentManagement.paymentMethod")}</label>
-            <label className="payment-mgmt-filter-label">{t("paymentManagement.paymentMethod")}</label>
             <div className="payment-mgmt-select-wrapper">
               <select
                 className="payment-mgmt-select"
@@ -406,7 +368,6 @@ export default function PaymentManagement() {
           </div>
 
           <div className="payment-mgmt-filter-group">
-            <label className="payment-mgmt-filter-label">{t("paymentManagement.status")}</label>
             <label className="payment-mgmt-filter-label">{t("paymentManagement.status")}</label>
             <div className="payment-mgmt-select-wrapper">
               <select
@@ -444,7 +405,6 @@ export default function PaymentManagement() {
       {loading && (
         <div style={{ textAlign: "center", padding: "20px" }}>
           {t("paymentManagement.messages.loading")}
-          {t("paymentManagement.messages.loading")}
         </div>
       )}
 
@@ -455,24 +415,15 @@ export default function PaymentManagement() {
           <div className="payment-mgmt-col payment-mgmt-col-name">{t("paymentManagement.columns.name")}</div>
           <div className="payment-mgmt-col payment-mgmt-col-phone">{t("paymentManagement.columns.phone")}</div>
           <div className="payment-mgmt-col payment-mgmt-col-email">{t("paymentManagement.columns.email")}</div>
-          <div className="payment-mgmt-col payment-mgmt-col-userid">{t("paymentManagement.columns.userId")}</div>
-          <div className="payment-mgmt-col payment-mgmt-col-name">{t("paymentManagement.columns.name")}</div>
-          <div className="payment-mgmt-col payment-mgmt-col-phone">{t("paymentManagement.columns.phone")}</div>
-          <div className="payment-mgmt-col payment-mgmt-col-email">{t("paymentManagement.columns.email")}</div>
           <div className="payment-mgmt-col payment-mgmt-col-transactionid">
-            {t("paymentManagement.columns.transactionId")}
             {t("paymentManagement.columns.transactionId")}
           </div>
           <div className="payment-mgmt-col payment-mgmt-col-package">
             {t("paymentManagement.columns.package")}
-            {t("paymentManagement.columns.package")}
           </div>
           <div className="payment-mgmt-col payment-mgmt-col-amount">{t("paymentManagement.columns.amount")}</div>
           <div className="payment-mgmt-col payment-mgmt-col-method">{t("paymentManagement.columns.method")}</div>
-          <div className="payment-mgmt-col payment-mgmt-col-amount">{t("paymentManagement.columns.amount")}</div>
-          <div className="payment-mgmt-col payment-mgmt-col-method">{t("paymentManagement.columns.method")}</div>
           <div className="payment-mgmt-col payment-mgmt-col-paymenttime">
-            {t("paymentManagement.columns.paymentTime")}
             {t("paymentManagement.columns.paymentTime")}
           </div>
           <div className="payment-mgmt-col payment-mgmt-col-status">{t("paymentManagement.columns.status")}</div>
@@ -587,13 +538,6 @@ export default function PaymentManagement() {
         inputValue={rejectReason}
         onInputChange={setRejectReason}
         inputRequired={false}
-      />
-
-      {/* Invoice Modal */}
-      <Invoice
-        isOpen={invoiceModal.isOpen}
-        onClose={() => setInvoiceModal({ isOpen: false, transactionId: null })}
-        transactionId={invoiceModal.transactionId}
       />
 
       {/* Invoice Modal */}

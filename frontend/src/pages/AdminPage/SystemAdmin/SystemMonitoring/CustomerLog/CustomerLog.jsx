@@ -1,7 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useMemo, useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import "./CustomerLog.css";
 import { Search } from "lucide-react";
 import axiosInstance from "../../../../../utils/axios";
@@ -15,8 +13,6 @@ const MOCK_CUSTOMER_LOGS = [
 ];
 
 export default function CustomerLog() {
-  const { t, i18n } = useTranslation("admin");
-  const [rawLogs, setRawLogs] = useState([]);
   const { t, i18n } = useTranslation("admin");
   const [rawLogs, setRawLogs] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -152,11 +148,9 @@ export default function CustomerLog() {
         <div className="customer-log-toolbar-left">
           <div className="customer-log-filter-group">
             <label className="customer-log-filter-label">{t("customerLog.search")}</label>
-            <label className="customer-log-filter-label">{t("customerLog.search")}</label>
             <div className="customer-log-search">
               <input
                 className="customer-log-search-input"
-                placeholder={t("customerLog.searchPlaceholder")}
                 placeholder={t("customerLog.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -169,12 +163,10 @@ export default function CustomerLog() {
         </div>
         <div className="customer-log-filter-group">
           <label className="customer-log-filter-label">{t("customerLog.dateRange")}</label>
-          <label className="customer-log-filter-label">{t("customerLog.dateRange")}</label>
           <div className="customer-log-toolbar-right">
             <DateRangePicker
               value={dateRange}
               onChange={(value) => setDateRange(value)}
-              placeholder={t("customerLog.dateRangePlaceholder")}
               placeholder={t("customerLog.dateRangePlaceholder")}
             />
           </div>
@@ -185,34 +177,24 @@ export default function CustomerLog() {
         <div className="customer-log-row customer-log-header">
           <div className="customer-log-col customer-log-col-user">{t("customerLog.columns.user")}</div>
           <div className="customer-log-col customer-log-col-userid">{t("customerLog.columns.userId")}</div>
-          <div className="customer-log-col customer-log-col-user">{t("customerLog.columns.user")}</div>
-          <div className="customer-log-col customer-log-col-userid">{t("customerLog.columns.userId")}</div>
           <div className="customer-log-col customer-log-col-shopname">
             {t("customerLog.columns.shopName")}
-            {t("customerLog.columns.shopName")}
           </div>
-          <div className="customer-log-col customer-log-col-shopid">{t("customerLog.columns.shopId")}</div>
-          <div className="customer-log-col customer-log-col-time">{t("customerLog.columns.time")}</div>
-          <div className="customer-log-col customer-log-col-role">{t("customerLog.columns.role")}</div>
           <div className="customer-log-col customer-log-col-shopid">{t("customerLog.columns.shopId")}</div>
           <div className="customer-log-col customer-log-col-time">{t("customerLog.columns.time")}</div>
           <div className="customer-log-col customer-log-col-role">{t("customerLog.columns.role")}</div>
           <div className="customer-log-col customer-log-col-status">
             {t("customerLog.columns.userStatus")}
-            {t("customerLog.columns.userStatus")}
           </div>
-          <div className="customer-log-col customer-log-col-event">{t("customerLog.columns.event")}</div>
           <div className="customer-log-col customer-log-col-event">{t("customerLog.columns.event")}</div>
         </div>
 
         {loading ? (
           <div style={{ padding: "20px", textAlign: "center" }}>
             {t("customerLog.messages.loading")}
-            {t("customerLog.messages.loading")}
           </div>
         ) : logs.length === 0 ? (
           <div style={{ padding: "20px", textAlign: "center" }}>
-            {t("customerLog.messages.noData")}
             {t("customerLog.messages.noData")}
           </div>
         ) : (
@@ -238,7 +220,6 @@ export default function CustomerLog() {
               </div>
               <div className="customer-log-col customer-log-col-status">
                 <span
-                  className={`customer-log-badge customer-log-badge-${log.userStatusKey || "active"}`}
                   className={`customer-log-badge customer-log-badge-${log.userStatusKey || "active"}`}
                 >
                   {log.userStatus}

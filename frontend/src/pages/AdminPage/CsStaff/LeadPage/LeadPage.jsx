@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useTranslation } from "react-i18next";
 import "./LeadPage.css";
 import { Search, ChevronDown, UserPlus, UserCheck } from "lucide-react";
 import NoteEditor from "../../../../components/common/NoteEditor/NoteEditor";
@@ -25,10 +24,7 @@ const formatDate = (dateString) => {
 
 // Map status từ DB sang UI
 const mapStatusToUI = (dbStatus, t) => {
-const mapStatusToUI = (dbStatus, t) => {
   const statusMap = {
-    new: t("leadPage.statuses.new"),
-    contacted: t("leadPage.statuses.contacted"),
     new: t("leadPage.statuses.new"),
     contacted: t("leadPage.statuses.contacted"),
   };
@@ -39,13 +35,9 @@ const mapStatusToUI = (dbStatus, t) => {
 export default function LeadPage() {
   const { t, i18n } = useTranslation("admin");
   const [rawLeads, setRawLeads] = useState([]);
-  const { t, i18n } = useTranslation("admin");
-  const [rawLeads, setRawLeads] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState(t("common.all"));
-  const [assignedStatus, setAssignedStatus] = useState(t("common.all"));
   const [status, setStatus] = useState(t("common.all"));
   const [assignedStatus, setAssignedStatus] = useState(t("common.all"));
   const [dateRange, setDateRange] = useState("");
@@ -91,14 +83,6 @@ export default function LeadPage() {
           }
         }
       }
-
-      // Map UI status back to DB status for API
-      const getDbStatus = (uiStatus) => {
-        if (uiStatus === t("leadPage.statuses.new")) return "new";
-        if (uiStatus === t("leadPage.statuses.contacted")) return "contacted";
-        return uiStatus;
-      };
-
       // Map UI status back to DB status for API
       const getDbStatus = (uiStatus) => {
         if (uiStatus === t("leadPage.statuses.new")) return "new";
@@ -122,15 +106,12 @@ export default function LeadPage() {
 
       if (response.success) {
         setRawLeads(response.data);
-        setRawLeads(response.data);
         // Map dữ liệu từ DB format sang UI format
         const mappedLeads = response.data.map((lead) => ({
           id: lead.id,
           leadName: lead.lead_name,
           phone: lead.phone,
           createdAt: formatDate(lead.created_at),
-          status: mapStatusToUI(lead.status, t),
-          assignedStatus: lead.assigned_to ? t("common.assigned") : t("common.unassigned"),
           status: mapStatusToUI(lead.status, t),
           assignedStatus: lead.assigned_to ? t("common.assigned") : t("common.unassigned"),
           assignedTo: lead.assigned_to, // Lưu thông tin assigned_to để so sánh
@@ -151,10 +132,8 @@ export default function LeadPage() {
         }));
       } else {
         toast.error(response.message || t("leadPage.messages.fetchError"));
-        toast.error(response.message || t("leadPage.messages.fetchError"));
       }
     } catch (error) {
-      toast.error(error.message || t("leadPage.messages.fetchError"));
       toast.error(error.message || t("leadPage.messages.fetchError"));
     } finally {
       setLoading(false);
@@ -257,33 +236,6 @@ export default function LeadPage() {
     }
   }, [i18n.language, rawLeads, t, user]);
 
-  // Re-map data khi ngôn ngữ thay đổi
-  useEffect(() => {
-    if (rawLeads.length > 0) {
-      const mappedLeads = rawLeads.map((lead) => ({
-        id: lead.id,
-        leadName: lead.lead_name,
-        phone: lead.phone,
-        createdAt: formatDate(lead.created_at),
-        status: mapStatusToUI(lead.status, t),
-        assignedStatus: lead.assigned_to ? t("common.assigned") : t("common.unassigned"),
-        assignedTo: lead.assigned_to,
-        isAssignedToMe: lead.assigned_to && user && (() => {
-          const assignedUserId = lead.assigned_to._id;
-          const currentUserId = user._id || user.id;
-          return String(assignedUserId) === String(currentUserId);
-        })(),
-        note: lead.note || "",
-        noteId: lead.noteId || null,
-        _raw: lead,
-      }));
-      setRows(mappedLeads);
-      // Reset filters về "All" khi đổi ngôn ngữ
-      setStatus(t("common.all"));
-      setAssignedStatus(t("common.all"));
-    }
-  }, [i18n.language, rawLeads, t, user]);
-
   return (
     <div className="cs-lead-page">
       <div className="cs-lead-toolbar">
@@ -307,7 +259,6 @@ export default function LeadPage() {
           </div>
           <div className="cs-lead-filter-group">
             <label className="cs-lead-filter-label">{t("leadPage.status")}</label>
-            <label className="cs-lead-filter-label">{t("leadPage.status")}</label>
             <div className="cs-lead-select-wrapper">
               <select
                 className="cs-lead-status-select"
@@ -328,7 +279,6 @@ export default function LeadPage() {
           </div>
 
           <div className="cs-lead-filter-group">
-            <label className="cs-lead-filter-label">{t("leadPage.assignedStatus")}</label>
             <label className="cs-lead-filter-label">{t("leadPage.assignedStatus")}</label>
             <div className="cs-lead-select-wrapper">
               <select
@@ -351,7 +301,6 @@ export default function LeadPage() {
 
           <div className="cs-lead-filter-group">
             <label className="cs-lead-filter-label">{t("leadPage.dateRange")}</label>
-            <label className="cs-lead-filter-label">{t("leadPage.dateRange")}</label>
             <DateRangePicker
               value={dateRange}
               onChange={(value) => {
@@ -372,19 +321,11 @@ export default function LeadPage() {
           <div className="cs-lead-col cs-lead-col-status">{t("leadPage.columns.status")}</div>
           <div className="cs-lead-col cs-lead-col-assigned">{t("leadPage.columns.assignedStatus")}</div>
           <div className="cs-lead-col cs-lead-col-note">{t("leadPage.columns.note")}</div>
-          <div className="cs-lead-col cs-lead-col-name">{t("leadPage.columns.leadName")}</div>
-          <div className="cs-lead-col cs-lead-col-phone">{t("leadPage.columns.phone")}</div>
-          <div className="cs-lead-col cs-lead-col-created">{t("leadPage.columns.createdAt")}</div>
-          <div className="cs-lead-col cs-lead-col-status">{t("leadPage.columns.status")}</div>
-          <div className="cs-lead-col cs-lead-col-assigned">{t("leadPage.columns.assignedStatus")}</div>
-          <div className="cs-lead-col cs-lead-col-note">{t("leadPage.columns.note")}</div>
         </div>
 
         {loading ? (
           <div className="cs-lead-loading">{t("leadPage.messages.loading")}</div>
-          <div className="cs-lead-loading">{t("leadPage.messages.loading")}</div>
         ) : rows.length === 0 ? (
-          <div className="cs-lead-empty">{t("leadPage.messages.noData")}</div>
           <div className="cs-lead-empty">{t("leadPage.messages.noData")}</div>
         ) : (
           rows.map((lead) => (
