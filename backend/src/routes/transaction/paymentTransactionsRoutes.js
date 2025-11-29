@@ -10,29 +10,27 @@ import {
   confirmBankTransfer
 } from "../../controllers/transaction/paymentTransactionControllers.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
+import { adminActionLogger } from "../../middlewares/adminActionLogger.middleware.js";
 
 const router = express.Router();
 
-// Tạo mới giao dịch
+// Route công khai - không cần authenticate (user tạo transaction)
 router.post("/", createPaymentTransaction);
 
 // Lấy danh sách filter values
 router.get("/filters/options", getPaymentTransactionFilters);
 
-// Lấy danh sách giao dịch
+// Lấy danh sách filter values
+router.get("/filters/options", getPaymentTransactionFilters);
+
+// Routes admin (cần authenticate và log)
+router.use(authenticate);
+router.use(adminActionLogger); // Log admin actions
 router.get("/", getPaymentTransactions);
-
-// Lấy chi tiết theo ID
 router.get("/:id", getPaymentTransactionById);
-
-// Cập nhật
 router.put("/:id", updatePaymentTransaction);
-
-router.patch("/:id/set-method", authenticate, setPaymentMethod),
-
-router.patch("/:id/confirm-transfer", authenticate, confirmBankTransfer),
-
-// Xóa (soft delete)
+router.patch("/:id/set-method", setPaymentMethod);
+router.patch("/:id/confirm-transfer", confirmBankTransfer);
 router.delete("/:id", deletePaymentTransaction);
 
 export default router;

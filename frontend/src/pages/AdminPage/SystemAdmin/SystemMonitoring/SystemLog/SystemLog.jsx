@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import "./SystemLog.css";
 import { Search, ChevronDown } from "lucide-react";
 import DateRangePicker from "../../../../../components/common/DateRangePicker/DateRangePicker";
@@ -43,13 +45,41 @@ const formatDateTime = (dateString) => {
 
 export default function SystemLog() {
   const { t, i18n } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState(t("systemLog.roles.all"));
+  const [roleFilter, setRoleFilter] = useState(t("systemLog.roles.all"));
   const [dateRange, setDateRange] = useState("");
+
+  const ROLES = useMemo(() => [
+    t("systemLog.roles.all"),
+    t("systemLog.roles.systemAdmin"),
+    t("systemLog.roles.csStaff"),
+    t("systemLog.roles.accountant"),
+    t("systemLog.roles.system")
+  ], [t]);
+
+  // Reset filter khi đổi ngôn ngữ
+  useEffect(() => {
+    setRoleFilter(t("systemLog.roles.all"));
+  }, [i18n.language, t]);
+
+  // Convert translated roleFilter back to original value for API
+  const getOriginalRole = useCallback((translatedRole) => {
+    const roleMap = {
+      [t("systemLog.roles.all")]: "All",
+      [t("systemLog.roles.systemAdmin")]: "System Admin",
+      [t("systemLog.roles.csStaff")]: "CS Staff",
+      [t("systemLog.roles.accountant")]: "Accountant",
+      [t("systemLog.roles.system")]: "System",
+    };
+    return roleMap[translatedRole] || translatedRole;
+  }, [t]);
+
 
   const ROLES = useMemo(() => [
     t("systemLog.roles.all"),
@@ -130,6 +160,7 @@ export default function SystemLog() {
       try {
         const response = await getSystemLogs({
           role: getOriginalRole(roleFilter),
+          role: getOriginalRole(roleFilter),
           search: debouncedSearch.trim(),
           dateRange,
           page: pagination.page,
@@ -147,11 +178,13 @@ export default function SystemLog() {
           }));
         } else {
           setError(response.message || t("systemLog.messages.error"));
+          setError(response.message || t("systemLog.messages.error"));
         }
       } catch (err) {
         if (!isMounted) return;
         console.error("Error fetching system logs:", err);
         setError(
+          err.message || t("systemLog.messages.error")
           err.message || t("systemLog.messages.error")
         );
         setLogs([]);
@@ -174,6 +207,8 @@ export default function SystemLog() {
     pagination.page,
     pagination.limit,
     debouncedSearch, // Use debounced search state
+    getOriginalRole, // Add getOriginalRole to dependencies
+    t, // Add t to dependencies
     getOriginalRole, // Add getOriginalRole to dependencies
     t, // Add t to dependencies
   ]);
@@ -211,9 +246,11 @@ export default function SystemLog() {
         <div className="system-log-toolbar-left">
           <div className="system-log-filter-group">
             <label className="system-log-filter-label">{t("systemLog.search")}</label>
+            <label className="system-log-filter-label">{t("systemLog.search")}</label>
             <div className="system-log-search">
               <input
                 className="system-log-search-input"
+                placeholder={t("systemLog.searchPlaceholder")}
                 placeholder={t("systemLog.searchPlaceholder")}
                 value={search}
                 onChange={handleSearchChange}
@@ -225,6 +262,7 @@ export default function SystemLog() {
             </div>
           </div>
           <div className="system-log-filter-group">
+            <label className="system-log-filter-label">{t("systemLog.role")}</label>
             <label className="system-log-filter-label">{t("systemLog.role")}</label>
             <div className="system-log-select-wrapper">
               <select
@@ -245,9 +283,11 @@ export default function SystemLog() {
 
           <div className="system-log-filter-group">
             <label className="system-log-filter-label">{t("systemLog.dateRange")}</label>
+            <label className="system-log-filter-label">{t("systemLog.dateRange")}</label>
             <DateRangePicker
               value={dateRange}
               onChange={handleDateRangeChange}
+              placeholder={t("systemLog.dateRangePlaceholder")}
               placeholder={t("systemLog.dateRangePlaceholder")}
               disabled={loading}
             />
@@ -266,6 +306,7 @@ export default function SystemLog() {
       {loading && (
         <div className="system-log-loading" style={{ padding: "16px", textAlign: "center" }}>
           {t("systemLog.messages.loading")}
+          {t("systemLog.messages.loading")}
         </div>
       )}
 
@@ -276,10 +317,15 @@ export default function SystemLog() {
           <div className="system-log-col system-log-col-role">{t("systemLog.columns.role")}</div>
           <div className="system-log-col system-log-col-time">{t("systemLog.columns.time")}</div>
           <div className="system-log-col system-log-col-event">{t("systemLog.columns.event")}</div>
+          <div className="system-log-col system-log-col-user">{t("systemLog.columns.user")}</div>
+          <div className="system-log-col system-log-col-role">{t("systemLog.columns.role")}</div>
+          <div className="system-log-col system-log-col-time">{t("systemLog.columns.time")}</div>
+          <div className="system-log-col system-log-col-event">{t("systemLog.columns.event")}</div>
         </div>
 
         {!loading && logs.length === 0 && !error && (
           <div style={{ padding: "16px", textAlign: "center", color: "#666" }}>
+            {t("systemLog.messages.noData")}
             {t("systemLog.messages.noData")}
           </div>
         )}
@@ -289,8 +335,10 @@ export default function SystemLog() {
             <div className="system-log-row" key={log._id}>
               <div className="system-log-col system-log-col-user">
                 {log.user || t("systemLog.system.system")}
+                {log.user || t("systemLog.system.system")}
               </div>
               <div className="system-log-col system-log-col-role">
+                {log.role || t("systemLog.system.system")}
                 {log.role || t("systemLog.system.system")}
               </div>
               <div className="system-log-col system-log-col-time">

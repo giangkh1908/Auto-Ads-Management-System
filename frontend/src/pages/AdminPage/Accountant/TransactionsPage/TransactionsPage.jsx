@@ -1,9 +1,19 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import "./TransactionsPage.css";
 import { Search, ChevronDown, Eye } from "lucide-react";
 import Pagination from "../../../../components/common/Pagination/Pagination";
 import DateRangePicker from "../../../../components/common/DateRangePicker/DateRangePicker";
+import NoteEditor from "../../../../components/common/NoteEditor/NoteEditor";
+import { fetchLatestNotesBatch } from "../../../../utils/noteUtils";
+import paymentTransactionService from "../../../../services/paymentTransactionService";
+import { toast } from "sonner";
+import Invoice from "../../../../components/feature/Invoice/Invoice";
+import invoiceService from "../../../../services/invoiceService";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import NoteEditor from "../../../../components/common/NoteEditor/NoteEditor";
 import { fetchLatestNotesBatch } from "../../../../utils/noteUtils";
 import paymentTransactionService from "../../../../services/paymentTransactionService";
@@ -520,6 +530,7 @@ export default function TransactionsPage() {
     const total = rows.length;
     return { pending, approved, rejected, failed, cancelled, total };
   }, [rows, t]);
+  }, [rows, t]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -528,7 +539,9 @@ export default function TransactionsPage() {
       const matchSearch =
         !s ||
         (row.id || "").toLowerCase().includes(s) ||
+        (row.id || "").toLowerCase().includes(s) ||
         (row.transactionId || "").toLowerCase().includes(s) ||
+        (row.name || "").toLowerCase().includes(s) ||
         (row.name || "").toLowerCase().includes(s) ||
         (row.phone || "").toLowerCase().includes(s) ||
         (row.email || "").toLowerCase().includes(s);
@@ -536,11 +549,15 @@ export default function TransactionsPage() {
       // Lọc theo package
       const allValue = t("common.all");
       const matchPackage = packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
+      const allValue = t("common.all");
+      const matchPackage = packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
 
       // Lọc theo payment method
       const matchMethod = paymentMethod === "All" || paymentMethod === allValue ? true : row.method === paymentMethod;
+      const matchMethod = paymentMethod === "All" || paymentMethod === allValue ? true : row.method === paymentMethod;
 
       // Lọc theo status
+      const matchStatus = status === "All" || status === allValue ? true : row.status === status;
       const matchStatus = status === "All" || status === allValue ? true : row.status === status;
 
       // Lọc theo khoảng ngày
@@ -569,6 +586,7 @@ export default function TransactionsPage() {
       return matchSearch && matchPackage && matchMethod && matchStatus && matchDate;
     });
   }, [search, packageFilter, paymentMethod, status, dateRange, rows, t]);
+  }, [search, packageFilter, paymentMethod, status, dateRange, rows, t]);
 
   return (
     <div className="acc-trans-page">
@@ -576,9 +594,11 @@ export default function TransactionsPage() {
         <div className="acc-trans-toolbar-left">
           <div className="acc-trans-filter-group">
             <label className="acc-trans-filter-label">{t("transactionsPage.search")}</label>
+            <label className="acc-trans-filter-label">{t("transactionsPage.search")}</label>
             <div className="acc-trans-search">
               <input
                 className="acc-trans-search-input"
+                placeholder={t("transactionsPage.searchPlaceholder")}
                 placeholder={t("transactionsPage.searchPlaceholder")}
                 value={search}
                 onChange={(e) => {
@@ -594,6 +614,7 @@ export default function TransactionsPage() {
 
           <div className="acc-trans-filter-group">
             <label className="acc-trans-filter-label">{t("transactionsPage.package")}</label>
+            <label className="acc-trans-filter-label">{t("transactionsPage.package")}</label>
             <div className="acc-trans-select-wrapper">
               <select
                 className="acc-trans-select"
@@ -603,6 +624,7 @@ export default function TransactionsPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
+                {packagesList.map((p) => (
                 {packagesList.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -615,6 +637,7 @@ export default function TransactionsPage() {
 
           <div className="acc-trans-filter-group">
             <label className="acc-trans-filter-label">{t("transactionsPage.paymentMethod")}</label>
+            <label className="acc-trans-filter-label">{t("transactionsPage.paymentMethod")}</label>
             <div className="acc-trans-select-wrapper">
               <select
                 className="acc-trans-select"
@@ -624,6 +647,7 @@ export default function TransactionsPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
+                {methodsList.map((m) => (
                 {methodsList.map((m) => (
                   <option key={m} value={m}>
                     {m}
@@ -636,6 +660,7 @@ export default function TransactionsPage() {
 
           <div className="acc-trans-filter-group">
             <label className="acc-trans-filter-label">{t("transactionsPage.status")}</label>
+            <label className="acc-trans-filter-label">{t("transactionsPage.status")}</label>
             <div className="acc-trans-select-wrapper">
               <select
                 className="acc-trans-select"
@@ -645,6 +670,7 @@ export default function TransactionsPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
+                {statusesList.map((s) => (
                 {statusesList.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -656,6 +682,7 @@ export default function TransactionsPage() {
           </div>
 
           <div className="acc-trans-filter-group">
+            <label className="acc-trans-filter-label">{t("transactionsPage.dateRange")}</label>
             <label className="acc-trans-filter-label">{t("transactionsPage.dateRange")}</label>
             <DateRangePicker
               value={dateRange}
@@ -672,25 +699,31 @@ export default function TransactionsPage() {
           <div className="acc-trans-summary">
             <span className="acc-trans-summary-item">
               {t("transactionsPage.summary.pending")}: <strong>{counters.pending}</strong>
+              {t("transactionsPage.summary.pending")}: <strong>{counters.pending}</strong>
             </span>
             <span className="acc-trans-summary-separator">|</span>
             <span className="acc-trans-summary-item">
+              {t("transactionsPage.summary.approved")}: <strong>{counters.approved}</strong>
               {t("transactionsPage.summary.approved")}: <strong>{counters.approved}</strong>
             </span>
             <span className="acc-trans-summary-separator">|</span>
             <span className="acc-trans-summary-item">
               {t("transactionsPage.summary.rejected")}: <strong>{counters.rejected}</strong>
+              {t("transactionsPage.summary.rejected")}: <strong>{counters.rejected}</strong>
             </span>
             <span className="acc-trans-summary-separator">|</span>
             <span className="acc-trans-summary-item">
+              {t("transactionsPage.summary.failed")}: <strong>{counters.failed}</strong>
               {t("transactionsPage.summary.failed")}: <strong>{counters.failed}</strong>
             </span>
             <span className="acc-trans-summary-separator">|</span>
             <span className="acc-trans-summary-item">
               {t("transactionsPage.summary.cancelled")}: <strong>{counters.cancelled}</strong>
+              {t("transactionsPage.summary.cancelled")}: <strong>{counters.cancelled}</strong>
             </span>
             <span className="acc-trans-summary-separator">|</span>
             <span className="acc-trans-summary-item">
+              {t("transactionsPage.summary.total")}: <strong>{counters.total}</strong>
               {t("transactionsPage.summary.total")}: <strong>{counters.total}</strong>
             </span>
           </div>
@@ -708,6 +741,17 @@ export default function TransactionsPage() {
 
       <div className="acc-trans-table">
         <div className="acc-trans-row acc-trans-header">
+          <div className="acc-trans-col acc-trans-col-name">{t("transactionsPage.columns.name")}</div>
+          <div className="acc-trans-col acc-trans-col-phone">{t("transactionsPage.columns.phone")}</div>
+          <div className="acc-trans-col acc-trans-col-email">{t("transactionsPage.columns.email")}</div>
+          <div className="acc-trans-col acc-trans-col-transaction-id">{t("transactionsPage.columns.transactionId")}</div>
+          <div className="acc-trans-col acc-trans-col-package">{t("transactionsPage.columns.package")}</div>
+          <div className="acc-trans-col acc-trans-col-amount">{t("transactionsPage.columns.amount")}</div>
+          <div className="acc-trans-col acc-trans-col-method">{t("transactionsPage.columns.method")}</div>
+          <div className="acc-trans-col acc-trans-col-payment-time">{t("transactionsPage.columns.paymentTime")}</div>
+          <div className="acc-trans-col acc-trans-col-status">{t("transactionsPage.columns.status")}</div>
+          <div className="acc-trans-col acc-trans-col-action">{t("transactionsPage.columns.action")}</div>
+          {/* <div className="acc-trans-col acc-trans-col-remark">{t("transactionsPage.columns.remark")}</div> */}
           <div className="acc-trans-col acc-trans-col-name">{t("transactionsPage.columns.name")}</div>
           <div className="acc-trans-col acc-trans-col-phone">{t("transactionsPage.columns.phone")}</div>
           <div className="acc-trans-col acc-trans-col-email">{t("transactionsPage.columns.email")}</div>

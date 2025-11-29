@@ -7,9 +7,7 @@ import path from "path";
 import { startAdPerformanceCron } from "./jobs/adPerformance.job.js"; 
 import { startAdHourlyInsightsCron } from "./jobs/adHourlyInsights.job.js";
 import { startAutoRuleScheduler } from './services/autoRuleScheduler.js';
-import { startPopulateDailySummaryCron } from "./jobs/populateDailySummary.job.js";
-import { startPopulateCampaignDailyCron } from "./jobs/populateCampaignDaily.job.js";
-import { startPopulateTrendDailyCron } from "./jobs/populateTrendDaily.job.js";
+import { startCancelExpiredPaymentsCron } from "./jobs/cancelExpiredPayments.job.js";
 import chatRoutes from "./routes/ai/chatRoutes.js"; 
 import { syncPromptEmbeddings } from "./services/chat/ragService.js";
 
@@ -27,6 +25,8 @@ import adsSetRoutes from "./routes/ads/adsSetRoutes.js";
 import adsRoutes from "./routes/ads/adsRoutes.js";
 import creativeRoutes from "./routes/ads/creativeRoutes.js";
 import adPerformanceRoutes from "./routes/ads/adPerformanceRoutes.js";
+import locationRoutes from "./routes/ads/locationRoutes.js";
+import targetingRoutes from "./routes/ads/targetingRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import aiRoutes from "./routes/ai/aiRoutes.js";
 import automationRuleRoutes from "./routes/automationRuleRoutes.js";
@@ -40,6 +40,7 @@ import paymentTransactionsRoutes from './routes/transaction/paymentTransactionsR
 import stripeTransactionsRoutes from './routes/transaction/stripeTransactionsRoutes.js';
 import zaloPayTransactionsRoutes from './routes/transaction/zaloPayTransactionsRoutes.js';
 import vnPayTransactionsRoutes from './routes/transaction/vnPayTransactionsRoutes.js';
+import invoiceRoutes from './routes/invoice/invoiceRoutes.js';
 
 //Load các biến môi trường
 dotenv.config();
@@ -79,6 +80,8 @@ app.use("/api/adsets", adsSetRoutes);
 app.use("/api/ads", adsRoutes);
 app.use("/api/ads/performance", adPerformanceRoutes);
 app.use("/api/creatives", creativeRoutes);
+app.use("/api/location", locationRoutes);
+app.use("/api/targeting", targetingRoutes);
 app.use("/api/ads-wizard", adsWizardRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/ai", aiRoutes);
@@ -94,6 +97,7 @@ app.use("/api/payment-transactions", paymentTransactionsRoutes);
 app.use("/api/stripe-transactions", stripeTransactionsRoutes);
 app.use('/api/zalo-pay', zaloPayTransactionsRoutes);
 app.use('/api/vnpay', vnPayTransactionsRoutes);
+app.use("/api/invoices", invoiceRoutes);
 
 // Add a root route to check deployment status
 app.get("/", (req, res) => {
@@ -101,7 +105,7 @@ app.get("/", (req, res) => {
 });
 // Health check endpoint cho monitoring services (UptimeRobot, Cron-Job, etc.)
 app.get("/health", (req, res) => {
-  res.json({ 
+  res.json({
     status: "healthy",
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
@@ -117,9 +121,7 @@ const startServer = async () => {
     startAutoRuleScheduler();
     startAdPerformanceCron(); 
     startAdHourlyInsightsCron();
-    startPopulateDailySummaryCron();
-    startPopulateCampaignDailyCron();
-    startPopulateTrendDailyCron();
+    startCancelExpiredPaymentsCron();
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

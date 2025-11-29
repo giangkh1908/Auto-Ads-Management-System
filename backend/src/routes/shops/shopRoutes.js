@@ -10,10 +10,13 @@ import {
     deactivateShop,
     getShopLogs,
     switchCurrentShop,
+    getCurrentShopPackage,
     getFacebookPages, 
     connectFacebookPage, 
-    disconnectFacebookPage, 
-    refreshFacebookToken 
+    disconnectFacebookPage,
+    updatePageStatus,
+    refreshFacebookToken,
+    refreshUserFacebookPages 
 } from "../../controllers/shops/shopControllers.js";
 import { authenticate, authorizeInShop } from "../../middlewares/auth.middleware.js";
 
@@ -24,6 +27,7 @@ router.get("/", getShops);
 router.get("/facebook/pages", getFacebookPages);
 router.get("/owner", getShopsByOwner);
 router.get("/logs", getShopLogs);
+router.get("/current/package", getCurrentShopPackage);
 router.get("/:id", getShopById);
 
 
@@ -42,6 +46,8 @@ router.patch("/switch/:id", authorizeInShop("shop", "change_active"), switchCurr
 // Facebook integration helpers
 router.post("/facebook/connect", authenticate, connectFacebookPage);
 router.post("/facebook/disconnect", authenticate, disconnectFacebookPage);
+router.patch("/facebook/page-status", authenticate, updatePageStatus);
 router.post("/facebook/refresh-token", authenticate, refreshFacebookToken);
+router.post("/facebook/refresh-user-pages", authenticate, refreshUserFacebookPages);
 
 export default router;

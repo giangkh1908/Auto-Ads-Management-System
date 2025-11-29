@@ -5,6 +5,8 @@ import authService from '../services/authService'
 import { STORAGE_KEYS, ROUTES } from '../constants/app.constants'
 import { AuthContext } from './AuthContext.js'
 import { getDefaultAdminRoute } from '../constants/adminConstants'
+import { clearShopCache } from '../utils/shopCache'
+import axiosInstance from '../utils/axios'
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -33,27 +35,29 @@ export const AuthProvider = ({ children }) => {
     }
   })
 
-  // Đăng xuất
-  const logout = useCallback((showToast = true) => {
-    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
-    localStorage.removeItem(STORAGE_KEYS.USER_DATA)
-    localStorage.removeItem(STORAGE_KEYS.FB_PAGES)
-    setUser(null)
-    setIsAuthenticated(false)
-    setFbPages([])
-    
-    if (showToast) {
-      toast.success('Đăng xuất thành công!')
+// Đăng xuất
+const logout = useCallback((showToast = true) => {
+  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
+  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
+  localStorage.removeItem(STORAGE_KEYS.USER_DATA)
+  localStorage.removeItem(STORAGE_KEYS.FB_PAGES)
+  localStorage.removeItem(STORAGE_KEYS.FB_AD_ACCOUNTS)
+  clearShopCache()
+  setUser(null)
+  setIsAuthenticated(false)
+  setFbPages([])
+  
+  if (showToast) {
+    toast.success('Đăng xuất thành công!')
+  }
+  // Chuyển trang về trang home sau khi đăng xuất
+  setTimeout(() => {
+    {
+      navigate(ROUTES.HOME)
     }
-    // Chuyển trang về trang home sau khi đăng xuất
-    setTimeout(() => {
-      {
-        navigate(ROUTES.HOME)
-      }
-    }, 2000)
+  }, 2000)
 
-  }, [navigate, toast])
+}, [navigate, toast])
 
   // Kiểm tra xác thực khi mount
   useEffect(() => {
@@ -162,6 +166,21 @@ export const AuthProvider = ({ children }) => {
         setUser(finalUser)
         setIsAuthenticated(true)
 
+        // ✅ THÊM: Tự động sync ads accounts khi login thành công
+        // Chỉ sync cho user không có internal_role (không phải admin system)
+        if (!finalUser.internal_role && finalUser.facebookAccessToken) {
+          // Chạy sync trong background, không block login flow
+          axiosInstance.get('/api/ads-accounts/sync')
+            .then(() => {
+              console.log('✅ Ads accounts synced automatically after login');
+            })
+            .catch((syncError) => {
+              // Không block login nếu sync fail, chỉ log warning
+              console.warn('⚠️ Failed to sync ads accounts on login:', syncError);
+              // Không hiển thị error toast để không làm gián đoạn UX
+            });
+        }
+
         toast.success(response.message || 'Đăng nhập thành công!')
 
         // Chuyển trang sau khi login thành công: kiểm tra internal_role để redirect
@@ -188,10 +207,27 @@ export const AuthProvider = ({ children }) => {
         return { success: true, user }
       }
     } catch (error) {
-      // Chỉ hiển thị message từ backend
-      const errorMessage = error.response?.data?.message || error.message || 'Đăng nhập thất bại'
+      // Kiểm tra error code từ backend để xử lý inactive/banned accounts
+      const errorResponse = error.response?.data
+      const errorCode = errorResponse?.error?.code
+      const status = errorResponse?.status
+      
+      // Nếu là AUTH_010 (inactive) hoặc AUTH_011 (banned), không hiển thị toast
+      // để LoginForm có thể hiển thị AccountStatusError component
+      if (errorCode === 'AUTH_010' || errorCode === 'AUTH_011') {
+        return { 
+          success: false, 
+          error: errorResponse?.error?.message || error.message,
+          errorCode,
+          status,
+          showAccountStatusError: true
+        }
+      }
+      
+      // Các lỗi khác: hiển thị toast như bình thường
+      const errorMessage = errorResponse?.error?.message || errorResponse?.message || error.message || 'Đăng nhập thất bại'
       toast.error(errorMessage)
-      return { success: false, error: errorMessage }
+      return { success: false, error: errorMessage, errorCode, status }
     } finally {
       setLoading(false)
     }

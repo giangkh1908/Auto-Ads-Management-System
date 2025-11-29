@@ -1,5 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import "./InternalPage.css";
 import { Play, Pause, Plus, ChevronDown, Search } from "lucide-react";
 import ConfirmationPopup from "../../../../../components/common/ConfirmationPopup/ConfirmationPopup";
@@ -17,6 +19,8 @@ import {
 } from "../../../../../utils/noteUtils";
 
 export default function InternalPage() {
+  const { t, i18n } = useTranslation("admin");
+  const [rawStaff, setRawStaff] = useState([]);
   const { t, i18n } = useTranslation("admin");
   const [rawStaff, setRawStaff] = useState([]);
   const [rows, setRows] = useState([]);
@@ -62,6 +66,15 @@ export default function InternalPage() {
   });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  const STATUSES = useMemo(() => [t("common.all"), t("common.active"), t("common.inactive")], [t]);
+  const ROLES = useMemo(() => [
+    t("common.all"),
+    t("internalPage.roles.systemAdmin"),
+    t("internalPage.roles.csStaff"),
+    t("internalPage.roles.accountant")
+  ], [t]);
+
+  // Reset filters khi đổi ngôn ngữ
   const STATUSES = useMemo(() => [t("common.all"), t("common.active"), t("common.inactive")], [t]);
   const ROLES = useMemo(() => [
     t("common.all"),
@@ -265,8 +278,10 @@ export default function InternalPage() {
       let newStatus;
       switch (type) {
         case t("internalPage.actions.activate"):
+        case t("internalPage.actions.activate"):
           newStatus = "active";
           break;
+        case t("internalPage.actions.deactivate"):
         case t("internalPage.actions.deactivate"):
           newStatus = "inactive";
           break;
@@ -293,11 +308,24 @@ export default function InternalPage() {
         );
 
         // Đồng bộ status trong UI với translation
+        // Update raw data
+        setRawStaff((prev) =>
+          prev.map((s) => {
+            const staffId = getEntityId(s);
+            if (staffId !== row.id) return s;
+            return { ...s, status: newStatus };
+          })
+        );
+
+        // Đồng bộ status trong UI với translation
         setRows((prev) =>
           prev.map((r) => {
             if (r.id !== row.id) return r;
             // Map status từ DB (active/inactive) sang UI format với translation
+            // Map status từ DB (active/inactive) sang UI format với translation
             const statusMap = {
+              active: t("common.active"),
+              inactive: t("common.inactive"),
               active: t("common.active"),
               inactive: t("common.inactive"),
             };
@@ -321,6 +349,7 @@ export default function InternalPage() {
       } else {
         throw new Error(
           response.data.message || t("internalPage.messages.updateStatusError")
+          response.data.message || t("internalPage.messages.updateStatusError")
         );
       }
     } catch (error) {
@@ -328,6 +357,7 @@ export default function InternalPage() {
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
+        t("internalPage.messages.updateStatusError");
         t("internalPage.messages.updateStatusError");
       alert(errorMessage); // TODO: Thay bằng toast notification
       setConfirmationPopup((prev) => ({ ...prev, isLoading: false }));
@@ -337,12 +367,18 @@ export default function InternalPage() {
   const showConfirmDialog = (row, actionType) => {
     const actionConfig = {
       [t("internalPage.actions.activate")]: {
+      [t("internalPage.actions.activate")]: {
         type: "activate",
+        title: t("internalPage.messages.confirmActivate"),
+        message: t("internalPage.messages.confirmActivateMessage", { name: row.name }),
         title: t("internalPage.messages.confirmActivate"),
         message: t("internalPage.messages.confirmActivateMessage", { name: row.name }),
       },
       [t("internalPage.actions.deactivate")]: {
+      [t("internalPage.actions.deactivate")]: {
         type: "deactivate",
+        title: t("internalPage.messages.confirmDeactivate"),
+        message: t("internalPage.messages.confirmDeactivateMessage", { name: row.name }),
         title: t("internalPage.messages.confirmDeactivate"),
         message: t("internalPage.messages.confirmDeactivateMessage", { name: row.name }),
       },
@@ -381,8 +417,33 @@ export default function InternalPage() {
         if (refreshResponse.data.success) {
           const staff = refreshResponse.data.data;
           setRawStaff(staff);
+          setRawStaff(staff);
 
           // Format data để hiển thị trong table
+          const formattedStaff = staff.map((user) => mapStaffData(user));
+
+          // Chuẩn bị items để query notes
+          const noteItems = prepareNoteItems(staff, "User");
+
+          // Fetch notes batch nếu có staff
+          if (noteItems.length > 0) {
+            const notesResponse = await axiosInstance.post(
+              API_ENDPOINTS.NOTES.BATCH,
+              { items: noteItems }
+            );
+
+            // Tạo Map để lookup notes
+            const notesMap = createNotesMap(notesResponse);
+
+            // Merge notes vào staff
+            const staffWithNotes = formattedStaff.map((staffMember) =>
+              mergeNoteToEntity(staffMember, "User", notesMap)
+            );
+
+            setRows(staffWithNotes);
+          } else {
+            setRows(formattedStaff);
+          }
           const formattedStaff = staff.map((user) => mapStaffData(user));
 
           // Chuẩn bị items để query notes
@@ -411,6 +472,7 @@ export default function InternalPage() {
       } else {
         throw new Error(
           response.data.message || t("internalPage.messages.addStaffError")
+          response.data.message || t("internalPage.messages.addStaffError")
         );
       }
     } catch (error) {
@@ -418,6 +480,7 @@ export default function InternalPage() {
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
+        t("internalPage.messages.addStaffError");
         t("internalPage.messages.addStaffError");
       throw new Error(errorMessage);
     }
@@ -429,9 +492,11 @@ export default function InternalPage() {
         <div className="amu-toolbar-left">
           <div className="amu-filter-group">
             <label className="amu-filter-label">{t("internalPage.search")}</label>
+            <label className="amu-filter-label">{t("internalPage.search")}</label>
             <div className="amu-search">
               <input
                 className="amu-search-input"
+                placeholder={t("internalPage.searchPlaceholder")}
                 placeholder={t("internalPage.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -440,6 +505,7 @@ export default function InternalPage() {
             </div>
           </div>
           <div className="amu-filter-group">
+            <label className="amu-filter-label">{t("internalPage.status")}</label>
             <label className="amu-filter-label">{t("internalPage.status")}</label>
             <div className="amu-select-wrapper">
               <select
@@ -459,6 +525,7 @@ export default function InternalPage() {
 
           <div className="amu-filter-group">
             <label className="amu-filter-label">{t("internalPage.role")}</label>
+            <label className="amu-filter-label">{t("internalPage.role")}</label>
             <div className="amu-select-wrapper">
               <select
                 className="amu-role-select"
@@ -476,9 +543,11 @@ export default function InternalPage() {
           </div>
           <div className="amu-filter-group">
             <label className="amu-filter-label">{t("internalPage.dateRange")}</label>
+            <label className="amu-filter-label">{t("internalPage.dateRange")}</label>
             <DateRangePicker
               value={dateRange}
               onChange={(value) => setDateRange(value)}
+              placeholder={t("internalPage.dateRangePlaceholder")}
               placeholder={t("internalPage.dateRangePlaceholder")}
             />
           </div>
@@ -487,6 +556,7 @@ export default function InternalPage() {
         <div className="amu-toolbar-right">
           <div className="amu-counters">
             <span>
+              {t("internalPage.counters.active")}: {counters.active} | {t("internalPage.counters.inactive")}: {counters.inactive} | {t("internalPage.counters.total")}:{" "}
               {t("internalPage.counters.active")}: {counters.active} | {t("internalPage.counters.inactive")}: {counters.inactive} | {t("internalPage.counters.total")}:{" "}
               {counters.total}
             </span>
@@ -497,6 +567,7 @@ export default function InternalPage() {
           >
             <Plus size={16} />{" "}
             <span style={{ fontSize: "14px", fontWeight: "bold" }}>
+              {t("internalPage.actions.addNew")}
               {t("internalPage.actions.addNew")}
             </span>
           </button>
@@ -513,14 +584,24 @@ export default function InternalPage() {
           {/* <div className="amu-col amu-col-lastlogin">{t("internalPage.columns.lastLogin")}</div> */}
           <div className="amu-col amu-col-status">{t("internalPage.columns.status")}</div>
           <div className="amu-col amu-col-action">{t("internalPage.columns.action")}</div>
+          <div className="amu-col amu-col-name">{t("internalPage.columns.name")}</div>
+          <div className="amu-col amu-col-phone">{t("internalPage.columns.phone")}</div>
+          <div className="amu-col amu-col-email">{t("internalPage.columns.email")}</div>
+          <div className="amu-col amu-col-role">{t("internalPage.columns.role")}</div>
+          <div className="amu-col amu-col-created">{t("internalPage.columns.createdAt")}</div>
+          {/* <div className="amu-col amu-col-lastlogin">{t("internalPage.columns.lastLogin")}</div> */}
+          <div className="amu-col amu-col-status">{t("internalPage.columns.status")}</div>
+          <div className="amu-col amu-col-action">{t("internalPage.columns.action")}</div>
         </div>
 
         {loading ? (
           <div style={{ padding: "20px", textAlign: "center" }}>
             {t("internalPage.messages.loading")}
+            {t("internalPage.messages.loading")}
           </div>
         ) : rows.length === 0 ? (
           <div style={{ padding: "20px", textAlign: "center" }}>
+            {t("internalPage.messages.noData")}
             {t("internalPage.messages.noData")}
           </div>
         ) : (
@@ -535,10 +616,13 @@ export default function InternalPage() {
                 <div className="amu-sub">{row.createdAt.split(" ")[1]}</div>
               </div>
               {/* <div className="amu-col amu-col-lastlogin">
+              {/* <div className="amu-col amu-col-lastlogin">
                 <div>{row.lastLogin.split(" ")[0]}</div>
                 <div className="amu-sub">{row.lastLogin.split(" ")[1]}</div>
               </div> */}
+              </div> */}
               <div className="amu-col amu-col-status">
+                <span className={`amu-badge ${row.statusKey || "inactive"}`}>
                 <span className={`amu-badge ${row.statusKey || "inactive"}`}>
                   {row.status}
                 </span>
@@ -546,8 +630,11 @@ export default function InternalPage() {
               <div className="amu-col amu-col-action">
                 <div className="amu-actions">
                   {row.status === t("common.active") && (
+                  {row.status === t("common.active") && (
                     <button
                       className="amu-action-btn amu-action-deactivate"
+                      title={t("internalPage.actions.deactivate")}
+                      onClick={() => showConfirmDialog(row, t("internalPage.actions.deactivate"))}
                       title={t("internalPage.actions.deactivate")}
                       onClick={() => showConfirmDialog(row, t("internalPage.actions.deactivate"))}
                     >
@@ -555,8 +642,11 @@ export default function InternalPage() {
                     </button>
                   )}
                   {row.status === t("common.inactive") && (
+                  {row.status === t("common.inactive") && (
                     <button
                       className="amu-action-btn amu-action-activate"
+                      title={t("internalPage.actions.activate")}
+                      onClick={() => showConfirmDialog(row, t("internalPage.actions.activate"))}
                       title={t("internalPage.actions.activate")}
                       onClick={() => showConfirmDialog(row, t("internalPage.actions.activate"))}
                     >
@@ -565,6 +655,7 @@ export default function InternalPage() {
                   )}
                 </div>
               </div>
+              {/* <div className="amu-col amu-col-note">
               {/* <div className="amu-col amu-col-note">
                 <NoteEditor
                   targetType="User"
@@ -581,6 +672,7 @@ export default function InternalPage() {
                     );
                   }}
                 />
+              </div> */}
               </div> */}
             </div>
           ))

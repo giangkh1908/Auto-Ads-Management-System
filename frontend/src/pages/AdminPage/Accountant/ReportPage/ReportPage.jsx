@@ -1,15 +1,36 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import "./ReportPage.css";
 import { ChevronDown, Download } from "lucide-react";
 import Pagination from "../../../../components/common/Pagination/Pagination";
 import DateRangePicker from "../../../../components/common/DateRangePicker/DateRangePicker";
 import paymentTransactionService from "../../../../services/paymentTransactionService";
 import { toast } from "sonner";
+import paymentTransactionService from "../../../../services/paymentTransactionService";
+import { toast } from "sonner";
 
 // Format số với dấu phẩy
 const formatNumber = (num) => {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+// Map package name
+const mapPackageName = (name) => {
+  if (!name) return "-";
+  const lower = name.toLowerCase();
+  if (lower.includes("chatbot ai")) return "Chatbot AI";
+  if (lower.includes("chatbot")) return "Chatbot";
+  return name;
+};
+
+// Map method từ DB sang UI
+const methodMap = {
+  momo: "Momo",
+  vnpay: "VietQR",
+  vietqr: "VietQR",
+  "manual banking": "Manual Banking",
 };
 
 // Map package name
@@ -187,10 +208,13 @@ export default function ReportPage() {
   const totals = useMemo(() => {
     const totalRevenue = rows.reduce((sum, row) => sum + (row.totalRevenue || 0), 0);
     const totalTransactions = rows.reduce(
+    const totalRevenue = rows.reduce((sum, row) => sum + (row.totalRevenue || 0), 0);
+    const totalTransactions = rows.reduce(
       (sum, row) => sum + (row.numberOfTransactions || 0),
       0
     );
     return { totalRevenue, totalTransactions };
+  }, [rows]);
   }, [rows]);
 
   return (
@@ -199,12 +223,14 @@ export default function ReportPage() {
         <div className="acc-report-toolbar-left">
           <div className="acc-report-filter-group">
             <label className="acc-report-filter-label">{t("reportPage.paymentMethod")}</label>
+            <label className="acc-report-filter-label">{t("reportPage.paymentMethod")}</label>
             <div className="acc-report-select-wrapper">
               <select
                 className="acc-report-select"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
               >
+                {methodsList.map((m) => (
                 {methodsList.map((m) => (
                   <option key={m} value={m}>
                     {m}
@@ -217,9 +243,11 @@ export default function ReportPage() {
 
           <div className="acc-report-filter-group">
             <label className="acc-report-filter-label">{t("reportPage.dateRange")}</label>
+            <label className="acc-report-filter-label">{t("reportPage.dateRange")}</label>
             <DateRangePicker
               value={dateRange}
               onChange={(value) => setDateRange(value)}
+              placeholder={t("reportPage.dateRangePlaceholder")}
               placeholder={t("reportPage.dateRangePlaceholder")}
             />
           </div>
@@ -239,8 +267,24 @@ export default function ReportPage() {
         </div>
       )}
 
+      {/* Loading indicator */}
+      {loading && (
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          {t("reportPage.messages.loading")}
+        </div>
+      )}
+
+      {!loading && rows.length === 0 && (
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          {t("reportPage.messages.noData")}
+        </div>
+      )}
+
       <div className="acc-report-table">
         <div className="acc-report-row acc-report-header">
+          <div className="acc-report-col acc-report-col-package">{t("reportPage.columns.package")}</div>
+          <div className="acc-report-col acc-report-col-revenue">{t("reportPage.columns.totalRevenue")}</div>
+          <div className="acc-report-col acc-report-col-transactions">{t("reportPage.columns.numberOfTransactions")}</div>
           <div className="acc-report-col acc-report-col-package">{t("reportPage.columns.package")}</div>
           <div className="acc-report-col acc-report-col-revenue">{t("reportPage.columns.totalRevenue")}</div>
           <div className="acc-report-col acc-report-col-transactions">{t("reportPage.columns.numberOfTransactions")}</div>
@@ -250,6 +294,7 @@ export default function ReportPage() {
           <div className="acc-report-row" key={row.package || index}>
             <div className="acc-report-col acc-report-col-package">{row.package}</div>
             <div className="acc-report-col acc-report-col-revenue">
+              {formatNumber(row.totalRevenue)} VND
               {formatNumber(row.totalRevenue)} VND
             </div>
             <div className="acc-report-col acc-report-col-transactions">
@@ -262,8 +307,10 @@ export default function ReportPage() {
         <div className="acc-report-row acc-report-total">
           <div className="acc-report-col acc-report-col-package">
             <strong>{t("reportPage.total")}</strong>
+            <strong>{t("reportPage.total")}</strong>
           </div>
           <div className="acc-report-col acc-report-col-revenue">
+            <strong>{formatNumber(totals.totalRevenue)} VND</strong>
             <strong>{formatNumber(totals.totalRevenue)} VND</strong>
           </div>
           <div className="acc-report-col acc-report-col-transactions">

@@ -1,6 +1,9 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import "./PaymentPage.css";
+import { Search, ChevronDown, UserPlus, UserCheck, Eye } from "lucide-react";
 import { Search, ChevronDown, UserPlus, UserCheck, Eye } from "lucide-react";
 import DateRangePicker from "../../../../components/common/DateRangePicker/DateRangePicker";
 import Pagination from "../../../../components/common/Pagination/Pagination";
@@ -19,7 +22,17 @@ export default function PaymentPage() {
   const [rawPayments, setRawPayments] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { t, i18n } = useTranslation("admin");
+  const { user } = useAuth();
+  const currentUserId = user?._id || user?.id;
+  const [rawPayments, setRawPayments] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [packageFilter, setPackageFilter] = useState(t("common.all"));
+  const [paymentMethod, setPaymentMethod] = useState(t("common.all"));
+  const [status, setStatus] = useState(t("common.all"));
+  const [assignedStatus, setAssignedStatus] = useState(t("common.all"));
   const [packageFilter, setPackageFilter] = useState(t("common.all"));
   const [paymentMethod, setPaymentMethod] = useState(t("common.all"));
   const [status, setStatus] = useState(t("common.all"));
@@ -260,6 +273,7 @@ export default function PaymentPage() {
     const total = rows.length;
     return { pending, approved, rejected, failed, cancelled, total };
   }, [rows, t]);
+  }, [rows, t]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -270,6 +284,9 @@ export default function PaymentPage() {
         (row.id || "").toLowerCase().includes(s) ||
         (row.transactionId || "").toLowerCase().includes(s) ||
         (row.name || "").toLowerCase().includes(s) ||
+        (row.id || "").toLowerCase().includes(s) ||
+        (row.transactionId || "").toLowerCase().includes(s) ||
+        (row.name || "").toLowerCase().includes(s) ||
         (row.phone || "").toLowerCase().includes(s) ||
         (row.email || "").toLowerCase().includes(s);
 
@@ -277,12 +294,18 @@ export default function PaymentPage() {
       const allValue = t("common.all");
       const matchPackage =
         packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
+      const allValue = t("common.all");
+      const matchPackage =
+        packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
 
       // Lọc theo payment method
       const matchMethod =
         paymentMethod === "All" || paymentMethod === allValue ? true : row.method === paymentMethod;
+      const matchMethod =
+        paymentMethod === "All" || paymentMethod === allValue ? true : row.method === paymentMethod;
 
       // Lọc theo status
+      const matchStatus = status === "All" || status === allValue ? true : row.status === status;
       const matchStatus = status === "All" || status === allValue ? true : row.status === status;
 
       // Lọc theo assigned status
@@ -323,8 +346,24 @@ export default function PaymentPage() {
         matchStatus &&
         matchAssignedStatus &&
         matchDate
+        matchSearch &&
+        matchPackage &&
+        matchMethod &&
+        matchStatus &&
+        matchAssignedStatus &&
+        matchDate
       );
     });
+  }, [
+    search,
+    packageFilter,
+    paymentMethod,
+    status,
+    assignedStatus,
+    dateRange,
+    rows,
+    t,
+  ]);
   }, [
     search,
     packageFilter,
@@ -342,20 +381,26 @@ export default function PaymentPage() {
       <div className="cs-pay-summary">
         <span className="cs-pay-summary-item">
           {t("paymentPage.summary.pending")}: <strong>{counters.pending}</strong>
+          {t("paymentPage.summary.pending")}: <strong>{counters.pending}</strong>
         </span>
         <span className="cs-pay-summary-item">
+          {t("paymentPage.summary.approved")}: <strong>{counters.approved}</strong>
           {t("paymentPage.summary.approved")}: <strong>{counters.approved}</strong>
         </span>
         <span className="cs-pay-summary-item">
           {t("paymentPage.summary.rejected")}: <strong>{counters.rejected}</strong>
+          {t("paymentPage.summary.rejected")}: <strong>{counters.rejected}</strong>
         </span>
         <span className="cs-pay-summary-item">
+          {t("paymentPage.summary.failed")}: <strong>{counters.failed}</strong>
           {t("paymentPage.summary.failed")}: <strong>{counters.failed}</strong>
         </span>
         <span className="cs-pay-summary-item">
           {t("paymentPage.summary.cancelled")}: <strong>{counters.cancelled}</strong>
+          {t("paymentPage.summary.cancelled")}: <strong>{counters.cancelled}</strong>
         </span>
         <span className="cs-pay-summary-item">
+          {t("paymentPage.summary.total")}: <strong>{counters.total}</strong>
           {t("paymentPage.summary.total")}: <strong>{counters.total}</strong>
         </span>
       </div>
@@ -364,9 +409,11 @@ export default function PaymentPage() {
         <div className="cs-pay-toolbar-left">
           <div className="cs-pay-filter-group">
             <label className="cs-pay-filter-label">{t("paymentPage.search")}</label>
+            <label className="cs-pay-filter-label">{t("paymentPage.search")}</label>
             <div className="cs-pay-search">
               <input
                 className="cs-pay-search-input"
+                placeholder={t("paymentPage.searchPlaceholder")}
                 placeholder={t("paymentPage.searchPlaceholder")}
                 value={search}
                 onChange={(e) => {
@@ -382,6 +429,7 @@ export default function PaymentPage() {
 
           <div className="cs-pay-filter-group">
             <label className="cs-pay-filter-label">{t("paymentPage.package")}</label>
+            <label className="cs-pay-filter-label">{t("paymentPage.package")}</label>
             <div className="cs-pay-select-wrapper">
               <select
                 className="cs-pay-select"
@@ -391,6 +439,7 @@ export default function PaymentPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
+                {packagesList.map((p) => (
                 {packagesList.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -403,6 +452,7 @@ export default function PaymentPage() {
 
           <div className="cs-pay-filter-group">
             <label className="cs-pay-filter-label">{t("paymentPage.paymentMethod")}</label>
+            <label className="cs-pay-filter-label">{t("paymentPage.paymentMethod")}</label>
             <div className="cs-pay-select-wrapper">
               <select
                 className="cs-pay-select"
@@ -412,6 +462,7 @@ export default function PaymentPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
+                {methodsList.map((m) => (
                 {methodsList.map((m) => (
                   <option key={m} value={m}>
                     {m}
@@ -424,6 +475,7 @@ export default function PaymentPage() {
 
           <div className="cs-pay-filter-group">
             <label className="cs-pay-filter-label">{t("paymentPage.status")}</label>
+            <label className="cs-pay-filter-label">{t("paymentPage.status")}</label>
             <div className="cs-pay-select-wrapper">
               <select
                 className="cs-pay-select"
@@ -433,6 +485,7 @@ export default function PaymentPage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
+                {statusesList.map((s) => (
                 {statusesList.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -444,6 +497,7 @@ export default function PaymentPage() {
           </div>
 
           <div className="cs-pay-filter-group">
+            <label className="cs-pay-filter-label">{t("paymentPage.assignedStatus")}</label>
             <label className="cs-pay-filter-label">{t("paymentPage.assignedStatus")}</label>
             <div className="cs-pay-select-wrapper">
               <select
@@ -466,6 +520,7 @@ export default function PaymentPage() {
 
           <div className="cs-pay-filter-group">
             <label className="cs-pay-filter-label">{t("paymentPage.dateRange")}</label>
+            <label className="cs-pay-filter-label">{t("paymentPage.dateRange")}</label>
             <DateRangePicker
               value={dateRange}
               onChange={(value) => {
@@ -480,6 +535,16 @@ export default function PaymentPage() {
 
       <div className="cs-pay-table">
         <div className="cs-pay-row cs-pay-header">
+          <div className="cs-pay-col cs-pay-col-name">{t("paymentPage.columns.name")}</div>
+          <div className="cs-pay-col cs-pay-col-phone">{t("paymentPage.columns.phone")}</div>
+          <div className="cs-pay-col cs-pay-col-email">{t("paymentPage.columns.email")}</div>
+          <div className="cs-pay-col cs-pay-col-package">{t("paymentPage.columns.package")}</div>
+          <div className="cs-pay-col cs-pay-col-method">{t("paymentPage.columns.method")}</div>
+          <div className="cs-pay-col cs-pay-col-time">{t("paymentPage.columns.paymentTime")}</div>
+          <div className="cs-pay-col cs-pay-col-status">{t("paymentPage.columns.status")}</div>
+          <div className="cs-pay-col cs-pay-col-assigned">{t("paymentPage.columns.assignedStatus")}</div>
+          <div className="cs-pay-col cs-pay-col-action">{t("paymentPage.columns.action")}</div>
+          <div className="cs-pay-col cs-pay-col-note">{t("paymentPage.columns.note")}</div>
           <div className="cs-pay-col cs-pay-col-name">{t("paymentPage.columns.name")}</div>
           <div className="cs-pay-col cs-pay-col-phone">{t("paymentPage.columns.phone")}</div>
           <div className="cs-pay-col cs-pay-col-email">{t("paymentPage.columns.email")}</div>

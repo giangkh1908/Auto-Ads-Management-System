@@ -13,7 +13,8 @@
        "languages": {
          "vi": "Vietnamese",
          "en": "English"
-       }
+       },
+       "manage_shop": "Manage Shop"
      },
      "auth": {
        "login_title": "Login",
@@ -215,7 +216,9 @@
        "archive": "Archive",
        "disconnect": "Disconnect",
        "sync_success": "Data synced successfully!",
-       "sync_error": "Error syncing data"
+       "sync_error": "Error syncing data",
+       "sync_accounts": "Refresh",
+       "syncing": "Syncing..."
      },
     "ads_management": {
       "select_account": "Select ad account",
@@ -585,7 +588,8 @@
         "success": "Please wait a moment, your request has been sent. We will confirm payment in a few minutes.",
         "transactionNotFound": "Transaction not found. Please try again.",
         "sessionExpired": "Session expired. Please login again.",
-        "error": "An error occurred. Please try again later."
+        "error": "An error occurred. Please try again later.",
+        "timeout": "Order has been canceled due to timeout!"
       }
     }
   }

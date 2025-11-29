@@ -9,6 +9,7 @@ import {
   MousePointer,
   X,
   Settings,
+  Crown,
 } from "lucide-react";
 import AiPopup from "../AiPopup/AiPopup";
 import AiPromptConfig from "../AiPromptConfig/AiPromptConfig";
@@ -20,7 +21,6 @@ import { useToast } from "../../../../hooks/useToast";
 import { validateNonEmpty } from "../../../../utils/validation";
 import { CTA_OPTIONS } from "../../../../constants/ctaConstants";
 import { aiConfigService } from "../../../../services/aiConfigService";
-
 function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -33,6 +33,11 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [aiPromptConfig, setAiPromptConfig] = useState(null);
   const [defaultConfigId, setDefaultConfigId] = useState(null);
+  const [aiPopupInputs, setAiPopupInputs] = useState({
+    personalization: '',
+    mainKeywords: '',
+    synonymousKeywords: '',
+  });
   const toast = useToast();
 
   const ensureContentAi = () => {
@@ -513,9 +518,12 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
 
         <div className="btn-generate-ai-container">
           <button
-            className="btn-generate-ai"
-            disabled={!contentAiEnabled}
+            className={`btn-generate-ai ${!contentAiEnabled ? 'premium-feature' : ''}`}
             onClick={() => {
+              if (!contentAiEnabled) {
+                toast.error("Tính năng này yêu cầu gói ChatBot AI");
+                return;
+              }
               if (!ensureContentAi()) return;
               setShowAIConfig(!showAIConfig);
             }}
@@ -526,6 +534,11 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
             }
           >
             Tạo bằng AI
+            {!contentAiEnabled && (
+              <span className="premium-badge">
+                <Crown size={12} />
+              </span>
+            )}
           </button>
 
           <button
@@ -544,18 +557,19 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
             <Settings size={18} />
           </button>
 
-          {!contentAiEnabled && (
-            <p className="ai-locked-hint">
-              Tính năng AI nội dung chỉ mở trong gói Chatbot AI+. Hãy nâng cấp để
-              tạo nội dung & hình ảnh tự động.
-            </p>
-          )}
-
           {/* AI Config Modal */}
           <AiPopup
             isOpen={showAIConfig}
             onClose={() => setShowAIConfig(false)}
             defaultConfigId={defaultConfigId}
+            initialPersonalization={aiPopupInputs.personalization}
+            initialMainKeywords={aiPopupInputs.mainKeywords}
+            initialSynonymousKeywords={aiPopupInputs.synonymousKeywords}
+            onPersistInputs={(data) => setAiPopupInputs((prev) => ({
+              personalization: data?.personalization ?? prev.personalization,
+              mainKeywords: data?.mainKeywords ?? prev.mainKeywords,
+              synonymousKeywords: data?.synonymousKeywords ?? prev.synonymousKeywords,
+            }))}
             onConfirm={(config) => {
               const toArray = (v) =>
                 Array.isArray(v)
@@ -574,12 +588,6 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
               if (mainKeywords.length === 0 && !config.config_id) {
                 toast.warning("Vui lòng nhập ít nhất một từ khóa chính");
                 return;
-              }
-
-              if (config.config_id) {
-                setSelectedConfigId(config.config_id);
-              } else {
-                setSelectedConfigId(null);
               }
 
               const modelToSend = config.config_id 

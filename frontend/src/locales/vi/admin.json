@@ -405,6 +405,7 @@
       "success": "Thành công",
       "failed": "Thất bại",
       "canceled": "Đã hủy",
+      "rejected": "Từ chối",
       "initializing": "Đang khởi tạo"
     },
     "summary": {

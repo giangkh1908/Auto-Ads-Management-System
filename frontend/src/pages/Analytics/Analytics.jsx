@@ -4,7 +4,7 @@ import DateRangePicker from "../../components/common/DateRangePicker/DateRangePi
 import ChatAIWidget from "../../components/feature/ChatAI/ChatAIWidget";
 import axiosInstance from "../../utils/axios";
 import "./Analytics.css";
-import { useMyPackage } from "../../hooks/useMyPackage";
+import { useShopPackage } from "../../hooks/useShopPackage";
 
 function Analytics() {
   const [selectedAccount, setSelectedAccount] = useState("");
@@ -56,7 +56,7 @@ function Analytics() {
   // Mock data - sau này sẽ thay bằng API call
   const [tableData, setTableData] = useState([]);
   const [loadingInsights, setLoadingInsights] = useState(false);
-  const { hasFeature, loading: entitlementsLoading } = useMyPackage();
+  const { hasFeature, loading: entitlementsLoading } = useShopPackage();
   const canUseAnalyticsChatAI = hasFeature("analytics_chat_ai");
 
   // Get selected account info for Chat AI Widget
@@ -444,8 +444,7 @@ function Analytics() {
     <div className="analytics-container">
       {!entitlementsLoading && !canUseAnalyticsChatAI && (
         <div className="analytics-entitlement-alert">
-          <strong>Chatbot AI đang bị khóa.</strong> Vui lòng nâng cấp lên gói
-          Chatbot AI+ để sử dụng trợ lý phân tích trong trang này.
+          <strong>Chatbot AI đang bị khóa.</strong> Shop owner cần nâng cấp gói dịch vụ để sử dụng trợ lý phân tích trong trang này.
         </div>
       )}
       {/* Header Section */}

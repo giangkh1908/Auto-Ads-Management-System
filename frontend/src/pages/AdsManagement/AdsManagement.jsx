@@ -29,6 +29,7 @@ import AdsToolbar from "./components/AdsToolbar";
 import AdsTabs from "./components/AdsTabs";
 import AdsTable from "./components/AdsTable";
 import AdsBreadcrumb from "./components/AdsBreadcrumb";
+import { RefreshCw } from "lucide-react";
 
 function AdsManagement() {
   const { t } = useTranslation(['ads']);
@@ -111,6 +112,8 @@ function AdsManagement() {
   // Action states
   const [refreshing, setRefreshing] = useState(false);
   const [togglingItems, setTogglingItems] = useState(new Set());
+  // Loading state when switching accounts
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const [confirmationPopup, setConfirmationPopup] = useState({
     isOpen: false,
     type: "delete",
@@ -135,6 +138,8 @@ function AdsManagement() {
 
   // Handle account change
   const handleAccountChange = (accountId) => {
+    // show loading animation while switching
+    setSwitchingAccount(true);
     handleAccountChangeBase(accountId);
     resetSelection();
     setActiveTab("campaigns");
@@ -142,6 +147,8 @@ function AdsManagement() {
     if (!accountId) {
       setDatasets({ campaigns: [], adsets: [], ads: [] });
       setCache({ lastSync: null, lastFetch: {} });
+      // no target account -> stop switching indicator
+      setSwitchingAccount(false);
     }
   };
 
@@ -178,17 +185,19 @@ function AdsManagement() {
       }
 
       const fetchData = async () => {
+        // Ensure loading overlay is shown while we fetch data (covers cached-account load)
+        setSwitchingAccount(true);
         try {
-    if (activeTab === "campaigns") {
+          if (activeTab === "campaigns") {
             await fetchCampaignsForAccount(selectedAccountId);
-    } else if (activeTab === "adsets") {
-      if (selectedCampaign) {
+          } else if (activeTab === "adsets") {
+            if (selectedCampaign) {
               await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId);
             } else {
               await fetchAllAdsetsForAccount(selectedAccountId);
             }
-    } else if (activeTab === "ads") {
-      if (selectedAdset) {
+          } else if (activeTab === "ads") {
+            if (selectedAdset) {
               await fetchAdsForAdset(selectedAdset.id, selectedAccountId);
             } else {
               await fetchAllAdsForAccount(selectedAccountId);
@@ -198,6 +207,9 @@ function AdsManagement() {
           if (error.name !== 'AbortError') {
             console.error("Error fetching data:", error);
           }
+        } finally {
+          // Ensure switching indicator is cleared when fetch completes (success/error)
+          setSwitchingAccount(false);
         }
       };
 
@@ -688,11 +700,15 @@ function AdsManagement() {
 
   // Navigation
   const handleCampaignClick = (campaign) => {
+    // show loading while switching to adsets view
+    setSwitchingAccount(true);
     selectCampaign(campaign);
     setActiveTab("adsets");
   };
 
   const handleAdsetClick = (adset) => {
+    // show loading while switching to ads view
+    setSwitchingAccount(true);
     selectAdset(adset);
     setActiveTab("ads");
   };
@@ -762,12 +778,22 @@ function AdsManagement() {
 
   // Tab change handler
   const handleTabChange = (tab) => {
+    // show loading while switching tabs
+    setSwitchingAccount(true);
     setActiveTab(tab);
     resetSelection();
   };
 
   return (
     <div className="ads-management-layout">
+      {switchingAccount && (
+        <div className="account-switch-overlay">
+          <div className="account-switch-spinner">
+            <div className="spinner-icon"><RefreshCw size ={20}/></div>
+            <div className="spinner-text">Đang tải...</div>
+          </div>
+        </div>
+      )}
       <div className="ads-management-content">
         <div className="ads-management-center">
           <div className="ads-card">

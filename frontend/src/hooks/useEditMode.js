@@ -4,6 +4,8 @@ import { useToast } from "./useToast";
 import { extractObjectId, findIdInObject } from "../utils/wizardUtils";
 import { convertCountryCodesToNames, convertLocaleIdToLanguageCode } from "../utils/locationUtils";
 import { convertFacebookTypeToCTA } from "../utils/ctaUtils";
+import { parseGeoLocationsToFrontend } from "../utils/locationParseUtils";
+import { parseFlexibleSpecToFrontend } from "../utils/targetingParseUtils";
 
 /**
  * Custom hook để xử lý logic edit mode
@@ -222,21 +224,27 @@ export function useEditMode({
             },
             placement: "AUTOMATIC",
             targeting: {
-              // ✅ Map geo_locations.countries từ DB (country codes) sang locations (country names) cho FE
-              locations: adsetDbData.targeting?.geo_locations?.countries
-                ? convertCountryCodesToNames(adsetDbData.targeting.geo_locations.countries)
-                : ["Viet Nam"],
+              // ✅ NEW: Parse targeting (prioritizes locations with names, falls back to geo_locations)
+              locations: parseGeoLocationsToFrontend(adsetDbData.targeting),
               ageMin: adsetDbData.targeting?.age_min || 18,
               ageMax: adsetDbData.targeting?.age_max || 65,
               // ✅ THÊM: Map gender và language từ DB
-              gender: adsetDbData.targeting?.genders?.[0] === 1 
-                    ? "male" 
-                    : adsetDbData.targeting?.genders?.[0] === 2 
-                    ? "female" 
-                    : adsetDbData.targeting?.gender || "all",
-              language: adsetDbData.targeting?.locales?.[0] 
-                    ? (convertLocaleIdToLanguageCode(adsetDbData.targeting.locales[0]) || adsetDbData.targeting.locales[0])
-                    : adsetDbData.targeting?.language || "vi",
+              gender:
+                adsetDbData.targeting?.genders?.[0] === 1
+                  ? "male"
+                  : adsetDbData.targeting?.genders?.[0] === 2
+                  ? "female"
+                  : adsetDbData.targeting?.gender || "all",
+              language:
+                adsetDbData.targeting?.locales?.[0]
+                  ? convertLocaleIdToLanguageCode(
+                      adsetDbData.targeting.locales[0]
+                    ) || adsetDbData.targeting.locales[0]
+                  : adsetDbData.targeting?.language || "all",
+              // ✅ NEW: Parse flexible_spec -> detailed_targeting for edit mode
+              detailed_targeting: parseFlexibleSpecToFrontend(
+                adsetDbData.targeting?.flexible_spec
+              ),
               // Preserve other targeting fields if any
               ...(adsetDbData.targeting || {}),
             },
@@ -244,7 +252,9 @@ export function useEditMode({
             optimization_goal: adsetDbData.optimization_goal,
             conversion_event: adsetDbData.conversion_event,
             billing_event: adsetDbData.billing_event,
-            traffic_destination: adsetDbData.traffic_destination || adsetDbData.destination_type || null,
+            traffic_destination: adsetDbData.traffic_destination || null,
+            engagement_destination: adsetDbData.engagement_destination || null,
+            destination_type: adsetDbData.destination_type || null,
             promoted_object: {
               // ✅ ƯU TIÊN: Lấy từ adset.page_id trước, sau đó promoted_object.page_id, cuối cùng campaign.page_id
               page_id: adsetDbData?.page_id || promotedObject.page_id || campaignData?.page_id || null,

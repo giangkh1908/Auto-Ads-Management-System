@@ -1,5 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import "./ServicePackagePage.css";
 import { Search, ChevronDown, UserPlus, UserCheck } from "lucide-react";
 import Pagination from "../../../../components/common/Pagination/Pagination";
@@ -10,6 +12,10 @@ import { fetchLatestNotesBatch } from "../../../../utils/noteUtils";
 import { useAuth } from "../../../../hooks/useAuth";
 
 export default function ServicePackagePage() {
+  const { t, i18n } = useTranslation("admin");
+  const [rawPackages, setRawPackages] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
   const { t, i18n } = useTranslation("admin");
   const [rawPackages, setRawPackages] = useState([]);
   const [rows, setRows] = useState([]);
@@ -237,9 +243,11 @@ export default function ServicePackagePage() {
     const s = search.trim().toLowerCase();
     return rows.filter((row) => {
       // Search theo ID, userId, name, phone, email
+      // Search theo ID, userId, name, phone, email
       const matchSearch =
         !s ||
         row.id.toLowerCase().includes(s) ||
+        (row.userId || "").toString().toLowerCase().includes(s) ||
         (row.userId || "").toString().toLowerCase().includes(s) ||
         row.name.toLowerCase().includes(s) ||
         (row.phone || "").toLowerCase().includes(s) ||
@@ -248,11 +256,15 @@ export default function ServicePackagePage() {
       // Lọc theo package
       const allValue = t("common.all");
       const matchPackage = packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
+      const allValue = t("common.all");
+      const matchPackage = packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
 
       // Lọc theo segment
       const matchSegment = segment === "All" || segment === allValue ? true : row.segment === segment;
+      const matchSegment = segment === "All" || segment === allValue ? true : row.segment === segment;
 
       // Lọc theo user status
+      const matchUserStatus = userStatus === "All" || userStatus === allValue ? true : row.userStatus === userStatus;
       const matchUserStatus = userStatus === "All" || userStatus === allValue ? true : row.userStatus === userStatus;
 
       // Lọc theo assigned status
@@ -276,6 +288,15 @@ export default function ServicePackagePage() {
       setPackageFilter(allValue);
     }
   }, [packagesList, packageFilter, t]);
+  }, [search, packageFilter, segment, userStatus, assignedStatus, rows, t]);
+
+  // Reset filter nếu giá trị không còn trong danh sách
+  useEffect(() => {
+    const allValue = t("common.all");
+    if (packageFilter !== "All" && packageFilter !== allValue && !packagesList.includes(packageFilter)) {
+      setPackageFilter(allValue);
+    }
+  }, [packagesList, packageFilter, t]);
 
   return (
     <div className="cs-sp-page">
@@ -283,9 +304,11 @@ export default function ServicePackagePage() {
         <div className="cs-sp-toolbar-left">
           <div className="cs-sp-filter-group">
             <label className="cs-sp-filter-label">{t("servicePackagePage.search")}</label>
+            <label className="cs-sp-filter-label">{t("servicePackagePage.search")}</label>
             <div className="cs-sp-search">
               <input
                 className="cs-sp-search-input"
+                placeholder={t("servicePackagePage.searchPlaceholder")}
                 placeholder={t("servicePackagePage.searchPlaceholder")}
                 value={search}
                 onChange={(e) => {
@@ -301,6 +324,7 @@ export default function ServicePackagePage() {
 
           <div className="cs-sp-filter-group">
             <label className="cs-sp-filter-label">{t("servicePackagePage.package")}</label>
+            <label className="cs-sp-filter-label">{t("servicePackagePage.package")}</label>
             <div className="cs-sp-select-wrapper">
               <select
                 className="cs-sp-select"
@@ -310,6 +334,7 @@ export default function ServicePackagePage() {
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
               >
+                {packagesList.map((p) => (
                 {packagesList.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -321,6 +346,7 @@ export default function ServicePackagePage() {
           </div>
 
           <div className="cs-sp-filter-group">
+            <label className="cs-sp-filter-label">{t("servicePackagePage.segment")}</label>
             <label className="cs-sp-filter-label">{t("servicePackagePage.segment")}</label>
             <div className="cs-sp-select-wrapper">
               <select
@@ -343,6 +369,7 @@ export default function ServicePackagePage() {
 
           <div className="cs-sp-filter-group">
             <label className="cs-sp-filter-label">{t("servicePackagePage.userStatus")}</label>
+            <label className="cs-sp-filter-label">{t("servicePackagePage.userStatus")}</label>
             <div className="cs-sp-select-wrapper">
               <select
                 className="cs-sp-select"
@@ -363,6 +390,7 @@ export default function ServicePackagePage() {
           </div>
 
           <div className="cs-sp-filter-group">
+            <label className="cs-sp-filter-label">{t("servicePackagePage.assignedStatus")}</label>
             <label className="cs-sp-filter-label">{t("servicePackagePage.assignedStatus")}</label>
             <div className="cs-sp-select-wrapper">
               <select
@@ -385,6 +413,26 @@ export default function ServicePackagePage() {
         </div>
       </div>
 
+      {loading && (
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          {t("servicePackagePage.messages.loading")}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="cs-sp-table">
+          <div className="cs-sp-row cs-sp-header">
+            <div className="cs-sp-col cs-sp-col-name">{t("servicePackagePage.columns.name")}</div>
+            <div className="cs-sp-col cs-sp-col-phone">{t("servicePackagePage.columns.phone")}</div>
+            <div className="cs-sp-col cs-sp-col-email">{t("servicePackagePage.columns.email")}</div>
+            <div className="cs-sp-col cs-sp-col-package">{t("servicePackagePage.columns.package")}</div>
+            <div className="cs-sp-col cs-sp-col-purchased">{t("servicePackagePage.columns.purchasedDate")}</div>
+            <div className="cs-sp-col cs-sp-col-expired">{t("servicePackagePage.columns.expiredDate")}</div>
+            <div className="cs-sp-col cs-sp-col-segment">{t("servicePackagePage.columns.segment")}</div>
+            <div className="cs-sp-col cs-sp-col-user-status">{t("servicePackagePage.columns.userStatus")}</div>
+            <div className="cs-sp-col cs-sp-col-assigned">{t("servicePackagePage.columns.assignedStatus")}</div>
+            <div className="cs-sp-col cs-sp-col-note">{t("servicePackagePage.columns.note")}</div>
+          </div>
       {loading && (
         <div style={{ textAlign: "center", padding: "20px" }}>
           {t("servicePackagePage.messages.loading")}

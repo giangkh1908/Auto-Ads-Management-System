@@ -405,6 +405,7 @@
       "success": "Success",
       "failed": "Failed",
       "canceled": "Canceled",
+      "rejected": "Rejected",
       "initializing": "Initializing"
     },
     "summary": {

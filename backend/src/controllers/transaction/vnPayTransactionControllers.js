@@ -135,7 +135,7 @@ export const vnpayReturn = async (req, res) => {
 
         if (!transaction) {
           console.error("Transaction not found:", orderId);
-          return res.redirect(`${process.env.CLIENT_URL}/checkout?payment=failed&msg=notfound`);
+          return res.redirect(`${process.env.FRONTEND_URL}/checkout?payment=failed&msg=notfound`);
         }
 
         console.log("Current transaction status:", transaction.status);
@@ -145,7 +145,7 @@ export const vnpayReturn = async (req, res) => {
 
           if (!pkg) {
             console.error("Package not found for transaction:", orderId);
-            return res.redirect(`${process.env.CLIENT_URL}/checkout?payment=failed&msg=nopkg`);
+            return res.redirect(`${process.env.FRONTEND_URL}/checkout?payment=failed&msg=nopkg`);
           }
 
           // Tạo UserPackage
@@ -176,15 +176,15 @@ export const vnpayReturn = async (req, res) => {
           console.log("PaymentTransaction updated - new status:", updatedTransaction.status);
         }
 
-        return res.redirect(`${process.env.CLIENT_URL}/dashboard?payment=success`);
+        return res.redirect(`${process.env.FRONTEND_URL}/dashboard?payment=success`);
       }
     }
 
     console.log("Payment validation failed or wrong response code");
-    return res.redirect(`${process.env.CLIENT_URL}/checkout?payment=failed`);
+    return res.redirect(`${process.env.FRONTEND_URL}/checkout?payment=failed`);
   } catch (error) {
     console.error("vnpayReturn error:", error);
-    return res.redirect(`${process.env.CLIENT_URL}/checkout?payment=failed&msg=error`);
+    return res.redirect(`${process.env.FRONTEND_URL}/checkout?payment=failed&msg=error`);
   }
 };
 
