@@ -10,6 +10,7 @@
        "login": "Đăng nhập",
        "logout": "Đăng xuất",
        "profile": "Hồ sơ",
+       "user_transaction": "Lịch sử giao dịch",
        "languages": {
          "vi": "Tiếng Việt",
          "en": "Tiếng Anh"
@@ -105,7 +106,28 @@
       "phone_placeholder": "Số điện thoại",
       "contact_me": "LIÊN HỆ CHO TÔI",
       "call_me": "GỌI CHO TÔI",
-      "submitting": "Đang xử lý..."
+      "submitting": "Đang xử lý...",
+      "messenger": "Messenger",
+      "zalo": "Zalo",
+      "website": "Website",
+      "tryai": "AI Chatbot",
+      "buy_product": "MUA SẢN PHẨM",
+      "recharge": "NẠP TIỀN",
+      "order_tracking": "TRA CỨU ĐƠN HÀNG",
+      "sales_capability": "KHẢ NĂNG BÁN HÀNG",
+      "sales_consulting": "TƯ VẤN BÁN HÀNG",
+      "recruitment": "TUYỂN DỤNG NHÂN VIÊN",
+      "booking": "ĐẶT HÀNG VÀ ĐẶT CHỖ",
+      "viral": "VIRAL",
+      "order_management": "QUẢN LÝ ĐƠN HÀNG",
+      "campaign": "CHIẾN DỊCH",
+      "livechat": "LIVECHAT",
+      "auto_reply": "TRẢ LỜI TỰ ĐỘNG",
+      "reminder": "NHẮC NHỞ",
+      "keyword": "TỪ KHÓA",
+      "sequence": "CHUỖI TIN NHẮN",
+      "order": "ĐƠN HÀNG",
+      "shipping": "VẬN CHUYỂN"
     },
     "templates": {
       "shopping": "Mua hàng",
@@ -303,7 +325,12 @@
       "add": "Thêm",
       "remove": "Xóa",
       "select_all": "Chọn tất cả",
-      "deselect_all": "Bỏ chọn tất cả"
+      "deselect_all": "Bỏ chọn tất cả",
+      "all": "Tất cả",
+      "pending": "Chờ duyệt",
+      "total": "Tổng",
+      "dateRange": "Khoảng thời gian",
+      "noData": "Không có dữ liệu"
     },
      "errors": {
        "404_title": "Không tìm thấy trang",
@@ -590,6 +617,52 @@
         "sessionExpired": "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
         "error": "Có lỗi xảy ra. Vui lòng thử lại sau.",
         "timeout": "Đơn hàng đã bị hủy do hết thời gian thanh toán!"
+      }
+    },
+    "paymentManagement": {
+      "statuses": {
+        "pending": "Chờ duyệt",
+        "success": "Thành công",
+        "failed": "Thất bại",
+        "canceled": "Đã hủy",
+        "rejected": "Từ chối",
+        "initializing": "Đang khởi tạo"
+      }
+    },
+    "transactionHistory": {
+      "transactionId": "Mã giao dịch",
+      "packageName": "Tên gói",
+      "amount": "Số tiền",
+      "paymentMethod": "Phương thức thanh toán",
+      "status": "Trạng thái",
+      "createdAt": "Ngày tạo",
+      "action": "Hành động",
+      "viewInvoice": "Xem hóa đơn",
+      "download": "Tải xuống",
+      "search":"Tìm kiếm"
+    },
+    "invoice": {
+      "headerTitle": "HÓA ĐƠN",
+      "buyerInfo": {
+        "title": "Thông tin người mua",
+        "name": "Tên",
+        "email": "Email",
+        "phone": "Số điện thoại"
+      },
+      "invoiceDetails": {
+        "title": "Chi tiết hóa đơn",
+        "invoiceNo": "Số hóa đơn",
+        "invoiceDate": "Ngày hóa đơn",
+        "transactionId": "Mã giao dịch",
+        "paymentMethod": "Phương thức thanh toán",
+        "paymentTime": "Thời gian thanh toán",
+        "status": "Trạng thái"
+      },
+      "messages": {
+        "generatingPDF": "Đang tạo PDF...",
+        "loadError": "Không thể tải hóa đơn",
+        "downloadSuccess": "Tải xuống thành công!",
+        "downloadError": "Lỗi khi tải xuống"
       }
     }
   }

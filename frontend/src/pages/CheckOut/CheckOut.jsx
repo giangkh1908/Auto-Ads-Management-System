@@ -121,41 +121,41 @@ function CheckOut() {
         return;
       }
 
-//       if (paymentMethod === "zalopay") {
-//         // 1. Cập nhật method
-//         const methodRes = await axiosInstance.patch(
-//           `/api/payment-transactions/${orderId}/set-method`,
-//           { method: "zalopay" }
-//         );
+      //       if (paymentMethod === "zalopay") {
+      //         // 1. Cập nhật method
+      //         const methodRes = await axiosInstance.patch(
+      //           `/api/payment-transactions/${orderId}/set-method`,
+      //           { method: "zalopay" }
+      //         );
 
-//         if (!methodRes.data.success) {
-//           alert("Không thể cập nhật phương thức");
-//           return;
-//         }
+      //         if (!methodRes.data.success) {
+      //           alert("Không thể cập nhật phương thức");
+      //           return;
+      //         }
 
-//         // 2. Tạo ZaloPay order
-//         const zaloRes = await axiosInstance.post(
-//           `/api/zalo-pay/${orderId}/create`,
-//           {
-//             orderData: {
-//               name: orderData.packageType,
-//               pages: orderData.pages,
-//               employees: orderData.employees,
-//               packagePricing: orderData.totalPrice,
-// duration: orderData.duration,
-//             },
-//           }
-//         );
+      //         // 2. Tạo ZaloPay order
+      //         const zaloRes = await axiosInstance.post(
+      //           `/api/zalo-pay/${orderId}/create`,
+      //           {
+      //             orderData: {
+      //               name: orderData.packageType,
+      //               pages: orderData.pages,
+      //               employees: orderData.employees,
+      //               packagePricing: orderData.totalPrice,
+      // duration: orderData.duration,
+      //             },
+      //           }
+      //         );
 
-//         const zaloData = zaloRes.data;
-//         if (zaloData.success && zaloData.data?.orderUrl) {
-//           // Redirect đến ZaloPay
-//           window.location.href = zaloData.data.orderUrl;
-//         } else {
-//           alert(zaloData.message || "Không thể tạo thanh toán ZaloPay");
-//         }
-//         return;
-//       }
+      //         const zaloData = zaloRes.data;
+      //         if (zaloData.success && zaloData.data?.orderUrl) {
+      //           // Redirect đến ZaloPay
+      //           window.location.href = zaloData.data.orderUrl;
+      //         } else {
+      //           alert(zaloData.message || "Không thể tạo thanh toán ZaloPay");
+      //         }
+      //         return;
+      //       }
 
       if (paymentMethod === "bank") {
         const res = await axiosInstance.patch(

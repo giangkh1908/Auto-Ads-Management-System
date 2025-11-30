@@ -693,6 +693,7 @@ function Header({ onLoginClick }) {
                       <li onClick={() => navigate("/profile")}>
                         {t("header.profile")}
                       </li>
+                      <li onClick={() => navigate("/user-transaction")}>{t("header.user_transaction")}</li>
                       <li onClick={logout}>{t("header.logout")}</li>
                     </div>
                   </div>
