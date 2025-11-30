@@ -701,6 +701,12 @@
   align-items: center;
   gap: 4px;
 }
+/* Responsive */
+@media (max-width: 1200px) {
+  .analytics-main {
+    flex-direction: column;
+  }
+
   .analytics-settings {
     width: 100%;
     max-height: 300px;
@@ -714,7 +720,7 @@
   .analytics-header-right-controls {
     justify-content: flex-start;
   }
-
+}
 
 /* Mobile lớn (481px - 767px) */
 @media (max-width: 768px) {
@@ -881,5 +887,3 @@
   .analytics-checkbox-text {
     font-size: 13px;
   }
-}
-
