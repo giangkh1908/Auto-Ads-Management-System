@@ -526,6 +526,11 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
               if (!ensureContentAi()) return;
               setShowAIConfig(!showAIConfig);
             }}
+            title={
+              contentAiEnabled
+                ? "Thiết lập tham số AI"
+                : "Nâng cấp lên Chatbot AI+ để dùng AI nội dung"
+            }
           >
             Tạo bằng AI
             {!contentAiEnabled && (

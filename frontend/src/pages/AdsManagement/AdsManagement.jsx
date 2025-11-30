@@ -67,11 +67,14 @@ function AdsManagement() {
     selectAdset,
   } = useAdsSelection();
 
-  // Data state
   const [datasets, setDatasets] = useState({
     campaigns: [],
     adsets: [],
     ads: [],
+  });
+  const [initialSyncState, setInitialSyncState] = useState({
+    isInitialSync: false,
+    message: "",
   });
 
   // Cache state
@@ -84,6 +87,8 @@ function AdsManagement() {
   // Refs
   const abortControllerRef = useRef(null);
   const prevActiveTabRef = useRef(activeTab);
+  const loadingInsightsRef = useRef(false);
+  const fetchedInsightsRef = useRef(new Set()); // Track đã fetch insights cho rows nào
 
   // Sync hook
   const { syncData } = useAdsSync(cache, setCache, activeTab);
@@ -95,7 +100,8 @@ function AdsManagement() {
     fetchAdsForAdset,
     fetchAllAdsetsForAccount,
     fetchAllAdsForAccount,
-  } = useAdsDataFetching(datasets, setDatasets, cache, setCache);
+    fetchInsightsForVisibleItems,
+  } = useAdsDataFetching(datasets, setDatasets, cache, setCache, setInitialSyncState);
 
   // Table state hook
   const {
@@ -152,12 +158,17 @@ function AdsManagement() {
     }
   };
 
-  // Sync data when account changes
+  // Sync data when account changes (only when account changes, not when cache changes)
+  const syncDataRef = useRef(syncData);
+  useEffect(() => {
+    syncDataRef.current = syncData;
+  }, [syncData]);
+
   useEffect(() => {
     if (selectedAccountId && initialized) {
-      syncData(selectedAccountId);
+      syncDataRef.current(selectedAccountId);
     }
-  }, [selectedAccountId, initialized, syncData]);
+  }, [selectedAccountId, initialized]);
 
   // Cleanup AbortController
   useEffect(() => {
@@ -169,13 +180,14 @@ function AdsManagement() {
     };
   }, []);
 
+
   // Load data when tab or account changes
   useEffect(() => {
     if (selectedAccountId && initialized) {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      
+
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
@@ -189,22 +201,22 @@ function AdsManagement() {
         setSwitchingAccount(true);
         try {
           if (activeTab === "campaigns") {
-            await fetchCampaignsForAccount(selectedAccountId);
+            await fetchCampaignsForAccount(selectedAccountId, abortController.signal);
           } else if (activeTab === "adsets") {
             if (selectedCampaign) {
-              await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId);
+              await fetchAdsetsForCampaign(selectedCampaign.id, selectedAccountId, abortController.signal);
             } else {
-              await fetchAllAdsetsForAccount(selectedAccountId);
+              await fetchAllAdsetsForAccount(selectedAccountId, abortController.signal);
             }
           } else if (activeTab === "ads") {
             if (selectedAdset) {
-              await fetchAdsForAdset(selectedAdset.id, selectedAccountId);
+              await fetchAdsForAdset(selectedAdset.id, selectedAccountId, abortController.signal);
             } else {
-              await fetchAllAdsForAccount(selectedAccountId);
+              await fetchAllAdsForAccount(selectedAccountId, abortController.signal);
             }
           }
         } catch (error) {
-          if (error.name !== 'AbortError') {
+          if (error.name !== "AbortError" && error.name !== "CanceledError") {
             console.error("Error fetching data:", error);
           }
         } finally {
@@ -698,20 +710,55 @@ function AdsManagement() {
     }
   };
 
-  // Navigation
+  // Navigation with debounce
+  const clickTimeoutRef = useRef(null);
+
   const handleCampaignClick = (campaign) => {
     // show loading while switching to adsets view
     setSwitchingAccount(true);
     selectCampaign(campaign);
     setActiveTab("adsets");
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+
+    // Abort any ongoing fetch
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    clickTimeoutRef.current = setTimeout(() => {
+      selectCampaign(campaign);
+      setActiveTab("adsets");
+      clickTimeoutRef.current = null;
+    }, 150);
   };
 
   const handleAdsetClick = (adset) => {
-    // show loading while switching to ads view
-    setSwitchingAccount(true);
-    selectAdset(adset);
-    setActiveTab("ads");
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+
+    // Abort any ongoing fetch
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    clickTimeoutRef.current = setTimeout(() => {
+      selectAdset(adset);
+      setActiveTab("ads");
+      clickTimeoutRef.current = null;
+    }, 150);
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Refresh
   const handleRefresh = useCallback(async () => {
@@ -725,7 +772,7 @@ function AdsManagement() {
     setRefreshing(true);
     try {
       await syncData(selectedAccountId, true);
-      
+
       if (activeTab === "campaigns") {
         await fetchCampaignsForAccount(selectedAccountId);
       } else if (activeTab === "adsets") {
@@ -803,15 +850,15 @@ function AdsManagement() {
               loadingAccounts={loadingAccounts}
               onAccountChange={handleAccountChange}
               onCreateCampaign={() => {
-                    if (!selectedAccountId) return;
-                    setWizardMode("create");
-                    setEditingItem(null);
-                    resetSelection();
-                    setShowWizard(true);
-                  }}
+                if (!selectedAccountId) return;
+                setWizardMode("create");
+                setEditingItem(null);
+                resetSelection();
+                setShowWizard(true);
+              }}
               onCreateRule={() => {
                 if (selectedAccountId) {
-                    navigate(ROUTES.AUTOMATION_RULE);
+                  navigate(ROUTES.AUTOMATION_RULE);
                 }
               }}
               searchTerm={searchTerm}
@@ -824,13 +871,13 @@ function AdsManagement() {
               selectedCampaign={selectedCampaign}
               selectedAdset={selectedAdset}
               onReset={() => {
-                    resetSelection();
-                    setActiveTab("campaigns");
-                  }}
+                resetSelection();
+                setActiveTab("campaigns");
+              }}
               onCampaignClick={() => {
-                        setSelectedAdset(null);
-                        setActiveTab("adsets");
-                      }}
+                setSelectedAdset(null);
+                setActiveTab("adsets");
+              }}
               onAdsetClick={() => setActiveTab("ads")}
             />
 
@@ -845,24 +892,38 @@ function AdsManagement() {
               selectedAccountId={selectedAccountId}
             />
 
-            <AdsTable
-              activeTab={activeTab}
-              rows={rows}
-              checkAll={checkAll}
-              onCheckAll={handleCheckAll}
-              onCheckItem={handleCheckItem}
-              onToggleRow={toggleRow}
-              togglingItems={togglingItems}
-              onUpdate={handleUpdate}
-              onArchive={handleArchive}
-              onDelete={handleDelete}
-              onCampaignClick={handleCampaignClick}
-              onAdsetClick={handleAdsetClick}
-              pagination={pagination}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-              refreshing={refreshing}
-            />
+            {initialSyncState.isInitialSync ? (
+              <div className="ads-initial-sync-state">
+                <p>{initialSyncState.message}</p>
+                <button
+                  type="button"
+                  className="ads-refresh-button"
+                  onClick={() => handleRefresh()}
+                  disabled={refreshing}
+                >
+                  {t("ads:buttons.refresh_entities", "Refresh Entities")}
+                </button>
+              </div>
+            ) : (
+              <AdsTable
+                activeTab={activeTab}
+                rows={rows}
+                checkAll={checkAll}
+                onCheckAll={handleCheckAll}
+                onCheckItem={handleCheckItem}
+                onToggleRow={toggleRow}
+                togglingItems={togglingItems}
+                onUpdate={handleUpdate}
+                onArchive={handleArchive}
+                onDelete={handleDelete}
+                onCampaignClick={handleCampaignClick}
+                onAdsetClick={handleAdsetClick}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                refreshing={refreshing}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -875,7 +936,7 @@ function AdsManagement() {
             setWizardMode("create");
           }}
           onSuccess={() => {
-            handleRefresh();
+            handleFetchOnly();
           }}
           onError={() => {
             handleFetchOnly();
