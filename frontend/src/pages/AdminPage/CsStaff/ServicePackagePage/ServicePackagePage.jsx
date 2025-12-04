@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import "./ServicePackagePage.css";
 import { Search, ChevronDown, UserPlus, UserCheck } from "lucide-react";
-import Pagination from "../../../../components/common/Pagination/Pagination";
 import axiosInstance from "../../../../utils/axios";
 import { toast } from "sonner";
 import NoteEditor from "../../../../components/common/NoteEditor/NoteEditor";
@@ -15,19 +14,12 @@ export default function ServicePackagePage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  // packageFilter stores package_id string or 'All'
-  const [packageFilter, setPackageFilter] = useState("All");
+  const [packageFilter, setPackageFilter] = useState(t("common.all"));
   const [segment, setSegment] = useState(t("common.all"));
   const [userStatus, setUserStatus] = useState(t("common.all"));
   const [assignedStatus, setAssignedStatus] = useState(t("common.all"));
   const { user } = useAuth();
   const currentUserId = user?._id || user?.id;
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 25,
-    total: 0,
-    totalPages: 0
-  });
 
   const SEGMENTS = useMemo(() => [
     t("common.all"),
@@ -36,23 +28,12 @@ export default function ServicePackagePage() {
     t("servicePackagePage.segments.newSignup"),
     t("servicePackagePage.segments.noIssue")
   ], [t]);
-  
-  // Fetch user statuses dynamically from backend
-  const [userStatusesList, setUserStatusesList] = useState([]);
-  // Fetch packages from backend for the package filter dropdown
-  const [packagesFromServer, setPackagesFromServer] = useState([]);
-  const USER_STATUSES = useMemo(() => {
-    const statusTranslationMap = {
-      active: t("servicePackagePage.userStatuses.active"),
-      inactive: t("servicePackagePage.userStatuses.inactive"),
-      banned: t("servicePackagePage.userStatuses.banned"),
-    };
-    return [
-      t("common.all"),
-      ...userStatusesList.map(status => statusTranslationMap[status.toLowerCase()] || status)
-    ];
-  }, [t, userStatusesList]);
-  
+  const USER_STATUSES = useMemo(() => [
+    t("common.all"),
+    t("servicePackagePage.userStatuses.active"),
+    t("servicePackagePage.userStatuses.inactive"),
+    t("servicePackagePage.userStatuses.banned")
+  ], [t]);
   const ASSIGNED_STATUSES = useMemo(() => [t("common.all"), t("common.assigned"), t("common.unassigned")], [t]);
 
   // Helper function để map dữ liệu từ backend sang format UI
@@ -77,7 +58,7 @@ export default function ServicePackagePage() {
     // Xác định segment dựa trên from_date và to_date
     const getSegment = () => {
       if (!userPackage.from_date || !userPackage.to_date) return t("servicePackagePage.segments.noIssue");
-
+      
       const now = new Date();
       const fromDate = new Date(userPackage.from_date);
       const toDate = new Date(userPackage.to_date);
@@ -89,17 +70,17 @@ export default function ServicePackagePage() {
       if (daysSinceSignup <= 7) {
         return t("servicePackagePage.segments.newSignup");
       }
-
+      
       // Recently Expired: đã hết hạn trong vòng 14 ngày gần đây
       if (toDate < now && daysSinceExpiry <= 14) {
         return t("servicePackagePage.segments.recentlyExpired");
       }
-
+      
       // Expiring Soon: còn ≤ 7 ngày và chưa hết hạn
       if (daysUntilExpiry <= 7 && daysUntilExpiry > 0) {
         return t("servicePackagePage.segments.expiringSoon");
       }
-
+      
       // No Issue: các trường hợp khác
       return t("servicePackagePage.segments.noIssue");
     };
@@ -149,45 +130,25 @@ export default function ServicePackagePage() {
   const fetchUserPackages = useCallback(async () => {
     setLoading(true);
     try {
-      // Map segment to backend value (since backend now computes it)
-      const segmentMap = {
-        [t("servicePackagePage.segments.expiringSoon")]: "expiringSoon",
-        [t("servicePackagePage.segments.recentlyExpired")]: "recentlyExpired",
-        [t("servicePackagePage.segments.newSignup")]: "newSignup",
-        [t("servicePackagePage.segments.noIssue")]: "noIssue",
-      };
-
-      // Map user status to backend value
-      const statusTranslationReverseMap = {
-        [t("servicePackagePage.userStatuses.active")]: "active",
-        [t("servicePackagePage.userStatuses.inactive")]: "inactive",
-        [t("servicePackagePage.userStatuses.banned")]: "banned",
-      };
-
       const response = await axiosInstance.get("/api/user-package", {
         params: {
-          page: pagination.page,
-          limit: pagination.limit,
-          search: search.trim() || undefined,
-          package_id: packageFilter !== "All" ? packageFilter : undefined,
-          segment: segment !== t("common.all") ? segmentMap[segment] : undefined,
-          user_status: userStatus !== t("common.all") ? statusTranslationReverseMap[userStatus] : undefined,
-          assigned_status: assignedStatus !== t("common.all") ? assignedStatus : undefined,
+          page: 1,
+          limit: 1000, // Lấy tất cả để filter ở frontend
         },
       });
 
       if (response.data?.success) {
         setRawPackages(response.data.data || []);
         const mappedData = (response.data.data || []).map((pkg) => mapUserPackageData(pkg));
-
+        
         // Fetch notes cho tất cả user packages
         const noteItems = mappedData.map((item) => ({
           target_type: "UserPackage",
           target_id: item.id,
         }));
-
+        
         const notesMap = await fetchLatestNotesBatch(noteItems);
-
+        
         // Merge notes vào data
         const dataWithNotes = mappedData.map((item) => {
           const noteKey = `UserPackage_${item.id}`;
@@ -198,13 +159,8 @@ export default function ServicePackagePage() {
             noteId: note?._id || null,
           };
         });
-
+        
         setRows(dataWithNotes);
-        setPagination(prev => ({
-          ...prev,
-          total: response.data.total,
-          totalPages: response.data.pages
-        }));
       } else {
         toast.error(response.data?.message || t("servicePackagePage.messages.fetchErrorGeneric"));
         setRows([]);
@@ -216,55 +172,23 @@ export default function ServicePackagePage() {
     } finally {
       setLoading(false);
     }
-  }, [mapUserPackageData, pagination.page, pagination.limit, search, packageFilter, segment, userStatus, assignedStatus, t]);
+  }, [mapUserPackageData]);
 
   useEffect(() => {
     fetchUserPackages();
   }, [fetchUserPackages]);
 
-  // Fetch user statuses from backend on component mount
-  useEffect(() => {
-    const fetchUserStatuses = async () => {
-      try {
-        const response = await axiosInstance.get("/api/user-package/statuses");
-        if (response.data?.success && Array.isArray(response.data.data)) {
-          setUserStatusesList(response.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching user statuses:", error);
-        // Fallback to empty list on error; UI will show just "All"
-        setUserStatusesList([]);
-      }
-    };
-
-    fetchUserStatuses();
-
-    const fetchPackages = async () => {
-      try {
-        const res = await axiosInstance.get('/api/package');
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          setPackagesFromServer(res.data.data);
-        }
-      } catch (err) {
-        console.error('Error fetching packages list:', err);
-        setPackagesFromServer([]);
-      }
-    };
-
-    fetchPackages();
-  }, []);
-
   // Re-map data khi ngôn ngữ thay đổi
   useEffect(() => {
     if (rawPackages.length > 0) {
       const mappedData = rawPackages.map((pkg) => mapUserPackageData(pkg));
-
+      
       // Fetch notes cho tất cả user packages
       const noteItems = mappedData.map((item) => ({
         target_type: "UserPackage",
         target_id: item.id,
       }));
-
+      
       fetchLatestNotesBatch(noteItems).then((notesMap) => {
         const dataWithNotes = mappedData.map((item) => {
           const noteKey = `UserPackage_${item.id}`;
@@ -277,33 +201,19 @@ export default function ServicePackagePage() {
         });
         setRows(dataWithNotes);
       });
-
+      
       // Reset filters về "All" khi đổi ngôn ngữ
-      // setPackageFilter(t("common.all"));
-      // setSegment(t("common.all"));
-      // setUserStatus(t("common.all"));
-      // setAssignedStatus(t("common.all"));
+      setPackageFilter(t("common.all"));
+      setSegment(t("common.all"));
+      setUserStatus(t("common.all"));
+      setAssignedStatus(t("common.all"));
     }
   }, [i18n.language, rawPackages, mapUserPackageData, t]);
 
-  // Dynamic filters từ dữ liệu thực tế: return list of {id, label}
+  // Dynamic filters từ dữ liệu thực tế
   const packagesList = useMemo(() => {
-    // Prefer server-provided packages when available
-    if (packagesFromServer && packagesFromServer.length > 0) {
-      const arr = packagesFromServer.map(p => ({ id: String(p._id || p.id || p._id), label: p.name || p.title || String(p._id) }));
-      arr.sort((a, b) => a.label.localeCompare(b.label));
-      return [{ id: "All", label: t("common.all") }, ...arr];
-    }
-    // Fallback: derive from rows
-    const map = new Map();
-    rows.forEach((r) => {
-      const pkgId = r.originalData?.package_id?._id || (r.originalData?.package_id || null);
-      const label = r.package || "-";
-      if (pkgId) map.set(String(pkgId), label);
-    });
-    const arr = Array.from(map.entries()).map(([id, label]) => ({ id, label }));
-    arr.sort((a, b) => a.label.localeCompare(b.label));
-    return [{ id: "All", label: t("common.all") }, ...arr];
+    const packages = new Set(rows.map((r) => r.package).filter(Boolean));
+    return [t("common.all"), ...Array.from(packages).sort()];
   }, [rows, t]);
 
   const filtered = useMemo(() => {
@@ -318,12 +228,9 @@ export default function ServicePackagePage() {
         (row.phone || "").toLowerCase().includes(s) ||
         (row.email || "").toLowerCase().includes(s);
 
-      // Lọc theo package (packageFilter stores package_id)
+      // Lọc theo package
       const allValue = t("common.all");
-      const matchPackage =
-        packageFilter === "All" || packageFilter === allValue
-          ? true
-          : String(row.originalData?.package_id?._id || row.originalData?.package_id) === String(packageFilter);
+      const matchPackage = packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
 
       // Lọc theo segment
       const matchSegment = segment === "All" || segment === allValue ? true : row.segment === segment;
@@ -336,8 +243,8 @@ export default function ServicePackagePage() {
         assignedStatus === "All" || assignedStatus === allValue
           ? true
           : assignedStatus === t("common.assigned")
-            ? row.assignedStatus === t("common.assigned")
-            : row.assignedStatus === t("common.unassigned");
+          ? row.assignedStatus === t("common.assigned")
+          : row.assignedStatus === t("common.unassigned");
 
       return (
         matchSearch && matchPackage && matchSegment && matchUserStatus && matchAssignedStatus
@@ -348,9 +255,8 @@ export default function ServicePackagePage() {
   // Reset filter nếu giá trị không còn trong danh sách
   useEffect(() => {
     const allValue = t("common.all");
-    const ids = packagesList.map(p => p.id);
-    if (packageFilter !== "All" && packageFilter !== allValue && !ids.includes(packageFilter)) {
-      setPackageFilter("All");
+    if (packageFilter !== "All" && packageFilter !== allValue && !packagesList.includes(packageFilter)) {
+      setPackageFilter(allValue);
     }
   }, [packagesList, packageFilter, t]);
 
@@ -365,10 +271,7 @@ export default function ServicePackagePage() {
                 className="cs-sp-search-input"
                 placeholder={t("servicePackagePage.searchPlaceholder")}
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setSearch(e.target.value)}
               />
               <span className="cs-sp-search-icon">
                 <Search size={16} />
@@ -382,14 +285,11 @@ export default function ServicePackagePage() {
               <select
                 className="cs-sp-select"
                 value={packageFilter}
-                onChange={(e) => {
-                  setPackageFilter(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setPackageFilter(e.target.value)}
               >
                 {packagesList.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
+                  <option key={p} value={p}>
+                    {p}
                   </option>
                 ))}
               </select>
@@ -403,10 +303,7 @@ export default function ServicePackagePage() {
               <select
                 className="cs-sp-select"
                 value={segment}
-                onChange={(e) => {
-                  setSegment(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setSegment(e.target.value)}
               >
                 {SEGMENTS.map((s) => (
                   <option key={s} value={s}>
@@ -424,10 +321,7 @@ export default function ServicePackagePage() {
               <select
                 className="cs-sp-select"
                 value={userStatus}
-                onChange={(e) => {
-                  setUserStatus(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setUserStatus(e.target.value)}
               >
                 {USER_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -445,10 +339,7 @@ export default function ServicePackagePage() {
               <select
                 className="cs-sp-select"
                 value={assignedStatus}
-                onChange={(e) => {
-                  setAssignedStatus(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setAssignedStatus(e.target.value)}
               >
                 {ASSIGNED_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -483,117 +374,104 @@ export default function ServicePackagePage() {
             <div className="cs-sp-col cs-sp-col-note">{t("servicePackagePage.columns.note")}</div>
           </div>
 
-
-
-          {rows.length === 0 ? (
+          {filtered.length === 0 ? (
             <div style={{ textAlign: "center", padding: "20px" }}>
               {t("servicePackagePage.messages.noData")}
             </div>
           ) : (
-            rows.map((row) => (
-              <div className="cs-sp-row" key={row.id}>
-                <div className="cs-sp-col cs-sp-col-name">{row.name}</div>
-                <div className="cs-sp-col cs-sp-col-phone">{row.phone || "-"}</div>
-                <div className="cs-sp-col cs-sp-col-email">{row.email || "-"}</div>
-                <div className="cs-sp-col cs-sp-col-package">{row.package}</div>
-                <div className="cs-sp-col cs-sp-col-purchased">{row.purchasedDate}</div>
-                <div className="cs-sp-col cs-sp-col-expired">{row.expiredDate}</div>
-                <div className="cs-sp-col cs-sp-col-segment">{row.segment}</div>
-                <div className="cs-sp-col cs-sp-col-user-status">
-                  <span
-                    className={`cs-sp-badge cs-sp-badge-${row.userStatusKey || "active"}`}
-                  >
-                    {row.userStatus}
-                  </span>
-                </div>
-                <div className="cs-sp-col cs-sp-col-assigned">
-                  {!row.salesmanId ? (
-                    <button
-                      className="cs-sp-assign-btn"
-                      onClick={async () => {
-                        const currentUserId = user?._id || user?.id;
-                        if (!user || !currentUserId) {
-                          toast.error(t("servicePackagePage.messages.userNotFound"));
-                          return;
-                        }
-
-                        try {
-                          await axiosInstance.put(`/api/user-package/${row.id}`, {
-                            salesman_id: currentUserId,
-                          });
-                          toast.success(t("servicePackagePage.messages.assignSuccess"));
-                          fetchUserPackages();
-                        } catch (error) {
-                          const errorMessage = error.response?.data?.message || error.message || t("servicePackagePage.messages.assignError");
-                          toast.error(errorMessage);
-                        }
-                      }}
-                      title={t("servicePackagePage.actions.assignTooltip")}
-                    >
-                      <UserPlus size={18} />
-                    </button>
-                  ) : row.salesmanId && (user?._id || user?.id) && String(row.salesmanId) === String(user._id || user.id) ? (
-                    <button
-                      className="cs-sp-assign-btn cs-sp-assigned-btn"
-                      onClick={async () => {
-                        try {
-                          await axiosInstance.put(`/api/user-package/${row.id}`, {
-                            salesman_id: null,
-                          });
-                          toast.success(t("servicePackagePage.messages.unassignSuccess"));
-                          fetchUserPackages();
-                        } catch (error) {
-                          toast.error(error.response?.data?.message || error.message || t("servicePackagePage.messages.unassignError"));
-                        }
-                      }}
-                      title={t("servicePackagePage.actions.unassignTooltip")}
-                    >
-                      <UserCheck size={18} />
-                    </button>
-                  ) : (
-                    <span
-                      className={`cs-sp-badge cs-sp-badge-assigned`}
-                    >
-                      {row.salesmanName || t("common.assigned")}
-                    </span>
-                  )}
-                </div>
-                <div className="cs-sp-col cs-sp-col-note">
-                  <NoteEditor
-                    targetType="UserPackage"
-                    targetId={row.id}
-                    initialNote={row.note || ""}
-                    noteId={row.noteId}
-                    placeholder={t("servicePackagePage.note.placeholder")}
-                    disabled={
-                      !(
-                        row.salesmanId &&
-                        currentUserId &&
-                        String(row.salesmanId) === String(currentUserId)
-                      )
+            filtered.map((row) => (
+          <div className="cs-sp-row" key={row.id}>
+            <div className="cs-sp-col cs-sp-col-name">{row.name}</div>
+            <div className="cs-sp-col cs-sp-col-phone">{row.phone || "-"}</div>
+            <div className="cs-sp-col cs-sp-col-email">{row.email || "-"}</div>
+            <div className="cs-sp-col cs-sp-col-package">{row.package}</div>
+            <div className="cs-sp-col cs-sp-col-purchased">{row.purchasedDate}</div>
+            <div className="cs-sp-col cs-sp-col-expired">{row.expiredDate}</div>
+            <div className="cs-sp-col cs-sp-col-segment">{row.segment}</div>
+            <div className="cs-sp-col cs-sp-col-user-status">
+              <span
+                className={`cs-sp-badge cs-sp-badge-${row.userStatusKey || "active"}`}
+              >
+                {row.userStatus}
+              </span>
+            </div>
+            <div className="cs-sp-col cs-sp-col-assigned">
+              {!row.salesmanId ? (
+                <button
+                  className="cs-sp-assign-btn"
+                  onClick={async () => {
+                    const currentUserId = user?._id || user?.id;
+                    if (!user || !currentUserId) {
+                      toast.error(t("servicePackagePage.messages.userNotFound"));
+                      return;
                     }
-                    disabledMessage={t("servicePackagePage.note.disabledMessage")}
-                    onNoteSaved={() => {
+
+                    try {
+                      await axiosInstance.put(`/api/user-package/${row.id}`, {
+                        salesman_id: currentUserId,
+                      });
+                      toast.success(t("servicePackagePage.messages.assignSuccess"));
                       fetchUserPackages();
-                    }}
-                  />
-                </div>
-              </div>
+                    } catch (error) {
+                      const errorMessage = error.response?.data?.message || error.message || t("servicePackagePage.messages.assignError");
+                      toast.error(errorMessage);
+                    }
+                  }}
+                  title={t("servicePackagePage.actions.assignTooltip")}
+                >
+                  <UserPlus size={18} />
+                </button>
+              ) : row.salesmanId && (user?._id || user?.id) && String(row.salesmanId) === String(user._id || user.id) ? (
+                <button
+                  className="cs-sp-assign-btn cs-sp-assigned-btn"
+                  onClick={async () => {
+                    try {
+                      await axiosInstance.put(`/api/user-package/${row.id}`, {
+                        salesman_id: null,
+                      });
+                      toast.success(t("servicePackagePage.messages.unassignSuccess"));
+                      fetchUserPackages();
+                    } catch (error) {
+                      toast.error(error.response?.data?.message || error.message || t("servicePackagePage.messages.unassignError"));
+                    }
+                  }}
+                  title={t("servicePackagePage.actions.unassignTooltip")}
+                >
+                  <UserCheck size={18} />
+                </button>
+              ) : (
+                <span
+                  className={`cs-sp-badge cs-sp-badge-assigned`}
+                >
+                  {row.salesmanName || t("common.assigned")}
+                </span>
+              )}
+            </div>
+            <div className="cs-sp-col cs-sp-col-note">
+              <NoteEditor
+                targetType="UserPackage"
+                targetId={row.id}
+                initialNote={row.note || ""}
+                noteId={row.noteId}
+                placeholder={t("servicePackagePage.note.placeholder")}
+                disabled={
+                  !(
+                    row.salesmanId &&
+                    currentUserId &&
+                    String(row.salesmanId) === String(currentUserId)
+                  )
+                }
+                disabledMessage={t("servicePackagePage.note.disabledMessage")}
+                onNoteSaved={() => {
+                  fetchUserPackages();
+                }}
+              />
+            </div>
+          </div>
             ))
           )}
         </div>
-      )
-      }
-      {/* Pagination */}
-      <Pagination
-        currentPage={pagination.page}
-        totalPages={pagination.totalPages}
-        totalItems={pagination.total}
-        pageSize={pagination.limit}
-        onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
-        onPageSizeChange={(limit) => setPagination(prev => ({ ...prev, limit, page: 1 }))}
-        pageSizeOptions={[25, 50, 75, 100]}
-      />
-    </div >
+      )}
+    </div>
   );
 }

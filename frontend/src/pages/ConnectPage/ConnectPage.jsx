@@ -74,10 +74,8 @@ function ConnectPage() {
       return "PAGE";
     };
     return (fbPages || []).map((p) => {
-      // ✅ Page đã được connect với shop nào đó (không phân biệt shop nào)
-      const isConnected = p.connected_shop !== null && p.connected_shop !== undefined;
       const isConnectedToCurrentShop = p.connected_shop?.is_current_shop || false;
-      const isConnectedToOtherShop = isConnected && !isConnectedToCurrentShop;
+      const isConnectedToOtherShop = p.connected_shop && !p.connected_shop.is_current_shop;
       
       return {
         id: p.id,
@@ -89,32 +87,30 @@ function ConnectPage() {
         status: isConnectedToCurrentShop 
           ? t('connect_page.status_connected') 
           : isConnectedToOtherShop
-          ? `Đã kết nối với shop "${p.connected_shop?.shop_name || 'Unknown'}"`
+          ? `Đã kết nối với shop "${p.connected_shop.shop_name}"`
           : t('connect_page.status_not_connected'),
         connectedBy: p.connected_shop?.shop_name || null,
         isConnectedToCurrentShop,
         isConnectedToOtherShop,
-        // ✅ Chỉ cho phép connect nếu page chưa được connect với shop nào (can_connect = true)
-        canConnect: p.can_connect === true && !isConnected,
+        canConnect: p.can_connect !== false, // Mặc định true nếu không có thông tin
         isSelected: false,
         pageAccessToken: p.pageAccessToken,
       };
     });
   }, [fbPages, t]);
 
-  //Đếm số page đã kết nối với shop nào đó và còn lại
+  //Đếm số page đã kết nối và còn lại
   const connectedCount = pages.filter(
-    (page) => page.isConnectedToCurrentShop || page.isConnectedToOtherShop
+    (page) => page.status === t('connect_page.status_connected')
   ).length;
   const remainingCount = pages.length - connectedCount;
 
-  // Loại bỏ các page đã kết nối với shop nào đó hoặc không thể kết nối khỏi selectedPages
+  // Loại bỏ các page đã kết nối (với shop hiện tại hoặc shop khác) hoặc không thể kết nối khỏi selectedPages
   useEffect(() => {
     setSelectedPages((prev) =>
       prev.filter((pageId) => {
         const page = pages.find((p) => p.id === pageId);
-        // ✅ Chỉ giữ lại page chưa được connect với shop nào và có thể connect
-        return page && page.canConnect && !page.isConnectedToCurrentShop && !page.isConnectedToOtherShop;
+        return page && !page.isConnectedToCurrentShop && !page.isConnectedToOtherShop && page.canConnect;
       })
     );
   }, [pages]);
@@ -122,8 +118,9 @@ function ConnectPage() {
   //Xử lý chọn page
   const handlePageSelect = (pageId) => {
     const page = pages.find((p) => p.id === pageId);
-    // ✅ Không cho phép chọn page:
-    // - Đã kết nối với shop nào đó (current shop hoặc shop khác)
+    // Không cho phép chọn page:
+    // - Đã kết nối với shop hiện tại
+    // - Đã kết nối với shop khác (không phải current shop)
     // - Không có quyền ADMIN
     // - Không thể kết nối (canConnect = false)
     if (page && (
@@ -144,7 +141,6 @@ function ConnectPage() {
 
   //Xử lý chọn tất cả
   const handleSelectAll = () => {
-    // ✅ Chỉ chọn các page chưa được connect với shop nào và có quyền ADMIN
     const selectablePages = filteredPages.filter(
       (page) => !page.isConnectedToCurrentShop && !page.isConnectedToOtherShop && page.role === "ADMIN" && page.canConnect
     );
@@ -218,18 +214,16 @@ function ConnectPage() {
     const matchesSearch = page.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    // ✅ Check page đã được connect với shop nào (current hoặc other)
-    const isConnected = page.isConnectedToCurrentShop || page.isConnectedToOtherShop;
+    const isConnectedToCurrent = page.status === t('connect_page.status_connected');
     const matchesStatus =
       statusFilter === "status" ||
-      (statusFilter === "connected" && isConnected) ||
-      (statusFilter === "not-connected" && !isConnected);
+      (statusFilter === "connected" && isConnectedToCurrent) ||
+      (statusFilter === "not-connected" && !isConnectedToCurrent && !page.isConnectedToOtherShop);
     return matchesSearch && matchesStatus;
   });
 
   // Cập nhật trạng thái selectAll khi selectedPages thay đổi
   useEffect(() => {
-    // ✅ Chỉ đếm các page chưa được connect với shop nào và có thể connect
     const selectablePages = filteredPages.filter(
       (page) => !page.isConnectedToCurrentShop && !page.isConnectedToOtherShop && page.role === "ADMIN" && page.canConnect
     );
@@ -237,7 +231,7 @@ function ConnectPage() {
       selectablePages.length > 0 &&
         selectedPages.length === selectablePages.length
     );
-  }, [selectedPages, filteredPages]);
+  }, [selectedPages, filteredPages, t]);
 
   return (
     <div className="connect-page">
@@ -265,7 +259,7 @@ function ConnectPage() {
           ) : (
             <>
               {/* Search and Filter Bar */}
-              <div className="search-filter-bar-connect-page">
+              <div className="search-filter-bar">
                 <div className="search-section">
                   <input
                     type="text"
@@ -305,7 +299,7 @@ function ConnectPage() {
                       onChange={handleSelectAll}
                       className="select-all-checkbox"
                       disabled={
-                        // ✅ Disable khi không còn page nào chưa được connect với shop nào
+                        // Disable khi không còn checkbox nào có thể chọn
                         filteredPages.filter(
                           (page) => !page.isConnectedToCurrentShop && !page.isConnectedToOtherShop && page.role === "ADMIN" && page.canConnect
                         ).length === 0

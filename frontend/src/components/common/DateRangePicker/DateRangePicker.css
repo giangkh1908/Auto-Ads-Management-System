@@ -184,11 +184,7 @@
   color: #1e40af;
 }
 
-/* ============================================
-   RESPONSIVE DESIGN
-   ============================================ */
-
-/* Mobile lớn (481px - 767px) */
+/* Responsive */
 @media (max-width: 768px) {
   .analytics-date-range-picker {
     min-width: 100%;
@@ -199,27 +195,6 @@
   .analytics-date-range-picker-content {
     flex-direction: column;
     gap: 16px;
-  }
-}
-
-/* Mobile nhỏ (320px - 480px) */
-@media (max-width: 480px) {
-  .analytics-date-range-picker {
-    padding: 12px;
-  }
-
-  .analytics-date-range-picker-content {
-    gap: 12px;
-  }
-
-  .analytics-calendar {
-    font-size: 12px;
-  }
-
-  .analytics-calendar-day {
-    width: 32px;
-    height: 32px;
-    font-size: 12px;
   }
 }
 

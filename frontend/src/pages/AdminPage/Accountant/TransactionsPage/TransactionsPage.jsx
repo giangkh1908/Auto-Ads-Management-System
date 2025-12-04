@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import "./TransactionsPage.css";
 import { Search, ChevronDown, Eye, Download } from "lucide-react";
-import Pagination from "../../../../components/common/Pagination/Pagination";
 import DateRangePicker from "../../../../components/common/DateRangePicker/DateRangePicker";
 import NoteEditor from "../../../../components/common/NoteEditor/NoteEditor";
 import { fetchLatestNotesBatch } from "../../../../utils/noteUtils";
@@ -15,7 +14,7 @@ import html2canvas from "html2canvas";
 
 export default function TransactionsPage() {
   const { t, i18n } = useTranslation("admin");
-
+  
   // Helper function để map dữ liệu từ backend sang format UI
   const mapTransactionData = useCallback((txn) => {
     const user = txn.user_id || {};
@@ -45,6 +44,7 @@ export default function TransactionsPage() {
       success: t("paymentManagement.statuses.success"),
       failed: t("paymentManagement.statuses.failed"),
       canceled: t("paymentManagement.statuses.canceled"),
+      cancelled: t("paymentManagement.statuses.canceled"),
       rejected: t("paymentManagement.statuses.rejected"),
       initializing: t("paymentManagement.statuses.initializing"),
     };
@@ -106,57 +106,21 @@ export default function TransactionsPage() {
   const [rawTransactions, setRawTransactions] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filterLoading, setFilterLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [packageFilter, setPackageFilter] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [status, setStatus] = useState("");
+  const [packageFilter, setPackageFilter] = useState(t("common.all"));
+  const [paymentMethod, setPaymentMethod] = useState(t("common.all"));
+  const [status, setStatus] = useState(t("common.all"));
   const [dateRange, setDateRange] = useState("");
-  const [filterOptions, setFilterOptions] = useState({
-    packages: [],
-    methods: [],
-    statuses: [],
-  });
   const [invoiceModal, setInvoiceModal] = useState({
     isOpen: false,
     transactionId: null,
   });
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0
-  });
-
-  // Fetch filter options từ API
-  useEffect(() => {
-    const fetchFilterOptions = async () => {
-      try {
-        setFilterLoading(true);
-        const response = await paymentTransactionService.getFilterOptions();
-        if (response.success) {
-          console.log("Filter options fetched:", response.data);
-          setFilterOptions(response.data);
-          // Initialize filters sau khi load options (nếu chưa được set)
-          // Giữ nguyên giá trị nếu đã có từ trước (khi mount lần đầu, tất cả là "")
-          if (!packageFilter) setPackageFilter("");
-          if (!paymentMethod) setPaymentMethod("");
-          if (!status) setStatus("");
-        }
-      } catch (error) {
-        console.error("Error fetching filter options:", error);
-      } finally {
-        setFilterLoading(false);
-      }
-    };
-    fetchFilterOptions();
-  }, []);
 
   // Function để download PDF trực tiếp mà không cần mở modal
   const handleDownloadInvoicePDF = useCallback(async (transactionId) => {
     try {
       toast.loading(t("invoice.messages.generatingPDF"));
-
+      
       // Fetch invoice data
       const response = await invoiceService.getInvoiceByTransactionId(transactionId);
       if (!response.success || !response.data) {
@@ -165,7 +129,7 @@ export default function TransactionsPage() {
       }
 
       const invoice = response.data;
-
+      
       // Tạo một div ẩn để render invoice
       const tempContainer = document.createElement("div");
       tempContainer.style.position = "absolute";
@@ -329,7 +293,7 @@ export default function TransactionsPage() {
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
-
+      
       const imgWidth = 210; // A4 width in mm
       const pageHeight = 297; // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -348,10 +312,10 @@ export default function TransactionsPage() {
 
       const fileName = invoice.invoice_number || `invoice-${transactionId}`;
       pdf.save(`${fileName}.pdf`);
-
+      
       // Cleanup
       document.body.removeChild(tempContainer);
-
+      
       toast.dismiss();
       toast.success(t("invoice.messages.downloadSuccess"));
     } catch (error) {
@@ -365,16 +329,16 @@ export default function TransactionsPage() {
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {
-        page: pagination.page,
-        limit: pagination.limit,
-        search: search.trim() || undefined,
-        package_id: packageFilter ? packageFilter : undefined,
-        method: paymentMethod ? paymentMethod : undefined,
-        status: status ? status : undefined,
-        startDate: dateRange.split("-")[0]?.trim(),
-        endDate: dateRange.split("-")[1]?.trim(),
-      };
+      const params = { limit: 1000 };
+      const allValue = t("common.all");
+      // Convert translated status back to original status for API
+      if (status !== "All" && status !== allValue) {
+        const statusIndex = [t("paymentManagement.statuses.pending"), t("paymentManagement.statuses.success"), t("paymentManagement.statuses.failed"), t("paymentManagement.statuses.canceled"), t("paymentManagement.statuses.rejected"), t("paymentManagement.statuses.initializing")].indexOf(status);
+        if (statusIndex >= 0) {
+          const originalStatuses = ["pending", "success", "failed", "canceled", "rejected", "initializing"];
+          params.status = originalStatuses[statusIndex];
+        }
+      }
 
       const response = await paymentTransactionService.getPaymentTransactions(
         params
@@ -383,11 +347,7 @@ export default function TransactionsPage() {
       if (response.success) {
         setRawTransactions(response.data);
         const mappedTransactions = response.data.map((txn) => mapTransactionData(txn));
-        setPagination(prev => ({
-          ...prev,
-          total: response.total,
-          totalPages: response.pages
-        }));
+
         // Fetch notes cho tất cả transactions
         const noteItems = mappedTransactions.map((transaction) => ({
           target_type: "Transaction",
@@ -422,7 +382,7 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [status, t, mapTransactionData, pagination.page, pagination.limit, search, packageFilter, paymentMethod, dateRange]);
+  }, [status, t, mapTransactionData]);
 
   useEffect(() => {
     fetchTransactions();
@@ -432,13 +392,13 @@ export default function TransactionsPage() {
   useEffect(() => {
     if (rawTransactions.length > 0) {
       const mappedTransactions = rawTransactions.map((txn) => mapTransactionData(txn));
-
+      
       // Fetch notes cho tất cả transactions
       const noteItems = mappedTransactions.map((transaction) => ({
         target_type: "Transaction",
         target_id: transaction.id,
       }));
-
+      
       fetchLatestNotesBatch(noteItems).then((notesMap) => {
         const transactionsWithNotes = mappedTransactions.map((transaction) => {
           const noteKey = `Transaction_${transaction.id}`;
@@ -452,17 +412,59 @@ export default function TransactionsPage() {
         });
         setRows(transactionsWithNotes);
       });
-      // Không reset filters khi đổi ngôn ngữ - chỉ re-map dữ liệu
+      
+      // Reset filters về "All" khi đổi ngôn ngữ
+      setPackageFilter(t("common.all"));
+      setPaymentMethod(t("common.all"));
+      setStatus(t("common.all"));
     }
-  }, [i18n.language, rawTransactions, mapTransactionData]);
+  }, [i18n.language, rawTransactions, mapTransactionData, t]);
+
+  // Dynamic filters
+  const packagesList = useMemo(() => {
+    const packages = new Set(rows.map((r) => r.package).filter(Boolean));
+    return [t("common.all"), ...Array.from(packages).sort()];
+  }, [rows, t]);
+
+  const methodsList = useMemo(() => {
+    const methods = new Set(rows.map((r) => r.method).filter(Boolean));
+    return [t("common.all"), ...Array.from(methods).sort()];
+  }, [rows, t]);
+
+  const statusesList = useMemo(() => {
+    const statuses = new Set(rows.map((r) => r.status).filter(Boolean));
+    return [t("common.all"), ...Array.from(statuses).sort()];
+  }, [rows, t]);
+
+  // Reset filters nếu giá trị không còn trong list
+  useEffect(() => {
+    const allValue = t("common.all");
+    if (packageFilter !== "All" && packageFilter !== allValue && !packagesList.includes(packageFilter)) {
+      setPackageFilter(allValue);
+    }
+  }, [packagesList, packageFilter, t]);
+
+  useEffect(() => {
+    const allValue = t("common.all");
+    if (paymentMethod !== "All" && paymentMethod !== allValue && !methodsList.includes(paymentMethod)) {
+      setPaymentMethod(allValue);
+    }
+  }, [methodsList, paymentMethod, t]);
+
+  useEffect(() => {
+    const allValue = t("common.all");
+    if (status !== "All" && status !== allValue && !statusesList.includes(status)) {
+      setStatus(allValue);
+    }
+  }, [statusesList, status, t]);
 
   // Tính toán counters
   const counters = useMemo(() => {
     const pending = rows.filter((r) => r.status === t("common.pending")).length;
     const approved = rows.filter((r) => r.status === t("paymentManagement.statuses.success")).length;
-    const rejected = rows.filter((r) => r.status === t("paymentManagement.statuses.canceled")).length;
+    const rejected = rows.filter((r) => r.status === t("paymentManagement.statuses.rejected")).length;
     const failed = rows.filter((r) => r.status === t("paymentManagement.statuses.failed")).length;
-    const cancelled = rejected; // Same as rejected
+    const cancelled = rows.filter((r) => r.status === t("paymentManagement.statuses.canceled")).length;
     const total = rows.length;
     return { pending, approved, rejected, failed, cancelled, total };
   }, [rows, t]);
@@ -479,14 +481,15 @@ export default function TransactionsPage() {
         (row.phone || "").toLowerCase().includes(s) ||
         (row.email || "").toLowerCase().includes(s);
 
-      // Lọc theo package - nếu packageFilter rỗng thì lấy tất cả
-      const matchPackage = !packageFilter || row.package === packageFilter;
+      // Lọc theo package
+      const allValue = t("common.all");
+      const matchPackage = packageFilter === "All" || packageFilter === allValue ? true : row.package === packageFilter;
 
-      // Lọc theo payment method - nếu paymentMethod rỗng thì lấy tất cả
-      const matchMethod = !paymentMethod || row.method === paymentMethod;
+      // Lọc theo payment method
+      const matchMethod = paymentMethod === "All" || paymentMethod === allValue ? true : row.method === paymentMethod;
 
-      // Lọc theo status - so sánh với statusKey (database value) thay vì status (translated)
-      const matchStatus = !status || row.statusKey === status;
+      // Lọc theo status
+      const matchStatus = status === "All" || status === allValue ? true : row.status === status;
 
       // Lọc theo khoảng ngày
       let matchDate = true;
@@ -513,7 +516,7 @@ export default function TransactionsPage() {
 
       return matchSearch && matchPackage && matchMethod && matchStatus && matchDate;
     });
-  }, [search, packageFilter, paymentMethod, status, dateRange, rows]);
+  }, [search, packageFilter, paymentMethod, status, dateRange, rows, t]);
 
   return (
     <div className="acc-trans-page">
@@ -526,10 +529,7 @@ export default function TransactionsPage() {
                 className="acc-trans-search-input"
                 placeholder={t("transactionsPage.searchPlaceholder")}
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setSearch(e.target.value)}
               />
               <span className="acc-trans-search-icon">
                 <Search size={16} />
@@ -543,13 +543,9 @@ export default function TransactionsPage() {
               <select
                 className="acc-trans-select"
                 value={packageFilter}
-                onChange={(e) => {
-                  setPackageFilter(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setPackageFilter(e.target.value)}
               >
-                <option value="">{t("common.all")}</option>
-                {filterOptions.packages.map((p) => (
+                {packagesList.map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
@@ -565,13 +561,9 @@ export default function TransactionsPage() {
               <select
                 className="acc-trans-select"
                 value={paymentMethod}
-                onChange={(e) => {
-                  setPaymentMethod(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setPaymentMethod(e.target.value)}
               >
-                <option value="">{t("common.all")}</option>
-                {filterOptions.methods.map((m) => (
+                {methodsList.map((m) => (
                   <option key={m} value={m}>
                     {m}
                   </option>
@@ -587,28 +579,13 @@ export default function TransactionsPage() {
               <select
                 className="acc-trans-select"
                 value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value);
-                  setPagination(prev => ({ ...prev, page: 1 }));
-                }}
+                onChange={(e) => setStatus(e.target.value)}
               >
-                <option value="">{t("common.all")}</option>
-                {filterOptions.statuses.map((s) => {
-                  const statusTranslations = {
-                    pending: t("paymentManagement.statuses.pending"),
-                    success: t("paymentManagement.statuses.success"),
-                    failed: t("paymentManagement.statuses.failed"),
-                    canceled: t("paymentManagement.statuses.canceled"),
-                    rejected: t("paymentManagement.statuses.rejected"),
-                    initializing: t("paymentManagement.statuses.initializing"),
-                  };
-                  const displayText = statusTranslations[s] || s;
-                  return (
-                    <option key={s} value={s}>
-                      {displayText}
-                    </option>
-                  );
-                })}
+                {statusesList.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
               </select>
               <ChevronDown size={16} className="acc-trans-select-icon" />
             </div>
@@ -618,10 +595,7 @@ export default function TransactionsPage() {
             <label className="acc-trans-filter-label">{t("transactionsPage.dateRange")}</label>
             <DateRangePicker
               value={dateRange}
-              onChange={(value) => {
-                setDateRange(value);
-                setPagination(prev => ({ ...prev, page: 1 }));
-              }}
+              onChange={(value) => setDateRange(value)}
               placeholder={t("transactionsPage.dateRangePlaceholder")}
             />
           </div>
@@ -663,7 +637,11 @@ export default function TransactionsPage() {
         </div>
       )}
 
-
+      {!loading && rows.length === 0 && (
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          {t("transactionsPage.messages.noData")}
+        </div>
+      )}
 
       <div className="acc-trans-table">
         <div className="acc-trans-row acc-trans-header">
@@ -680,68 +658,63 @@ export default function TransactionsPage() {
           {/* <div className="acc-trans-col acc-trans-col-remark">{t("transactionsPage.columns.remark")}</div> */}
         </div>
 
-        {!loading && rows.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "20px" }}>
-            {t("transactionsPage.messages.noData")}
-          </div>
-        ) : (
-          rows.map((row) => (
-            <div className="acc-trans-row" key={row.id}>
-              <div className="acc-trans-col acc-trans-col-name">{row.name}</div>
-              <div className="acc-trans-col acc-trans-col-phone">{row.phone || "-"}</div>
-              <div className="acc-trans-col acc-trans-col-email">{row.email || "-"}</div>
-              <div className="acc-trans-col acc-trans-col-transaction-id">
-                {row.transactionId || "-"}
-              </div>
-              <div className="acc-trans-col acc-trans-col-package">{row.package || "-"}</div>
-              <div className="acc-trans-col acc-trans-col-amount">{row.amount}</div>
-              <div className="acc-trans-col acc-trans-col-method">{row.method}</div>
-              <div className="acc-trans-col acc-trans-col-payment-time">
-                {row.paymentTime && row.paymentTime !== "" ? (
-                  <>
-                    <div>{row.paymentTime.split(" ")[0]}</div>
-                    <div className="acc-trans-sub">{row.paymentTime.split(" ")[1]}</div>
-                  </>
-                ) : (
-                  "-"
-                )}
-              </div>
-              <div className="acc-trans-col acc-trans-col-status">
-                <span className={`acc-trans-badge acc-trans-badge-${row.statusKey}`}>
-                  {row.status}
-                </span>
-              </div>
-              <div className="acc-trans-col acc-trans-col-action">
-                {row.action === "invoice" ? (
-                  <div className="acc-trans-action-buttons">
-                    <button
-                      className="acc-trans-action-btn acc-trans-action-view"
-                      onClick={() => {
-                        setInvoiceModal({
-                          isOpen: true,
-                          transactionId: row.id,
-                          autoDownload: false,
-                        });
-                      }}
-                      title={t("transactionsPage.actions.viewInvoice")}
-                    >
-                      <Eye size={16} />
-                    </button>
-                    <button
-                      className="acc-trans-action-btn acc-trans-action-download"
-                      onClick={() => handleDownloadInvoicePDF(row.id)}
-                      title={t("transactionsPage.actions.download")}
-                    >
-                      <Download size={16} />
-                    </button>
-                  </div>
-                ) : row.action && row.action !== "-" ? (
-                  <span className="acc-trans-action-text">{row.action}</span>
-                ) : (
-                  "-"
-                )}
-              </div>
-              {/* <div className="acc-trans-col acc-trans-col-remark">
+        {filtered.map((row) => (
+          <div className="acc-trans-row" key={row.id}>
+            <div className="acc-trans-col acc-trans-col-name">{row.name}</div>
+            <div className="acc-trans-col acc-trans-col-phone">{row.phone || "-"}</div>
+            <div className="acc-trans-col acc-trans-col-email">{row.email || "-"}</div>
+            <div className="acc-trans-col acc-trans-col-transaction-id">
+              {row.transactionId || "-"}
+            </div>
+            <div className="acc-trans-col acc-trans-col-package">{row.package || "-"}</div>
+            <div className="acc-trans-col acc-trans-col-amount">{row.amount}</div>
+            <div className="acc-trans-col acc-trans-col-method">{row.method}</div>
+            <div className="acc-trans-col acc-trans-col-payment-time">
+              {row.paymentTime && row.paymentTime !== "" ? (
+                <>
+                  <div>{row.paymentTime.split(" ")[0]}</div>
+                  <div className="acc-trans-sub">{row.paymentTime.split(" ")[1]}</div>
+                </>
+              ) : (
+                "-"
+              )}
+            </div>
+            <div className="acc-trans-col acc-trans-col-status">
+              <span className={`acc-trans-badge acc-trans-badge-${row.statusKey}`}>
+                {row.status}
+              </span>
+            </div>
+            <div className="acc-trans-col acc-trans-col-action">
+              {row.action === "invoice" ? (
+                <div className="acc-trans-action-buttons">
+                  <button
+                    className="acc-trans-action-btn acc-trans-action-view"
+                    onClick={() => {
+                      setInvoiceModal({
+                        isOpen: true,
+                        transactionId: row.id,
+                        autoDownload: false,
+                      });
+                    }}
+                    title={t("transactionsPage.actions.viewInvoice")}
+                  >
+                    <Eye size={16} />
+                  </button>
+                  <button
+                    className="acc-trans-action-btn acc-trans-action-download"
+                    onClick={() => handleDownloadInvoicePDF(row.id)}
+                    title={t("transactionsPage.actions.download")}
+                  >
+                    <Download size={16} />
+                  </button>
+                </div>
+              ) : row.action && row.action !== "-" ? (
+                <span className="acc-trans-action-text">{row.action}</span>
+              ) : (
+                "-"
+              )}
+            </div>
+            {/* <div className="acc-trans-col acc-trans-col-remark">
               <NoteEditor
                 targetType="Transaction"
                 targetId={row.id}
@@ -753,20 +726,9 @@ export default function TransactionsPage() {
                 }}
               />
             </div> */}
-            </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
-
-      <Pagination
-        currentPage={pagination.page}
-        totalPages={pagination.totalPages}
-        totalItems={pagination.total}
-        pageSize={pagination.limit}
-        onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
-        onPageSizeChange={(limit) => setPagination(prev => ({ ...prev, limit, page: 1 }))}
-        pageSizeOptions={[25, 50, 75, 100]}
-      />
 
       {/* Invoice Modal */}
       <Invoice

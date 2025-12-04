@@ -432,15 +432,11 @@
 .modal {
   background: #fff;
   width: 50%;
-  max-width: 600px;
-  height: auto;
-  max-height: 90vh;
+  height: 70%;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
 }
 
 .modal-header-shop   {
@@ -469,8 +465,6 @@
 
 .modal-body-shop {
   padding: 15px;
-  overflow-y: auto;
-  flex: 1;
 }
 
 .modal-footer {
@@ -617,11 +611,7 @@
   cursor: pointer;
 }
 
-/* ============================================
-   RESPONSIVE DESIGN
-   ============================================ */
-
-/* Tablet (768px - 1200px) */
+/* Responsive */
 @media (max-width: 1200px) {
   .table-header,
   .table-row {
@@ -629,95 +619,8 @@
     gap: 15px;
     padding: 15px;
   }
-
-  .history-table {
-    overflow-x: auto;
-    display: block;
-  }
-
-  .history-table th,
-  .history-table td {
-    white-space: nowrap;
-  }
 }
 
-/* Modal responsive */
-@media (max-width: 768px) {
-  .modal {
-    width: 95%;
-    max-width: calc(100vw - 20px);
-    height: auto;
-    max-height: 90vh;
-  }
-
-  .modal-header-shop {
-    padding: 12px 16px;
-  }
-
-  .modal-header-shop h3 {
-    font-size: 16px;
-  }
-
-  .modal-body-shop {
-    padding: 12px;
-  }
-
-  .modal-footer {
-    padding: 12px;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .modal-footer button {
-    width: 100%;
-  }
-
-  .modal-content-shop {
-    width: 95%;
-    max-width: calc(100vw - 20px);
-    padding: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .modal {
-    width: 100%;
-    height: 100%;
-    max-height: 100vh;
-    border-radius: 0;
-    margin: 0;
-  }
-
-  .modal-header-shop {
-    padding: 10px 12px;
-  }
-
-  .modal-header-shop h3 {
-    font-size: 15px;
-  }
-
-  .modal-body-shop {
-    padding: 10px;
-  }
-
-  .modal-input,
-  .modal-select-shop {
-    font-size: 13px;
-    padding: 8px 10px;
-  }
-
-  .modal-footer {
-    padding: 10px;
-  }
-
-  .modal-content-shop {
-    width: 100%;
-    padding: 16px;
-    border-radius: 0;
-  }
-}
-
-/* Mobile lớn (481px - 767px) */
 @media (max-width: 768px) {
   .shop-header {
     flex-direction: column;
@@ -758,96 +661,6 @@
   .action-buttons {
     justify-content: center;
     margin-top: 10px;
-    flex-wrap: wrap;
-  }
-
-  .history-table {
-    display: block;
-    overflow-x: auto;
-  }
-
-  .history-table thead,
-  .history-table tbody,
-  .history-table tr {
-    display: block;
-  }
-
-  .history-table th,
-  .history-table td {
-    display: block;
-    text-align: left;
-    padding: 8px;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  .history-table th {
-    display: none;
-  }
-
-  .history-table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    display: inline-block;
-    min-width: 100px;
-    margin-right: 8px;
-  }
-
-  .history-item {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .history-avatar {
-    align-self: flex-start;
-  }
-}
-
-/* Mobile nhỏ (320px - 480px) */
-@media (max-width: 480px) {
-  .shop-title {
-    font-size: 20px;
-  }
-
-  .table-cell {
-    padding: 6px 0;
-    font-size: 13px;
-  }
-
-  .table-cell::before {
-    font-size: 11px;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-    gap: 6px;
-  }
-
-  .history-item {
-    padding: 10px;
-  }
-
-  .history-avatar {
-    width: 36px;
-    height: 36px;
-  }
-
-  .history-user {
-    font-size: 13px;
-  }
-
-  .history-description {
-    font-size: 13px;
-  }
-
-  .history-time {
-    font-size: 11px;
-  }
-
-  .role-select {
-    width: 100%;
-    font-size: 13px;
   }
 }
 

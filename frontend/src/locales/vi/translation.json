@@ -3,7 +3,7 @@
        "dashboard": "Dashboard",
        "facebook_ads": "Facebook Ads",
        "analytics": "Phân tích",
-       "shop": "Shop",
+       "shop": "Cửa hàng",
        "package": "Gói dịch vụ",
        "guide": "Hướng dẫn",
        "service": "Dịch vụ",
@@ -13,8 +13,7 @@
        "languages": {
          "vi": "Tiếng Việt",
          "en": "Tiếng Anh"
-       },
-       "manage_shop": "Quản lý Shop"
+       }
      },
      "auth": {
        "login_title": "Đăng nhập",
@@ -178,7 +177,7 @@
        "search_placeholder": "Tìm kiếm ID, tên tài khoản",
        "search": "Tìm",
        "searching": "Tìm...",
-       "refresh": "Làm mới chỉ số",
+       "refresh": "Refresh",
        "refreshing": "Refresh...",
        "add_account": "Thêm tài khoản",
        "no_accounts": "Không tìm thấy tài khoản quảng cáo nào",
@@ -216,9 +215,7 @@
        "archive": "Lưu trữ",
        "disconnect": "Gỡ kết nối",
        "sync_success": "Đồng bộ dữ liệu thành công!",
-       "sync_error": "Lỗi khi đồng bộ dữ liệu",
-       "sync_accounts": "Làm mới",
-       "syncing": "Đang đồng bộ..."
+       "sync_error": "Lỗi khi đồng bộ dữ liệu"
      },
     "ads_management": {
       "select_account": "Chọn tài khoản quảng cáo",
@@ -320,8 +317,8 @@
        "filter_status": "Trạng thái",
        "filter_connected": "Đã kết nối",
        "filter_not_connected": "Chưa kết nối",
-       "pages_count": "{{count}} Pages",
-       "table_page_name": "Tên Page",
+       "pages_count": "{{count}} Trang",
+       "table_page_name": "Tên Trang",
        "table_role": "Quyền",
        "table_status": "Trạng thái",
        "status_connected": "Đã kết nối",
@@ -387,22 +384,22 @@
        "password_cannot_same": "Mật khẩu mới không được trùng với mật khẩu hiện tại"
      },
      "shop": {
-       "my_shop": "Shop",
+       "my_shop": "Cửa hàng",
        "employee": "Nhân viên",
        "history": "Lịch sử",
        "add_new_shop": "Thêm mới",
        "add_new_employee": "Thêm mới",
-       "shop_name": "Tên Shop",
+       "shop_name": "Tên cửa hàng",
        "package": "Gói dịch vụ",
        "employee_count": "Nhân viên",
-       "page_count": "Page",
+       "page_count": "Trang",
        "role": "Quyền",
        "expired": "Hết hạn",
        "status": "Trạng thái",
        "action": "Hành động",
        "name": "Tên",
        "email": "Email",
-       "loading_shops": "Đang tải Shop...",
+       "loading_shops": "Đang tải cửa hàng...",
        "loading_employees": "Đang tải nhân viên...",
        "search_email": "Tìm kiếm email...",
        "all_roles": "Tất cả",
@@ -414,8 +411,8 @@
        "deactivate": "Vô hiệu hóa",
        "upgrade": "Nâng cấp",
        "relinquish": "Chuyển giao",
-       "add_shop": "Thêm Shop mới",
-       "update_shop": "Cập nhật Shop",
+       "add_shop": "Thêm cửa hàng mới",
+       "update_shop": "Cập nhật cửa hàng",
        "phone_number": "Số điện thoại",
        "category": "Danh mục",
        "cancel": "Hủy",

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-// import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axiosInstance from "../../utils/axios";
 import { toast } from "sonner";
@@ -8,19 +8,19 @@ import "./AccountManagement.css";
 import { CheckCircle, XCircle, Archive, Trash2, Play, Pause, Crown } from "lucide-react";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 import { onShopChange } from "../../utils/shopCache";
-// import { useShopPackage } from "../../hooks/useShopPackage";
+import { useShopPackage } from "../../hooks/useShopPackage";
 
 function AccountManagement() {
   const { t, i18n } = useTranslation();
-  // const navigate = useNavigate();
-  // const { shopPkg } = useShopPackage();
+  const navigate = useNavigate();
+  const { shopPkg } = useShopPackage();
   
   // Lấy package của shop owner (từ shop package)
-  // const ownerPackage = shopPkg?.package;
+  const ownerPackage = shopPkg?.package;
 
   // UI states
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false); // Cho sync accounts và refresh stats
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
 
   // query states
@@ -87,45 +87,17 @@ function AccountManagement() {
     return unsubscribe;
   }, [fetchAccounts, limit, searchText]);
 
-  /** Đồng bộ tài khoản quảng cáo từ Facebook vào DB và làm mới dữ liệu */
-  const handleSyncAccounts = async () => {
+  /** Chỉ làm mới số liệu campaign/adset/ad từ Facebook (không đồng bộ DB, không reload list) */
+  const handleSync = async () => {
     try {
       setSyncing(true);
-      
-      // 1. Gọi sync API để lấy tất cả ads accounts từ Facebook và lưu vào DB
-      const syncResponse = await axiosInstance.get('/api/ads-accounts/sync');
-      
-      // 2. Reload danh sách accounts
-      await fetchAccounts({ q: searchText.trim(), page, limit });
-      
-      // 3. Tự động refresh stats sau khi sync accounts xong
-      // Ưu tiên lấy accountIds từ response của sync API
-      const syncedAccounts = syncResponse.data?.accounts || [];
-      let accountIds = [];
-      
-      if (syncedAccounts.length > 0) {
-        // Sử dụng accounts từ sync response
-        accountIds = syncedAccounts
-          .map((acc) => acc.external_id || acc._id?.toString())
-          .filter(Boolean);
-      } else {
-        // Fallback: sử dụng items hiện tại (sẽ được cập nhật sau fetchAccounts)
-        accountIds = items.map((acc) => acc.external_id).filter(Boolean);
-      }
-      
-      // 4. Refresh stats cho tất cả accounts
-      if (accountIds.length > 0) {
-        await fetchAccountStats(accountIds);
-      }
-      
-      toast.success(t('account_management.sync_success') || 'Đã đồng bộ tài khoản và làm mới dữ liệu thành công');
-    } catch (error) {
-      console.error('Sync accounts error:', error);
-      toast.error(
-        error?.response?.data?.message || 
-        t('account_management.sync_error') ||
-        'Lỗi đồng bộ tài khoản'
-      );
+      const accountIds = items.map((acc) => acc.external_id).filter(Boolean);
+      if (accountIds.length === 0) return;
+      await fetchAccountStats(accountIds);
+      toast.success(t('account_management.sync_success'));
+    } catch (e) {
+      console.error(e);
+      toast.error(t('account_management.sync_error'));
     } finally {
       setSyncing(false);
     }
@@ -395,26 +367,35 @@ function AccountManagement() {
                   >
                     {loading ? t('account_management.searching') : t('account_management.search')}
                   </button>
+                  <button
+                    className="btn-find"
+                    onClick={handleSync}
+                    disabled={loading || syncing}
+                  >
+                    {syncing ? t('account_management.refreshing') : t('account_management.refresh')}
+                  </button>
                 </div>
               </div>
 
               <div>
                 <button
-                  className="add-account"
-                  onClick={handleSyncAccounts}
-                  disabled={syncing || loading}
-                  title={t('account_management.sync_accounts_tooltip') || "Đồng bộ tài khoản quảng cáo từ Facebook và làm mới dữ liệu"}
+                  className={`add-account ${!ownerPackage ? 'premium-feature' : ''}`}
+                  onClick={() => {
+                    if (!ownerPackage) {
+                      toast.error("Tính năng này yêu cầu shop owner có gói dịch vụ. Vui lòng yêu cầu shop owner mua gói để sử dụng.");
+                      navigate(ROUTES.SERVICE_PACKAGE);
+                      return;
+                    }
+                    navigate(ROUTES.CONNECT_AD_ACCOUNT);
+                  }}
+                  disabled={!ownerPackage}
+                  title={!ownerPackage ? "Shop owner cần mua gói dịch vụ để sử dụng tính năng này" : ""}
                 >
-                  {syncing ? (
-                    <>
-                      <span className="refresh-icon spinning">↻</span>
-                      {t('account_management.syncing') || 'Đang đồng bộ...'}
-                    </>
-                  ) : (
-                    <>
-                      <span className="refresh-icon">↻</span>
-                      {t('account_management.sync_accounts') || 'Đồng bộ tài khoản'}
-                    </>
+                  + {t('account_management.add_account')}
+                  {!ownerPackage && (
+                    <span className="premium-badge">
+                      <Crown size={12} />
+                    </span>
                   )}
                 </button>
               </div>

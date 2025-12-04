@@ -8,7 +8,6 @@ import AdsCampaign from "../models/ads/adsCampaign.model.js";
 import AdsSet from "../models/ads/adsSet.model.js";
 import Ads from "../models/ads/ads.model.js";
 import AdPerformance from "../models/ads/adPerformance.model.js";
-import AdHourlyInsight from "../models/ads/adHourlyInsight.model.js";
 
 const FB_API = "https://graph.facebook.com/v23.0";
 
@@ -415,7 +414,7 @@ export async function fetchCampaignsFromFacebook(accessToken, adAccountId) {
     const response = await axios.get(url, {
       params: {
         fields:
-          "id,name,status,objective,special_ad_categories,daily_budget,lifetime_budget,start_time,stop_time,effective_status",
+          "id,name,status,objective,special_ad_categories,daily_budget,lifetime_budget,start_time,stop_time,effective_status,insights{impressions,spend,clicks,actions,reach,frequency,cpc,ctr,cost_per_inline_link_click,inline_link_click_ctr,inline_link_clicks}",
         access_token: accessToken,
         limit: 100,
       },
@@ -437,7 +436,7 @@ export async function fetchAdsetsFromFacebook(accessToken, adAccountId) {
     const response = await axios.get(url, {
       params: {
         fields:
-          "id,name,status,campaign_id,daily_budget,lifetime_budget,optimization_goal,targeting,start_time,end_time,effective_status",
+          "id,name,status,campaign_id,daily_budget,lifetime_budget,optimization_goal,targeting,start_time,end_time,effective_status,insights{impressions,spend,clicks,actions,reach,frequency,cpc,ctr,cost_per_inline_link_click,inline_link_click_ctr,inline_link_clicks}",
         access_token: accessToken,
         limit: 100,
       },
@@ -458,7 +457,7 @@ export async function fetchAdsFromFacebook(accessToken, adAccountId) {
     const url = `${FB_API}/${withPrefix}/ads`;
     const response = await axios.get(url, {
       params: {
-        fields: "id,name,status,adset_id,creative,effective_status",
+        fields: "id,name,status,adset_id,creative,effective_status,insights{impressions,spend,clicks,actions,reach,frequency,cpc,ctr,cost_per_inline_link_click,inline_link_click_ctr,inline_link_clicks}",
         access_token: accessToken,
         limit: 100,
       },
@@ -470,311 +469,6 @@ export async function fetchAdsFromFacebook(accessToken, adAccountId) {
       err.response?.data || err.message
     );
     return [];
-  }
-}
-
-/* =========================
- *  SYNC → DB (đã tối ưu & map đủ _id)
- * ========================= */
-
-/**
- * Đồng bộ Campaigns từ Facebook → DB
- * - Bắt buộc: phải tìm được AdsAccount trong DB (để có account_id + shop_id)
- * - Lưu external_account_id ở dạng "không prefix" để đồng bộ với filter hiện có
- */
-export async function syncCampaignsFromFacebook(accessToken, adAccountId) {
-  try {
-    const campaigns = await fetchCampaignsFromFacebook(
-      accessToken,
-      adAccountId
-    );
-    console.log(
-      `Fetched ${campaigns.length} campaigns from Facebook for account ${adAccountId}`
-    );
-
-    const adsAccount = await findAdsAccountByExternalId(adAccountId);
-    if (!adsAccount) {
-      console.warn(
-        `⚠️ Không tìm thấy AdsAccount trong DB cho ${adAccountId}. Bỏ qua upsert campaigns để tránh ValidationError.`
-      );
-      return [];
-    }
-
-    const { withoutPrefix } = normalizeAccountPair(adAccountId);
-    
-    if (campaigns.length === 0) {
-      return [];
-    }
-
-    // ✅ BULK WRITE: Sử dụng bulkWrite thay vì từng findOneAndUpdate
-    const bulkOps = [];
-    const validCampaigns = [];
-
-    for (const c of campaigns) {
-      try {
-        const data = {
-          shop_id: adsAccount.shop_id || null, // Optional, can be null
-          account_id: adsAccount._id, // required by schema
-          name: c.name,
-          status: c.status,
-          objective: c.objective,
-          external_id: c.id,
-          external_account_id: withoutPrefix, // chuẩn với filter hiện có
-          effective_status: c.effective_status,
-          special_ad_categories: c.special_ad_categories,
-          daily_budget: c.daily_budget,
-          lifetime_budget: c.lifetime_budget,
-          start_time: c.start_time,
-          stop_time: c.stop_time,
-        };
-
-        bulkOps.push({
-          updateOne: {
-            filter: { external_id: c.id },
-            update: { $set: data },
-            upsert: true
-          }
-        });
-        validCampaigns.push(c);
-      } catch (err) {
-        console.error(`Error preparing campaign ${c.id}:`, err.message);
-      }
-    }
-
-    // Thực hiện bulk write
-    if (bulkOps.length > 0) {
-      await AdsCampaign.bulkWrite(bulkOps);
-    }
-
-    // Fetch lại để trả về documents đã upsert
-    const externalIds = validCampaigns.map(c => c.id);
-    const results = externalIds.length > 0 
-      ? await AdsCampaign.find({ external_id: { $in: externalIds } })
-      : [];
-    // Reconcile: soft-delete campaigns that no longer exist on Facebook for this account
-    // ✅ KHÔNG update các items đã ARCHIVED (chúng đã được xóa trên FB nhưng giữ status ARCHIVED)
-    try {
-      const fetchedIds = new Set(campaigns.map((c) => c.id));
-      const now = new Date();
-      await AdsCampaign.updateMany(
-        {
-          external_account_id: withoutPrefix,
-          external_id: { $nin: Array.from(fetchedIds) },
-          status: { $nin: ["DELETED", "ARCHIVED"] }, // ✅ Bỏ qua cả ARCHIVED và DELETED
-        },
-        { $set: { status: "DELETED", deleted_at: now } }
-      );
-    } catch (reconcileErr) {
-      console.warn("⚠️ Reconcile campaigns failed:", reconcileErr?.message || reconcileErr);
-    }
-
-    return results;
-  } catch (err) {
-    console.error(
-      `Error syncing campaigns for account ${adAccountId}:`,
-      err.message
-    );
-    throw err;
-  }
-}
-
-/**
- * Đồng bộ AdSets từ Facebook → DB
- * - Map campaign_id (FB) → _id (Mongo)
- * - Nếu chưa có campaign tương ứng → skip để tránh vi phạm required
- */
-export async function syncAdSetsFromFacebook(accessToken, adAccountId) {
-  try {
-    const adsets = await fetchAdsetsFromFacebook(accessToken, adAccountId);
-    console.log(
-      `Fetched ${adsets.length} adsets from Facebook for account ${adAccountId}`
-    );
-
-    const { withoutPrefix } = normalizeAccountPair(adAccountId);
-    
-    if (adsets.length === 0) {
-      return [];
-    }
-
-    // ✅ BATCH QUERY: Lấy tất cả campaigns một lần thay vì query từng cái (giải quyết N+1 problem)
-    const campaignExternalIds = [...new Set(adsets.map(s => s.campaign_id).filter(Boolean))];
-    const campaignsMap = new Map();
-    
-    if (campaignExternalIds.length > 0) {
-      const campaignsDocs = await AdsCampaign.find({
-        external_id: { $in: campaignExternalIds }
-      });
-      campaignsDocs.forEach(c => campaignsMap.set(c.external_id, c._id));
-    }
-
-    // ✅ BULK WRITE: Sử dụng bulkWrite thay vì từng findOneAndUpdate
-    const bulkOps = [];
-    const validAdsets = [];
-
-    for (const s of adsets) {
-      const campaignId = campaignsMap.get(s.campaign_id);
-      if (!campaignId) {
-        console.warn(
-          `⚠️ Bỏ qua adset ${s.id} vì chưa tìm thấy campaign external_id=${s.campaign_id} trong DB.`
-        );
-        continue;
-      }
-
-      const data = {
-        name: s.name,
-        status: s.status,
-        external_id: s.id,
-        external_account_id: withoutPrefix,
-        campaign_id: campaignId,
-        effective_status: s.effective_status,
-        daily_budget: s.daily_budget,
-        lifetime_budget: s.lifetime_budget,
-        targeting: s.targeting,
-        start_time: s.start_time,
-        end_time: s.end_time,
-        optimization_goal: s.optimization_goal,
-      };
-
-      bulkOps.push({
-        updateOne: {
-          filter: { external_id: s.id },
-          update: { $set: data },
-          upsert: true
-        }
-      });
-      validAdsets.push(s);
-    }
-
-    // Thực hiện bulk write
-    if (bulkOps.length > 0) {
-      await AdsSet.bulkWrite(bulkOps);
-    }
-
-    // Fetch lại để trả về documents đã upsert
-    const externalIds = validAdsets.map(s => s.id);
-    const results = externalIds.length > 0 
-      ? await AdsSet.find({ external_id: { $in: externalIds } })
-      : [];
-    // Reconcile: soft-delete adsets that no longer exist on Facebook for this account
-    // ✅ KHÔNG update các items đã ARCHIVED (chúng đã được xóa trên FB nhưng giữ status ARCHIVED)
-    try {
-      const fetchedIds = new Set(adsets.map((s) => s.id));
-      const now = new Date();
-      await AdsSet.updateMany(
-        {
-          external_account_id: withoutPrefix,
-          external_id: { $nin: Array.from(fetchedIds) },
-          status: { $nin: ["DELETED", "ARCHIVED", "FAILED"] }, // ✅ Bỏ qua cả ARCHIVED và DELETED
-        },
-        { $set: { status: "DELETED", deleted_at: now } }
-      );
-    } catch (reconcileErr) {
-      console.warn("⚠️ Reconcile adsets failed:", reconcileErr?.message || reconcileErr);
-    }
-
-    return results;
-  } catch (err) {
-    console.error(
-      `Error syncing adsets for account ${adAccountId}:`,
-      err.message
-    );
-    throw err;
-  }
-}
-
-/**
- * Đồng bộ Ads từ Facebook → DB
- * - Map adset_id (FB) → _id (Mongo)
- * - Nếu chưa có adset tương ứng → skip để tránh set_id null
- */
-export async function syncAdsFromFacebook(accessToken, adAccountId) {
-  try {
-    const ads = await fetchAdsFromFacebook(accessToken, adAccountId);
-    console.log(
-      `Fetched ${ads.length} ads from Facebook for account ${adAccountId}`
-    );
-
-    const { withoutPrefix } = normalizeAccountPair(adAccountId);
-    
-    if (ads.length === 0) {
-      return [];
-    }
-
-    // ✅ BATCH QUERY: Lấy tất cả adsets một lần thay vì query từng cái (giải quyết N+1 problem)
-    const adsetExternalIds = [...new Set(ads.map(a => a.adset_id).filter(Boolean))];
-    const adsetsMap = new Map();
-    
-    if (adsetExternalIds.length > 0) {
-      const adsetsDocs = await AdsSet.find({
-        external_id: { $in: adsetExternalIds }
-      });
-      adsetsDocs.forEach(a => adsetsMap.set(a.external_id, a._id));
-    }
-
-    // ✅ BULK WRITE: Sử dụng bulkWrite thay vì từng findOneAndUpdate
-    const bulkOps = [];
-    const validAds = [];
-
-    for (const a of ads) {
-      const adsetId = adsetsMap.get(a.adset_id);
-      if (!adsetId) {
-        console.warn(
-          `⚠️ Bỏ qua ad ${a.id} vì chưa tìm thấy adset external_id=${a.adset_id} trong DB.`
-        );
-        continue;
-      }
-
-      const data = {
-        name: a.name,
-        status: a.status,
-        external_id: a.id,
-        external_account_id: withoutPrefix,
-        set_id: adsetId,
-        effective_status: a.effective_status,
-        creative: a.creative,
-      };
-
-      bulkOps.push({
-        updateOne: {
-          filter: { external_id: a.id },
-          update: { $set: data },
-          upsert: true
-        }
-      });
-      validAds.push(a);
-    }
-
-    // Thực hiện bulk write
-    if (bulkOps.length > 0) {
-      await Ads.bulkWrite(bulkOps);
-    }
-
-    // Fetch lại để trả về documents đã upsert
-    const externalIds = validAds.map(a => a.id);
-    const results = externalIds.length > 0 
-      ? await Ads.find({ external_id: { $in: externalIds } })
-      : [];
-    // Reconcile: soft-delete ads that no longer exist on Facebook for this account
-    // ✅ KHÔNG update các items đã ARCHIVED (chúng đã được xóa trên FB nhưng giữ status ARCHIVED)
-    try {
-      const fetchedIds = new Set(ads.map((a) => a.id));
-      const now = new Date();
-      await Ads.updateMany(
-        {
-          external_account_id: withoutPrefix,
-          external_id: { $nin: Array.from(fetchedIds) },
-          status: { $nin: ["DELETED", "ARCHIVED"] }, // ✅ Bỏ qua cả ARCHIVED và DELETED
-        },
-        { $set: { status: "DELETED", deleted_at: now } }
-      );
-    } catch (reconcileErr) {
-      console.warn("⚠️ Reconcile ads failed:", reconcileErr?.message || reconcileErr);
-    }
-
-    return results;
-  } catch (err) {
-    console.error(`Error syncing ads for account ${adAccountId}:`, err.message);
-    throw err;
   }
 }
 
@@ -869,283 +563,6 @@ export async function fetchInsightsForEntities(entityIds, accessToken) {
   }
 }
 
-/**
- * ✅ Batch Sync: Đồng bộ tất cả entities (Campaigns, AdSets, Ads) trong một batch request
- * Giảm từ 3 API calls xuống 1 batch request → tăng hiệu suất đáng kể
- * @param {string} accessToken - Facebook access token
- * @param {string} adAccountId - Facebook ad account ID
- * @returns {Promise<{campaigns: [], adsets: [], ads: []}>}
- */
-export async function syncAllFromFacebook(accessToken, adAccountId) {
-  try {
-    const { withPrefix } = normalizeAccountPair(adAccountId);
-    const url = `${FB_API}/`;
-    
-    // ✅ Batch request: Gộp 3 API calls thành 1
-    const batch = [
-      {
-        method: 'GET',
-        relative_url: `${withPrefix}/campaigns?fields=id,name,status,objective,special_ad_categories,daily_budget,lifetime_budget,start_time,stop_time,effective_status&limit=500`
-      },
-      {
-        method: 'GET',
-        relative_url: `${withPrefix}/adsets?fields=id,name,status,campaign_id,daily_budget,lifetime_budget,optimization_goal,targeting,start_time,end_time,effective_status&limit=500`
-      },
-      {
-        method: 'GET',
-        relative_url: `${withPrefix}/ads?fields=id,name,status,adset_id,creative,effective_status&limit=500`
-      }
-    ];
-
-    const response = await axios.post(url, {
-      batch: JSON.stringify(batch),
-      include_headers: false
-    }, {
-      params: { access_token: accessToken }
-    });
-
-    // Parse kết quả từ batch response
-    const [campaignsData, adsetsData, adsData] = response.data.map((res, index) => {
-      if (res.code === 200) {
-        return JSON.parse(res.body).data || [];
-      }
-      const entityType = ['campaigns', 'adsets', 'ads'][index];
-      const errorBody = res.body ? JSON.parse(res.body) : {};
-      console.warn(`⚠️ Batch sync ${entityType} failed:`, errorBody);
-      return [];
-    });
-
-    console.log(`📊 Batch fetched: ${campaignsData.length} campaigns, ${adsetsData.length} adsets, ${adsData.length} ads`);
-
-    // Xử lý campaigns trước (cần để map relationship)
-    const adsAccount = await findAdsAccountByExternalId(adAccountId);
-    if (!adsAccount) {
-      console.warn(`⚠️ Không tìm thấy AdsAccount cho ${adAccountId}`);
-      return { campaigns: [], adsets: [], ads: [] };
-    }
-
-    const { withoutPrefix } = normalizeAccountPair(adAccountId);
-    
-    // ✅ Xử lý trực tiếp từ batch data (không gọi lại fetch từ Facebook)
-    const campaigns = await processCampaignsBatch(campaignsData, adsAccount, withoutPrefix);
-    
-    // Xử lý adsets (cần campaigns đã được lưu)
-    const adsets = await processAdsetsBatch(adsetsData, withoutPrefix);
-    
-    // Xử lý ads (cần adsets đã được lưu)
-    const ads = await processAdsBatch(adsData, withoutPrefix);
-
-    return { campaigns, adsets, ads };
-  } catch (err) {
-    console.error(`Error batch syncing for account ${adAccountId}:`, err.message);
-    throw err;
-  }
-}
-
-/**
- * Helper: Xử lý campaigns từ batch data
- */
-async function processCampaignsBatch(campaigns, adsAccount, withoutPrefix) {
-  if (campaigns.length === 0) return [];
-
-  const bulkOps = [];
-  const validCampaigns = [];
-
-  for (const c of campaigns) {
-    try {
-      const data = {
-        shop_id: adsAccount.shop_id,
-        account_id: adsAccount._id,
-        name: c.name,
-        status: c.status,
-        objective: c.objective,
-        external_id: c.id,
-        external_account_id: withoutPrefix,
-        effective_status: c.effective_status,
-        special_ad_categories: c.special_ad_categories,
-        daily_budget: c.daily_budget,
-        lifetime_budget: c.lifetime_budget,
-        start_time: c.start_time,
-        stop_time: c.stop_time,
-      };
-
-      bulkOps.push({
-        updateOne: {
-          filter: { external_id: c.id },
-          update: { $set: data },
-          upsert: true
-        }
-      });
-      validCampaigns.push(c);
-    } catch (err) {
-      console.error(`Error preparing campaign ${c.id}:`, err.message);
-    }
-  }
-
-  if (bulkOps.length > 0) {
-    await AdsCampaign.bulkWrite(bulkOps);
-  }
-
-  // Reconcile
-  const fetchedIds = new Set(validCampaigns.map(c => c.id));
-  const now = new Date();
-  await AdsCampaign.updateMany(
-    {
-      external_account_id: withoutPrefix,
-      external_id: { $nin: Array.from(fetchedIds) },
-      status: { $nin: ["DELETED", "ARCHIVED"] },
-    },
-    { $set: { status: "DELETED", deleted_at: now } }
-  );
-
-  const externalIds = validCampaigns.map(c => c.id);
-  return externalIds.length > 0 
-    ? await AdsCampaign.find({ external_id: { $in: externalIds } })
-    : [];
-}
-
-/**
- * Helper: Xử lý adsets từ batch data (đã tối ưu N+1 query)
- */
-async function processAdsetsBatch(adsets, withoutPrefix) {
-  if (adsets.length === 0) return [];
-
-  // ✅ Batch query campaigns một lần
-  const campaignExternalIds = [...new Set(adsets.map(s => s.campaign_id).filter(Boolean))];
-  const campaignsMap = new Map();
-  
-  if (campaignExternalIds.length > 0) {
-    const campaignsDocs = await AdsCampaign.find({
-      external_id: { $in: campaignExternalIds }
-    });
-    campaignsDocs.forEach(c => campaignsMap.set(c.external_id, c._id));
-  }
-
-  const bulkOps = [];
-  const validAdsets = [];
-
-  for (const s of adsets) {
-    const campaignId = campaignsMap.get(s.campaign_id);
-    if (!campaignId) {
-      console.warn(`⚠️ Bỏ qua adset ${s.id} - campaign ${s.campaign_id} không tồn tại`);
-      continue;
-    }
-
-    const data = {
-      name: s.name,
-      status: s.status,
-      external_id: s.id,
-      external_account_id: withoutPrefix,
-      campaign_id: campaignId,
-      effective_status: s.effective_status,
-      daily_budget: s.daily_budget,
-      lifetime_budget: s.lifetime_budget,
-      targeting: s.targeting,
-      start_time: s.start_time,
-      end_time: s.end_time,
-      optimization_goal: s.optimization_goal,
-    };
-
-    bulkOps.push({
-      updateOne: {
-        filter: { external_id: s.id },
-        update: { $set: data },
-        upsert: true
-      }
-    });
-    validAdsets.push(s);
-  }
-
-  if (bulkOps.length > 0) {
-    await AdsSet.bulkWrite(bulkOps);
-  }
-
-  // Reconcile
-  const fetchedIds = new Set(validAdsets.map(s => s.id));
-  const now = new Date();
-  await AdsSet.updateMany(
-    {
-      external_account_id: withoutPrefix,
-      external_id: { $nin: Array.from(fetchedIds) },
-      status: { $nin: ["DELETED", "ARCHIVED", "FAILED"] },
-    },
-    { $set: { status: "DELETED", deleted_at: now } }
-  );
-
-  const externalIds = validAdsets.map(s => s.id);
-  return externalIds.length > 0 
-    ? await AdsSet.find({ external_id: { $in: externalIds } })
-    : [];
-}
-
-/**
- * Helper: Xử lý ads từ batch data (đã tối ưu N+1 query)
- */
-async function processAdsBatch(ads, withoutPrefix) {
-  if (ads.length === 0) return [];
-
-  // ✅ Batch query adsets một lần
-  const adsetExternalIds = [...new Set(ads.map(a => a.adset_id).filter(Boolean))];
-  const adsetsMap = new Map();
-  
-  if (adsetExternalIds.length > 0) {
-    const adsetsDocs = await AdsSet.find({
-      external_id: { $in: adsetExternalIds }
-    });
-    adsetsDocs.forEach(a => adsetsMap.set(a.external_id, a._id));
-  }
-
-  const bulkOps = [];
-  const validAds = [];
-
-  for (const a of ads) {
-    const adsetId = adsetsMap.get(a.adset_id);
-    if (!adsetId) {
-      console.warn(`⚠️ Bỏ qua ad ${a.id} - adset ${a.adset_id} không tồn tại`);
-      continue;
-    }
-
-    const data = {
-      name: a.name,
-      status: a.status,
-      external_id: a.id,
-      external_account_id: withoutPrefix,
-      set_id: adsetId,
-      effective_status: a.effective_status,
-      creative: a.creative,
-    };
-
-    bulkOps.push({
-      updateOne: {
-        filter: { external_id: a.id },
-        update: { $set: data },
-        upsert: true
-      }
-    });
-    validAds.push(a);
-  }
-
-  if (bulkOps.length > 0) {
-    await Ads.bulkWrite(bulkOps);
-  }
-
-  // Reconcile
-  const fetchedIds = new Set(validAds.map(a => a.id));
-  const now = new Date();
-  await Ads.updateMany(
-    {
-      external_account_id: withoutPrefix,
-      external_id: { $nin: Array.from(fetchedIds) },
-      status: { $nin: ["DELETED", "ARCHIVED"] },
-    },
-    { $set: { status: "DELETED", deleted_at: now } }
-  );
-
-  const externalIds = validAds.map(a => a.id);
-  return externalIds.length > 0 
-    ? await Ads.find({ external_id: { $in: externalIds } })
-    : [];
-}
 
 /**
  * Fetch account insights với breakdowns từ Facebook Graph API
@@ -1185,6 +602,9 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
       'cost_per_conversion',
       'purchase_roas',
       'website_purchase_roas',
+      'quality_ranking',
+      'engagement_rate_ranking',
+      'conversion_rate_ranking',
     ];
 
     const needActions = options.needActions === true;
@@ -1197,12 +617,16 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
       access_token: accessToken
     });
 
-    const rawTimeIncrement = options.timeIncrement ?? 1;
-    const numericTimeIncrement = Number(rawTimeIncrement);
-    const resolvedTimeIncrement = Number.isFinite(numericTimeIncrement)
-      ? Math.max(1, Math.floor(numericTimeIncrement))
-      : 1;
-    params.set('time_increment', String(resolvedTimeIncrement));
+    if (options.timeIncrement === 'all_days') {
+      params.set('time_increment', 'all_days');
+    } else {
+      const rawTimeIncrement = options.timeIncrement ?? 1;
+      const numericTimeIncrement = Number(rawTimeIncrement);
+      const resolvedTimeIncrement = Number.isFinite(numericTimeIncrement)
+        ? Math.max(1, Math.floor(numericTimeIncrement))
+        : 1;
+      params.set('time_increment', String(resolvedTimeIncrement));
+    }
 
     if (needActions && options.actionBreakdowns) {
       params.set('action_breakdowns', options.actionBreakdowns);
@@ -1212,18 +636,21 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
       params.set('breakdowns', options.breakdowns);
     }
 
-    // Xử lý time_range
-    if (options.timeRange) {
+    // Xử lý time_range và date_preset
+    if (options.datePreset) {
+      // Nếu có datePreset (ví dụ: 'lifetime'), dùng date_preset parameter
+      params.set('date_preset', options.datePreset);
+    } else if (options.timeRange) {
       if (typeof options.timeRange === 'string') {
-        // Nếu là preset (ví dụ: 'last_30d')
-        params.set('time_range', JSON.stringify({ preset: options.timeRange }));
+        // Nếu là preset string (ví dụ: 'last_30d')
+        params.set('date_preset', options.timeRange);
       } else if (typeof options.timeRange === 'object') {
         // Nếu là object { since: 'YYYY-MM-DD', until: 'YYYY-MM-DD' }
         params.set('time_range', JSON.stringify(options.timeRange));
       }
     } else {
       // Mặc định là last_30d
-      params.set('time_range', JSON.stringify({ preset: 'last_30d' }));
+      params.set('date_preset', 'last_30d');
     }
     
     console.log('[fbAdsService] Fetching account insights', {
@@ -1456,20 +883,46 @@ export async function fetchAccountInsights(accessToken, adAccountId, options = {
           );
           item.website_purchases = pw ? Number(pw.value || 0) : 0;
           
+          // Leads
+          const lead = item.actions.find(a => a.action_type === 'lead');
+          item.leads = lead ? Number(lead.value || 0) : 0;
+
+          // Mobile App Install
+          const install = item.actions.find(a => a.action_type === 'mobile_app_install');
+          item.mobile_app_install = install ? Number(install.value || 0) : 0;
+
+          // Post Engagement
+          const engagement = item.actions.find(a => a.action_type === 'post_engagement');
+          item.post_engagement = engagement ? Number(engagement.value || 0) : 0;
+
           if (!item.results) {
             const purchaseAction = item.actions.find(a => a.action_type === 'purchase');
             item.results = purchaseAction ? Number(purchaseAction.value || 0) : 0;
           }
         } else {
           item.website_purchases = 0;
+          item.leads = 0;
+          item.mobile_app_install = 0;
+          item.post_engagement = 0;
           if (!item.results) {
             item.results = 0;
           }
+        }
+
+        // Calculate Costs
+        if (item.leads > 0 && item.spend) {
+          item.cost_per_lead = Number(item.spend) / item.leads;
+        }
+        if (item.mobile_app_install > 0 && item.spend) {
+          item.cost_per_mobile_app_install = Number(item.spend) / item.mobile_app_install;
         }
       }
     } else {
       insightsData.forEach(item => {
         item.website_purchases = item.results || 0;
+        item.leads = 0;
+        item.mobile_app_install = 0;
+        item.post_engagement = 0;
       });
     }
     
@@ -1628,8 +1081,7 @@ export async function saveInsightsToAdPerformance(insightsData, accountId) {
           adset_name: item.adset_name || null,
           ad_name: item.ad_name || null,
           page_name: item.page_name || adset?.page_name || campaign?.page_name || null,
-          objective: item.objective || campaign?.objective || null,
-
+          
           daily_budget: null,
           daily_spend_rate: null,
           total_amount_spent: parseFloat(item.spend) || 0,
@@ -1675,6 +1127,14 @@ export async function saveInsightsToAdPerformance(insightsData, accountId) {
           cost_per_result: item.cost_per_result ? parseFloat(item.cost_per_result) : null,
           
           audience_reach_percentage: item.audience_reach_percentage ?? null,
+
+          // New metrics
+          quality_ranking: item.quality_ranking || null,
+          post_engagement: item.post_engagement || 0,
+          leads: item.leads || 0,
+          cost_per_lead: item.cost_per_lead || null,
+          mobile_app_install: item.mobile_app_install || 0,
+          cost_per_mobile_app_install: item.cost_per_mobile_app_install || null,
         };
 
         if (adset?.daily_budget) {
@@ -1760,167 +1220,5 @@ function resolveInsightAt(item, fallback) {
   return date;
 }
 
-export async function saveInsightsToAdHourlyCollection(insightsData, accountId) {
-  if (!insightsData || !Array.isArray(insightsData) || insightsData.length === 0) {
-    return { saved: 0, skipped: 0 };
-  }
-
-  try {
-    const account = await AdsAccount.findById(accountId).lean();
-    if (!account) {
-      console.warn(`⚠️ Account ${accountId} not found, skipping hourly save`);
-      return { saved: 0, skipped: insightsData.length };
-    }
-
-    const adExternalIds = [...new Set(insightsData.map(item => item?.ad_id).filter(Boolean))];
-    if (adExternalIds.length === 0) {
-      return { saved: 0, skipped: insightsData.length };
-    }
-
-    const [adsDocs, adsetsDocs, campaignsDocs] = await Promise.all([
-      Ads.find({ external_id: { $in: adExternalIds } }),
-      AdsSet.find({ external_id: { $in: [...new Set(insightsData.map(item => item?.adset_id).filter(Boolean))] } }),
-      AdsCampaign.find({ external_id: { $in: [...new Set(insightsData.map(item => item?.campaign_id).filter(Boolean))] } })
-    ]);
-
-    const adsMap = new Map(adsDocs.map(ad => [ad.external_id, ad]));
-    const adsetsMap = new Map(adsetsDocs.map(adset => [adset.external_id, adset]));
-    const campaignsMap = new Map(campaignsDocs.map(campaign => [campaign.external_id, campaign]));
-
-    let saved = 0;
-    let skipped = 0;
-
-    for (const item of insightsData) {
-      try {
-        if (!item?.ad_id) {
-          skipped++;
-          continue;
-        }
-
-        const ad = adsMap.get(item.ad_id);
-        if (!ad) {
-          skipped++;
-          continue;
-        }
-
-        const adset = item.adset_id ? adsetsMap.get(item.adset_id) : null;
-        const campaign = item.campaign_id ? campaignsMap.get(item.campaign_id) : null;
-
-        let retrievedAt = item.retrieved_at ? new Date(item.retrieved_at) : new Date();
-        if (Number.isNaN(retrievedAt.getTime())) {
-          retrievedAt = new Date();
-        }
-        const retrievedAtHour = toHourFloor(retrievedAt);
-        const insightAt = resolveInsightAt(item, retrievedAtHour);
-
-        const spendValue = Number(item.spend ?? 0) || 0;
-        const derivedDailyBudget = (() => {
-          if (item.daily_budget !== undefined) return Number(item.daily_budget) || 0;
-          if (adset?.daily_budget) return Number(adset.daily_budget) / 100;
-          if (campaign?.daily_budget) return Number(campaign.daily_budget) / 100;
-          return 0;
-        })();
-
-        const document = {
-          account_id: account._id,
-          campaign_id: campaign?._id || null,
-          adset_id: adset?._id || null,
-          ad_id: ad._id,
-
-          account_external_id: account.external_id || null,
-          campaign_external_id: item.campaign_id || campaign?.external_id || null,
-          adset_external_id: item.adset_id || adset?.external_id || null,
-          ad_external_id: item.ad_id || ad.external_id || null,
-
-          delivery_status: item.delivery || item.delivery_status || null,
-
-          impressions: Number(item.impressions ?? 0) || 0,
-          reach: Number(item.reach ?? 0) || 0,
-          clicks: Number(item.clicks ?? item.inline_link_clicks ?? 0) || 0,
-          spend: spendValue,
-          conversions: Number(item.conversions ?? item.results ?? 0) || 0,
-          frequency: Number(item.frequency ?? 0) || 0,
-
-          cpc: item.cpc !== undefined ? Number(item.cpc) : null,
-          cpm: item.cpm !== undefined ? Number(item.cpm) : null,
-          ctr: item.ctr !== undefined ? Number(item.ctr) : null,
-          conversion_rate: item.conversion_rate !== undefined ? Number(item.conversion_rate) : null,
-          cost_per_conversion: item.cost_per_conversion !== undefined ? Number(item.cost_per_conversion) : null,
-
-          results: (() => {
-            if (Array.isArray(item.results)) {
-              return item.results.reduce((sum, res) => sum + Number(res?.value ?? 0), 0);
-            }
-            return item.results !== undefined ? Number(item.results) || 0 : Number(item.website_purchases ?? 0) || 0;
-          })(),
-          cost_per_result: item.cost_per_result !== undefined ? Number(item.cost_per_result) : null,
-
-          campaign_name: item.campaign_name || campaign?.name || null,
-          adset_name: item.adset_name || adset?.name || null,
-          ad_name: item.ad_name || ad?.name || null,
-          page_name: item.page_name || adset?.page_name || campaign?.page_name || null,
-
-          daily_budget: derivedDailyBudget,
-          daily_spend_rate:
-            derivedDailyBudget > 0 && spendValue > 0
-              ? (spendValue / derivedDailyBudget) * 100
-              : null,
-          total_amount_spent: Number(item.total_amount_spent ?? spendValue) || 0,
-
-          link_clicks: Number(item.link_clicks ?? item.inline_link_clicks ?? 0) || 0,
-          link_cpc: item.link_cpc !== undefined
-            ? Number(item.link_cpc)
-            : (item.cost_per_inline_link_click !== undefined ? Number(item.cost_per_inline_link_click) : null),
-          link_ctr: item.link_ctr !== undefined
-            ? Number(item.link_ctr)
-            : (item.inline_link_click_ctr !== undefined ? Number(item.inline_link_click_ctr) : null),
-
-          website_purchases: Number(item.website_purchases ?? item.results ?? 0) || 0,
-          website_purchase_roas: (() => {
-            if (Array.isArray(item.website_purchase_roas)) {
-              return Number(item.website_purchase_roas[0]?.value ?? null);
-            }
-            if (typeof item.website_purchase_roas === 'number') {
-              return Number(item.website_purchase_roas);
-            }
-            if (Array.isArray(item.purchase_roas)) {
-              return Number(item.purchase_roas[0]?.value ?? null);
-            }
-            if (typeof item.purchase_roas === 'number') {
-              return Number(item.purchase_roas);
-            }
-            return null;
-          })(),
-
-          audience_reach_percentage: item.audience_reach_percentage !== undefined
-            ? Number(item.audience_reach_percentage)
-            : null,
-
-          rule_evaluations: item.rule_evaluations || {},
-
-          insight_at: insightAt,
-          retrieved_at: retrievedAt,
-          retrieved_at_hour: retrievedAtHour,
-          meta: item.meta || {},
-        };
-
-        await AdHourlyInsight.findOneAndUpdate(
-          { ad_id: document.ad_id, retrieved_at_hour: document.retrieved_at_hour },
-          { $set: document },
-          { upsert: true, new: true }
-        );
-
-        saved++;
-      } catch (itemError) {
-        console.error('Error saving hourly insight item:', itemError.message);
-        skipped++;
-      }
-    }
-
-    return { saved, skipped };
-  } catch (error) {
-    console.error('Error saving hourly insights:', error.message);
-    throw error;
-  }
-}
-
+// ❌ REMOVED: saveInsightsToAdHourlyCollection() - Dead code, not used anywhere
+// AdHourlyInsight feature has been disabled

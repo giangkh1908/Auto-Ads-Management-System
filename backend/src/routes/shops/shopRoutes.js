@@ -15,8 +15,7 @@ import {
     connectFacebookPage, 
     disconnectFacebookPage,
     updatePageStatus,
-    refreshFacebookToken,
-    refreshUserFacebookPages 
+    refreshFacebookToken 
 } from "../../controllers/shops/shopControllers.js";
 import { authenticate, authorizeInShop } from "../../middlewares/auth.middleware.js";
 
@@ -48,6 +47,5 @@ router.post("/facebook/connect", authenticate, connectFacebookPage);
 router.post("/facebook/disconnect", authenticate, disconnectFacebookPage);
 router.patch("/facebook/page-status", authenticate, updatePageStatus);
 router.post("/facebook/refresh-token", authenticate, refreshFacebookToken);
-router.post("/facebook/refresh-user-pages", authenticate, refreshUserFacebookPages);
 
 export default router;

@@ -36,7 +36,7 @@ const packageSchema = new mongoose.Schema(
 
     planType: {
       type: String,
-      enum: ["3months", "12months"],
+      enum: ["3months", "6months", "1year"],
       required: true,
     },
 

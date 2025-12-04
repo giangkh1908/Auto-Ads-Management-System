@@ -904,11 +904,6 @@ export const getCurrentUser = async (req, res) => {
         shop_id: shopId,
         status: "active",
       }).lean();
-      
-      // ✅ Đảm bảo shop được populate với facebook_pages
-      if (!shop) {
-        shop = await Shop.findById(shopId).lean();
-      }
     }
 
     // Thêm shop_id vào user object để frontend dùng
@@ -921,7 +916,7 @@ export const getCurrentUser = async (req, res) => {
       success: true,
       data: {
         user: userWithShop,
-        shop, // ✅ Shop model có facebook_pages (nguồn chính)
+        shop,
         shopUser,
       },
     });
