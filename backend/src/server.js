@@ -25,6 +25,7 @@ import creativeRoutes from "./routes/ads/creativeRoutes.js";
 import adPerformanceRoutes from "./routes/ads/adPerformanceRoutes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import locationRoutes from "./routes/ads/locationRoutes.js";
+import targetingRoutes from "./routes/ads/targetingRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import aiRoutes from "./routes/ai/aiRoutes.js";
 import chatRoutes from "./routes/ai/chatRoutes.js";

@@ -702,6 +702,10 @@ function AdsManagement() {
   const clickTimeoutRef = useRef(null);
 
   const handleCampaignClick = (campaign) => {
+    // show loading while switching to adsets view
+    setSwitchingAccount(true);
+    selectCampaign(campaign);
+    setActiveTab("adsets");
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
     }

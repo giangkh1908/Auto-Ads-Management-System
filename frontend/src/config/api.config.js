@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
     LIST: `${API_CONFIG.BASE_URL}/api/users`,
     CUSTOMERS: `${API_CONFIG.BASE_URL}/api/users/customers`,
     INTERNAL: `${API_CONFIG.BASE_URL}/api/users/internal-staff`,
+    INTERNAL_ROLES: `${API_CONFIG.BASE_URL}/api/users/internal-roles`,
     DETAIL: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}`,
     SHOPS: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}/shops`,
     CREATE: `${API_CONFIG.BASE_URL}/api/users`,

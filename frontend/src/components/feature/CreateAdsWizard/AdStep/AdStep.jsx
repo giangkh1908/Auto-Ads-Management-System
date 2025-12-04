@@ -157,7 +157,6 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
   // AI context tracking
   const [aiProvider, setAiProvider] = useState('openai');
   const [contextId, setContextId] = useState(null);
-  const [selectedConfigId, setSelectedConfigId] = useState(null);
   const [isGenerating, setIsGenerating] = useState({
     headline: false,
     primaryText: false,

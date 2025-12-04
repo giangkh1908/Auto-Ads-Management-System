@@ -30,6 +30,7 @@ import Bank from "./pages/CheckOut/Bank/Bank.jsx";
 import VerifyEmail from "./pages/VerifyEmail/VerifyEmail.jsx";
 import ResetPassword from "./pages/ResetPassword/ResetPassword.jsx";
 import Profile from "./pages/Profile/Profile.jsx";
+import TransactionHistory from "./pages/TransactionHistory/TransactionHistory.jsx";
 import MyShop from "./pages/Shop/MyShop.jsx";
 import Employee from "./pages/Shop/Employee.jsx";
 import History from "./pages/Shop/History.jsx";
@@ -361,6 +362,18 @@ function AppContentInner() {
             <ProtectedRoute>
               <main className="page-content">
                 <Profile />
+              </main>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Route cho Transaction History */}
+        <Route
+          path={ROUTES.USER_TRANSACTION}
+          element={
+            <ProtectedRoute>
+              <main className="page-content">
+                <TransactionHistory />
               </main>
             </ProtectedRoute>
           }
