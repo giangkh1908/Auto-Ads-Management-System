@@ -7,11 +7,11 @@ import "./Shop.css";
 import { toast } from "sonner";
 import { STORAGE_KEYS } from '../../constants/app.constants';
 import { useParams } from "react-router-dom";
-import axiosInstance from "../../utils/axios.js";
-import { getShopCache, saveShopCache } from "../../utils/shopCache";
+import axiosInstance from "../../utils/api/axios.js";
+import { getShopCache, saveShopCache } from "../../utils/cache/shopCache";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup.jsx";
 import noAvatar from "../../assets/no-avatar.jpg";
-import { useMyPackage } from "../../hooks/useMyPackage";
+import { useMyPackage } from "../../hooks/shop/useMyPackage";
 
 function Employee() {
   const { t } = useTranslation();
@@ -238,7 +238,7 @@ function Employee() {
         const errorMessage =
           data.error?.message || data.message || "Không thể cập nhật vai trò";
         toast.error(errorMessage);
-        
+
         // Reset dropdown về role cũ
         setEmployees((prev) =>
           prev.map((emp) =>
@@ -253,7 +253,7 @@ function Employee() {
         err.response?.data?.message ||
         "Lỗi khi cập nhật vai trò";
       toast.error(errorMessage);
-      
+
       // Reset dropdown về role cũ
       setEmployees((prev) =>
         prev.map((emp) =>
@@ -313,20 +313,20 @@ function Employee() {
   // Helper function để kiểm tra quyền xóa employee
   const canRemoveEmployee = (employeeRole, currentUserRole) => {
     if (!currentUserRole) return false;
-    
+
     // Marketer không thể xóa ai cả
     if (currentUserRole === "Marketer") return false;
-    
+
     // Marketing Admin có thể xóa Marketing Admin và Marketer (nhưng không thể xóa Shop Owner)
     if (currentUserRole === "Marketing Admin") {
       return ["Marketing Admin", "Marketer"].includes(employeeRole);
     }
-    
+
     // Shop Owner có thể xóa tất cả trừ Shop Owner
     if (currentUserRole === "Shop Owner") {
       return employeeRole !== "Shop Owner";
     }
-    
+
     return false;
   };
 
@@ -340,7 +340,7 @@ function Employee() {
         setIsRelinquishOpen(true);
         return;
       }
-      
+
       if (action === "remove") {
         // Tìm employee để lấy thông tin hiển thị trong popup
         const employee = employees.find((emp) => emp.id === userId);
@@ -348,7 +348,7 @@ function Employee() {
         setIsRemoveOpen(true);
         return;
       }
-      
+
       let newStatus = "";
       if (action === "activate") newStatus = "active";
       else if (action === "deactivate") newStatus = "inactive";
@@ -370,8 +370,8 @@ function Employee() {
           newStatus === "active"
             ? "Đã kích hoạt nhân viên thành công!"
             : newStatus === "inactive"
-            ? "Đã vô hiệu hóa nhân viên thành công!"
-            : data.message || "Cập nhật trạng thái thành công!";
+              ? "Đã vô hiệu hóa nhân viên thành công!"
+              : data.message || "Cập nhật trạng thái thành công!";
 
         toast.success(statusMessage);
 
@@ -436,7 +436,7 @@ function Employee() {
     // Kiểm tra employee limit
     const employeeLimit = pkg?.limits?.employees || 1;
     const currentEmployeeCount = pkg?.usage?.employees || 0;
-    
+
     if (currentEmployeeCount >= employeeLimit) {
       toast.error(`Đã đạt giới hạn số lượng nhân viên (${currentEmployeeCount}/${employeeLimit}). Vui lòng nâng cấp gói dịch vụ để thêm nhân viên.`);
       return;
@@ -537,7 +537,7 @@ function Employee() {
         // (Backend đã xóa hoàn toàn ShopUser và UserRole)
         const reloadRes = await axiosInstance.get(`/api/shop-users/${actualShopId}`);
         const reloadData = reloadRes.data;
-        
+
         if (reloadData.success) {
           const safeEmployees = reloadData.data.map((emp) => ({
             id: emp.user_id,
@@ -692,7 +692,7 @@ function Employee() {
                 Nhân viên: {pkg?.usage?.employees || 0}/{pkg?.limits?.employees || 1}
               </span>
             )}
-            <button 
+            <button
               className={`btn-add-new-page ${!pkg?.package ? 'premium-feature' : ''} ${pkg?.package && (pkg?.usage?.employees || 0) >= (pkg?.limits?.employees || 1) ? 'disabled' : ''}`}
               onClick={handleAddNewEmployee}
               title={pkg?.package && (pkg?.usage?.employees || 0) >= (pkg?.limits?.employees || 1) ? `Đã đạt giới hạn nhân viên (${pkg?.usage?.employees || 0}/${pkg?.limits?.employees || 1})` : (!pkg?.package ? 'Tính năng này yêu cầu gói dịch vụ' : '')}
@@ -729,33 +729,33 @@ function Employee() {
 
                 {filteredEmployees.map((employee) => (
                   <div key={employee.id} className="table-row-employee">
-                  <div className="employee-avatar">
-                          <img
-                            src={employee.avatar || noAvatar}
-                            alt={employee.name}
-                            onError={(e) => {
-                              // Nếu cả avatar và fallback đều lỗi, hiển thị chữ cái đầu
-                              e.target.style.display = "none";
-                              const fallback =
-                                e.target.parentElement.querySelector(
-                                  ".avatar-fallback"
-                                );
-                              if (fallback) fallback.style.display = "flex";
-                            }}
-                          />
-                          <span
-                            className="avatar-fallback"
-                            style={{ display: "none" }}
-                          >
-                            {employee.name ? employee.name.charAt(0) : "?"}
-                          </span>
-                        </div>
+                    <div className="employee-avatar">
+                      <img
+                        src={employee.avatar || noAvatar}
+                        alt={employee.name}
+                        onError={(e) => {
+                          // Nếu cả avatar và fallback đều lỗi, hiển thị chữ cái đầu
+                          e.target.style.display = "none";
+                          const fallback =
+                            e.target.parentElement.querySelector(
+                              ".avatar-fallback"
+                            );
+                          if (fallback) fallback.style.display = "flex";
+                        }}
+                      />
+                      <span
+                        className="avatar-fallback"
+                        style={{ display: "none" }}
+                      >
+                        {employee.name ? employee.name.charAt(0) : "?"}
+                      </span>
+                    </div>
                     <div
                       className="table-cell-name"
                       data-label={t("shop.name")}
                     >
                       <div className="shop-name">
-                        
+
                         <span>{employee.name}</span>
                       </div>
                     </div>
@@ -764,7 +764,7 @@ function Employee() {
                     </div>
                     <div
                       className="table-cell"
-                      // data-label={t("shop.page_count")}
+                    // data-label={t("shop.page_count")}
                     >
                       <button
                         className="btn-assign-page"
@@ -837,8 +837,8 @@ function Employee() {
                             >
                               <Hand size={14} />
                             </button>
-                            )}
-                        
+                          )}
+
                         {/* Button remove - chỉ hiển thị khi có quyền xóa */}
                         {canRemoveEmployee(employee.role, currentUserRole) && (
                           <button

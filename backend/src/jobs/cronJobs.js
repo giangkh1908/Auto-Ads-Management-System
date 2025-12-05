@@ -1,8 +1,8 @@
 import cron from "node-cron";
 import AdsAccount from "../models/ads/adsAccount.model.js";
-import { syncInsightsForAccount } from "../services/insightsSyncService.js";
-import { syncEntitiesForAccount } from "../services/entitySyncService.js";
-import User from "../models/user.model.js";
+import { syncInsightsForAccount } from "../services/ads/insightsSyncService.js";
+import { syncEntitiesForAccount } from "../services/ads/entitySyncService.js";
+import User from "../models/user/user.model.js";
 import pLimit from "p-limit";
 
 export function startSyncCronJobs() {

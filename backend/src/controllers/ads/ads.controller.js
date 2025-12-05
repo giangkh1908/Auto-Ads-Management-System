@@ -2,25 +2,22 @@
 import Ads from "../../models/ads/ads.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
 import AdsAccount from "../../models/ads/adsAccount.model.js";
-import { fetchAdsFromFacebook, updateAdStatus, deleteEntity, fetchAdInsights } from "../../services/fbAdsService.js";
-import User from "../../models/user.model.js";
-import { syncEntitiesForAccount } from "../../services/entitySyncService.js";
+import { fetchAdsFromFacebook, updateAdStatus, deleteEntity, fetchAdInsights } from "../../services/ads/fbAdsService.js";
+import User from "../../models/user/user.model.js";
+import { syncEntitiesForAccount } from "../../services/ads/entitySyncService.js";
 
-// Helper function để extract string ID từ ObjectId format
+// Helper function to extract string ID from ObjectId format
 function extractObjectId(value) {
   if (!value) return null;
   if (typeof value === 'string') {
     const match = value.match(/[0-9a-fA-F]{24}/);
     return match ? match[0] : null;
   }
-  if (value.$oid) return value.$oid; // trong trường hợp Mongo xuất ra kiểu { $oid: '...' }
+  if (value.$oid) return value.$oid; // If MongoDB exports ObjectId as { $oid: '...' }
   return value.toString();
 }
 
-/**
- * GET /api/ads/database
- * Lấy ad từ database theo ad_id hoặc campaign_id
- */
+// Get ad from database by ad_id or campaign_id
 export async function getAdFromDatabase(req, res) {
   try {
     const { ad_id, campaign_id } = req.query;
@@ -32,7 +29,7 @@ export async function getAdFromDatabase(req, res) {
       });
     }
 
-    // Extract và validate ad_id nếu có
+    // Extract and validate ad_id if provided
     const cleanAdId = extractObjectId(ad_id);
     if (ad_id && !cleanAdId) {
       return res.status(400).json({
@@ -41,7 +38,7 @@ export async function getAdFromDatabase(req, res) {
       });
     }
 
-    // Extract và validate campaign_id nếu có
+    // Extract and validate campaign_id if provided
     const cleanCampaignId = extractObjectId(campaign_id);
     if (campaign_id && !cleanCampaignId) {
       return res.status(400).json({
@@ -54,7 +51,7 @@ export async function getAdFromDatabase(req, res) {
     if (cleanAdId) {
       ad = await Ads.findById(cleanAdId).populate('created_by', 'full_name email');
     } else if (cleanCampaignId) {
-      // Tìm ads thông qua campaign_id
+      // Find ads by campaign_id
       const ads = await Ads.find({ 
         $or: [
           { campaign_id: cleanCampaignId },
@@ -90,10 +87,7 @@ export async function getAdFromDatabase(req, res) {
   }
 }
 
-/**
- * GET /api/ads
- * Lấy danh sách quảng cáo
- */
+// Get list of ads
 export async function listAdsCtrl(req, res) {
   try {
     const { account_id, adset_id, q, status, page = 1, limit = 10, fetch_all = false } = req.query;
@@ -234,6 +228,7 @@ export async function listAdsCtrl(req, res) {
   }
 }
 
+// Helper function to normalize account ID
 function normalizeAccountPair(accountId) {
   const hasPrefix = String(accountId).startsWith("act_");
   const withPrefix = hasPrefix ? String(accountId) : `act_${accountId}`;
@@ -241,10 +236,7 @@ function normalizeAccountPair(accountId) {
   return { withPrefix, withoutPrefix };
 }
 
-/**
- * GET /api/ads/live
- * Lấy danh sách quảng cáo (ads) trực tiếp từ Facebook VÀ lưu vào DB
- */
+// Get list of ads directly from Facebook AND save to DB
 export async function getAdsLiveCtrl(req, res) {
   try {
     const { account_id } = req.query;
@@ -332,10 +324,7 @@ export async function getAdsLiveCtrl(req, res) {
   }
 }
 
-/**
- * GET /api/ads/insights
- * Lấy insights cho danh sách ads (ids=comma,separated)
- */
+// Get insights for list of ads (ids=comma,separated)
 export async function getAdsInsightsCtrl(req, res) {
   try {
     const { ids } = req.query;
@@ -369,10 +358,7 @@ export async function getAdsInsightsCtrl(req, res) {
   }
 }
 
-/**
- * PATCH /api/ads/:id/status
- * Bật/Tắt ad trực tiếp trên Facebook
- */
+// Toggle ad status directly on Facebook
 export async function toggleAdStatusCtrl(req, res) {
   try {
     const { id } = req.params; // Facebook ad id
@@ -391,6 +377,7 @@ export async function toggleAdStatusCtrl(req, res) {
   }
 }
 
+// Delete ad from Facebook AND DB 
 export async function deleteAdCtrl(req, res) {
   try {
     const { id } = req.params;
@@ -398,10 +385,10 @@ export async function deleteAdCtrl(req, res) {
     if (!ad)
       return res.status(404).json({ message: "Không tìm thấy quảng cáo." });
 
-    // Lấy access token từ user hoặc query (ưu tiên query)
+    // Get access token from user or query (prefer query)
     let accessToken = req.user?.facebookAccessToken || req.query.access_token || null;
 
-    // Nếu chưa có token trong user, thử lấy từ DB
+    // If no token in user, try to get from DB
     if (!accessToken && req.user?._id) {
       const user = await User.findById(req.user._id).select("+facebookAccessToken");
       accessToken = user?.facebookAccessToken || null;
@@ -411,7 +398,7 @@ export async function deleteAdCtrl(req, res) {
       console.warn("Không có Facebook access_token — chỉ xóa mềm trong DB, bỏ qua Facebook API.");
     }
 
-    // Thực hiện xoá thật trên Facebook nếu có token & external_id
+    // Delete ad from Facebook if has token & external_id
     if (accessToken && ad.external_id) {
       try {
         const deleted = await deleteEntity(ad.external_id, accessToken);
@@ -425,7 +412,7 @@ export async function deleteAdCtrl(req, res) {
       }
     }
 
-    // Xoá mềm trong DB (giữ lại record để không bị sync lại)
+    // Soft delete ad in DB (keep record to prevent sync)
     await Ads.findByIdAndUpdate(id, {
       status: "DELETED",
       deleted_at: new Date(),
@@ -444,10 +431,7 @@ export async function deleteAdCtrl(req, res) {
   }
 }
 
-/**
- * POST /api/ads/:id/archive
- * Archive ad (set status ARCHIVED thay vì DELETED)
- */
+// Archive ad (set status ARCHIVED instead of DELETED)
 export async function archiveAdCtrl(req, res) {
   try {
     const { id } = req.params;
@@ -455,10 +439,10 @@ export async function archiveAdCtrl(req, res) {
     if (!ad)
       return res.status(404).json({ message: "Không tìm thấy quảng cáo." });
 
-    // Lấy access token từ user hoặc query (ưu tiên query)
+    // Get access token from user or query (prefer query)
     let accessToken = req.user?.facebookAccessToken || req.query.access_token || null;
 
-    // Nếu chưa có token trong user, thử lấy từ DB
+    // If no token in user, try to get from DB
     if (!accessToken && req.user?._id) {
       const user = await User.findById(req.user._id).select("+facebookAccessToken");
       accessToken = user?.facebookAccessToken || null;
@@ -472,7 +456,7 @@ export async function archiveAdCtrl(req, res) {
       });
     }
 
-    // Thực hiện xóa trên Facebook nếu có token & external_id (giống delete)
+    // Delete ad from Facebook if has token & external_id
     if (accessToken && ad.external_id) {
       try {
         await deleteEntity(ad.external_id, accessToken);
@@ -482,7 +466,7 @@ export async function archiveAdCtrl(req, res) {
       }
     }
 
-    // Cập nhật status ARCHIVED trong DB
+    // Update status ARCHIVED in DB
     await Ads.findByIdAndUpdate(id, {
       status: "ARCHIVED",
       updated_at: new Date(),
@@ -501,10 +485,7 @@ export async function archiveAdCtrl(req, res) {
   }
 }
 
-/**
- * POST /api/ads/:id/copy
- * Tạo bản sao một Ad (DB only)
- */
+// Copy an Ad (DB only)
 export async function copyAdCtrl(req, res) {
   try {
     const { id } = req.params;

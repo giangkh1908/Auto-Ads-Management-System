@@ -6,18 +6,18 @@ import "./ArchiveAds.css";
 import CreateAdsWizard from "../../components/feature/CreateAdsWizard/CreateAdsWizard";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 import ProgressPopup from "../../components/common/ProgressPopup/Progress";
-import { handleSelectAll, handleSelectItem } from "../../utils/selectionUtils";
+import { handleSelectAll, handleSelectItem } from "../../utils/business-logic/selectionUtils";
 import {
   deleteCampaign,
   deleteAdSet,
   deleteAd,
-} from "../../services/adService";
-import axiosInstance from "../../utils/axios";
-import { useToast } from "../../hooks/useToast";
-import { translateStatus, getStatusClass } from "../../utils/statusUtils";
-import { useProgressState } from "../../hooks/useProgressState";
+} from "../../services/ads/adService";
+import axiosInstance from "../../utils/api/axios";
+import { useToast } from "../../hooks/common/useToast";
+import { translateStatus, getStatusClass } from "../../utils/formatters/statusUtils";
+import { useProgressState } from "../../hooks/common/useProgressState";
 import { useTranslation } from "react-i18next";
-import { translateObjective, translateOptimizationGoal, formatTargetingVN } from "../../utils/translationUtils";
+import { translateObjective, translateOptimizationGoal, formatTargetingVN } from "../../utils/formatters/translationUtils";
 
 function ArchiveAds() {
   const { t } = useTranslation(['ads']);
@@ -34,7 +34,7 @@ function ArchiveAds() {
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  
+
   // Date range filter
   const [dateRange, setDateRange] = useState("");
 
@@ -91,7 +91,7 @@ function ArchiveAds() {
   // ✅ Chỉ hiển thị các items có status ARCHIVED
   const getFilteredRows = () => {
     let result = [];
-    
+
     if (activeTab === "campaigns") {
       // Filter chỉ lấy ARCHIVED campaigns
       result = datasets.campaigns.filter(
@@ -121,22 +121,22 @@ function ArchiveAds() {
           (adset) => adset.campaignId === selectedCampaign.id && adset.status === "ARCHIVED"
         );
         const campaignAdsetIds = campaignAdsets.map((adset) => String(adset.id));
-        
+
         // Filter ads thuộc các adsets này
-        filteredAds = filteredAds.filter((ad) => 
+        filteredAds = filteredAds.filter((ad) =>
           campaignAdsetIds.includes(String(ad.adsetId))
         );
       }
       result = filteredAds;
     }
-    
+
     // Sort tất cả data trước khi phân trang
     const sortedResult = sortByCreatedAtDesc(result);
-    
+
     // Cập nhật pagination info dựa trên sorted data
     const total = sortedResult.length;
     const totalPages = Math.ceil(total / pagination.limit) || 1;
-    
+
     // Cập nhật pagination state (chỉ khi thay đổi)
     if (pagination.total !== total || pagination.totalPages !== totalPages) {
       setPagination(prev => ({
@@ -145,7 +145,7 @@ function ArchiveAds() {
         totalPages
       }));
     }
-    
+
     // Phân trang ở Frontend sau khi sort
     const startIndex = (pagination.page - 1) * pagination.limit;
     const endIndex = startIndex + pagination.limit;
@@ -163,8 +163,8 @@ function ArchiveAds() {
         activeTab === "campaigns"
           ? "campaigns"
           : activeTab === "adsets"
-          ? "adsets"
-          : "ads";
+            ? "adsets"
+            : "ads";
       const updatedItems = handleSelectAll(isChecked, prev[key]);
       return { ...prev, [key]: updatedItems };
     });
@@ -177,8 +177,8 @@ function ArchiveAds() {
         activeTab === "campaigns"
           ? "campaigns"
           : activeTab === "adsets"
-          ? "adsets"
-          : "ads";
+            ? "adsets"
+            : "ads";
       const { updatedItems, allChecked } = handleSelectItem(id, prev[key]);
       setCheckAll(allChecked);
       setHasSelectedItems(updatedItems.some((item) => item.isChecked));
@@ -197,8 +197,8 @@ function ArchiveAds() {
       activeTab === "campaigns"
         ? "campaign"
         : activeTab === "adsets"
-        ? "adset"
-        : "ad";
+          ? "adset"
+          : "ad";
 
     // 3️⃣ Lấy campaign / adset tương ứng (để truyền vào Wizard)
     let campaign = null;
@@ -213,7 +213,7 @@ function ArchiveAds() {
     } else if (type === "ad") {
       adset = datasets.adsets.find((a) => a.id === item.adsetId) || null;
       // Tìm campaign thông qua adset relationship
-      campaign = adset 
+      campaign = adset
         ? datasets.campaigns.find((c) => c.id === adset.campaignId) || null
         : null;
     }
@@ -294,8 +294,8 @@ function ArchiveAds() {
       activeTab === "campaigns"
         ? "campaigns"
         : activeTab === "adsets"
-        ? "adsets"
-        : "ads";
+          ? "adsets"
+          : "ads";
 
     const idsToDelete = id
       ? [id]
@@ -329,8 +329,8 @@ function ArchiveAds() {
       activeTab === "campaigns"
         ? "campaigns"
         : activeTab === "adsets"
-        ? "adsets"
-        : "ads";
+          ? "adsets"
+          : "ads";
 
     const entityName = getEntityName(key);
 
@@ -352,7 +352,7 @@ function ArchiveAds() {
       // 🔹 Gọi đúng service cho từng loại và cập nhật progress
       for (let i = 0; i < idsToDelete.length; i++) {
         const delId = idsToDelete[i];
-        
+
         try {
           updateProgress({
             current: i,
@@ -368,7 +368,7 @@ function ArchiveAds() {
           }
 
           successCount++;
-          
+
           updateProgress({
             current: i + 1,
             message: t('progress.deleted', { current: i + 1, total: idsToDelete.length, entity: entityName }),
@@ -385,7 +385,7 @@ function ArchiveAds() {
 
       // 🔹 Cập nhật UI - xóa tất cả items đã được xử lý (bao gồm cả success)
       const processedIds = idsToDelete.slice(0, successCount);
-      
+
       setDatasets((prev) => ({
         ...prev,
         [key]: prev[key].filter((item) => !processedIds.includes(item.id)),
@@ -429,12 +429,12 @@ function ArchiveAds() {
       }
     } catch (error) {
       console.error("❌ Lỗi khi xóa:", error);
-      
+
       updateProgress({
         status: 'error',
         message: error?.response?.data?.message || t('toasts.delete_failed'),
       });
-      
+
       toast.error(
         error?.response?.data?.message || t('toasts.delete_failed')
       );
@@ -733,7 +733,7 @@ function ArchiveAds() {
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedAccountId,
     initialized,
@@ -802,7 +802,7 @@ function ArchiveAds() {
       console.error("❌ Error refreshing data:", error);
       toast.error(t('toasts.refresh_error'));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccountId, activeTab, selectedCampaign?.id, selectedAdset?.id, fetchCampaignsForAccount, fetchAdsetsForCampaign, fetchAllAdsetsForAccount, fetchAdsForAdset, fetchAllAdsForAccount, toast, t]);
 
   return (
@@ -939,7 +939,7 @@ function ArchiveAds() {
                 disabled={!selectedAccountId}
                 title={t('management.refresh')}
               >
-              <RefreshCw size={16}/>{t('management.refresh')}
+                <RefreshCw size={16} />{t('management.refresh')}
               </button>
             </div>
 
@@ -988,11 +988,10 @@ function ArchiveAds() {
                       </td>
                       <td>
                         <span
-                          className={`name-text ${
-                            activeTab === "ads" 
-                              ? "ad-name" 
-                              : "clickable"
-                          }`}
+                          className={`name-text ${activeTab === "ads"
+                            ? "ad-name"
+                            : "clickable"
+                            }`}
                           onClick={() => {
                             if (activeTab === "campaigns")
                               handleCampaignClick(row);
@@ -1083,27 +1082,27 @@ function ArchiveAds() {
                       </td>
                     </tr>
                   ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
 
-            {/* Pagination */}
-            {rows.length > 0 && (
-              <Pagination
-                currentPage={pagination.page}
-                totalPages={pagination.totalPages}
-                itemsPerPage={pagination.limit}
-                totalItems={pagination.total}
-                startIndex={(pagination.page - 1) * pagination.limit}
-                endIndex={Math.min(pagination.page * pagination.limit, pagination.total)}
-                onPageChange={(page) => {
-                  setPagination(prev => ({ ...prev, page }));
-                }}
-                onItemsPerPageChange={(limit) => {
-                  setPagination(prev => ({ ...prev, page: 1, limit }));
-                }}
-              />
-            )}
-          </div>
+              {/* Pagination */}
+              {rows.length > 0 && (
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.totalPages}
+                  itemsPerPage={pagination.limit}
+                  totalItems={pagination.total}
+                  startIndex={(pagination.page - 1) * pagination.limit}
+                  endIndex={Math.min(pagination.page * pagination.limit, pagination.total)}
+                  onPageChange={(page) => {
+                    setPagination(prev => ({ ...prev, page }));
+                  }}
+                  onItemsPerPageChange={(limit) => {
+                    setPagination(prev => ({ ...prev, page: 1, limit }));
+                  }}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

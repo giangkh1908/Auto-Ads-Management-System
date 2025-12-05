@@ -1,4 +1,4 @@
-import Log from "../models/log.model.js";
+import Log from "../models/admin/log.model.js";
 
 export const saveLog = async (logData) => {
   try {

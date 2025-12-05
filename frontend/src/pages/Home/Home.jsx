@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Globe, Settings,ShoppingCart,DollarSign,Package,TrendingUp,Users,Briefcase,Calendar,Megaphone,
-        MessageSquare,Reply,Bell,Key,List,ShoppingBag,Truck,Play,Mail,ArrowRight,Sparkles,Phone,User,
+import {
+  MessageCircle, Globe, Settings, ShoppingCart, DollarSign, Package, TrendingUp, Users, Briefcase, Calendar, Megaphone,
+  MessageSquare, Reply, Bell, Key, List, ShoppingBag, Truck, Play, Mail, ArrowRight, Sparkles, Phone, User,
 } from "lucide-react";
 import "./Home.css";
 import laptop_white from "../../assets/macbook-white.png";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../hooks/auth/useAuth";
 import { ROUTES } from "../../constants/app.constants";
-import leadService from "../../services/leadService";
-import { useToast } from "../../hooks/useToast";
+import leadService from "../../services/leads/leadService";
+import { useToast } from "../../hooks/common/useToast";
 import messenger_icon from "../../assets/messenger.png";
 import zalo_icon from "../../assets/zalo.png";
 import website_icon from "../../assets/AAMS_2.png";
@@ -28,10 +29,10 @@ function Home({ onLoginClick }) {
   const formatPhoneNumber = (value) => {
     // Remove all non-digit characters
     const phoneNumber = value.replace(/\D/g, "");
-    
+
     // Limit to 11 digits (for Vietnamese phone numbers)
     const limitedNumber = phoneNumber.slice(0, 11);
-    
+
     // Format: 0xxx xxx xxx
     if (limitedNumber.length <= 4) {
       return limitedNumber;
@@ -53,7 +54,7 @@ function Home({ onLoginClick }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate
     if (!name.trim() || !phone.trim()) {
       toast.error("Vui lòng điền đầy đủ thông tin");
@@ -65,7 +66,7 @@ function Home({ onLoginClick }) {
     try {
       // Remove spaces from phone for API call
       const phoneNumber = phone.replace(/\s/g, "");
-      
+
       const response = await leadService.createLead({
         lead_name: name.trim(),
         phone: phoneNumber,
@@ -113,15 +114,15 @@ function Home({ onLoginClick }) {
               {!user?.internal_role && (
                 <button className="cta-button-home" onClick={handleButtonClick}>
                   {isAuthenticated && user?.avatar && (
-                    <img 
-                      src={user.avatar} 
-                      alt={user?.full_name || "Avatar"} 
+                    <img
+                      src={user.avatar}
+                      alt={user?.full_name || "Avatar"}
                       className="cta-avatar"
                     />
                   )}
                   {isAuthenticated ? (
                     <span>SỬ DỤNG NGAY</span>
-                  ):(
+                  ) : (
                     <span>{t("home.get_started")}</span>
                   )}
                   {/* <ArrowRight size={20} /> */}
@@ -170,7 +171,7 @@ function Home({ onLoginClick }) {
             </div>
             <div className="platform-card">
               <div className="platform-icon zalo">
-                <img 
+                <img
                   src={zalo_icon}
                   alt="Zalo"
                   className="platform-icon-image"
@@ -214,7 +215,7 @@ function Home({ onLoginClick }) {
               <div className="template-icon">
                 <ShoppingCart size={28} />
               </div>
-                <h4>{t("home.buy_product")}</h4>
+              <h4>{t("home.buy_product")}</h4>
             </div>
             <div className="template-card">
               <div className="template-icon">
@@ -492,8 +493,8 @@ function Home({ onLoginClick }) {
                 />
               </div>
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="submit-button-home"
               disabled={isSubmitting}
             >

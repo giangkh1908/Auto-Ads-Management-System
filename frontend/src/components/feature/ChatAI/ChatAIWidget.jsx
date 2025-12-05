@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MessageCircle, X, Send, Minimize2 } from 'lucide-react'
-import { useChat } from '../../../hooks/useChat'
+import { useChat } from '../../../hooks/chat/useChat'
 import './ChatAIWidget.css'
 
 function ChatAIWidget({ accountId, accountName }) {

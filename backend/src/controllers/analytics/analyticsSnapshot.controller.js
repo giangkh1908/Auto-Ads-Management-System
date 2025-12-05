@@ -80,7 +80,7 @@ export async function syncAnalyticsSnapshotsCtrl(req, res) {
     }
 
     // Import service dynamically to avoid circular dependency
-    const { syncAnalyticsSnapshots } = await import("../../services/analyticsSnapshotService.js");
+    const { syncAnalyticsSnapshots } = await import("../../services/analytics/analyticsSnapshotService.js");
     const AdsAccount = (await import("../../models/ads/adsAccount.model.js")).default;
 
     // Support both MongoDB _id and external_id

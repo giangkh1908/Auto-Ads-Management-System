@@ -4,11 +4,11 @@ import "./Dashboard.css";
 import facebook_icon from "../../assets/facebook.png";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import { Edit3, Pause, PlugZap, RefreshCcw, Repeat, Bell, Users, MessageCircle, Bot, Play, Calendar, Key, Store, Search as SearchIcon, Plus, Link2, CheckCircle, XCircle } from "lucide-react";
-import profileService from "../../services/profileService";
-import shopService from "../../services/shopService";
+import profileService from "../../services/auth/profileService";
+import shopService from "../../services/shop/shopService";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { useShopPackage } from "../../hooks/useShopPackage.js";
+import { useShopPackage } from "../../hooks/shop/useShopPackage.js";
 
 function Dashboard() {
   const [filterValue, setFilterValue] = useState("all");
@@ -21,7 +21,7 @@ function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
   const { shopPkg, loading: pkgLoading } = useShopPackage();
-  
+
   // Lấy package từ shopPkg
   const pkg = shopPkg?.package ? {
     package: shopPkg.package,
@@ -36,7 +36,7 @@ function Dashboard() {
       shops: 0,
     },
   } : null;
-  
+
   // Kiểm tra có thể kết nối page mới không (dựa trên shop package)
   const canConnectPage = pkg && (connectedPages.length < (pkg.limits?.pages || 0));
 
@@ -47,7 +47,7 @@ function Dashboard() {
       // ✅ Lấy từ Shop model (nguồn chính) thay vì ShopUser
       const shop = me?.data?.shop || me?.shop;
       const shopUser = me?.data?.shopUser || me?.shopUser;
-      
+
       if (!shop) {
         toast.warning("No shop found in profile");
         setConnectedPages([]);
@@ -72,7 +72,7 @@ function Dashboard() {
       const pages = Array.isArray(shop?.facebook_pages)
         ? shop.facebook_pages
         : [];
-      
+
       const normalized = pages
         .filter((p) => p.connected_status === "connected")
         .map((p) => ({
@@ -82,7 +82,7 @@ function Dashboard() {
           pageId: p.page_id,
           link: p.page_info?.link || `https://www.facebook.com/${p.page_id}`,
           avatar:
-            p.page_info?.picture_url || 
+            p.page_info?.picture_url ||
             p.picture_url ||
             `https://graph.facebook.com/${p.page_id}/picture?type=square`,
           status: p.page_status || "active",
@@ -108,7 +108,7 @@ function Dashboard() {
   // Handle refresh button
   const handleRefresh = async () => {
     if (isRefreshing) return; // Prevent multiple clicks
-    
+
     setIsRefreshing(true);
     try {
       await shopService.refreshUserPages();
@@ -116,9 +116,9 @@ function Dashboard() {
       console.error("Refresh user pages error:", error);
       toast.error(
         error?.message ||
-          error?.detail?.message ||
-          t("dashboard.refresh_error") ||
-          "Không thể đồng bộ quyền trang từ Facebook"
+        error?.detail?.message ||
+        t("dashboard.refresh_error") ||
+        "Không thể đồng bộ quyền trang từ Facebook"
       );
     }
 
@@ -142,15 +142,15 @@ function Dashboard() {
   // Get menu items based on page status
   const getMenuItems = (pageStatus) => {
     const items = [];
-    
+
     if (pageStatus === "pause") {
       items.push({ id: "resume", icon: <Play size={16} />, text: t("dashboard.resume_page") });
     } else {
       items.push({ id: "pause", icon: <Pause size={16} />, text: t("dashboard.pause_page") });
     }
-    
+
     items.push({ id: "disconnect", icon: <PlugZap size={16} />, text: t("dashboard.disconnect_page") });
-    
+
     return items;
   };
 
@@ -309,13 +309,13 @@ function Dashboard() {
                 </button>
               </div>
 
-              <button 
-                className="btn-refresh-dashboard" 
+              <button
+                className="btn-refresh-dashboard"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
               >
-                <RefreshCcw 
-                  size={16} 
+                <RefreshCcw
+                  size={16}
                   className={isRefreshing ? "spinning-dashboard" : ""}
                 />
                 &nbsp;{t("dashboard.refresh_page")}
@@ -353,10 +353,10 @@ function Dashboard() {
                   </div>
                   <div className="add-page-text">
                     {t("dashboard.connect_new_page")} (
-                    {pkgLoading 
-                      ? "..." 
-                      : pkg 
-                        ? `${connectedPages.length}/${pkg.limits?.pages || 0}` 
+                    {pkgLoading
+                      ? "..."
+                      : pkg
+                        ? `${connectedPages.length}/${pkg.limits?.pages || 0}`
                         : `${connectedPages.length}/?`}
                     )
                   </div>
@@ -388,7 +388,7 @@ function Dashboard() {
                           )}
                         </span>
                       </div>
-                      
+
                       <p className="page-id-dashboard">
                         <a
                           href={page.link}

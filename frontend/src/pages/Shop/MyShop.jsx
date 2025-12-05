@@ -5,10 +5,10 @@ import { Plus, Edit, Play, Pause, Star, MapPin, ArrowRight, Crown } from "lucide
 import { ROUTES } from "../../constants/app.constants";
 import "./Shop.css";
 import { STORAGE_KEYS } from '../../constants/app.constants';
-import axiosInstance from "../../utils/axios.js";
+import axiosInstance from "../../utils/api/axios.js";
 import { toast } from "sonner";
-import { clearShopCache, saveShopCache, getShopCache } from "../../utils/shopCache";
-import { useMyPackage } from "../../hooks/useMyPackage";
+import { clearShopCache, saveShopCache, getShopCache } from "../../utils/cache/shopCache";
+import { useMyPackage } from "../../hooks/shop/useMyPackage";
 
 function MyShop() {
   const { t } = useTranslation();
@@ -57,7 +57,7 @@ function MyShop() {
 
   useEffect(() => {
     loadShops();
-    
+
     // Kiểm tra và hiển thị thông báo sau khi reload
     const successMessage = sessionStorage.getItem('shop_update_success');
     if (successMessage) {
@@ -116,12 +116,12 @@ function MyShop() {
             phone: shop.owner_id?.phone || "",
             expired: shop.expired_at
               ? (() => {
-                  const date = new Date(shop.expired_at);
-                  const day = String(date.getDate()).padStart(2, '0');
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const year = date.getFullYear();
-                  return `${day}-${month}-${year}`;
-                })()
+                const date = new Date(shop.expired_at);
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}-${month}-${year}`;
+              })()
               : "Không giới hạn",
             status: shop.status || "Active",
             canUpdate,
@@ -176,8 +176,8 @@ function MyShop() {
         {/* Chỉ hiển thị tab Employee nếu role không phải Marketer và có quyền view employee */}
         {currentShop?.role !== "Marketer" && currentShop?.canViewEmployee && (
           <NavLink
-            to={currentShop?.id 
-              ? ROUTES.SHOP_EMPLOYEE.replace(":shopId", currentShop.id) 
+            to={currentShop?.id
+              ? ROUTES.SHOP_EMPLOYEE.replace(":shopId", currentShop.id)
               : "#"}
             state={{ shopId: currentShop?._id }}
             className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
@@ -186,8 +186,8 @@ function MyShop() {
           </NavLink>
         )}
         <NavLink
-          to={currentShop?.id 
-            ? ROUTES.SHOP_HISTORY.replace(":shopId", currentShop.id) 
+          to={currentShop?.id
+            ? ROUTES.SHOP_HISTORY.replace(":shopId", currentShop.id)
             : ROUTES.SHOP}
           className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
         >
@@ -205,7 +205,7 @@ function MyShop() {
               </span>
             )} */}
           </div>
-          <button 
+          <button
             className={`btn-add-new-page ${!pkg?.package ? 'premium-feature' : ''}`}
             onClick={handleAddNewPage}
           >
@@ -319,20 +319,20 @@ function MyShop() {
                                 if (data.success) {
                                   // Lấy shop cũ từ cache trước khi xóa
                                   const previousShop = getShopCache();
-                                  
+
                                   // Xóa cache cũ
                                   clearShopCache();
-                                  
+
                                   // Cập nhật localStorage với shop mới
                                   localStorage.setItem("selectedShopId", shop.id);
-                                  
+
                                   // Lấy package info từ API response nếu có
                                   // Đảm bảo package là string (name) chứ không phải object
                                   const packageInfo = data.shop?.package;
-                                  const packageName = typeof packageInfo === 'string' 
+                                  const packageName = typeof packageInfo === 'string'
                                     ? (packageInfo && packageInfo !== "Basic" ? packageInfo : "None")
                                     : (packageInfo?.name && packageInfo.name !== "Basic" ? packageInfo.name : "None");
-                                  
+
                                   // Tạo object shop để lưu vào cache (format giống Header)
                                   const shopForCache = {
                                     id: shop.id,
@@ -341,13 +341,13 @@ function MyShop() {
                                     role: shop.role,
                                     is_current: true,
                                   };
-                                  
+
                                   // Lưu shop mới vào cache và dispatch event để Header cập nhật
                                   // Truyền previousShop để kiểm tra và xóa cache ads nếu shop thay đổi
                                   saveShopCache(shopForCache, previousShop);
-                                  
+
                                   toast.success("Chuyển đổi shop thành công!");
-                                  
+
                                   // Reload lại trang để cập nhật dữ liệu với shop mới
                                   window.location.reload();
                                 } else {
@@ -429,7 +429,7 @@ function MyShop() {
                   value={currentUser?.email || "Chưa có email"}
                   disabled
                   style={{ backgroundColor: "#e4e7ec" }}
-                  title = "Tự động sử dụng email của bạn"
+                  title="Tự động sử dụng email của bạn"
                 />
               </div>
               <div className="form-field">
@@ -441,7 +441,7 @@ function MyShop() {
                   value={currentUser?.phone || "Chưa có số điện thoại"}
                   disabled
                   style={{ backgroundColor: "#e4e7ec" }}
-                  title = "Tự động sử dụng số điện thoại của bạn"
+                  title="Tự động sử dụng số điện thoại của bạn"
                 />
               </div>
 

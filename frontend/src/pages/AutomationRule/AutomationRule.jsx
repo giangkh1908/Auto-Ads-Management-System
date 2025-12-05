@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Edit, Trash2, Plus } from "lucide-react";
 import "./AutomationRule.css";
 import AutoRulePopup from "../../components/feature/AutoRulePopup/AutoRulePopup";
-import { useAuth } from "../../hooks/useAuth";
-import axiosInstance from "../../utils/axios";
-import automationRuleService from "../../services/automationRuleService";
-import { useToast } from "../../hooks/useToast";
+import { useAuth } from "../../hooks/auth/useAuth";
+import axiosInstance from "../../utils/api/axios";
+import automationRuleService from "../../services/auto/automationRuleService";
+import { useToast } from "../../hooks/common/useToast";
 import {
   ACTION_BE_TO_VI,
   METRIC_BE_TO_VI,
@@ -103,10 +103,10 @@ function AutomationRule() {
               rule.status === "ACTIVE"
                 ? "Đã bật"
                 : rule.status === "TRIGGERED"
-                ? "Đã kích hoạt"
-                : rule.status === "PAUSED"
-                ? "Vô hiệu hóa"
-                : rule.status,
+                  ? "Đã kích hoạt"
+                  : rule.status === "PAUSED"
+                    ? "Vô hiệu hóa"
+                    : rule.status,
             enabled: rule.enabled,
             appliedTo: rule.apply_to || "Chưa chọn",
             actionCondition: formatActionCondition(rule),
@@ -273,11 +273,11 @@ function AutomationRule() {
           prev.map((rule) =>
             rule.id === id
               ? {
-                  ...rule,
-                  enabled: response.data.enabled,
-                  status: response.data.enabled ? "Đã bật" : "Vô hiệu hóa",
-                  rawData: response.data,
-                }
+                ...rule,
+                enabled: response.data.enabled,
+                status: response.data.enabled ? "Đã bật" : "Vô hiệu hóa",
+                rawData: response.data,
+              }
               : rule
           )
         );
@@ -371,10 +371,10 @@ function AutomationRule() {
               rule.status === "ACTIVE"
                 ? "Đã bật"
                 : rule.status === "TRIGGERED"
-                ? "Đã kích hoạt"
-                : rule.status === "PAUSED"
-                ? "Vô hiệu hóa"
-                : rule.status,
+                  ? "Đã kích hoạt"
+                  : rule.status === "PAUSED"
+                    ? "Vô hiệu hóa"
+                    : rule.status,
             enabled: rule.enabled,
             appliedTo: rule.apply_to || "Chưa chọn",
             actionCondition: formatActionCondition(rule),
@@ -503,20 +503,19 @@ function AutomationRule() {
                     <td>{rule.name}</td>
                     <td>
                       <span
-                        className={`rule-status ${
-                          rule.status === "Đã kích hoạt"
-                            ? "status-triggered"
-                            : rule.enabled
+                        className={`rule-status ${rule.status === "Đã kích hoạt"
+                          ? "status-triggered"
+                          : rule.enabled
                             ? "status-enabled"
                             : "status-disabled"
-                        }`}
+                          }`}
                       >
                         {rule.status}
                       </span>
                     </td>
                     <td className="rule-id-cell">{rule.id}</td>
                     <td>{rule.appliedTo}</td>
-                    <td 
+                    <td
                       className="action-condition-cell"
                       dangerouslySetInnerHTML={{ __html: rule.actionConditionHTML }}
                     />

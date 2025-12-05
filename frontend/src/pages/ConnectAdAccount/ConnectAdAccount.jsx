@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './ConnectAdAccount.css'
-import { useToast } from '../../hooks/useToast'
-import axiosInstance from '../../utils/axios'
+import { useToast } from '../../hooks/common/useToast'
+import axiosInstance from '../../utils/api/axios'
 import logo from "../../assets/Logo_Fchat.png";
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth } from '../../hooks/auth/useAuth'
 
 function ConnectAdAccount() {
   const { t } = useTranslation()
@@ -19,13 +19,13 @@ function ConnectAdAccount() {
   const [statusFilter, setStatusFilter] = useState('status')
   const [selectAll, setSelectAll] = useState(false)
   const { user } = useAuth()
-  
+
   // Tải dữ liệu tài khoản quảng cáo từ Facebook API
   useEffect(() => {
     const loadAdAccounts = async () => {
       try {
         setLoading(true)
-        
+
         // Lấy danh sách tài khoản quảng cáo trực tiếp từ Facebook (đã có thông tin connected_shop và can_connect)
         const fbRes = await axiosInstance.get('/api/ads-accounts/facebook')
         const fbAccounts = fbRes.data?.items || []
@@ -55,7 +55,7 @@ function ConnectAdAccount() {
     return (fbAdAccounts || []).map(acc => {
       const isConnectedToCurrentShop = acc.connected_shop?.is_current_shop || false
       const isConnectedToOtherShop = acc.connected_shop && !acc.connected_shop.is_current_shop
-      
+
       return {
         id: acc.external_id || acc._id,
         name: acc.name || t('connect_ad_account.default_account_name'),
@@ -80,7 +80,7 @@ function ConnectAdAccount() {
 
   // Loại bỏ các tài khoản đã kết nối (với shop hiện tại hoặc shop khác) hoặc không thể kết nối khỏi selectedAccounts
   useEffect(() => {
-    setSelectedAccounts(prev => 
+    setSelectedAccounts(prev =>
       prev.filter(accountId => {
         const account = adAccounts.find(acc => acc.id === accountId)
         return account && !account.isConnectedToCurrentShop && !account.isConnectedToOtherShop && account.canConnect
@@ -97,14 +97,14 @@ function ConnectAdAccount() {
     // - Không thể kết nối (canConnect = false)
     if (account && (
       account.isConnectedToCurrentShop ||
-      account.isConnectedToOtherShop || 
+      account.isConnectedToOtherShop ||
       !account.canConnect
     )) {
       return
     }
     //Thêm tài khoản vào selectedAccounts
-    setSelectedAccounts(prev => 
-      prev.includes(accountId) 
+    setSelectedAccounts(prev =>
+      prev.includes(accountId)
         ? prev.filter(id => id !== accountId)
         : [...prev, accountId]
     )
@@ -115,7 +115,7 @@ function ConnectAdAccount() {
     const selectableAccounts = filteredAccounts.filter(
       acc => !acc.isConnectedToCurrentShop && !acc.isConnectedToOtherShop && acc.canConnect
     )
-    
+
     if (selectAll) {
       // Bỏ chọn tất cả
       setSelectedAccounts([])
@@ -129,7 +129,7 @@ function ConnectAdAccount() {
   const handleConnectSelected = async () => {
     const selected = adAccounts.filter(acc => selectedAccounts.includes(acc.id))
     if (selected.length === 0) return
-    
+
     try {
       setSyncing(true)
       // Chỉ khi bấm kết nối mới lưu tài khoản vào DB
@@ -175,9 +175,9 @@ function ConnectAdAccount() {
   //Lọc danh sách tài khoản quảng cáo theo tên và trạng thái
   const filteredAccounts = adAccounts.filter(account => {
     const matchesSearch = account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         account.externalId.toLowerCase().includes(searchTerm.toLowerCase())
+      account.externalId.toLowerCase().includes(searchTerm.toLowerCase())
     const isConnectedToCurrent = account.isConnectedToCurrentShop
-    const matchesStatus = statusFilter === 'status' || 
+    const matchesStatus = statusFilter === 'status' ||
       (statusFilter === 'connected' && isConnectedToCurrent) ||
       (statusFilter === 'not-connected' && !isConnectedToCurrent && !account.isConnectedToOtherShop)
     return matchesSearch && matchesStatus
@@ -196,7 +196,7 @@ function ConnectAdAccount() {
       <div className="connect-container">
         {/* Logo */}
         <div className="logo-section">
-        <div className="logo">
+          <div className="logo">
             <img className="logo-img" src={logo}></img>
           </div>
         </div>
@@ -217,120 +217,120 @@ function ConnectAdAccount() {
               <p>{t('connect_ad_account.no_accounts')}</p>
             </div>
           ) : (
-          <>
-          {/* Search and Filter Bar */}
-          <div className="search-filter-bar">
-            <div className="search-section">
-              <input 
-                type="text" 
-                className="search-input"
-                placeholder={t('connect_ad_account.search_placeholder')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            {/* Filter Section */}
-            <div className="filter-section-connect-account">
-              <select 
-                className="status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="status">{t('connect_ad_account.status_filter')}</option>
-                <option value="connected">{t('connect_ad_account.status_connected')}</option>
-                <option value="not-connected">{t('connect_ad_account.status_not_connected')}</option>
-              </select>
-              <span className="page-count">{t('connect_ad_account.account_count', { count: filteredAccounts.length })}</span>
-            </div>
-          </div>
-
-          {/* Ad Account List Table */}
-          <div className="page-list-table">
-            <div className="table-header">
-              <div className="col-page-name">{t('connect_ad_account.table_account_name')}</div>
-              <div className="col-role">{t('connect_ad_account.table_status')}</div>
-              <div className="col-status">{t('connect_ad_account.table_connection')}</div>
-              <div className="col-select">
-                <input 
-                  type="checkbox"
-                  checked={selectAll}
-                  onChange={handleSelectAll}
-                  className="select-all-checkbox"
-                  disabled={
-                    // Disable khi không còn tài khoản nào có thể chọn (chưa kết nối và có thể connect)
-                    filteredAccounts.filter(
-                      account => !account.isConnectedToCurrentShop && !account.isConnectedToOtherShop && account.canConnect
-                    ).length === 0
-                  }
-                />
-                {/* <span className="select-all-label">Chọn tất cả</span> */}
-              </div>
-            </div>
-            
-            {filteredAccounts.map((account) => (
-              <div key={account.id} className="table-row">
-                <div className="col-page-name">
-                  <div className="page-info">
-                    <img
-                      src= {account.avatar}
-                      alt= "Avatar"
-                      className="page-avatar"
-                    />
-                    <div className="page-details">
-                        <div className="page-name">
-                          {account.name}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                          {account.externalId}
-                        </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-role">
-                  <span className="role-badge">{account.status}</span>
-                </div>
-                <div className="col-status">
-                  <div className="status-info">
-                    <div className="status-text">
-                      {account.isConnectedToCurrentShop 
-                        ? t('connect_ad_account.connected') 
-                        : account.isConnectedToOtherShop
-                        ? `Đã kết nối với shop "${account.connectedBy}"`
-                        : t('connect_ad_account.not_connected')}
-                    </div>
-                    {account.connectedBy && (
-                      <div className="connected-by">{account.connectedBy}</div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="col-select">
-                  <input 
-                    type="checkbox"
-                    checked={selectedAccounts.includes(account.id)}
-                    onChange={() => handleAccountSelect(account.id)}
-                    className="page-checkbox"
-                    disabled={account.isConnectedToCurrentShop || account.isConnectedToOtherShop || !account.canConnect}
+            <>
+              {/* Search and Filter Bar */}
+              <div className="search-filter-bar">
+                <div className="search-section">
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder={t('connect_ad_account.search_placeholder')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
+                {/* Filter Section */}
+                <div className="filter-section-connect-account">
+                  <select
+                    className="status-filter"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="status">{t('connect_ad_account.status_filter')}</option>
+                    <option value="connected">{t('connect_ad_account.status_connected')}</option>
+                    <option value="not-connected">{t('connect_ad_account.status_not_connected')}</option>
+                  </select>
+                  <span className="page-count">{t('connect_ad_account.account_count', { count: filteredAccounts.length })}</span>
+                </div>
               </div>
-            ))}
-          </div>
 
-          {/* Connect Button Bottom */}
-          <div className="connect-bottom">
-            <button 
-              className="connect-selected-btn"
-              onClick={handleConnectSelected}
-              disabled={selectedAccounts.length === 0 || syncing}
-            >
-              {syncing ? t('connect_ad_account.connecting') : t('connect_ad_account.connect_count', { count: selectedAccounts.length })}
-            </button>
-          </div>
-          </>
+              {/* Ad Account List Table */}
+              <div className="page-list-table">
+                <div className="table-header">
+                  <div className="col-page-name">{t('connect_ad_account.table_account_name')}</div>
+                  <div className="col-role">{t('connect_ad_account.table_status')}</div>
+                  <div className="col-status">{t('connect_ad_account.table_connection')}</div>
+                  <div className="col-select">
+                    <input
+                      type="checkbox"
+                      checked={selectAll}
+                      onChange={handleSelectAll}
+                      className="select-all-checkbox"
+                      disabled={
+                        // Disable khi không còn tài khoản nào có thể chọn (chưa kết nối và có thể connect)
+                        filteredAccounts.filter(
+                          account => !account.isConnectedToCurrentShop && !account.isConnectedToOtherShop && account.canConnect
+                        ).length === 0
+                      }
+                    />
+                    {/* <span className="select-all-label">Chọn tất cả</span> */}
+                  </div>
+                </div>
+
+                {filteredAccounts.map((account) => (
+                  <div key={account.id} className="table-row">
+                    <div className="col-page-name">
+                      <div className="page-info">
+                        <img
+                          src={account.avatar}
+                          alt="Avatar"
+                          className="page-avatar"
+                        />
+                        <div className="page-details">
+                          <div className="page-name">
+                            {account.name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            {account.externalId}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-role">
+                      <span className="role-badge">{account.status}</span>
+                    </div>
+                    <div className="col-status">
+                      <div className="status-info">
+                        <div className="status-text">
+                          {account.isConnectedToCurrentShop
+                            ? t('connect_ad_account.connected')
+                            : account.isConnectedToOtherShop
+                              ? `Đã kết nối với shop "${account.connectedBy}"`
+                              : t('connect_ad_account.not_connected')}
+                        </div>
+                        {account.connectedBy && (
+                          <div className="connected-by">{account.connectedBy}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-select">
+                      <input
+                        type="checkbox"
+                        checked={selectedAccounts.includes(account.id)}
+                        onChange={() => handleAccountSelect(account.id)}
+                        className="page-checkbox"
+                        disabled={account.isConnectedToCurrentShop || account.isConnectedToOtherShop || !account.canConnect}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Connect Button Bottom */}
+              <div className="connect-bottom">
+                <button
+                  className="connect-selected-btn"
+                  onClick={handleConnectSelected}
+                  disabled={selectedAccounts.length === 0 || syncing}
+                >
+                  {syncing ? t('connect_ad_account.connecting') : t('connect_ad_account.connect_count', { count: selectedAccounts.length })}
+                </button>
+              </div>
+            </>
           )}
         </div>
-            
+
         {/* Help Section */}
         <div className="help-section">
           <h3 className="help-title">{t('connect_ad_account.help_title')}</h3>
