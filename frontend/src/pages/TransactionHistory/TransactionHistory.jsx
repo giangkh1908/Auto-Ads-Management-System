@@ -318,21 +318,18 @@ export default function TransactionHistory() {
       const response = await paymentTransactionService.getPaymentTransactions(params);
 
       if (response.success) {
-        // Filter out transactions with status "initializing" (Đang khởi tạo)
-        const filteredData = response.data.filter(
-          (txn) => (txn.status || "").toLowerCase() !== "initializing"
-        );
-        
-        setRawTransactions(filteredData);
-        const mappedTransactions = filteredData.map((txn) => mapTransactionData(txn));
+        // Use server-provided paginated data and counts so pagination reflects DB
+        const transactionsFromServer = response.data || [];
+
+        setRawTransactions(transactionsFromServer);
+        const mappedTransactions = transactionsFromServer.map((txn) => mapTransactionData(txn));
         setRows(mappedTransactions);
-        
-        // Tính lại total và pages sau khi filter
-        const filteredTotal = filteredData.length;
+
+        // Use server totals/pages (backend returns total and pages)
         setPagination(prev => ({
           ...prev,
-          total: filteredTotal,
-          totalPages: Math.ceil(filteredTotal / prev.limit)
+          total: typeof response.total === 'number' ? response.total : (response.data || []).length,
+          totalPages: typeof response.pages === 'number' ? response.pages : Math.ceil((response.data || []).length / prev.limit)
         }));
       } else {
         toast.error(response.message || "Không thể tải lịch sử giao dịch");
@@ -413,8 +410,8 @@ export default function TransactionHistory() {
             >
               <option value="">{t("common.all") || "All"}</option>
               {filterOptions.packages.map((pkg) => (
-                <option key={pkg} value={pkg}>
-                  {pkg}
+                <option key={pkg._id} value={pkg._id}>
+                  {pkg.name}
                 </option>
               ))}
             </select>

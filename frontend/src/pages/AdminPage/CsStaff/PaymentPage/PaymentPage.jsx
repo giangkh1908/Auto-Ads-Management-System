@@ -264,7 +264,7 @@ export default function PaymentPage() {
   // Dynamic filters: prefer server-provided options, otherwise fallback to deriving from rows
   const packagesList = useMemo(() => {
     if (serverPackages && serverPackages.length > 0) {
-      const arr = serverPackages.map(p => ({ value: p, label: p }));
+      const arr = serverPackages.map(p => ({ value: p._id, label: p.name }));
       arr.sort((a,b) => a.label.localeCompare(b.label));
       return [{ value: "All", label: t("common.all") }, ...arr];
     }
