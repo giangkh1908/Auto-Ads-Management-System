@@ -7,6 +7,7 @@ import AdsAccount from "../../models/ads/adsAccount.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
 import Ads from "../../models/ads/ads.model.js";
 import { v4 as uuidv4 } from "uuid";
+import { agentExecutor } from "../../services/chat/agentExecutor.js";
 
 import { userHasFeature, FEATURE_KEYS } from "../../services/entitlementService.js";
 
@@ -197,10 +198,6 @@ function logDebug(step, payload) {
 }
 
 // ============================================
-// CLARIFY HELPERS
-// ============================================
-
-// ============================================
 // CHAT CONTROLLER
 // ============================================
 
@@ -232,7 +229,7 @@ export const startConversationSession = async (req, res) => {
   }
 };
 
-import { agentExecutor } from "../../services/chat/agentExecutor.js";
+
 
 // ... (Keep imports and other functions if needed, but replace chatAnalyze)
 

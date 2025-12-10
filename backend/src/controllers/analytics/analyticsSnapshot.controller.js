@@ -74,15 +74,12 @@ export async function listAnalyticsSnapshotsCtrl(req, res) {
 export async function syncAnalyticsSnapshotsCtrl(req, res) {
   try {
     const { account_id } = req.body;
-
     if (!account_id) {
       return res.status(400).json({ message: "account_id is required" });
     }
-
     // Import service dynamically to avoid circular dependency
     const { syncAnalyticsSnapshots } = await import("../../services/analyticsSnapshotService.js");
     const AdsAccount = (await import("../../models/ads/adsAccount.model.js")).default;
-
     // Support both MongoDB _id and external_id
     let account;
     if (account_id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -98,13 +95,10 @@ export async function syncAnalyticsSnapshotsCtrl(req, res) {
         .populate({ path: "shop_admin_id", select: "+facebookAccessToken" })
         .lean();
     }
-
     if (!account) {
       return res.status(404).json({ message: "Account not found" });
     }
-
     const result = await syncAnalyticsSnapshots(account);
-
     if (result.rateLimited) {
       return res.status(429).json({
         message: "Đã vượt quá giới hạn số lượng request. Vui lòng chờ một chút và thử lại.",
@@ -114,7 +108,6 @@ export async function syncAnalyticsSnapshotsCtrl(req, res) {
         retryAfter: 60,
       });
     }
-
     return res.status(200).json({
       message: "Sync completed",
       synced: result.synced,
@@ -122,7 +115,6 @@ export async function syncAnalyticsSnapshotsCtrl(req, res) {
     });
   } catch (error) {
     console.error("Sync Analytics Snapshots error:", error);
-    
     const fbError = error.response?.data?.error;
     if (fbError?.code === 17 || fbError?.code === 4) {
       return res.status(429).json({
@@ -133,7 +125,6 @@ export async function syncAnalyticsSnapshotsCtrl(req, res) {
         retryAfter: 60,
       });
     }
-
     return res.status(500).json({
       message: "Error syncing analytics snapshots",
       error: error.message,

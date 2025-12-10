@@ -472,13 +472,315 @@ export async function fetchAdsFromFacebook(accessToken, adAccountId) {
   }
 }
 
-export async function fetchAdInsights(accessToken, adIds = []) {
+/**
+ * Lấy LIFETIME insights cho tất cả ads trong account.
+ * Dữ liệu là tổng tích lũy từ đầu ad chạy đến hiện tại.
+ * Dùng cho cron sync vào bảng AdPerformance (rule tắt/bật ads).
+ * Hỗ trợ PAGINATION để lấy tất cả ads khi account có nhiều ads.
+ * 
+ * @param {string} accessToken - Facebook access token
+ * @param {string} adAccountId - Facebook ad account ID (có hoặc không có prefix act_)
+ * @returns {Promise<Array>} Mảng các insights records, mỗi record là 1 ad
+ */
+export async function fetchLifetimeInsightsForAds(accessToken, adAccountId) {
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  
+  const fields = [
+    // IDs & Names
+    'ad_id', 'ad_name',
+    'adset_id', 'adset_name',
+    'campaign_id', 'campaign_name',
+    'objective',
+    // Core metrics
+    'spend', 'impressions', 'reach', 'frequency',
+    'clicks', 'cpc', 'cpm', 'ctr',
+    // Link metrics
+    'inline_link_clicks', 'inline_link_click_ctr', 'cost_per_inline_link_click',
+    // Conversions & Results  
+    'conversions', 'cost_per_conversion',
+    'results', 'cost_per_result',
+    // ROAS
+    'website_purchase_roas',
+    // Quality
+    'quality_ranking',
+    // Actions (để parse website_purchases, leads, mobile_app_install, post_engagement)
+    'actions'
+  ].join(',');
+
+  const allInsights = [];
+  let nextUrl = null;
+  let pageCount = 0;
+  const MAX_PAGES = 50; // Giới hạn để tránh infinite loop
+
+  try {
+    console.log(`📊 [fetchLifetimeInsightsForAds] Fetching lifetime insights for account ${withPrefix}...`);
+    
+    // First request
+    let response = await axios.get(`${FB_API}/${withPrefix}/insights`, {
+      params: {
+        fields,
+        level: 'ad',
+        date_preset: 'lifetime',
+        limit: 500, // Max per page
+        access_token: accessToken
+      }
+    });
+    
+    // Pagination loop
+    while (response && pageCount < MAX_PAGES) {
+      pageCount++;
+      const pageData = response.data?.data || [];
+      allInsights.push(...pageData);
+      
+      console.log(`📄 [fetchLifetimeInsightsForAds] Page ${pageCount}: got ${pageData.length} records (total: ${allInsights.length})`);
+      
+      // Check for next page
+      nextUrl = response.data?.paging?.next;
+      if (!nextUrl) break;
+      
+      // Delay để tránh rate limit
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Fetch next page
+      response = await axios.get(nextUrl);
+    }
+    
+    console.log(`✅ [fetchLifetimeInsightsForAds] Total: ${allInsights.length} ad insights from ${pageCount} pages`);
+    
+    // Parse actions để extract các metrics cụ thể
+    for (const item of allInsights) {
+      // Link metrics mapping
+      item.link_clicks = Number(item.inline_link_clicks || 0);
+      item.link_ctr = item.inline_link_click_ctr !== undefined ? Number(item.inline_link_click_ctr) : null;
+      item.link_cpc = item.cost_per_inline_link_click !== undefined ? Number(item.cost_per_inline_link_click) : null;
+      
+      // Parse actions array
+      if (Array.isArray(item.actions)) {
+        // Website Purchases
+        const purchase = item.actions.find(a => 
+          a.action_type === 'purchase' && 
+          (a.action_destination === 'website' || !a.action_destination)
+        );
+        item.website_purchases = purchase ? Number(purchase.value || 0) : 0;
+        
+        // Leads
+        const lead = item.actions.find(a => a.action_type === 'lead');
+        item.leads = lead ? Number(lead.value || 0) : 0;
+        
+        // Mobile App Install
+        const install = item.actions.find(a => a.action_type === 'mobile_app_install');
+        item.mobile_app_install = install ? Number(install.value || 0) : 0;
+        
+        // Post Engagement
+        const engagement = item.actions.find(a => a.action_type === 'post_engagement');
+        item.post_engagement = engagement ? Number(engagement.value || 0) : 0;
+      } else {
+        item.website_purchases = 0;
+        item.leads = 0;
+        item.mobile_app_install = 0;
+        item.post_engagement = 0;
+      }
+      
+      // Parse conversions & results nếu là array
+      if (Array.isArray(item.conversions)) {
+        item.conversions = item.conversions.reduce((sum, conv) => sum + Number(conv.value || 0), 0);
+      } else {
+        item.conversions = item.conversions ? Number(item.conversions) : 0;
+      }
+      
+      if (Array.isArray(item.results)) {
+        item.results = item.results.reduce((sum, res) => sum + Number(res.value || 0), 0);
+      } else {
+        item.results = item.results ? Number(item.results) : 0;
+      }
+      
+      // Ensure numeric types
+      item.spend = Number(item.spend || 0);
+      item.impressions = Number(item.impressions || 0);
+      item.reach = Number(item.reach || 0);
+      item.clicks = Number(item.clicks || 0);
+      item.frequency = Number(item.frequency || 0);
+      item.cpc = item.cpc ? Number(item.cpc) : null;
+      item.cpm = item.cpm ? Number(item.cpm) : null;
+      item.ctr = item.ctr ? Number(item.ctr) : null;
+      item.cost_per_conversion = item.cost_per_conversion ? Number(item.cost_per_conversion) : null;
+      item.cost_per_result = item.cost_per_result ? Number(item.cost_per_result) : null;
+      item.website_purchase_roas = item.website_purchase_roas ? Number(item.website_purchase_roas) : null;
+    }
+    
+    return allInsights;
+    
+  } catch (err) {
+    console.error(
+      "❌ [fetchLifetimeInsightsForAds] Error:",
+      err.response?.data || err.message
+    );
+    return [];
+  }
+}
+
+/**
+ * Lấy LIFETIME insights cho tất cả adsets trong account.
+ * Hỗ trợ PAGINATION để lấy tất cả adsets khi account có nhiều adsets.
+ * 
+ * @param {string} accessToken - Facebook access token
+ * @param {string} adAccountId - Facebook ad account ID
+ * @returns {Promise<Array>} Mảng các insights records
+ */
+export async function fetchLifetimeInsightsForAdsets(accessToken, adAccountId) {
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  
+  const fields = [
+    'adset_id', 'adset_name',
+    'campaign_id', 'campaign_name',
+    'spend', 'impressions', 'reach', 'frequency',
+    'clicks', 'cpc', 'cpm', 'ctr',
+    'inline_link_clicks', 'inline_link_click_ctr', 'cost_per_inline_link_click',
+    'conversions', 'cost_per_conversion',
+    'results', 'cost_per_result',
+    'quality_ranking', 'actions'
+  ].join(',');
+
+  const allInsights = [];
+  let pageCount = 0;
+  const MAX_PAGES = 50;
+
+  try {
+    console.log(`📊 [fetchLifetimeInsightsForAdsets] Fetching lifetime insights for account ${withPrefix}...`);
+    
+    let response = await axios.get(`${FB_API}/${withPrefix}/insights`, {
+      params: {
+        fields,
+        level: 'adset',
+        date_preset: 'lifetime',
+        limit: 500,
+        access_token: accessToken
+      }
+    });
+    
+    while (response && pageCount < MAX_PAGES) {
+      pageCount++;
+      const pageData = response.data?.data || [];
+      allInsights.push(...pageData);
+      
+      console.log(`📄 [fetchLifetimeInsightsForAdsets] Page ${pageCount}: ${pageData.length} records (total: ${allInsights.length})`);
+      
+      const nextUrl = response.data?.paging?.next;
+      if (!nextUrl) break;
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      response = await axios.get(nextUrl);
+    }
+    
+    console.log(`✅ [fetchLifetimeInsightsForAdsets] Total: ${allInsights.length} adset insights from ${pageCount} pages`);
+    
+    // Parse numeric fields
+    for (const item of allInsights) {
+      item.spend = Number(item.spend || 0);
+      item.impressions = Number(item.impressions || 0);
+      item.reach = Number(item.reach || 0);
+      item.clicks = Number(item.clicks || 0);
+      item.frequency = Number(item.frequency || 0);
+      item.cpc = item.cpc ? Number(item.cpc) : null;
+      item.cpm = item.cpm ? Number(item.cpm) : null;
+      item.ctr = item.ctr ? Number(item.ctr) : null;
+    }
+    
+    return allInsights;
+    
+  } catch (err) {
+    console.error("❌ [fetchLifetimeInsightsForAdsets] Error:", err.response?.data || err.message);
+    return [];
+  }
+}
+
+/**
+ * Lấy LIFETIME insights cho tất cả campaigns trong account.
+ * Hỗ trợ PAGINATION để lấy tất cả campaigns khi account có nhiều campaigns.
+ * 
+ * @param {string} accessToken - Facebook access token
+ * @param {string} adAccountId - Facebook ad account ID
+ * @returns {Promise<Array>} Mảng các insights records
+ */
+export async function fetchLifetimeInsightsForCampaigns(accessToken, adAccountId) {
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  
+  const fields = [
+    'campaign_id', 'campaign_name', 'objective',
+    'spend', 'impressions', 'reach', 'frequency',
+    'clicks', 'cpc', 'cpm', 'ctr',
+    'inline_link_clicks', 'inline_link_click_ctr', 'cost_per_inline_link_click',
+    'conversions', 'cost_per_conversion',
+    'results', 'cost_per_result',
+    'quality_ranking', 'actions'
+  ].join(',');
+
+  const allInsights = [];
+  let pageCount = 0;
+  const MAX_PAGES = 50;
+
+  try {
+    console.log(`📊 [fetchLifetimeInsightsForCampaigns] Fetching lifetime insights for account ${withPrefix}...`);
+    
+    let response = await axios.get(`${FB_API}/${withPrefix}/insights`, {
+      params: {
+        fields,
+        level: 'campaign',
+        date_preset: 'lifetime',
+        limit: 500,
+        access_token: accessToken
+      }
+    });
+    
+    while (response && pageCount < MAX_PAGES) {
+      pageCount++;
+      const pageData = response.data?.data || [];
+      allInsights.push(...pageData);
+      
+      console.log(`📄 [fetchLifetimeInsightsForCampaigns] Page ${pageCount}: ${pageData.length} records (total: ${allInsights.length})`);
+      
+      const nextUrl = response.data?.paging?.next;
+      if (!nextUrl) break;
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      response = await axios.get(nextUrl);
+    }
+    
+    console.log(`✅ [fetchLifetimeInsightsForCampaigns] Total: ${allInsights.length} campaign insights from ${pageCount} pages`);
+    
+    // Parse numeric fields
+    for (const item of allInsights) {
+      item.spend = Number(item.spend || 0);
+      item.impressions = Number(item.impressions || 0);
+      item.reach = Number(item.reach || 0);
+      item.clicks = Number(item.clicks || 0);
+      item.frequency = Number(item.frequency || 0);
+      item.cpc = item.cpc ? Number(item.cpc) : null;
+      item.cpm = item.cpm ? Number(item.cpm) : null;
+      item.ctr = item.ctr ? Number(item.ctr) : null;
+    }
+    
+    return allInsights;
+    
+  } catch (err) {
+    console.error("❌ [fetchLifetimeInsightsForCampaigns] Error:", err.response?.data || err.message);
+    return [];
+  }
+}
+/**
+ * Lấy LIFETIME insights cho danh sách ad IDs cụ thể (dùng cho controller API).
+ * Trả về insights summary lifetime (tổng tích lũy từ đầu).
+ * 
+ * @param {string} accessToken - Facebook access token
+ * @param {string[]} adIds - Mảng các Facebook ad IDs
+ * @returns {Promise<Array>} Mảng insights { id, insights }
+ */
+export async function fetchInsightsForAdIds(accessToken, adIds = []) {
   if (!adIds.length) return [];
 
   try {
     const url = `${FB_API}/?ids=${adIds.join(",")}`;
-    const fields =
-      "insights{impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
+    const fields = "insights.date_preset(lifetime){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
     const { data } = await axios.get(url, {
       params: { fields, access_token: accessToken },
     });
@@ -490,7 +792,7 @@ export async function fetchAdInsights(accessToken, adIds = []) {
     }));
   } catch (err) {
     console.error(
-      "Error fetching insights:",
+      "Error fetching insights for ad IDs:",
       err.response?.data || err.message
     );
     return [];
@@ -498,7 +800,69 @@ export async function fetchAdInsights(accessToken, adIds = []) {
 }
 
 /**
- * Lấy insights cho nhiều thực thể (campaigns, adsets, ads) bằng batch request.
+ * Lấy LIFETIME insights cho danh sách adset IDs cụ thể (dùng cho controller API).
+ * Trả về insights summary lifetime (tổng tích lũy từ đầu).
+ * 
+ * @param {string} accessToken - Facebook access token
+ * @param {string[]} adsetIds - Mảng các Facebook adset IDs
+ * @returns {Promise<Array>} Mảng insights { id, insights }
+ */
+export async function fetchInsightsForAdsetIds(accessToken, adsetIds = []) {
+  if (!adsetIds.length) return [];
+
+  try {
+    const url = `${FB_API}/?ids=${adsetIds.join(",")}`;
+    const fields = "insights.date_preset(lifetime){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
+    const { data } = await axios.get(url, {
+      params: { fields, access_token: accessToken },
+    });
+
+    return Object.keys(data).map((id) => ({
+      id,
+      insights: data[id].insights?.data?.[0] || {},
+    }));
+  } catch (err) {
+    console.error(
+      "Error fetching insights for adset IDs:",
+      err.response?.data || err.message
+    );
+    return [];
+  }
+}
+
+/**
+ * Lấy LIFETIME insights cho danh sách campaign IDs cụ thể (dùng cho controller API).
+ * Trả về insights summary lifetime (tổng tích lũy từ đầu).
+ * 
+ * @param {string} accessToken - Facebook access token
+ * @param {string[]} campaignIds - Mảng các Facebook campaign IDs
+ * @returns {Promise<Array>} Mảng insights { id, insights }
+ */
+export async function fetchInsightsForCampaignIds(accessToken, campaignIds = []) {
+  if (!campaignIds.length) return [];
+
+  try {
+    const url = `${FB_API}/?ids=${campaignIds.join(",")}`;
+    const fields = "insights.date_preset(lifetime){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
+    const { data } = await axios.get(url, {
+      params: { fields, access_token: accessToken },
+    });
+
+    return Object.keys(data).map((id) => ({
+      id,
+      insights: data[id].insights?.data?.[0] || {},
+    }));
+  } catch (err) {
+    console.error(
+      "Error fetching insights for campaign IDs:",
+      err.response?.data || err.message
+    );
+    return [];
+  }
+}
+
+/**
+ * Lấy LIFETIME insights cho nhiều thực thể (campaigns, adsets, ads) bằng batch request.
  * @param {string[]} entityIds - Mảng các ID của Facebook.
  * @param {string} accessToken - Access token của người dùng.
  * @returns {Promise<Array<{id: string, insights: object}>>}
@@ -517,10 +881,10 @@ export async function fetchInsightsForEntities(entityIds, accessToken) {
     'quality_ranking',
   ].join(',');
 
-  // Tạo mảng batch request
+  // Tạo mảng batch request với date_preset=lifetime
   const batch = entityIds.map(id => ({
     method: 'GET',
-    relative_url: `${id}/insights?fields=${fields}`
+    relative_url: `${id}/insights?fields=${fields}&date_preset=lifetime`
   }));
 
   try {

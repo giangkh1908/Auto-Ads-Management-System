@@ -2,7 +2,7 @@
 import Ads from "../../models/ads/ads.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
 import AdsAccount from "../../models/ads/adsAccount.model.js";
-import { fetchAdsFromFacebook, updateAdStatus, deleteEntity, fetchAdInsights } from "../../services/fbAdsService.js";
+import { fetchAdsFromFacebook, updateAdStatus, deleteEntity, fetchInsightsForAdIds } from "../../services/fbAdsService.js";
 import User from "../../models/user.model.js";
 import { syncEntitiesForAccount } from "../../services/entitySyncService.js";
 
@@ -361,7 +361,7 @@ export async function getAdsInsightsCtrl(req, res) {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    const insights = await fetchAdInsights(accessToken, adIds);
+    const insights = await fetchInsightsForAdIds(accessToken, adIds);
     return res.status(200).json({ items: insights, total: insights.length });
   } catch (err) {
     console.error("GET Ads insights error:", err);

@@ -1,6 +1,6 @@
 // controllers/ads/adsSet.controller.js
 import AdsSet from "../../models/ads/adsSet.model.js";
-import { fetchAdsetsFromFacebook, updateAdsetStatus, deleteEntity, fetchInsightsForEntities } from "../../services/fbAdsService.js";
+import { fetchAdsetsFromFacebook, updateAdsetStatus, deleteEntity, fetchInsightsForAdsetIds } from "../../services/fbAdsService.js";
 import User from "../../models/user.model.js";
 import Ads from "../../models/ads/ads.model.js";
 
@@ -491,7 +491,7 @@ export async function getAdsetInsightsCtrl(req, res) {
     }
 
     // Gọi service để lấy insights
-    const insightsData = await fetchInsightsForEntities(adsetIds, accessToken);
+    const insightsData = await fetchInsightsForAdsetIds(accessToken, adsetIds);
 
     // Map lại data để FE dễ xử lý: { id: '...', insights: {...} }
     const items = insightsData.map(item => ({

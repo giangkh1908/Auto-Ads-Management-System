@@ -121,9 +121,7 @@ export async function confirmContext(req, res) {
   try {
     const { config_id, language, tone, personalization, main_keywords } = req.body;
     const userId = req.user?._id;
-
     let configData = null;
-
     if (config_id) {
       const config = await AIConfig.findOne({
         _id: config_id,
@@ -132,14 +130,12 @@ export async function confirmContext(req, res) {
           { is_system_template: true },
         ],
       });
-
       if (!config) {
         return res.status(404).json({
           success: false,
           message: "Config không tồn tại hoặc không có quyền truy cập",
         });
       }
-
       configData = {
         language: config.metadata?.language || "vi",
         tone: config.metadata?.tone || "chuyen_nghiep",
@@ -147,19 +143,15 @@ export async function confirmContext(req, res) {
         main_keywords: main_keywords || [],
         aiConfig: config,
       };
-
       await AIConfig.findByIdAndUpdate(config_id, {
         $inc: { usage_count: 1 },
         $set: { last_used_at: new Date() },
       });
-
       const context_id = "ctx_" + uuidv4().substring(0, 8);
-
       contexts.set(context_id, {
         ...configData,
         expiresAt: Date.now() + TTL,
       });
-
       if (Math.random() < 0.1) {
         for (const [id, ctx] of contexts.entries()) {
           if (ctx.expiresAt < Date.now()) {
@@ -167,7 +159,6 @@ export async function confirmContext(req, res) {
           }
         }
       }
-
       return res.status(200).json({
         success: true,
         context_id,
@@ -181,7 +172,6 @@ export async function confirmContext(req, res) {
           message: "Thiếu thông tin context (language, tone, main_keywords) hoặc config_id",
         });
       }
-
       configData = {
         language,
         tone,
@@ -189,14 +179,11 @@ export async function confirmContext(req, res) {
         main_keywords,
         aiConfig: null,
       };
-
       const context_id = "ctx_" + uuidv4().substring(0, 8);
-
       contexts.set(context_id, {
         ...configData,
         expiresAt: Date.now() + TTL,
       });
-
       if (Math.random() < 0.1) {
         for (const [id, ctx] of contexts.entries()) {
           if (ctx.expiresAt < Date.now()) {
@@ -204,9 +191,7 @@ export async function confirmContext(req, res) {
           }
         }
       }
-
       const responseModel = req.body.model || null;
-
       return res.status(200).json({
         success: true,
         context_id,

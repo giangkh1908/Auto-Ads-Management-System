@@ -36,7 +36,6 @@ export async function publishAdsWizard(req, res) {
       creativeDraftId,
       adDraftId,
     } = req.body;
-
     //  Lấy Access Token: luôn ưu tiên token lưu trong DB để khớp APP SECRET
     const user = await User.findById(req.user?._id).select(
       "+facebookAccessToken"
@@ -48,14 +47,12 @@ export async function publishAdsWizard(req, res) {
       });
     }
     const access_token = user.facebookAccessToken || tokenFromFE;
-
     if (!ad_account_id || !access_token) {
       return res.status(400).json({
         success: false,
         message: "Thiếu ad_account_id hoặc access_token.",
       });
     }
-
     // Kiểm tra quyền sở hữu tài khoản quảng cáo
     const account = await AdsAccount.findOne({
       external_id: ad_account_id,
@@ -65,14 +62,12 @@ export async function publishAdsWizard(req, res) {
         { shop_user_id: req.user._id },
       ],
     });
-
     if (!account) {
       return res.status(403).json({
         success: false,
         message: "Tài khoản quảng cáo không thuộc quyền sở hữu của bạn.",
       });
     }
-
     // Validate dữ liệu đầu vào cơ bản
     if (!campaign?.name || !campaign?.objective) {
       return res.status(400).json({
@@ -80,35 +75,27 @@ export async function publishAdsWizard(req, res) {
         message: "Thiếu thông tin chiến dịch (tên hoặc mục tiêu).",
       });
     }
-
     if (!adset?.name) {
       return res.status(400).json({
         success: false,
         message: "Thiếu tên nhóm quảng cáo (Ad Set).",
       });
     }
-
     if (!creative?.object_story_spec) {
       return res.status(400).json({
         success: false,
         message: "Thiếu nội dung quảng cáo (Creative.object_story_spec).",
       });
     }
-
     console.log(
       ` [Wizard] Bắt đầu publish quảng cáo cho account: ${ad_account_id}`
     );
-
-    // Sửa trong hàm publishAdsWizard
-
     // Thêm đoạn này ngay trước khi gọi service
-    // Khoảng dòng 68 (sau phần validate)
     if (adset.bid_strategy === "LOWEST_COST_WITHOUT_CAP" && adset.bid_amount !== undefined) {
       console.log("⚠️ Controller: Phát hiện xung đột bid_strategy và bid_amount");
       // Xóa bid_amount trực tiếp từ đối tượng hiện tại
       delete adset.bid_amount; // ✅ Hợp lệ - chỉ sửa thuộc tính không gán lại biến
     }
-
     // Gọi service chính
     const result = await publishWizard({
       ad_account_id,
@@ -139,7 +126,6 @@ export async function publishAdsWizard(req, res) {
       creativeDraftId,
       adDraftId,
     });
-
     // Trả kết quả cho FE
     return res.status(201).json({
       success: true,
@@ -180,7 +166,6 @@ export async function updateAdsWizard(req, res) {
       ad,
       dry_run = false,
     } = req.body;
-
     // 🧩 1️⃣ Lấy Access Token
     let access_token = tokenFromFE;
     if (!access_token) {
@@ -189,11 +174,9 @@ export async function updateAdsWizard(req, res) {
         return res.status(401).json({ success: false, message: "Người dùng không tồn tại hoặc chưa đăng nhập." });
       access_token = user.facebookAccessToken;
     }
-
     if (!ad_account_id || !access_token) {
       return res.status(400).json({ success: false, message: "Thiếu ad_account_id hoặc access_token." });
     }
-
     // 🧩 2️⃣ Kiểm tra quyền sở hữu tài khoản quảng cáo
     const account = await AdsAccount.findOne({
       external_id: ad_account_id,
@@ -205,11 +188,9 @@ export async function updateAdsWizard(req, res) {
     });
     if (!account)
       return res.status(403).json({ success: false, message: "Tài khoản quảng cáo không thuộc quyền sở hữu của bạn." });
-
     // ✅ CASE 1: Nếu có campaign.adsets → dùng cascade update
     if (campaign?.adsets && Array.isArray(campaign.adsets) && campaign.adsets.length > 0) {
       console.log(`🔄 [Wizard] Sử dụng cascade update cho campaign: ${campaign.name}`);
-      
       // Enrich campaign data
       const enrichedCampaign = {
         ...campaign,
@@ -223,29 +204,24 @@ export async function updateAdsWizard(req, res) {
           })) || []
         }))
       };
-      
       const result = await updateFlexibleService({
         ad_account_id,
         access_token,
         campaignsList: [enrichedCampaign], // Wrap single campaign
       });
-      
       return res.status(200).json({
         success: result.success,
         message: `Cập nhật ${result.totalUpdated} entities, tạo mới ${result.totalCreated} entities`,
         data: result,
       });
     }
-
     // ✅ CASE 2: Fallback - dùng updateWizard cũ cho backward compatibility
     console.log(`🔄 [Wizard] Sử dụng update riêng lẻ (legacy) cho account: ${ad_account_id}`);
-    
     // Xử lý xung đột bid_strategy cho adset
     if (adset?.bid_strategy === "LOWEST_COST_WITHOUT_CAP" && adset?.bid_amount !== undefined) {
       console.log("⚠️ Controller (update): Phát hiện xung đột bid_strategy và bid_amount");
       delete adset.bid_amount;
     }
-
     // 🧩 3️⃣ Gọi service updateWizard
     const result = await updateWizard({
       ad_account_id,
@@ -256,7 +232,6 @@ export async function updateAdsWizard(req, res) {
       ad,
       dry_run,
     });
-
     // 🧩 4️⃣ Trả kết quả cho FE
     return res.status(200).json({
       success: true,

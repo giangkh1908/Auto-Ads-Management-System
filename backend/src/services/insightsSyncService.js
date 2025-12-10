@@ -1,13 +1,12 @@
-import pLimit from "p-limit";
 import AdsAccount from "../models/ads/adsAccount.model.js";
 import Ads from "../models/ads/ads.model.js";
 import AdsSet from "../models/ads/adsSet.model.js";
 import AdsCampaign from "../models/ads/adsCampaign.model.js";
-import { fetchAdInsights, saveInsightsToAdPerformance, fetchInsightsForEntities } from "./fbAdsService.js";
+import AdPerformance from "../models/ads/adPerformance.model.js";
+import { fetchLifetimeInsightsForAds, fetchLifetimeInsightsForAdsets, fetchLifetimeInsightsForCampaigns } from "./fbAdsService.js";
 import User from "../models/user.model.js";
 
 const BATCH_SIZE = 50;
-const CONCURRENCY = 2;
 
 async function getAccessTokenForAccount(account) {
   if (!account?.shop_admin_id) {
@@ -15,6 +14,22 @@ async function getAccessTokenForAccount(account) {
   }
   const user = await User.findById(account.shop_admin_id).select("+facebookAccessToken");
   return user?.facebookAccessToken || null;
+}
+
+/**
+ * Normalize ngày về 00:00:00 Vietnam timezone (GMT+7)
+ */
+function normalizeToVietnamMidnight(date) {
+  const d = new Date(date);
+  // Chuyển về Vietnam timezone (+7)
+  const vietnamOffset = 7 * 60 * 60 * 1000;
+  const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+  const vietnamTime = new Date(utc + vietnamOffset);
+  
+  // Set về 00:00:00
+  vietnamTime.setHours(0, 0, 0, 0);
+  
+  return vietnamTime;
 }
 
 /**
@@ -26,7 +41,7 @@ async function updateAdsModelWithInsights(insights) {
 
   const bulkOps = insights.map((item) => ({
     updateOne: {
-      filter: { external_id: item.ad_id }, // ad_id from FB is external_id in DB
+      filter: { external_id: item.ad_id },
       update: {
         $set: {
           insights: item,
@@ -47,53 +62,36 @@ async function updateAdsModelWithInsights(insights) {
 }
 
 /**
- * Fetches and updates AdSets insights for the account
+ * Fetches and updates AdSets insights (LIFETIME) for the account
  */
-async function syncAdSetsInsights(accessToken, accountExternalId, withoutPrefix) {
+async function syncAdSetsInsights(accessToken, accountExternalId) {
   try {
-    // Find active AdSets for this account
-    const adsets = await AdsSet.find({
-      external_account_id: { $in: [withoutPrefix, `act_${withoutPrefix}`] },
-      status: { $in: ["ACTIVE", "PAUSED"] },
-    }).select("external_id");
-
-    if (adsets.length === 0) return;
-
-    const adsetIds = adsets.map((a) => a.external_id).filter(Boolean);
-    console.log(`📊 Syncing insights for ${adsetIds.length} AdSets...`);
-
-    // Fetch insights in batches using existing helper
-    const batches = [];
-    for (let i = 0; i < adsetIds.length; i += BATCH_SIZE) {
-      batches.push(adsetIds.slice(i, i + BATCH_SIZE));
+    // Dùng hàm mới lấy lifetime insights (có pagination)
+    const insightsData = await fetchLifetimeInsightsForAdsets(accessToken, accountExternalId);
+    
+    if (insightsData.length === 0) {
+      console.log(`⏭️ No adset insights for account ${accountExternalId}`);
+      return;
     }
-
-    let updatedCount = 0;
-    for (const batch of batches) {
-      const insightsData = await fetchInsightsForEntities(batch, accessToken);
-      
-      const bulkOps = insightsData
-        .filter(item => item.id && item.insights?.data?.[0])
-        .map(item => ({
-          updateOne: {
-            filter: { external_id: item.id },
-            update: {
-              $set: {
-                insights: item.insights.data[0],
-                updated_at: new Date(),
-              }
+    
+    const bulkOps = insightsData
+      .filter(item => item.adset_id)
+      .map(item => ({
+        updateOne: {
+          filter: { external_id: item.adset_id },
+          update: {
+            $set: {
+              insights: item,
+              updated_at: new Date(),
             }
           }
-        }));
+        }
+      }));
 
-      if (bulkOps.length > 0) {
-        const res = await AdsSet.bulkWrite(bulkOps, { ordered: false });
-        updatedCount += res.modifiedCount;
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 200)); // Rate limit guard
+    if (bulkOps.length > 0) {
+      const res = await AdsSet.bulkWrite(bulkOps, { ordered: false });
+      console.log(`✅ Updated ${res.modifiedCount} AdSets with lifetime insights`);
     }
-    console.log(`✅ Updated ${updatedCount} AdSets with latest insights`);
 
   } catch (err) {
     console.error("❌ Error syncing AdSets insights:", err.message);
@@ -101,59 +99,171 @@ async function syncAdSetsInsights(accessToken, accountExternalId, withoutPrefix)
 }
 
 /**
- * Fetches and updates Campaigns insights for the account
+ * Fetches and updates Campaigns insights (LIFETIME) for the account
  */
-async function syncCampaignsInsights(accessToken, accountExternalId, withoutPrefix) {
+async function syncCampaignsInsights(accessToken, accountExternalId) {
   try {
-    // Find active Campaigns for this account
-    const campaigns = await AdsCampaign.find({
-      external_account_id: { $in: [withoutPrefix, `act_${withoutPrefix}`] },
-      status: { $in: ["ACTIVE", "PAUSED"] },
-    }).select("external_id");
-
-    if (campaigns.length === 0) return;
-
-    const campaignIds = campaigns.map((c) => c.external_id).filter(Boolean);
-    console.log(`📊 Syncing insights for ${campaignIds.length} Campaigns...`);
-
-    // Fetch insights in batches
-    const batches = [];
-    for (let i = 0; i < campaignIds.length; i += BATCH_SIZE) {
-      batches.push(campaignIds.slice(i, i + BATCH_SIZE));
+    // Dùng hàm mới lấy lifetime insights (có pagination)
+    const insightsData = await fetchLifetimeInsightsForCampaigns(accessToken, accountExternalId);
+    
+    if (insightsData.length === 0) {
+      console.log(`⏭️ No campaign insights for account ${accountExternalId}`);
+      return;
     }
-
-    let updatedCount = 0;
-    for (const batch of batches) {
-      const insightsData = await fetchInsightsForEntities(batch, accessToken);
-      
-      const bulkOps = insightsData
-        .filter(item => item.id && item.insights?.data?.[0])
-        .map(item => ({
-          updateOne: {
-            filter: { external_id: item.id },
-            update: {
-              $set: {
-                insights: item.insights.data[0],
-                updated_at: new Date(),
-              }
+    
+    const bulkOps = insightsData
+      .filter(item => item.campaign_id)
+      .map(item => ({
+        updateOne: {
+          filter: { external_id: item.campaign_id },
+          update: {
+            $set: {
+              insights: item,
+              updated_at: new Date(),
             }
           }
-        }));
+        }
+      }));
 
-      if (bulkOps.length > 0) {
-        const res = await AdsCampaign.bulkWrite(bulkOps, { ordered: false });
-        updatedCount += res.modifiedCount;
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 200)); // Rate limit guard
+    if (bulkOps.length > 0) {
+      const res = await AdsCampaign.bulkWrite(bulkOps, { ordered: false });
+      console.log(`✅ Updated ${res.modifiedCount} Campaigns with lifetime insights`);
     }
-    console.log(`✅ Updated ${updatedCount} Campaigns with latest insights`);
 
   } catch (err) {
     console.error("❌ Error syncing Campaigns insights:", err.message);
   }
 }
 
+
+/**
+ * Lưu lifetime insights vào AdPerformance.
+ * Mỗi ngày 1 record cho mỗi ad, chứa số liệu LIFETIME (tổng tích lũy).
+ * 
+ * @param {Array} insightsData - Mảng insights từ fetchLifetimeInsightsForAds
+ * @param {Object} account - Account document từ MongoDB
+ */
+async function saveLifetimeInsightsToAdPerformance(insightsData, account) {
+  if (!insightsData || insightsData.length === 0) {
+    console.log('[insightsSyncService] ⚠️ No insights data to save');
+    return { saved: 0, skipped: 0 };
+  }
+
+  const today = normalizeToVietnamMidnight(new Date());
+  const accountId = account._id.toString();
+  const externalAccountId = account.external_id.replace('act_', '');
+
+  console.log(`[insightsSyncService] 💾 Saving ${insightsData.length} lifetime insights for date ${today.toISOString().split('T')[0]}...`);
+
+  // Lấy mapping external_id -> ObjectId cho ads, adsets, campaigns
+  const adExternalIds = [...new Set(insightsData.map(item => item.ad_id).filter(Boolean))];
+  const adsetExternalIds = [...new Set(insightsData.map(item => item.adset_id).filter(Boolean))];
+  const campaignExternalIds = [...new Set(insightsData.map(item => item.campaign_id).filter(Boolean))];
+
+  const [adsDocs, adsetsDocs, campaignsDocs] = await Promise.all([
+    Ads.find({ external_id: { $in: adExternalIds } }).select('_id external_id'),
+    AdsSet.find({ external_id: { $in: adsetExternalIds } }).select('_id external_id'),
+    AdsCampaign.find({ external_id: { $in: campaignExternalIds } }).select('_id external_id'),
+  ]);
+
+  const adsMap = new Map(adsDocs.map(ad => [ad.external_id, ad._id]));
+  const adsetsMap = new Map(adsetsDocs.map(adset => [adset.external_id, adset._id]));
+  const campaignsMap = new Map(campaignsDocs.map(campaign => [campaign.external_id, campaign._id]));
+
+  const bulkOps = [];
+  let saved = 0;
+  let skipped = 0;
+
+  for (const item of insightsData) {
+    const adObjectId = adsMap.get(item.ad_id);
+    if (!adObjectId) {
+      skipped++;
+      continue;
+    }
+
+    const performanceData = {
+      ads_id: adObjectId,
+      set_id: adsetsMap.get(item.adset_id) || null,
+      campaign_id: campaignsMap.get(item.campaign_id) || null,
+      account_id: accountId,
+      external_account_id: externalAccountId,
+      external_ad_id: item.ad_id,
+      external_adset_id: item.adset_id || null,
+      external_campaign_id: item.campaign_id || null,
+      date: today,
+      
+      // Core metrics
+      impressions: item.impressions || 0,
+      reach: item.reach || 0,
+      clicks: item.clicks || 0,
+      spend: item.spend || 0,
+      frequency: item.frequency || 0,
+      
+      // Calculated metrics
+      cpc: item.cpc,
+      cpm: item.cpm,
+      ctr: item.ctr,
+      
+      // Conversions & Results
+      conversions: item.conversions || 0,
+      cost_per_conversion: item.cost_per_conversion,
+      results: item.results || 0,
+      cost_per_result: item.cost_per_result,
+      
+      // Metadata
+      campaign_name: item.campaign_name || null,
+      adset_name: item.adset_name || null,
+      ad_name: item.ad_name || null,
+      objective: item.objective || null,
+      
+      // Link metrics
+      link_clicks: item.link_clicks || 0,
+      link_cpc: item.link_cpc,
+      link_ctr: item.link_ctr,
+      
+      // ROAS
+      website_purchase_roas: item.website_purchase_roas,
+      
+      // Additional metrics from actions
+      website_purchases: item.website_purchases || 0,
+      leads: item.leads || 0,
+      mobile_app_install: item.mobile_app_install || 0,
+      post_engagement: item.post_engagement || 0,
+      
+      // Quality
+      quality_ranking: item.quality_ranking || null,
+      
+      // Total spend (same as spend for lifetime)
+      total_amount_spent: item.spend || 0,
+    };
+
+    bulkOps.push({
+      updateOne: {
+        filter: { ads_id: adObjectId, date: today },
+        update: { $set: performanceData },
+        upsert: true,
+      },
+    });
+    saved++;
+  }
+
+  if (bulkOps.length > 0) {
+    try {
+      const result = await AdPerformance.bulkWrite(bulkOps, { ordered: false });
+      console.log(`✅ [insightsSyncService] Saved ${result.upsertedCount} new, updated ${result.modifiedCount} existing records`);
+    } catch (err) {
+      console.error('❌ [insightsSyncService] BulkWrite error:', err.message);
+    }
+  }
+
+  return { saved, skipped };
+}
+
+/**
+ * Main function: Sync insights for an account
+ * - Lấy LIFETIME insights từ Facebook
+ * - Lưu vào AdPerformance với date = today
+ */
 export async function syncInsightsForAccount(accountId) {
   const account = await AdsAccount.findById(accountId);
   if (!account) {
@@ -161,12 +271,10 @@ export async function syncInsightsForAccount(accountId) {
   }
 
   if (account.sync_metadata?.insights_status === "syncing") {
-    // Check timeout/stuck status if needed, but for now just return
     const lastSynced = account.sync_metadata?.insights_last_synced_at;
-    if (lastSynced && (new Date() - new Date(lastSynced) < 1000 * 60 * 10)) { // 10 mins
+    if (lastSynced && (new Date() - new Date(lastSynced) < 1000 * 60 * 10)) {
        return;
     }
-    // If stuck > 10 mins, proceed (reset status effectively)
   }
 
   const accessToken = await getAccessTokenForAccount(account);
@@ -184,114 +292,35 @@ export async function syncInsightsForAccount(accountId) {
     }
   );
 
-  const { withoutPrefix } = (function normalizeAccountPair(accountIdValue) {
+  const { withoutPrefix, withPrefix } = (function normalizeAccountPair(accountIdValue) {
     const hasPrefix = String(accountIdValue).startsWith("act_");
-    const withPrefix = hasPrefix ? String(accountIdValue) : `act_${accountIdValue}`;
-    const withoutPrefixValue = hasPrefix ? String(accountIdValue).substring(4) : String(accountIdValue);
-    return { withPrefix, withoutPrefix: withoutPrefixValue };
+    const withPrefixVal = hasPrefix ? String(accountIdValue) : `act_${accountIdValue}`;
+    const withoutPrefixVal = hasPrefix ? String(accountIdValue).substring(4) : String(accountIdValue);
+    return { withPrefix: withPrefixVal, withoutPrefix: withoutPrefixVal };
   })(account.external_id);
 
-  // 1. Sync Campaigns & AdSets Insights FIRST (Parallel)
-  // We do this to ensure parent entities have data too
-  await Promise.all([
-    syncCampaignsInsights(accessToken, account.external_id, withoutPrefix),
-    syncAdSetsInsights(accessToken, account.external_id, withoutPrefix)
-  ]);
-
-  // 2. Sync Ads Insights (Main logic)
-  const ads = await Ads.find({
-    external_account_id: { $in: [withoutPrefix, `act_${withoutPrefix}`] },
-    status: { $in: ["ACTIVE", "PAUSED"] },
-  }).select("external_id");
-
-  if (ads.length === 0) {
-    console.log(`⏭️ Skip insights sync - no active ads for account ${account.external_id}`);
-    await AdsAccount.updateOne(
-      { _id: account._id },
-      {
-        $set: {
-          "sync_metadata.insights_status": "done",
-          "sync_metadata.insights_last_synced_at": new Date(),
-        },
-      }
-    );
-    return;
-  }
-
-  console.log(`📊 Syncing insights for ${ads.length} active ads`);
-
-  const adIds = ads.map((a) => a.external_id).filter(Boolean);
-  const limit = pLimit(CONCURRENCY);
   let hasError = null;
 
   try {
-    const batches = [];
-    for (let i = 0; i < adIds.length; i += BATCH_SIZE) {
-      batches.push(adIds.slice(i, i + BATCH_SIZE));
+    // 1. Sync Campaigns & AdSets Insights (for model updates)
+    await Promise.all([
+      syncCampaignsInsights(accessToken, account.external_id),
+      syncAdSetsInsights(accessToken, account.external_id)
+    ]);
+
+    // 2. Fetch LIFETIME insights for all ads in account
+    console.log(`📊 [syncInsightsForAccount] Fetching lifetime insights for account ${withPrefix}...`);
+    const lifetimeInsights = await fetchLifetimeInsightsForAds(accessToken, account.external_id);
+
+    if (lifetimeInsights.length === 0) {
+      console.log(`⏭️ No ads with insights for account ${account.external_id}`);
+    } else {
+      // 3. Save to AdPerformance (date = today, data = lifetime)
+      await saveLifetimeInsightsToAdPerformance(lifetimeInsights, account);
+      
+      // 4. Update Ads model with latest insights
+      await updateAdsModelWithInsights(lifetimeInsights);
     }
-
-    const tasks = batches.map((batch) =>
-      limit(async () => {
-        const insights = await fetchAdInsights(accessToken, batch);
-        if (insights && insights.length > 0) {
-          const flattened = insights
-            .map((item) => ({
-              ad_id: item.id,
-              ...(item.insights || {}),
-            }))
-            .flatMap((entry) => {
-              const data = entry.data || [];
-              if (!Array.isArray(data) || data.length === 0) {
-                return [];
-              }
-              // Data này trả về mảng, thường chỉ có 1 phần tử nếu không breakdown
-              // Nhưng fetchAdInsights đang trả về structure khác một chút so với fetchInsightsForEntities
-              // fetchAdInsights trả về { id, insights: { data: [...] } }
-              // Logic cũ flatten đang giả định structure này.
-              return data.map((row) => ({
-                ...row,
-                ad_id: entry.ad_id,
-              }));
-            });
-
-          if (flattened.length > 0) {
-            // A. Save history to AdPerformance (Old logic)
-            await saveInsightsToAdPerformance(flattened, account._id.toString());
-            
-            // B. Update Ads model with latest insights (New logic)
-            // Flattened contains daily breakdown if requested, but here fetchAdInsights
-            // usually returns 'lifetime' or 'default' range. 
-            // We need to pick the most relevant one for the "current state".
-            // However, `flattened` might contain multiple rows per ad if date_preset is used?
-            // `fetchAdInsights` in `fbAdsService` uses default params (no date_preset specified = last_30d usually? or default).
-            // Actually `fetchAdInsights` calls `/ids=...?fields=insights...` which returns lifetime or last 30d summary by default if not specified?
-            // FB API default for `insights` edge is last 30 days.
-            
-            // For model update, we want the object that `fetchAdInsights` returned structure 
-            // mapped to `item.insights.data[0]`.
-            
-            // Re-map simple array for model update (taking the first/main insight object)
-            const modelUpdates = [];
-            insights.forEach(item => {
-               if (item.insights?.data?.[0]) {
-                 modelUpdates.push({
-                   ...item.insights.data[0],
-                   ad_id: item.id
-                 });
-               }
-            });
-            
-            if (modelUpdates.length > 0) {
-               await updateAdsModelWithInsights(modelUpdates);
-            }
-          }
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      })
-    );
-
-    await Promise.all(tasks);
 
     await AdsAccount.updateOne(
       { _id: account._id },
@@ -302,8 +331,11 @@ export async function syncInsightsForAccount(accountId) {
         },
       }
     );
+    
   } catch (err) {
     hasError = err;
+    console.error(`❌ [syncInsightsForAccount] Error for ${account.external_id}:`, err.message);
+    
     await AdsAccount.updateOne(
       { _id: account._id },
       {

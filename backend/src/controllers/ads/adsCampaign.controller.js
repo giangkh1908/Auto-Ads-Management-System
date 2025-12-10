@@ -1,9 +1,9 @@
-import { fetchCampaignsFromFacebook, updateCampaignStatus, deleteEntity, fetchInsightsForEntities } from "../../services/fbAdsService.js";
+import { fetchCampaignsFromFacebook, updateCampaignStatus, deleteEntity, fetchInsightsForCampaignIds } from "../../services/fbAdsService.js";
 import User from "../../models/user.model.js";
 import AdsCampaign from "../../models/ads/adsCampaign.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
 import Ads from "../../models/ads/ads.model.js";
-
+import AdsAccount from "../../models/ads/adsAccount.model.js";
 
 // Helper function để extract string ID từ ObjectId format
 function extractObjectId(value) {
@@ -159,14 +159,6 @@ export async function getCampaignCtrl(req, res) {
     });
   }
 }
-
-
-
-/**
- * GET /api/campaigns/live
- * Lấy danh sách campaigns trực tiếp từ Facebook (không lưu DB)
- */
-import AdsAccount from "../../models/ads/adsAccount.model.js";
 
 function normalizeAccountPair(accountId) {
   const hasPrefix = String(accountId).startsWith("act_");
@@ -566,7 +558,7 @@ export async function getCampaignInsightsCtrl(req, res) {
     }
 
     // Gọi service để lấy insights (bạn cần đảm bảo hàm này tồn tại trong fbAdsService.js)
-    const insightsData = await fetchInsightsForEntities(campaignIds, accessToken);
+    const insightsData = await fetchInsightsForCampaignIds(accessToken, campaignIds);
 
     // Map lại data để FE dễ xử lý: { id: '...', insights: {...} }
     const items = insightsData.map(item => ({
