@@ -482,10 +482,13 @@ export async function fetchAdsFromFacebook(accessToken, adAccountId) {
  * @param {string} adAccountId - Facebook ad account ID (có hoặc không có prefix act_)
  * @returns {Promise<Array>} Mảng các insights records, mỗi record là 1 ad
  */
-export async function fetchLifetimeInsightsForAds(accessToken, adAccountId) {
+export async function fetchLifetimeInsightsForAds(accessToken, adAccountId, options = {}) {
   const { withPrefix } = normalizeAccountPair(adAccountId);
+  const timeIncrement = options.time_increment ?? 1;
   
   const fields = [
+    // Names for mapping
+    'campaign_name', 'adset_name',
     // IDs & Names
     'ad_id', 'ad_name',
     'adset_id', 'adset_name',
@@ -520,8 +523,9 @@ export async function fetchLifetimeInsightsForAds(accessToken, adAccountId) {
       params: {
         fields,
         level: 'ad',
-        date_preset: 'lifetime',
+        date_preset: 'maximum', // 'lifetime' có thể lỗi ở một số API version, dùng 'maximum' thay thế
         limit: 500, // Max per page
+        time_increment: timeIncrement,
         access_token: accessToken
       }
     });
@@ -627,8 +631,9 @@ export async function fetchLifetimeInsightsForAds(accessToken, adAccountId) {
  * @param {string} adAccountId - Facebook ad account ID
  * @returns {Promise<Array>} Mảng các insights records
  */
-export async function fetchLifetimeInsightsForAdsets(accessToken, adAccountId) {
+export async function fetchLifetimeInsightsForAdsets(accessToken, adAccountId, options = {}) {
   const { withPrefix } = normalizeAccountPair(adAccountId);
+  const timeIncrement = options.time_increment ?? 1;
   
   const fields = [
     'adset_id', 'adset_name',
@@ -652,8 +657,9 @@ export async function fetchLifetimeInsightsForAdsets(accessToken, adAccountId) {
       params: {
         fields,
         level: 'adset',
-        date_preset: 'lifetime',
-        limit: 500,
+        date_preset: 'maximum', // 'lifetime' -> 'maximum'
+        limit: 200,
+        time_increment: timeIncrement,
         access_token: accessToken
       }
     });
@@ -702,8 +708,9 @@ export async function fetchLifetimeInsightsForAdsets(accessToken, adAccountId) {
  * @param {string} adAccountId - Facebook ad account ID
  * @returns {Promise<Array>} Mảng các insights records
  */
-export async function fetchLifetimeInsightsForCampaigns(accessToken, adAccountId) {
+export async function fetchLifetimeInsightsForCampaigns(accessToken, adAccountId, options = {}) {
   const { withPrefix } = normalizeAccountPair(adAccountId);
+  const timeIncrement = options.time_increment ?? 1;
   
   const fields = [
     'campaign_id', 'campaign_name', 'objective',
@@ -726,8 +733,9 @@ export async function fetchLifetimeInsightsForCampaigns(accessToken, adAccountId
       params: {
         fields,
         level: 'campaign',
-        date_preset: 'lifetime',
-        limit: 500,
+        date_preset: 'maximum', // 'lifetime' -> 'maximum'
+        limit: 50,
+        time_increment: timeIncrement,
         access_token: accessToken
       }
     });
@@ -777,7 +785,7 @@ export async function fetchLifetimeInsightsForCampaigns(accessToken, adAccountId
  */
 export async function fetchInsightsForAdIds(accessToken, adIds = []) {
   if (!adIds.length) return [];
-
+  
   try {
     const url = `${FB_API}/?ids=${adIds.join(",")}`;
     const fields = "insights.date_preset(lifetime){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";

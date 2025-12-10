@@ -18,18 +18,27 @@ async function getAccessTokenForAccount(account) {
 
 /**
  * Normalize ngày về 00:00:00 Vietnam timezone (GMT+7)
+ * Trả về Date object với ngày của Vietnam
  */
 function normalizeToVietnamMidnight(date) {
   const d = new Date(date);
-  // Chuyển về Vietnam timezone (+7)
-  const vietnamOffset = 7 * 60 * 60 * 1000;
-  const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-  const vietnamTime = new Date(utc + vietnamOffset);
   
-  // Set về 00:00:00
-  vietnamTime.setHours(0, 0, 0, 0);
+  // Lấy ngày/tháng/năm theo Vietnam timezone
+  const vietnamFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
   
-  return vietnamTime;
+  const vietnamDateStr = vietnamFormatter.format(d); // format: YYYY-MM-DD
+  
+  // Tạo Date object từ string (sẽ là 00:00:00 UTC)
+  const result = new Date(vietnamDateStr + 'T00:00:00.000Z');
+  
+  console.log(`[normalizeToVietnamMidnight] Input: ${d.toISOString()}, Vietnam date: ${vietnamDateStr}, Output: ${result.toISOString()}`);
+  
+  return result;
 }
 
 /**
@@ -137,126 +146,140 @@ async function syncCampaignsInsights(accessToken, accountExternalId) {
 
 
 /**
- * Lưu lifetime insights vào AdPerformance.
- * Mỗi ngày 1 record cho mỗi ad, chứa số liệu LIFETIME (tổng tích lũy).
+ * Lưu lifetime insights vào AdPerformance cho TẤT CẢ ads trong account.
+ * Ads có insights -> lưu số liệu thực.
+ * Ads không có insights -> lưu số liệu = 0.
+ * Mỗi ngày 1 record cho mỗi ad.
  * 
- * @param {Array} insightsData - Mảng insights từ fetchLifetimeInsightsForAds
+ * @param {Array} insightsData - Mảng insights từ fetchLifetimeInsightsForAds (có thể rỗng)
  * @param {Object} account - Account document từ MongoDB
  */
 async function saveLifetimeInsightsToAdPerformance(insightsData, account) {
-  if (!insightsData || insightsData.length === 0) {
-    console.log('[insightsSyncService] ⚠️ No insights data to save');
-    return { saved: 0, skipped: 0 };
-  }
-
   const today = normalizeToVietnamMidnight(new Date());
   const accountId = account._id.toString();
   const externalAccountId = account.external_id.replace('act_', '');
 
-  console.log(`[insightsSyncService] 💾 Saving ${insightsData.length} lifetime insights for date ${today.toISOString().split('T')[0]}...`);
+  // 1. Lấy TẤT CẢ ads của account từ DB (không chỉ ads có insights)
+  const allAdsInAccount = await Ads.find({
+    external_account_id: { $in: [externalAccountId, `act_${externalAccountId}`] }
+  }).select('_id external_id set_id campaign_id name');
 
-  // Lấy mapping external_id -> ObjectId cho ads, adsets, campaigns
-  const adExternalIds = [...new Set(insightsData.map(item => item.ad_id).filter(Boolean))];
-  const adsetExternalIds = [...new Set(insightsData.map(item => item.adset_id).filter(Boolean))];
-  const campaignExternalIds = [...new Set(insightsData.map(item => item.campaign_id).filter(Boolean))];
+  if (allAdsInAccount.length === 0) {
+    console.log(`[insightsSyncService] ⚠️ No ads found in DB for account ${account.external_id}`);
+    return { saved: 0, skipped: 0 };
+  }
 
-  const [adsDocs, adsetsDocs, campaignsDocs] = await Promise.all([
-    Ads.find({ external_id: { $in: adExternalIds } }).select('_id external_id'),
-    AdsSet.find({ external_id: { $in: adsetExternalIds } }).select('_id external_id'),
-    AdsCampaign.find({ external_id: { $in: campaignExternalIds } }).select('_id external_id'),
-  ]);
+  console.log(`[insightsSyncService] 💾 Processing ${allAdsInAccount.length} ads for date ${today.toISOString().split('T')[0]}...`);
 
-  const adsMap = new Map(adsDocs.map(ad => [ad.external_id, ad._id]));
-  const adsetsMap = new Map(adsetsDocs.map(adset => [adset.external_id, adset._id]));
-  const campaignsMap = new Map(campaignsDocs.map(campaign => [campaign.external_id, campaign._id]));
+  // 2. Tạo Map từ insights data để lookup nhanh
+  const insightsMap = new Map();
+  for (const item of (insightsData || [])) {
+    if (item.ad_id) {
+      insightsMap.set(item.ad_id, item);
+    }
+  }
+  console.log(`[insightsSyncService] 📊 Insights from FB: ${insightsMap.size}, Ads in DB: ${allAdsInAccount.length}`);
 
+  // 3. Tạo bulkOps cho TẤT CẢ ads
   const bulkOps = [];
-  let saved = 0;
-  let skipped = 0;
+  let withInsights = 0;
+  let withoutInsights = 0;
 
-  for (const item of insightsData) {
-    const adObjectId = adsMap.get(item.ad_id);
-    if (!adObjectId) {
-      skipped++;
-      continue;
+  for (const ad of allAdsInAccount) {
+    const item = insightsMap.get(ad.external_id) || {}; // Nếu không có insights -> object rỗng
+
+    if (insightsMap.has(ad.external_id)) {
+      withInsights++;
+    } else {
+      withoutInsights++;
     }
 
     const performanceData = {
-      ads_id: adObjectId,
-      set_id: adsetsMap.get(item.adset_id) || null,
-      campaign_id: campaignsMap.get(item.campaign_id) || null,
+      ads_id: ad._id,
+      set_id: ad.set_id || null,
+      campaign_id: ad.campaign_id || null,
       account_id: accountId,
       external_account_id: externalAccountId,
-      external_ad_id: item.ad_id,
+      external_ad_id: ad.external_id,
       external_adset_id: item.adset_id || null,
       external_campaign_id: item.campaign_id || null,
       date: today,
       
-      // Core metrics
-      impressions: item.impressions || 0,
-      reach: item.reach || 0,
-      clicks: item.clicks || 0,
-      spend: item.spend || 0,
-      frequency: item.frequency || 0,
+      // Core metrics (default 0 nếu không có insights)
+      impressions: Number(item.impressions) || 0,
+      reach: Number(item.reach) || 0,
+      clicks: Number(item.clicks) || 0,
+      spend: Number(item.spend) || 0,
+      frequency: Number(item.frequency) || 0,
       
       // Calculated metrics
-      cpc: item.cpc,
-      cpm: item.cpm,
-      ctr: item.ctr,
+      cpc: item.cpc !== undefined ? Number(item.cpc) : null,
+      cpm: item.cpm !== undefined ? Number(item.cpm) : null,
+      ctr: item.ctr !== undefined ? Number(item.ctr) : null,
       
       // Conversions & Results
-      conversions: item.conversions || 0,
-      cost_per_conversion: item.cost_per_conversion,
-      results: item.results || 0,
-      cost_per_result: item.cost_per_result,
+      conversions: Number(item.conversions) || 0,
+      cost_per_conversion: item.cost_per_conversion !== undefined ? Number(item.cost_per_conversion) : null,
+      results: Number(item.results) || 0,
+      cost_per_result: item.cost_per_result !== undefined ? Number(item.cost_per_result) : null,
       
       // Metadata
-      campaign_name: item.campaign_name || null,
-      adset_name: item.adset_name || null,
-      ad_name: item.ad_name || null,
+      campaign_name: item.campaign_name || campaign?.name || null,
+      adset_name: item.adset_name || adset?.name || null,
+      ad_name: item.ad_name || ad.name || null,
       objective: item.objective || null,
       
       // Link metrics
-      link_clicks: item.link_clicks || 0,
-      link_cpc: item.link_cpc,
-      link_ctr: item.link_ctr,
+      link_clicks: Number(item.link_clicks) || 0,
+      link_cpc: item.link_cpc !== undefined ? Number(item.link_cpc) : null,
+      link_ctr: item.link_ctr !== undefined ? Number(item.link_ctr) : null,
       
       // ROAS
-      website_purchase_roas: item.website_purchase_roas,
+      website_purchase_roas: item.website_purchase_roas !== undefined ? Number(item.website_purchase_roas) : null,
       
       // Additional metrics from actions
-      website_purchases: item.website_purchases || 0,
-      leads: item.leads || 0,
-      mobile_app_install: item.mobile_app_install || 0,
-      post_engagement: item.post_engagement || 0,
+      website_purchases: Number(item.website_purchases) || 0,
+      leads: Number(item.leads) || 0,
+      mobile_app_install: Number(item.mobile_app_install) || 0,
+      post_engagement: Number(item.post_engagement) || 0,
       
       // Quality
       quality_ranking: item.quality_ranking || null,
       
-      // Total spend (same as spend for lifetime)
-      total_amount_spent: item.spend || 0,
+      // Total spend
+      total_amount_spent: Number(item.spend) || 0,
     };
 
     bulkOps.push({
       updateOne: {
-        filter: { ads_id: adObjectId, date: today },
+        filter: { ads_id: ad._id, date: today },
         update: { $set: performanceData },
         upsert: true,
       },
     });
-    saved++;
   }
 
+  // 4. Execute bulkWrite
+  console.log(`[insightsSyncService] 🔧 DEBUG - bulkOps.length: ${bulkOps.length}`);
   if (bulkOps.length > 0) {
+    // Log sample để debug
+    console.log(`[insightsSyncService] 🔧 DEBUG - Sample bulkOp filter:`, JSON.stringify(bulkOps[0]?.updateOne?.filter));
+    
     try {
       const result = await AdPerformance.bulkWrite(bulkOps, { ordered: false });
-      console.log(`✅ [insightsSyncService] Saved ${result.upsertedCount} new, updated ${result.modifiedCount} existing records`);
+      console.log(`✅ [insightsSyncService] BulkWrite result:`, {
+        upsertedCount: result.upsertedCount,
+        modifiedCount: result.modifiedCount,
+        matchedCount: result.matchedCount,
+        insertedCount: result.insertedCount
+      });
+      console.log(`   📊 With insights: ${withInsights}, Without insights (zeroed): ${withoutInsights}`);
     } catch (err) {
-      console.error('❌ [insightsSyncService] BulkWrite error:', err.message);
+      console.error('❌ [insightsSyncService] BulkWrite error:', err.message, err.stack);
     }
   }
 
-  return { saved, skipped };
+  return { saved: bulkOps.length, withInsights, withoutInsights };
 }
 
 /**
@@ -268,13 +291,6 @@ export async function syncInsightsForAccount(accountId) {
   const account = await AdsAccount.findById(accountId);
   if (!account) {
     throw new Error("AdsAccount not found");
-  }
-
-  if (account.sync_metadata?.insights_status === "syncing") {
-    const lastSynced = account.sync_metadata?.insights_last_synced_at;
-    if (lastSynced && (new Date() - new Date(lastSynced) < 1000 * 60 * 10)) {
-       return;
-    }
   }
 
   const accessToken = await getAccessTokenForAccount(account);
@@ -302,23 +318,12 @@ export async function syncInsightsForAccount(accountId) {
   let hasError = null;
 
   try {
-    // 1. Sync Campaigns & AdSets Insights (for model updates)
-    await Promise.all([
-      syncCampaignsInsights(accessToken, account.external_id),
-      syncAdSetsInsights(accessToken, account.external_id)
-    ]);
-
-    // 2. Fetch LIFETIME insights for all ads in account
     console.log(`📊 [syncInsightsForAccount] Fetching lifetime insights for account ${withPrefix}...`);
-    const lifetimeInsights = await fetchLifetimeInsightsForAds(accessToken, account.external_id);
+    const lifetimeInsights = await fetchLifetimeInsightsForAds(accessToken, account.external_id, { time_increment: 1 });
 
-    if (lifetimeInsights.length === 0) {
-      console.log(`⏭️ No ads with insights for account ${account.external_id}`);
-    } else {
-      // 3. Save to AdPerformance (date = today, data = lifetime)
-      await saveLifetimeInsightsToAdPerformance(lifetimeInsights, account);
-      
-      // 4. Update Ads model with latest insights
+    await saveLifetimeInsightsToAdPerformance(lifetimeInsights, account);
+    
+    if (lifetimeInsights.length > 0) {
       await updateAdsModelWithInsights(lifetimeInsights);
     }
 
