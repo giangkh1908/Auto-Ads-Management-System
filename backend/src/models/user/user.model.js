@@ -38,7 +38,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       validate: {
-        validator: (v) => !v || validator.isMobilePhone(v, "vi-VN"),
+        validator: (v) => {
+          if (!v) return true; // Optional field
+          // Chấp nhận format: 9-11 chữ số, có thể có dấu + ở đầu
+          return /^(\+)?\d{9,11}$/.test(v.trim());
+        },
         message: "Số điện thoại không hợp lệ",
       },
     },

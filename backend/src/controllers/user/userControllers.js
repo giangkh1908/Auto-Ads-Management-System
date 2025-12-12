@@ -1,7 +1,7 @@
 import User from "../../models/user/user.model.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { sendStaffCredentialsEmail } from "../../services/emailService.js";
+import { queueStaffCredentialsEmail } from "../../services/email/emailService.js";
 import UserRole from "../../models/user/userRole.model.js";
 import Shop from "../../models/shops/shop.model.js";
 import Role from "../../models/admin/role.model.js";
@@ -497,14 +497,8 @@ export const createInternalStaff = async (req, res) => {
       provider: "local",
     });
 
-    // Gửi email thông tin đăng nhập
-    try {
-      await sendStaffCredentialsEmail(email.trim().toLowerCase(), password);
-    } catch (emailError) {
-      console.error("❌ Error sending staff credentials email:", emailError);
-      // Vẫn trả về success nhưng log lỗi email
-      // Có thể rollback user nếu cần, nhưng theo yêu cầu thì vẫn tạo user
-    }
+    // Gửi email thông tin đăng nhập (fire-and-forget)
+    queueStaffCredentialsEmail(email.trim().toLowerCase(), password);
 
     // Log internal staff creation (admin action)
     await saveSystemLog({

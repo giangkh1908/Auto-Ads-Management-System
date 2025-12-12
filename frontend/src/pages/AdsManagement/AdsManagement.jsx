@@ -29,6 +29,7 @@ import AdsToolbar from "../../components/feature/AdsManagement/AdsToolbar";
 import AdsTabs from "../../components/feature/AdsManagement/AdsTabs";
 import AdsTable from "../../components/feature/AdsManagement/AdsTable";
 import AdsBreadcrumb from "../../components/feature/AdsManagement/AdsBreadcrumb";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 import { RefreshCw } from "lucide-react";
 
 function AdsManagement() {
@@ -833,14 +834,7 @@ function AdsManagement() {
 
   return (
     <div className="ads-management-layout">
-      {switchingAccount && (
-        <div className="account-switch-overlay">
-          <div className="account-switch-spinner">
-            <div className="spinner-icon"><RefreshCw size={20} /></div>
-            <div className="spinner-text">Đang tải...</div>
-          </div>
-        </div>
-      )}
+      <LoadingOverlay isLoading={switchingAccount} message="Đang tải..." />
       <div className="ads-management-content">
         <div className="ads-management-center">
           <div className="ads-card">

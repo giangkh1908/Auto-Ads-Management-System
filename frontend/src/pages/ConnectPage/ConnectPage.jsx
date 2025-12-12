@@ -7,6 +7,7 @@ import shopService from "../../services/shop/shopService";
 import { getShopCache } from "../../utils/cache/shopCache";
 import axiosInstance from "../../utils/api/axios.js";
 import logo from "../../assets/Logo_Fchat.png";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 
 function ConnectPage() {
   const navigate = useNavigate();
@@ -18,10 +19,12 @@ function ConnectPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("status");
   const [selectAll, setSelectAll] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Tải dữ liệu từ BE
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
         // 1. Thử lấy shopId từ cache trước (nhanh nhất)
         const cachedShop = getShopCache();
@@ -53,6 +56,8 @@ function ConnectPage() {
       } catch (e) {
         console.error("Load facebook pages error:", e);
         toast.error(t('connect_page.toast_load_error'));
+      } finally {
+        setLoading(false);
       }
     };
     load();
@@ -241,6 +246,7 @@ function ConnectPage() {
 
   return (
     <div className="connect-page">
+      <LoadingOverlay isLoading={loading} message="Đang tải..." />
       <div className="connect-container">
         {/* Logo */}
         <div className="logo-section">

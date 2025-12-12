@@ -14,6 +14,7 @@ import {
   // convertConditionToFE,
   // convertScheduleToFE,
 } from "../../constants/autoRuleConstants";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 
 function AutomationRule() {
   const navigate = useNavigate();
@@ -52,13 +53,8 @@ function AutomationRule() {
             );
             if (account) {
               setSelectedAccountId(savedAccountId);
-            } else if (response.data.items.length > 0) {
-              // Nếu account không tồn tại, chọn account đầu tiên
-              setSelectedAccountId(response.data.items[0].external_id);
             }
-          } else if (!selectedAccountId && response.data.items.length > 0) {
-            // Nếu không có account nào trong localStorage, chọn account đầu tiên
-            setSelectedAccountId(response.data.items[0].external_id);
+            // Nếu không có cache hoặc account không hợp lệ -> không chọn gì
           }
         }
       } catch (error) {
@@ -408,6 +404,7 @@ function AutomationRule() {
 
   return (
     <div className="automation-rule-page">
+      <LoadingOverlay isLoading={loading} message="Đang tải..." />
       <div className="automation-rule-container">
         {/* Header with Back Button */}
         <div className="automation-rule-header">

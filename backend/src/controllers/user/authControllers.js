@@ -10,9 +10,9 @@ import UserRole from "../../models/user/userRole.model.js";
 import { RoleEnum } from "../../constants/enum.js";
 import { ErrorCode, getErrorMessage } from "../../constants/errorCode.js";
 import {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-} from "../../services/emailService.js";
+  queueVerificationEmail,
+  queuePasswordResetEmail,
+} from "../../services/email/emailService.js";
 import jwt from "jsonwebtoken";
 import { saveSystemLog, getClientIp, getUserAgent } from "../../utils/systemLog.js";
 
@@ -114,7 +114,7 @@ export const register = async (req, res) => {
       created_by: user._id,
       updated_by: user._id,
     });
-    console.log("✅ Shop created:", shop._id);
+    console.log("Shop created:", shop._id);
 
     // Tạo ShopUser với status "active" để được tính vào employee count
     let shopUser;
@@ -125,10 +125,10 @@ export const register = async (req, res) => {
         is_manager: true,
         status: "active", // Đảm bảo status là "active" để được tính vào employee count
       });
-      console.log("✅ ShopUser created:", shopUser._id);
+      console.log("ShopUser created:", shopUser._id);
     } catch (shopUserError) {
-      console.error("❌ Error creating ShopUser:", shopUserError);
-      console.error("❌ ShopUser error details:", {
+      console.error("Error creating ShopUser:", shopUserError);
+      console.error("ShopUser error details:", {
         message: shopUserError.message,
         code: shopUserError.code,
         keyPattern: shopUserError.keyPattern,
@@ -147,10 +147,10 @@ export const register = async (req, res) => {
         is_current: true,
         source: "system", // Đánh dấu là được tạo tự động từ hệ thống
       });
-      console.log("✅ UserRole created successfully");
+      console.log("UserRole created successfully");
     } catch (userRoleError) {
-      console.error("❌ Error creating UserRole:", userRoleError);
-      console.error("❌ UserRole error details:", {
+      console.error("Error creating UserRole:", userRoleError);
+      console.error("UserRole error details:", {
         message: userRoleError.message,
         code: userRoleError.code,
         name: userRoleError.name,
@@ -170,7 +170,7 @@ export const register = async (req, res) => {
     await user.save();
 
     // Gửi email xác nhận
-    await sendVerificationEmail(email, full_name, token);
+    queueVerificationEmail(email, full_name, token);
 
     // Log registration
     await saveSystemLog({
@@ -777,9 +777,9 @@ export const forgotPassword = async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user)
-      return res.status(200).json({
+      return res.status(400).json({
         success: true,
-        message: "Nếu email tồn tại, hướng dẫn đã được gửi.",
+        message: "Email không tồn tại trong hệ thống",
       });
 
     const resetToken = crypto.randomBytes(32).toString("hex");
@@ -787,10 +787,10 @@ export const forgotPassword = async (req, res) => {
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
-    user.passwordResetExpires = Date.now() + 3600000;
+    user.passwordResetExpires = Date.now() + 3600000; // 1 giờ
     await user.save({ validateBeforeSave: false });
 
-    await sendPasswordResetEmail(email, user.full_name, resetToken);
+    queuePasswordResetEmail(email, user.full_name, resetToken);
 
     // Log password reset request
     await saveSystemLog({
@@ -1052,7 +1052,7 @@ export const resendVerificationEmail = async (req, res) => {
     await user.save({ validateBeforeSave: false });
 
     // Gửi lại email xác minh
-    await sendVerificationEmail(user.email, user.full_name, token);
+    queueVerificationEmail(user.email, user.full_name, token);
 
     res.status(200).json({
       success: true,

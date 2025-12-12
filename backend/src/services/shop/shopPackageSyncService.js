@@ -1,5 +1,7 @@
 import Shop from "../../models/shops/shop.model.js";
 import UserPackage from "../models/userPackage.model.js";
+import User from "../../models/user/user.model.js";
+import { saveLog } from "../../utils/log.js";
 
 /**
  * Đồng bộ package của tất cả shop thuộc owner với package hiện tại của owner
@@ -51,6 +53,28 @@ export const syncShopPackagesWithOwner = async (ownerId) => {
         },
       }
     );
+
+    // Lấy thông tin owner để ghi log
+    const ownerUser = await User.findById(ownerId);
+
+    // Ghi log UPGRADE_SHOP cho mỗi shop
+    for (const shop of shops) {
+      await saveLog({
+        user_id: ownerId,
+        user_name: ownerUser?.full_name || ownerUser?.email,
+        shop_id: shop._id,
+        shop_name: shop.shop_name,
+        action: "UPGRADE_SHOP",
+        target_type: "Shop",
+        target_id: shop._id.toString(),
+        target_name: shop.shop_name,
+        meta: {
+          package_id: ownerPackage.package_id._id.toString(),
+          package_name: ownerPackage.package_id.name,
+          expired_at: ownerPackage.to_date,
+        },
+      });
+    }
 
     console.log(
       `✅ Đã sync package cho ${updateResult.modifiedCount} shop của owner ${ownerId}. Package: ${ownerPackage.package_id.name}`

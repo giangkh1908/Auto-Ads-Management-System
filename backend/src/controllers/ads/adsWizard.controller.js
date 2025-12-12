@@ -15,6 +15,7 @@ import AdsSet from "../../models/ads/adsSet.model.js";
 import Ads from "../../models/ads/ads.model.js";
 import Creative from "../../models/ads/creative.model.js";
 import { convertCTAToFacebookType } from "../../utils/ctaUtils.js";
+import { saveLog } from "../../utils/log.js";
 
 /**
  * Publish Ads Wizard
@@ -347,6 +348,20 @@ export async function publishCampaignController(req, res) {
       campaignDraftId,
     });
 
+    // Log tạo campaign thành công
+    await saveLog({
+      user_id: req.user._id,
+      user_name: user.full_name,
+      shop_id: account.shop_id || req.user.shop_id,
+      action: "CREATE_CAMPAIGN",
+      target_type: "Campaign",
+      target_id: result.campaign?._id?.toString() || result.campaign?.external_id,
+      target_name: campaign.name,
+      request: { campaign_name: campaign.name, objective: campaign.objective },
+      ip_address: req.ip,
+      user_agent: req.headers?.['user-agent'],
+    });
+
     return res.status(200).json({
       success: true,
       message: "Tạo campaign thành công!",
@@ -432,6 +447,20 @@ export async function publishAdsetController(req, res) {
       },
       dry_run,
       adsetDraftId,
+    });
+
+    // Log tạo adset thành công
+    await saveLog({
+      user_id: req.user._id,
+      user_name: user.full_name,
+      shop_id: account.shop_id || req.user.shop_id,
+      action: "CREATE_ADSET",
+      target_type: "AdSet",
+      target_id: result.adset?._id?.toString() || result.adset?.external_id,
+      target_name: adset.name,
+      request: { adset_name: adset.name, campaign_id: campaignId },
+      ip_address: req.ip,
+      user_agent: req.headers?.['user-agent'],
     });
 
     return res.status(200).json({
@@ -531,6 +560,20 @@ export async function publishAdController(req, res) {
       },
       dry_run,
       adDraftId,
+    });
+
+    // Log tạo ad thành công
+    await saveLog({
+      user_id: req.user._id,
+      user_name: user.full_name,
+      shop_id: account.shop_id || req.user.shop_id,
+      action: "CREATE_AD",
+      target_type: "Ad",
+      target_id: result.ad?._id?.toString() || result.ad?.external_id,
+      target_name: ad.name,
+      request: { ad_name: ad.name, adset_id: adsetId },
+      ip_address: req.ip,
+      user_agent: req.headers?.['user-agent'],
     });
 
     return res.status(200).json({

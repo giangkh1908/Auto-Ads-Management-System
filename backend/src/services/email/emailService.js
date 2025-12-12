@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import { addToQueue } from './emailQueue.js';
 
 dotenv.config();
 
@@ -110,7 +111,7 @@ export const sendInvitationEmail = async (email, token) => {
       subject: "Lời mời tham gia cửa hàng",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">🎉 Bạn được mời tham gia cửa hàng!</h2>
+          <h2 style="color: #333;">Bạn được mời tham gia cửa hàng!</h2>
           <p>Bạn vừa được mời làm nhân viên trong hệ thống của chúng tôi.</p>
           <p>Vui lòng click vào link bên dưới để đăng nhập hoặc tạo tài khoản và xác nhận lời mời:</p>
           <div style="text-align: center; margin: 30px 0;">
@@ -198,7 +199,7 @@ export const sendAutoRuleNotificationEmail = async (email, name, ruleData) => {
       subject: `Thông báo: Quy tắc tự động "${ruleName}" đã được kích hoạt`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">🔔 Thông báo quy tắc tự động</h2>
+          <h2 style="color: #333;">Thông báo quy tắc tự động</h2>
           <p>Chào ${name},</p>
           <p>Quy tắc tự động <strong>"${ruleName}"</strong> đã được kích hoạt.</p>
           
@@ -444,4 +445,79 @@ export const sendOrderTimeoutEmail = async (userEmail, userName, orderData) => {
     console.error("Error sending order timeout email:", error);
     throw new Error("Không thể gửi email thông báo đơn hàng hết hạn");
   }
+};
+
+// =============================================================================
+// QUEUE WRAPPER FUNCTIONS (Fire-and-forget pattern)
+// Sử dụng các functions này thay vì các functions gốc để gửi email bất đồng bộ
+// =============================================================================
+
+/**
+ * Queue gửi email xác nhận - Fire-and-forget
+ */
+export const queueVerificationEmail = (email, name, verificationToken) => {
+  addToQueue(
+    () => sendVerificationEmail(email, name, verificationToken),
+    { type: 'verification', to: email }
+  );
+};
+
+/**
+ * Queue gửi email reset password - Fire-and-forget
+ */
+export const queuePasswordResetEmail = (email, name, resetToken) => {
+  addToQueue(
+    () => sendPasswordResetEmail(email, name, resetToken),
+    { type: 'password_reset', to: email }
+  );
+};
+
+/**
+ * Queue gửi email mời nhân viên - Fire-and-forget
+ */
+export const queueInvitationEmail = (email, token) => {
+  addToQueue(
+    () => sendInvitationEmail(email, token),
+    { type: 'invitation', to: email }
+  );
+};
+
+/**
+ * Queue gửi email thông báo AutoRule - Fire-and-forget
+ */
+export const queueAutoRuleNotificationEmail = (email, name, ruleData) => {
+  addToQueue(
+    () => sendAutoRuleNotificationEmail(email, name, ruleData),
+    { type: 'auto_rule_notification', to: email }
+  );
+};
+
+/**
+ * Queue gửi email thông tin đăng nhập nhân viên - Fire-and-forget
+ */
+export const queueStaffCredentialsEmail = (email, password) => {
+  addToQueue(
+    () => sendStaffCredentialsEmail(email, password),
+    { type: 'staff_credentials', to: email }
+  );
+};
+
+/**
+ * Queue gửi email thông báo package được approve - Fire-and-forget
+ */
+export const queuePackageApprovalEmail = (userEmail, userName, packageData) => {
+  addToQueue(
+    () => sendPackageApprovalEmail(userEmail, userName, packageData),
+    { type: 'package_approval', to: userEmail }
+  );
+};
+
+/**
+ * Queue gửi email thông báo đơn hàng hết hạn - Fire-and-forget
+ */
+export const queueOrderTimeoutEmail = (userEmail, userName, orderData) => {
+  addToQueue(
+    () => sendOrderTimeoutEmail(userEmail, userName, orderData),
+    { type: 'order_timeout', to: userEmail }
+  );
 };

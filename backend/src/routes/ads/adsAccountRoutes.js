@@ -7,7 +7,7 @@ import {
   getAdsAccountByExternalCtrl,
   updateAdsAccountCtrl,
   deleteAdsAccountCtrl,
-  getAccountStatsCtrl, // Thêm import hàm mới
+  getAccountStatsCtrl,
   getAccountLiveStatsCtrl,
   listFacebookAdAccountsCtrl,
   connectAdAccountCtrl,

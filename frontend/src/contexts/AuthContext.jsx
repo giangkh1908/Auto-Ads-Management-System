@@ -5,7 +5,7 @@ import authService from '../services/auth/authService'
 import { STORAGE_KEYS, ROUTES } from '../constants/app.constants'
 import { AuthContext } from './AuthContext.js'
 import { getDefaultAdminRoute } from '../constants/adminConstants'
-import { clearShopCache } from '../utils/cache/shopCache'
+import { clearShopCache, clearAdsCache } from '../utils/cache/shopCache'
 // import axiosInstance from '../utils/axios'
 
 export const AuthProvider = ({ children }) => {
@@ -49,6 +49,7 @@ export const AuthProvider = ({ children }) => {
       }
     });
     clearShopCache()
+    clearAdsCache() // Xóa cache tài khoản quảng cáo khi logout
     setUser(null)
     setIsAuthenticated(false)
     setFbPages([])

@@ -45,23 +45,10 @@ export function useAdsAccount() {
             } else {
               // Nếu account không tồn tại, xóa khỏi localStorage
               localStorage.removeItem(STORAGE_KEY);
-              // Tự động chọn account đầu tiên nếu có
-              if (response.data.items.length > 0) {
-                const firstAccount = response.data.items[0];
-                setSelectedAccountId(firstAccount.external_id);
-                localStorage.setItem(STORAGE_KEY, firstAccount.external_id);
-              }
+              // Không auto-select, để user tự chọn
             }
-          } else if (!selectedAccountId && response.data.items.length > 0) {
-            // Nếu chưa có selection, tự động chọn account đầu tiên
-            const firstAccount = response.data.items[0];
-            setSelectedAccountId(firstAccount.external_id);
-            localStorage.setItem(STORAGE_KEY, firstAccount.external_id);
-          } else if (response.data.items.length === 0) {
-            // Nếu không có account, clear selection
-            setSelectedAccountId("");
-            localStorage.removeItem(STORAGE_KEY);
           }
+          // Nếu không có cache -> không chọn gì, để user tự chọn
           
           setInitialized(true);
         }

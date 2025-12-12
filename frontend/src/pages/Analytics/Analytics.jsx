@@ -5,6 +5,7 @@ import axiosInstance from "../../utils/api/axios";
 import "./Analytics.css";
 import { useMyPackage } from "../../hooks/shop/useMyPackage";
 import { toast } from "sonner";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 
 /**
  * Analytics Page - Ad Level Performance with Breakdown Panel
@@ -189,8 +190,16 @@ function Analytics() {
       const accounts = response.data?.items || [];
       setAdAccounts(accounts);
 
-      if (accounts.length > 0 && !selectedAccount) {
-        setSelectedAccount(accounts[0].external_id);
+      // Đọc từ cache localStorage
+      const savedAccountId = localStorage.getItem('selectedAdAccount');
+
+      if (savedAccountId && accounts.length > 0) {
+        // Kiểm tra account đã lưu có tồn tại không
+        const existingAccount = accounts.find(acc => acc.external_id === savedAccountId);
+        if (existingAccount) {
+          setSelectedAccount(savedAccountId);
+        }
+        // Nếu không có cache hoặc account không hợp lệ -> không chọn gì
       }
     } catch (error) {
       console.error("Error fetching ad accounts:", error);
@@ -463,6 +472,7 @@ function Analytics() {
 
   return (
     <div className="analytics-container">
+      <LoadingOverlay isLoading={loading || syncing} message={syncing ? "Đang đồng bộ..." : "Đang tải..."} />
       {!entitlementsLoading && !canUseAnalyticsChatAI && (
         <div className="analytics-entitlement-alert">
           <strong>Chatbot AI đang bị khóa.</strong> Vui lòng nâng cấp lên gói
@@ -478,7 +488,13 @@ function Analytics() {
           <select
             className="analytics-select"
             value={selectedAccount}
-            onChange={(e) => setSelectedAccount(e.target.value)}
+            onChange={(e) => {
+              const newAccountId = e.target.value;
+              setSelectedAccount(newAccountId);
+              if (newAccountId) {
+                localStorage.setItem('selectedAdAccount', newAccountId);
+              }
+            }}
           >
             <option value="">Select Ads Account</option>
             {adAccounts.map(account => (

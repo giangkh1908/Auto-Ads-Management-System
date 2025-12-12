@@ -9,7 +9,7 @@ import {
   updateAdsetStatus,
   updateAdStatus,
 } from "../ads/fbAdsService.js";
-import { sendAutoRuleNotificationEmail } from "../emailService.js";
+import { queueAutoRuleNotificationEmail } from "../email/emailService.js";
 import { saveSystemLog } from "../../utils/systemLog.js";
 
 /**
@@ -810,8 +810,8 @@ async function executeSendNotification(rule) {
       entities.ads = ads.map((a) => a.name || a.external_id);
     }
 
-    // Gửi email notification
-    await sendAutoRuleNotificationEmail(user.email, user.full_name || user.email, {
+    // Gửi email notification (fire-and-forget)
+    queueAutoRuleNotificationEmail(user.email, user.full_name || user.email, {
       ruleName: rule.name,
       conditions: rule.conditions,
       action: rule.action,

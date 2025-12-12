@@ -1,22 +1,27 @@
+// controllers/ads/adsSet.controller.js
 import AdsSet from "../../models/ads/adsSet.model.js";
-import { fetchAdsetsFromFacebook, updateAdsetStatus, deleteEntity, fetchInsightsForEntities } from "../../services/ads/fbAdsService.js";
+import { fetchAdsetsFromFacebook, updateAdsetStatus, deleteEntity, fetchInsightsForAdsetIds } from "../../services/ads/fbAdsService.js";
 import User from "../../models/user/user.model.js";
 import Ads from "../../models/ads/ads.model.js";
-import AdsAccount from "../../models/ads/adsAccount.model.js";
-import AdsCampaign from "../../models/ads/adsCampaign.model.js";
+import UserRole from "../../models/user/userRole.model.js";
+import { saveLog } from "../../utils/log.js";
 
-// Helper function to extract string ID from ObjectId format
+// Helper: Get current shop_id from user's active UserRole
+async function getCurrentShopId(userId) {
+  const currentRole = await UserRole.findOne({ user_id: userId, is_current: true }).lean();
+  return currentRole?.shop_id || null;
+}// Helper function để extract string ID từ ObjectId format
 function extractObjectId(value) {
   if (!value) return null;
   if (typeof value === 'string') {
     const match = value.match(/[0-9a-fA-F]{24}/);
     return match ? match[0] : null;
   }
-  if (value.$oid) return value.$oid; // in case MongoDB returns { $oid: '...' }
+  if (value.$oid) return value.$oid; // trong trường hợp Mongo xuất ra kiểu { $oid: '...' }
   return value.toString();
 }
 
-// Toggle adset status
+// Lấy list status của trạng thái on/off ads
 export async function toggleAdsetStatusCtrl(req, res) {
   try {
     const { id } = req.params; // Facebook adset id
@@ -34,7 +39,10 @@ export async function toggleAdsetStatusCtrl(req, res) {
     return res.status(500).json({ message: "Không thể cập nhật trạng thái adset", detail: err.response?.data || err.message });
   }
 }
-// Get adset from database by adset_id or campaign_id
+/**
+ * GET /api/adsets/database
+ * Lấy adset từ database theo adset_id hoặc campaign_id
+ */
 export async function getAdsetFromDatabase(req, res) {
   try {
     const { adset_id, campaign_id } = req.query;
@@ -46,7 +54,7 @@ export async function getAdsetFromDatabase(req, res) {
       });
     }
 
-    // Extract and validate adset_id if provided
+    // Extract và validate adset_id nếu có
     const cleanAdsetId = extractObjectId(adset_id);
     if (adset_id && !cleanAdsetId) {
       return res.status(400).json({
@@ -55,7 +63,7 @@ export async function getAdsetFromDatabase(req, res) {
       });
     }
 
-    // Extract and validate campaign_id if provided
+    // Extract và validate campaign_id nếu có
     const cleanCampaignId = extractObjectId(campaign_id);
     if (campaign_id && !cleanCampaignId) {
       return res.status(400).json({
@@ -98,14 +106,17 @@ export async function getAdsetFromDatabase(req, res) {
   }
 }
 
-// Get list of adsets
+/**
+ * GET /api/adsets
+ * Lấy danh sách nhóm quảng cáo
+ */
 export async function listAdSetsCtrl(req, res) {
   try {
     const { account_id, campaign_id, q, status, page = 1, limit = 10, fetch_all = false } = req.query;
 
     const filter = {};
 
-    // Get all items (do not filter by status) - Frontend will filter
+    // ✅ Lấy tất cả items (không filter theo status) - Frontend sẽ filter
     if (account_id) {
       const normalizedId = account_id.startsWith("act_")
         ? account_id.substring(4)
@@ -114,26 +125,26 @@ export async function listAdSetsCtrl(req, res) {
     }
 
     if (campaign_id) filter.campaign_id = campaign_id;
-    // If there is a specific status filter, apply it (including DELETED if query)
+    // Nếu có filter status cụ thể, áp dụng filter đó (bao gồm cả DELETED nếu query)
     if (status) {
       filter.status = status;
     }
-    // If no status parameter, get all (including DELETED)
+    // Nếu không có status parameter, lấy tất cả (bao gồm cả DELETED)
     
     if (q) filter.name = new RegExp(q, "i");
 
-    // Support fetch_all or large limit to allow Frontend to sort and paginate
+    // Hỗ trợ fetch_all hoặc limit lớn để Frontend có thể sort và phân trang
     const limitNum = Number(limit);
     const shouldFetchAll = fetch_all === 'true' || fetch_all === true || limitNum === 0 || limitNum > 10000;
     
     let items, total;
     
     if (shouldFetchAll) {
-      // Fetch all (no pagination) - let Frontend sort and paginate
+      // Fetch tất cả (không phân trang) - để Frontend sort và phân trang
       [items, total] = await Promise.all([
         AdsSet.find(filter)
           .populate('created_by', 'full_name email')
-          .sort({ createdAt: -1 }), // Sort at Backend first
+          .sort({ createdAt: -1 }), // Sort ở Backend trước
         AdsSet.countDocuments(filter)
       ]);
       
@@ -145,7 +156,7 @@ export async function listAdSetsCtrl(req, res) {
         pages: 1,
       });
     } else {
-      // Pagination as before (if needed)
+      // Phân trang như cũ (nếu cần)
       const skip = (Number(page) - 1) * Number(limit);
       [items, total] = await Promise.all([
         AdsSet.find(filter)
@@ -173,6 +184,10 @@ export async function listAdSetsCtrl(req, res) {
   }
 }
 
+
+import AdsAccount from "../../models/ads/adsAccount.model.js";
+import AdsCampaign from "../../models/ads/adsCampaign.model.js";
+
 function normalizeAccountPair(accountId) {
   const hasPrefix = String(accountId).startsWith("act_");
   const withPrefix = hasPrefix ? String(accountId) : `act_${accountId}`;
@@ -180,7 +195,10 @@ function normalizeAccountPair(accountId) {
   return { withPrefix, withoutPrefix };
 }
 
-// Get adsets from Facebook and save to DB
+/**
+ * GET /api/adsets/live
+ * Lấy danh sách adsets trực tiếp từ Facebook VÀ lưu vào DB
+ */
 export async function getAdSetsLiveCtrl(req, res) {
   try {
     const { account_id } = req.query;
@@ -200,22 +218,22 @@ export async function getAdSetsLiveCtrl(req, res) {
       });
     }
 
-    // 1. Get account info from DB
+    // 1. Lấy thông tin account từ DB
     const { withPrefix, withoutPrefix } = normalizeAccountPair(account_id);
     const adsAccount = await AdsAccount.findOne({
       external_id: { $in: [withPrefix, withoutPrefix] },
     });
 
     if (!adsAccount) {
-      console.warn(`getAdSetsLiveCtrl: Không tìm thấy AdsAccount ${account_id} trong DB. Sẽ không lưu data.`);
+      console.warn(`⚠️ getAdSetsLiveCtrl: Không tìm thấy AdsAccount ${account_id} trong DB. Sẽ không lưu data.`);
     }
 
-    // 2. Fetch from Facebook
+    // 2. Fetch từ Facebook
     const data = await fetchAdsetsFromFacebook(accessToken, account_id);
 
-    // 3. Upsert to DB if account exists
+    // 3. Upsert vào DB nếu có account
     if (adsAccount && data.length > 0) {
-      // Get campaign_id (external) to find _id in DB
+      // Lấy danh sách campaign_id (external) để tìm _id tương ứng trong DB
       const campaignExternalIds = [...new Set(data.map((s) => s.campaign_id).filter(Boolean))];
       const campaigns = await AdsCampaign.find({
         external_id: { $in: campaignExternalIds },
@@ -226,7 +244,8 @@ export async function getAdSetsLiveCtrl(req, res) {
 
       for (const s of data) {
         const campaignId = campaignsMap.get(s.campaign_id);
-        // If campaign_id not found in DB, skip or save with null campaign_id (depends on logic).
+        // Nếu không tìm thấy campaign cha trong DB, có thể skip hoặc vẫn lưu nhưng để campaign_id null (tùy logic).
+        // Logic sync cũ là skip. Ở đây ta cũng skip để đảm bảo integrity.
         if (!campaignId) {
           continue;
         }
@@ -246,7 +265,7 @@ export async function getAdSetsLiveCtrl(req, res) {
           optimization_goal: s.optimization_goal,
           insights: s.insights?.data?.[0] || {},
         };
-        //Update or create adset
+
         bulkOps.push({
           updateOne: {
             filter: { external_id: s.id },
@@ -259,9 +278,9 @@ export async function getAdSetsLiveCtrl(req, res) {
       if (bulkOps.length > 0) {
         try {
           await AdsSet.bulkWrite(bulkOps, { ordered: false });
-          console.log(`Đã upsert ${bulkOps.length}/${data.length} adsets từ Live API cho account ${account_id}`);
+          console.log(`✅ Đã upsert ${bulkOps.length}/${data.length} adsets từ Live API cho account ${account_id}`);
         } catch (writeErr) {
-          console.error("Lỗi bulkWrite adsets:", writeErr);
+          console.error("❌ Lỗi bulkWrite adsets:", writeErr);
         }
       }
     }
@@ -275,17 +294,17 @@ export async function getAdSetsLiveCtrl(req, res) {
 
 /**
  * DELETE /api/adsets/:id
- * Delete AdSet & Ads
- * - Token: delete on Facebook
- * - No token: delete soft in DB
+ * Xóa AdSet + toàn bộ Ads con
+ * - Có token: xóa thật trên Facebook
+ * - Không có token: xóa mềm trong DB
  */
 export async function deleteAdsetCascadeCtrl(req, res) {
   try {
     const { id } = req.params;
-    const adset = await AdsSet.findById(id);
+    const adset = await AdsSet.findById(id).populate('campaign_id', 'shop_id');
     if (!adset) return res.status(404).json({ message: "Không tìm thấy nhóm quảng cáo." });
 
-    // Get access_token from user or query
+    // ✅ Lấy access_token từ user hoặc query
     let accessToken = req.user?.facebookAccessToken || req.query.access_token || null;
 
     if (!accessToken && req.user?._id) {
@@ -294,16 +313,16 @@ export async function deleteAdsetCascadeCtrl(req, res) {
     }
 
     if (!accessToken) {
-      console.warn("Không có Facebook access_token — chỉ xóa mềm trong DB.");
+      console.warn("⚠️ Không có Facebook access_token — chỉ xóa mềm trong DB.");
     }
 
-    // Get all ads children in adset
+    // Lấy toàn bộ ads con trong adset
     const ads = await Ads.find({ set_id: adset._id });
 
-    // Delete on Facebook if has token
+    // ✅ Xóa thật trên Facebook nếu có token
     if (accessToken) {
       try {
-        // Delete all ads first
+        // Xóa tất cả ads trước
         for (const ad of ads) {
           if (ad.external_id) await deleteEntity(ad.external_id, accessToken);
         }
@@ -311,25 +330,40 @@ export async function deleteAdsetCascadeCtrl(req, res) {
         // Sau đó xóa adset
         if (adset.external_id) await deleteEntity(adset.external_id, accessToken);
 
-        console.log(`Đã xoá thật adset ${adset.name} (${adset.external_id}) và ${ads.length} ads trên Facebook`);
+        console.log(`🧹 Đã xoá thật adset ${adset.name} (${adset.external_id}) và ${ads.length} ads trên Facebook`);
       } catch (fbErr) {
-        console.warn("Lỗi khi xoá adset hoặc ads trên Facebook:", fbErr?.response?.data || fbErr.message);
+        console.warn("⚠️ Lỗi khi xoá adset hoặc ads trên Facebook:", fbErr?.response?.data || fbErr.message);
       }
     }
 
-    // Delete soft in DB
+    // ✅ Xóa mềm trong DB
     const now = new Date();
     await Promise.all([
       Ads.updateMany({ set_id: adset._id }, { status: "DELETED", deleted_at: now }),
       AdsSet.findByIdAndUpdate(id, { status: "DELETED", deleted_at: now }),
     ]);
 
+    // Log xóa adset thành công
+    const currentShopId = await getCurrentShopId(req.user._id);
+    await saveLog({
+      user_id: req.user._id,
+      user_name: req.user?.full_name,
+      shop_id: adset.campaign_id?.shop_id || currentShopId,
+      action: "DELETE_ADSET",
+      target_type: "AdSet",
+      target_id: adset._id.toString(),
+      target_name: adset.name,
+      request: { adset_name: adset.name, ads_deleted: ads.length },
+      ip_address: req.ip,
+      user_agent: req.headers?.['user-agent'],
+    });
+
     return res.status(200).json({
       success: true,
       message: `Đã xoá nhóm quảng cáo "${adset.name}" và ${ads.length} quảng cáo liên quan.`,
     });
   } catch (err) {
-    console.error("Xoá AdSet cascade lỗi:", err);
+    console.error("❌ Xoá AdSet cascade lỗi:", err);
     return res.status(500).json({
       message: "Xoá thất bại",
       error: err.message,
@@ -339,15 +373,15 @@ export async function deleteAdsetCascadeCtrl(req, res) {
 
 /**
  * POST /api/adsets/:id/archive
- * Archive adset & ads children (set status ARCHIVED instead of DELETED)
+ * Archive adset và các ads liên quan (set status ARCHIVED thay vì DELETED)
  */
 export async function archiveAdsetCascadeCtrl(req, res) {
   try {
     const { id } = req.params;
-    const adset = await AdsSet.findById(id);
+    const adset = await AdsSet.findById(id).populate('campaign_id', 'shop_id');
     if (!adset) return res.status(404).json({ message: "Không tìm thấy nhóm quảng cáo." });
 
-    // Get access_token from user or query
+    // ✅ Lấy access_token từ user hoặc query
     let accessToken = req.user?.facebookAccessToken || req.query.access_token || null;
 
     if (!accessToken && req.user?._id) {
@@ -363,39 +397,54 @@ export async function archiveAdsetCascadeCtrl(req, res) {
       });
     }
 
-    // Get all ads children in adset
+    // Lấy toàn bộ ads con trong adset
     const ads = await Ads.find({ set_id: adset._id });
 
-    // Delete on Facebook if has token (same as delete)
+    // ✅ Xóa thật trên Facebook nếu có token (giống delete)
     if (accessToken) {
       try {
-        // Delete ads first
+        // Xóa tất cả ads trước
         for (const ad of ads) {
           if (ad.external_id) await deleteEntity(ad.external_id, accessToken);
         }
 
-        // Then delete adset
+        // Sau đó xóa adset
         if (adset.external_id) await deleteEntity(adset.external_id, accessToken);
 
-        console.log(`Đã xóa (archive) adset ${adset.name} (${adset.external_id}) và ${ads.length} ads trên Facebook`);
+        console.log(`📦 Đã xóa (archive) adset ${adset.name} (${adset.external_id}) và ${ads.length} ads trên Facebook`);
       } catch (fbErr) {
-        console.warn("Lỗi khi xóa (archive) adset hoặc ads trên Facebook:", fbErr?.response?.data || fbErr.message);
+        console.warn("⚠️ Lỗi khi xóa (archive) adset hoặc ads trên Facebook:", fbErr?.response?.data || fbErr.message);
       }
     }
 
-    // Update status ARCHIVED in DB
+    // ✅ Cập nhật status ARCHIVED trong DB
     const now = new Date();
     await Promise.all([
       Ads.updateMany({ set_id: adset._id }, { status: "ARCHIVED", updated_at: now }),
       AdsSet.findByIdAndUpdate(id, { status: "ARCHIVED", updated_at: now }),
     ]);
 
+    // Log lưu trữ adset thành công
+    const currentShopId = await getCurrentShopId(req.user._id);
+    await saveLog({
+      user_id: req.user._id,
+      user_name: req.user?.full_name,
+      shop_id: adset.campaign_id?.shop_id || currentShopId,
+      action: "ARCHIVE_ADSET",
+      target_type: "AdSet",
+      target_id: adset._id.toString(),
+      target_name: adset.name,
+      request: { adset_name: adset.name, ads_archived: ads.length },
+      ip_address: req.ip,
+      user_agent: req.headers?.['user-agent'],
+    });
+
     return res.status(200).json({
       success: true,
       message: `Đã lưu trữ nhóm quảng cáo "${adset.name}" và ${ads.length} quảng cáo liên quan.`,
     });
   } catch (err) {
-    console.error("Archive AdSet cascade error:", err);
+    console.error("❌ Archive AdSet cascade lỗi:", err);
     return res.status(500).json({
       message: "Lưu trữ thất bại",
       error: err.message,
@@ -404,7 +453,8 @@ export async function archiveAdsetCascadeCtrl(req, res) {
 }
 
 /**
- * Create copy AdSet with all Ads children (DB only)
+ * POST /api/adsets/:id/copy
+ * Tạo bản sao AdSet kèm toàn bộ Ads con (DB only)
  */
 export async function copyAdsetCascadeCtrl(req, res) {
   try {
@@ -450,14 +500,14 @@ export async function copyAdsetCascadeCtrl(req, res) {
 
     return res.status(201).json({ success: true, message: "Đã sao chép AdSet cùng Ads.", data: { adset: newAdset } });
   } catch (err) {
-    console.error("Copy AdSet cascade error:", err);
+    console.error("❌ Copy AdSet cascade lỗi:", err);
     return res.status(500).json({ message: "Copy thất bại", error: err.message });
   }
 }
 
 /**
  * GET /api/adsets/insights
- * Get insights for multiple adsets from Facebook
+ * Lấy insights cho nhiều adsets từ Facebook
  */
 export async function getAdsetInsightsCtrl(req, res) {
   try {
@@ -468,17 +518,17 @@ export async function getAdsetInsightsCtrl(req, res) {
 
     const adsetIds = ids.split(',');
 
-    // Get user's access token
+    // Lấy token người dùng hiện tại
     const user = await User.findById(req.user?._id).select("+facebookAccessToken");
     const accessToken = user?.facebookAccessToken;
     if (!accessToken) {
       return res.status(401).json({ message: "Thiếu access token Facebook" });
     }
 
-    // Call service to get insights
-    const insightsData = await fetchInsightsForEntities(adsetIds, accessToken);
+    // Gọi service để lấy insights
+    const insightsData = await fetchInsightsForAdsetIds(accessToken, adsetIds);
 
-    // Map data for FE: { id: '...', insights: {...} }
+    // Map lại data để FE dễ xử lý: { id: '...', insights: {...} }
     const items = insightsData.map(item => ({
       id: item.id,
       insights: item.insights?.data?.[0] || {}

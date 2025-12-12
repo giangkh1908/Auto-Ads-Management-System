@@ -9,6 +9,7 @@ import axiosInstance from "../../utils/api/axios.js";
 import { toast } from "sonner";
 import { clearShopCache, saveShopCache, getShopCache } from "../../utils/cache/shopCache";
 import { useMyPackage } from "../../hooks/shop/useMyPackage";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 
 function MyShop() {
   const { t } = useTranslation();
@@ -23,6 +24,8 @@ function MyShop() {
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Forms Add
   const [addForm, setAddForm] = useState({
@@ -164,6 +167,7 @@ function MyShop() {
 
   return (
     <div className="shop-border">
+      <LoadingOverlay isLoading={loading || isCreating || isUpdating} message={isCreating ? "Đang tạo shop..." : isUpdating ? "Đang cập nhật..." : "Đang tải..."} />
       {/* Tabs */}
       <div className="shop-tabs">
         <NavLink
@@ -472,8 +476,10 @@ function MyShop() {
               </button>
               <button
                 className="btn-primary-shop"
+                disabled={isCreating}
                 onClick={async () => {
                   try {
+                    setIsCreating(true);
                     const payload = {
                       shop_name: addForm.shopName,
                       industry: addForm.category,
@@ -494,10 +500,12 @@ function MyShop() {
                   } catch (err) {
                     console.error("Error:", err);
                     toast.error(err.response?.data?.message || "Lỗi server khi tạo shop");
+                  } finally {
+                    setIsCreating(false);
                   }
                 }}
               >
-                {t('shop.create')}
+                {isCreating ? "Đang tạo..." : t('shop.create')}
               </button>
             </div>
           </div>
@@ -583,8 +591,10 @@ function MyShop() {
               </button>
               <button
                 className="btn-primary-shop"
+                disabled={isUpdating}
                 onClick={async () => {
                   try {
+                    setIsUpdating(true);
                     const payload = {
                       shop_name: updateForm.shopName,
                       industry: updateForm.category,
@@ -604,10 +614,12 @@ function MyShop() {
                   } catch (err) {
                     console.error("Error updating shop:", err);
                     toast.error(err.response?.data?.message || "Lỗi server khi cập nhật shop");
+                  } finally {
+                    setIsUpdating(false);
                   }
                 }}
               >
-                {t('shop.update')}
+                {isUpdating ? "Đang cập nhật..." : t('shop.update')}
               </button>
             </div>
           </div>

@@ -36,6 +36,8 @@ function ResetForm({ onSwitchLogin }) {
 
         if (result.success) {
             setIsSubmitted(true)
+        } else {
+            setErrors ({ email: result.error || t('validation.email_not_found')})
         }
     }
 

@@ -3,7 +3,7 @@ import UserRole from "../../models/user/userRole.model.js";
 import User from "../../models/user/user.model.js";
 import Role from "../../models/admin/role.model.js";
 import Shop from "../../models/shops/shop.model.js";
-import { sendInvitationEmail } from "../../services/emailService.js";
+import { queueInvitationEmail } from "../../services/email/emailService.js";
 import mongoose from "mongoose";
 import { ErrorCode, getErrorMessage } from "../../constants/errorCode.js";
 import { SuccessCode, getSuccessMessage } from "../../constants/successCode.js";
@@ -103,8 +103,8 @@ export const inviteEmployee = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Gửi email mời
-      await sendInvitationEmail(email);
+      // Gửi email mời (fire-and-forget)
+      queueInvitationEmail(email);
       // Note: Không cần update UserPackage.employees ở đây vì đã được tính trong countUsage
 
       await saveLog({

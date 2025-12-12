@@ -12,6 +12,7 @@ import { getShopCache, saveShopCache } from "../../utils/cache/shopCache";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup.jsx";
 import noAvatar from "../../assets/no-avatar.jpg";
 import { useMyPackage } from "../../hooks/shop/useMyPackage";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 
 function Employee() {
   const { t } = useTranslation();
@@ -33,6 +34,7 @@ function Employee() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("Marketer");
+  const [isInviting, setIsInviting] = useState(false);
 
   const [selectedPages, setSelectedPages] = useState([]);
   const [pages, setPages] = useState([]);
@@ -399,6 +401,7 @@ function Employee() {
     }
 
     try {
+      setIsInviting(true);
       const res = await axiosInstance.post("/api/shop-users/invite", {
         shopId: actualShopId,
         email: inviteEmail.trim(),
@@ -423,6 +426,8 @@ function Employee() {
     } catch (error) {
       console.error("Invite employee error:", error);
       toast.error(error.response?.data?.message || "Lỗi khi gửi lời mời");
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -611,8 +616,8 @@ function Employee() {
           </div>
 
           <div className="modal-actions">
-            <button onClick={handleInviteEmployee} className="btn btn-primary">Gửi lời mời</button>
-            <button onClick={() => setIsInviteOpen(false)} className="btn btn-secondary">Hủy</button>
+            <button onClick={handleInviteEmployee} className="btn btn-primary" disabled={isInviting}>{isInviting ? "Đang gửi..." : "Gửi lời mời"}</button>
+            <button onClick={() => setIsInviteOpen(false)} className="btn btn-secondary" disabled={isInviting}>Hủy</button>
           </div>
         </div>
       </div>
@@ -627,6 +632,7 @@ function Employee() {
 
   return (
     <div className="shop-border">
+      <LoadingOverlay isLoading={loading || isInviting} message={isInviting ? "Đang thêm nhân viên..." : "Đang tải..."} />
       {/* Tabs/end để active đúng tại shop, ko ăn vào cái khác */}
       <div className="shop-tabs">
         <NavLink

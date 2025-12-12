@@ -9,6 +9,7 @@ import shopService from "../../services/shop/shopService";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useShopPackage } from "../../hooks/shop/useShopPackage.js";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay.jsx";
 
 function Dashboard() {
   const [filterValue, setFilterValue] = useState("all");
@@ -254,11 +255,12 @@ function Dashboard() {
   }).filter((page) => {
     // Lọc theo từ khóa tìm kiếm
     if (!searchQuery) return true;
-    return page.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return page.name.toLowerCase().includes(searchQuery.toLowerCase()) || page.pageId.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   return (
     <div className="dashboard-layout">
+      <LoadingOverlay isLoading={isRefreshing || pkgLoading} message="Đang tải..." />
       <div className="dashboard-content">
         <div className="dashboard-center">
           {/* Header with tabs */}

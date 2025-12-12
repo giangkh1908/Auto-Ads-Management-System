@@ -14,9 +14,9 @@ const GUIDE_SECTIONS = [
   { id: "service-package", title: "Gói dịch vụ", icon: Package },
   { id: "ad-account", title: "Tài khoản quảng cáo", icon: CreditCard },
   { id: "profile", title: "Hồ sơ", icon: Settings },
-//   { id: "admin-system", title: "Admin - System Admin", icon: Shield },
-//   { id: "admin-cs", title: "Admin - CS Staff", icon: Users },
-//   { id: "admin-accountant", title: "Admin - Accountant", icon: FileText },
+  //   { id: "admin-system", title: "Admin - System Admin", icon: Shield },
+  //   { id: "admin-cs", title: "Admin - CS Staff", icon: Users },
+  //   { id: "admin-accountant", title: "Admin - Accountant", icon: FileText },
 ];
 
 function Guide() {
@@ -144,9 +144,9 @@ function Guide() {
                 <ol className="guide-steps-list">
                   <li>Vào <strong>"Gói dịch vụ"</strong> từ menu</li>
                   <li>Chọn gói phù hợp (Chatbot, Chatbot AI)</li>
-                  <li>Chọn thời hạn: 3 tháng, 6 tháng, hoặc 12 tháng</li>
+                  <li>Chọn thời hạn: 3 tháng hoặc 12 tháng</li>
                   <li>Chọn số lượng Pages, Employees, và Shops cần thiết</li>
-                  <li>Thanh toán qua Momo, VietQR, hoặc chuyển khoản ngân hàng</li>
+                  <li>Thanh toán qua Bank transfer, VNPAY</li>
                   <li>Chờ admin duyệt giao dịch</li>
                 </ol>
               </div>
