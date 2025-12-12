@@ -8,15 +8,20 @@ import "./AccountManagement.css";
 import { CheckCircle, XCircle, Archive, Trash2, Play, Pause } from "lucide-react";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 import { onShopChange } from "../../utils/cache/shopCache";
+import { useAuth } from "../../hooks/auth/useAuth";
 // import { useShopPackage } from "../../hooks/useShopPackage";
 
 function AccountManagement() {
   const { t, i18n } = useTranslation();
   // const navigate = useNavigate();
   // const { shopPkg } = useShopPackage();
+  const { user, updateUser } = useAuth();
 
   // Lấy package của shop owner (từ shop package)
   // const ownerPackage = shopPkg?.package;
+
+  const FB_CONFIG_ID = import.meta.env.FB_CONFIG_ID;
+  const hasFacebookConnected = !!user?.facebookId;
 
   // UI states
   const [loading, setLoading] = useState(false);
@@ -89,6 +94,12 @@ function AccountManagement() {
 
   /** Đồng bộ tài khoản quảng cáo từ Facebook vào DB và làm mới dữ liệu */
   const handleSyncAccounts = async () => {
+    // Nếu user chưa có Facebook → gọi login Facebook
+    if (!hasFacebookConnected) {
+      handleFacebookBusinessLogin();
+      return;
+    }
+
     try {
       setSyncing(true);
 
@@ -130,6 +141,109 @@ function AccountManagement() {
       setSyncing(false);
     }
   };
+
+  // Facebook Business Login Handler
+  const handleFacebookBusinessLogin = () => {
+    if (!window.FB) {
+      toast.error("Facebook SDK chưa sẵn sàng. Vui lòng thử lại.");
+      return;
+    }
+
+    window.FB.login(
+      function (response) {
+        if (response.status === "connected") {
+          handleFacebookLoginSuccess(response);
+        }
+      },
+      {
+        config_id: FB_CONFIG_ID,
+        scope: "email,public_profile,pages_show_list,pages_read_engagement,pages_manage_metadata,pages_manage_posts,business_management,ads_read,ads_management",
+      }
+    );
+  };
+
+  // Xử lý khi Facebook login thành công - LINK Facebook vào account hiện tại
+  const handleFacebookLoginSuccess = async (response) => {
+    try {
+      setSyncing(true);
+      const { authResponse } = response;
+      if (!authResponse?.accessToken) {
+        toast.error("Đăng nhập Facebook thất bại");
+        setSyncing(false);
+        return;
+      }
+
+      // Gọi endpoint LINK thay vì LOGIN (dùng axiosInstance có auth token)
+      const linkResponse = await axiosInstance.post(
+        "/api/auth/facebook/link",
+        {
+          facebookId: authResponse.userID,
+          accessToken: authResponse.accessToken,
+        }
+      );
+
+      if (linkResponse.data.success) {
+        const { user: updatedUser } = linkResponse.data.data;
+        
+        // Cập nhật user trong context (không cần đăng nhập lại)
+        updateUser(updatedUser);
+        
+        // Sau khi link FB thành công, gọi sync accounts
+        const syncResponse = await axiosInstance.get('/api/ads-accounts/sync');
+        await fetchAccounts({ q: searchText.trim(), page, limit });
+        
+        const syncedAccounts = syncResponse.data?.accounts || [];
+        let accountIds = syncedAccounts.map((acc) => acc.external_id || acc._id?.toString()).filter(Boolean);
+        if (accountIds.length > 0) {
+          await fetchAccountStats(accountIds);
+        }
+        
+        toast.success("Kết nối Facebook và đồng bộ tài khoản thành công!");
+      } else {
+        const errorCode = linkResponse.data?.error?.code;
+        
+        if (errorCode === "FACEBOOK_ALREADY_BOUND") {
+          toast.error("Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.");
+        } else {
+          toast.error(linkResponse.data?.error?.message || "Liên kết thất bại");
+        }
+      }
+    } catch (error) {
+      console.error("Facebook link error:", error);
+      const errorCode = error.response?.data?.error?.code;
+      
+      if (errorCode === "FACEBOOK_ALREADY_BOUND") {
+        toast.error("Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.");
+      } else {
+        toast.error(error.response?.data?.error?.message || "Liên kết thất bại");
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Khởi tạo Facebook SDK
+  useEffect(() => {
+    if (window.FB) return;
+
+    window.fbAsyncInit = function () {
+      window.FB.init({
+        appId: "1445692036729400",
+        cookie: true,
+        xfbml: true,
+        version: "v23.0",
+      });
+    };
+
+    (function (d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s);
+      js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    })(document, "script", "facebook-jssdk");
+  }, []);
 
   /** Lấy thống kê cho các tài khoản */
   const fetchAccountStats = useCallback(async (accountIds) => {

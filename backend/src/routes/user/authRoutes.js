@@ -3,6 +3,7 @@ import {
   register,
   login,
   facebookLogin,
+  linkFacebook,
   verifyEmail,
   forgotPassword,
   resetPassword,
@@ -21,6 +22,7 @@ const router = express.Router();
 router.post("/register", register);
 router.post("/login", login);
 router.post("/facebook", facebookLogin);
+router.post("/facebook/link", authenticate, linkFacebook);
 router.get("/verify/:token", verifyEmail);
 
 //Route xác nhận email
