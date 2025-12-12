@@ -30,7 +30,7 @@ function extractObjectId(value) {
  */
 export async function listCampaignsCtrl(req, res) {
   try {
-    const { account_id, q, status, page = 1, limit = 10, fetch_all = false } = req.query;
+    const { account_id, q, status, page = 1, limit = 10, fetch_all = false, date_from, date_to } = req.query;
     
     // Xây dựng filter
     const filter = {};
@@ -49,6 +49,20 @@ export async function listCampaignsCtrl(req, res) {
     // Nếu không có status parameter, lấy tất cả (bao gồm cả DELETED)
     
     if (q) filter.name = new RegExp(q, 'i');
+    
+    // ✅ Filter theo ngày bắt đầu chiến dịch (start_time)
+    if (date_from || date_to) {
+      filter.start_time = {};
+      if (date_from) {
+        filter.start_time.$gte = new Date(date_from);
+      }
+      if (date_to) {
+        // Thêm 1 ngày để bao gồm cả ngày kết thúc (end of day)
+        const endDate = new Date(date_to);
+        endDate.setDate(endDate.getDate() + 1);
+        filter.start_time.$lte = endDate;
+      }
+    }
     
     // Hỗ trợ fetch_all hoặc limit lớn để Frontend có thể sort và phân trang
     const limitNum = Number(limit);
@@ -214,6 +228,7 @@ export async function getCampaignsLiveCtrl(req, res) {
     const data = await fetchCampaignsFromFacebook(accessToken, account_id);
 
     // 3. Upsert vào DB nếu có account
+    // KHÔNG ghi đè insights - insights được fetch riêng qua /api/campaigns/insights
     if (adsAccount && data.length > 0) {
       const bulkOps = data.map((c) => {
         const campaignData = {
@@ -230,7 +245,7 @@ export async function getCampaignsLiveCtrl(req, res) {
           lifetime_budget: c.lifetime_budget,
           start_time: c.start_time,
           stop_time: c.stop_time,
-          insights: c.insights?.data?.[0] || {},
+          // Không set insights ở đây - giữ nguyên insights cũ trong DB
         };
 
         return {
@@ -577,7 +592,7 @@ export async function copyCampaignCascadeCtrl(req, res) {
 
 /**
  * GET /api/campaigns/insights
- * Lấy insights cho nhiều campaigns từ Facebook
+ * Lấy insights cho nhiều campaigns từ Facebook VÀ LƯU VÀO DB
  */
 export async function getCampaignInsightsCtrl(req, res) {
   try {
@@ -586,7 +601,7 @@ export async function getCampaignInsightsCtrl(req, res) {
       return res.status(400).json({ message: "Thiếu danh sách IDs" });
     }
 
-    const campaignIds = ids.split(',');
+    const campaignIds = ids.split(',').map(id => id.trim()).filter(Boolean);
 
     // Lấy token người dùng hiện tại
     const user = await User.findById(req.user?._id).select("+facebookAccessToken");
@@ -595,14 +610,35 @@ export async function getCampaignInsightsCtrl(req, res) {
       return res.status(401).json({ message: "Thiếu access token Facebook" });
     }
 
-    // Gọi service để lấy insights (bạn cần đảm bảo hàm này tồn tại trong fbAdsService.js)
+    // Gọi service để lấy insights từ Facebook
     const insightsData = await fetchInsightsForCampaignIds(accessToken, campaignIds);
+    
+    console.log(`📊 Fetched insights for ${insightsData.length} campaigns from FB`);
 
     // Map lại data để FE dễ xử lý: { id: '...', insights: {...} }
+    // KHÔNG cần extract .data?.[0] vì service đã làm rồi
     const items = insightsData.map(item => ({
       id: item.id,
-      insights: item.insights?.data?.[0] || {}
+      insights: item.insights || {}
     }));
+
+    // LƯU INSIGHTS VÀO DB (background, không block response)
+    if (items.length > 0) {
+      const bulkOps = items
+        .filter(item => item.insights && Object.keys(item.insights).length > 0)
+        .map(item => ({
+          updateOne: {
+            filter: { external_id: item.id },
+            update: { $set: { insights: item.insights, insights_updated_at: new Date() } },
+          },
+        }));
+
+      if (bulkOps.length > 0) {
+        AdsCampaign.bulkWrite(bulkOps, { ordered: false })
+          .then(() => console.log(`✅ Saved insights for ${bulkOps.length} campaigns to DB`))
+          .catch(err => console.error("Error saving campaign insights to DB:", err.message));
+      }
+    }
 
     return res.status(200).json({ items });
 

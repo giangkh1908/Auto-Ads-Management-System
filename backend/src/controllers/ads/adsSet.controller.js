@@ -112,7 +112,7 @@ export async function getAdsetFromDatabase(req, res) {
  */
 export async function listAdSetsCtrl(req, res) {
   try {
-    const { account_id, campaign_id, q, status, page = 1, limit = 10, fetch_all = false } = req.query;
+    const { account_id, campaign_id, q, status, page = 1, limit = 10, fetch_all = false, date_from, date_to } = req.query;
 
     const filter = {};
 
@@ -132,6 +132,20 @@ export async function listAdSetsCtrl(req, res) {
     // Nếu không có status parameter, lấy tất cả (bao gồm cả DELETED)
     
     if (q) filter.name = new RegExp(q, "i");
+
+    // ✅ Filter theo ngày bắt đầu (start_time)
+    if (date_from || date_to) {
+      filter.start_time = {};
+      if (date_from) {
+        filter.start_time.$gte = new Date(date_from);
+      }
+      if (date_to) {
+        // Thêm 1 ngày để bao gồm cả ngày kết thúc (end of day)
+        const endDate = new Date(date_to);
+        endDate.setDate(endDate.getDate() + 1);
+        filter.start_time.$lte = endDate;
+      }
+    }
 
     // Hỗ trợ fetch_all hoặc limit lớn để Frontend có thể sort và phân trang
     const limitNum = Number(limit);
@@ -263,7 +277,7 @@ export async function getAdSetsLiveCtrl(req, res) {
           start_time: s.start_time,
           end_time: s.end_time,
           optimization_goal: s.optimization_goal,
-          insights: s.insights?.data?.[0] || {},
+          // Không set insights ở đây - giữ nguyên insights cũ trong DB
         };
 
         bulkOps.push({
@@ -507,7 +521,7 @@ export async function copyAdsetCascadeCtrl(req, res) {
 
 /**
  * GET /api/adsets/insights
- * Lấy insights cho nhiều adsets từ Facebook
+ * Lấy insights cho nhiều adsets từ Facebook VÀ LƯU VÀO DB
  */
 export async function getAdsetInsightsCtrl(req, res) {
   try {
@@ -516,7 +530,7 @@ export async function getAdsetInsightsCtrl(req, res) {
       return res.status(400).json({ message: "Thiếu danh sách IDs" });
     }
 
-    const adsetIds = ids.split(',');
+    const adsetIds = ids.split(',').map(id => id.trim()).filter(Boolean);
 
     // Lấy token người dùng hiện tại
     const user = await User.findById(req.user?._id).select("+facebookAccessToken");
@@ -525,14 +539,35 @@ export async function getAdsetInsightsCtrl(req, res) {
       return res.status(401).json({ message: "Thiếu access token Facebook" });
     }
 
-    // Gọi service để lấy insights
+    // Gọi service để lấy insights từ Facebook
     const insightsData = await fetchInsightsForAdsetIds(accessToken, adsetIds);
+    
+    console.log(`📊 Fetched insights for ${insightsData.length} adsets from FB`);
 
     // Map lại data để FE dễ xử lý: { id: '...', insights: {...} }
+    // KHÔNG cần extract .data?.[0] vì service đã làm rồi
     const items = insightsData.map(item => ({
       id: item.id,
-      insights: item.insights?.data?.[0] || {}
+      insights: item.insights || {}
     }));
+
+    // LƯU INSIGHTS VÀO DB (background, không block response)
+    if (items.length > 0) {
+      const bulkOps = items
+        .filter(item => item.insights && Object.keys(item.insights).length > 0)
+        .map(item => ({
+          updateOne: {
+            filter: { external_id: item.id },
+            update: { $set: { insights: item.insights, insights_updated_at: new Date() } },
+          },
+        }));
+
+      if (bulkOps.length > 0) {
+        AdsSet.bulkWrite(bulkOps, { ordered: false })
+          .then(() => console.log(`✅ Saved insights for ${bulkOps.length} adsets to DB`))
+          .catch(err => console.error("Error saving adset insights to DB:", err.message));
+      }
+    }
 
     return res.status(200).json({ items });
 

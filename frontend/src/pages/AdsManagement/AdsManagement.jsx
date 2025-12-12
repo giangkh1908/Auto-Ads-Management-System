@@ -247,6 +247,94 @@ function AdsManagement() {
     fetchAllAdsForAccount,
   ]);
 
+  // Fetch insights cho visible items (current page) - lazy load
+  // Sử dụng ref để track rows đã fetch insights
+  const fetchedInsightsForRef = useRef(new Set());
+  
+  useEffect(() => {
+    console.log("🔍 Insights useEffect:", { 
+      rowsLength: rows?.length, 
+      switchingAccount, 
+      activeTab,
+      firstRowExternalId: rows?.[0]?.external_id 
+    });
+    
+    if (!rows || rows.length === 0) {
+      console.log("⏭️ Skip - no rows");
+      return;
+    }
+    
+    if (switchingAccount) {
+      console.log("⏭️ Skip - switching account");
+      return;
+    }
+    
+    // TTL cho insights: 1 giờ
+    const INSIGHTS_TTL = 60 * 60 * 1000; // 1 hour in ms
+    const now = Date.now();
+    
+    // Lọc items chưa có insights HOẶC insights đã cũ (> 1 giờ)
+    const itemsNeedInsights = rows.filter(item => {
+      if (!item.external_id) return false;
+      if (fetchedInsightsForRef.current.has(item.external_id)) return false;
+      
+      // Check nếu insights đã cũ (stale)
+      const insightsUpdatedAt = item.insights?.insights_updated_at || item.insights_updated_at;
+      const isStale = insightsUpdatedAt 
+        ? (now - new Date(insightsUpdatedAt).getTime()) > INSIGHTS_TTL 
+        : true; // Nếu không có timestamp thì coi như stale
+      
+      // Có data thực và còn fresh → skip
+      const hasRealData = (item.insights?.impressions > 0 || item.insights?.spend > 0 || item.insights?.clicks > 0) ||
+                         (item.impressions > 0 || item.spend > 0 || item.clicks > 0);
+      
+      if (hasRealData && !isStale) return false;
+      
+      return true;
+    });
+    
+    console.log("📊 Items need insights:", itemsNeedInsights.length);
+    
+    if (itemsNeedInsights.length === 0) {
+      console.log("⏭️ Skip - no items need insights");
+      return;
+    }
+    
+    // Mark as fetching to avoid duplicate requests
+    itemsNeedInsights.forEach(item => {
+      fetchedInsightsForRef.current.add(item.external_id);
+    });
+    
+    // Determine endpoint based on activeTab
+    const endpoint = activeTab === "campaigns" 
+      ? '/api/campaigns/insights'
+      : activeTab === "adsets" 
+        ? '/api/adsets/insights' 
+        : '/api/ads/insights';
+    
+    console.log("🔄 Fetching insights for", itemsNeedInsights.length, "items from", endpoint);
+    
+    // Fetch insights in background
+    fetchInsightsForVisibleItems(itemsNeedInsights, endpoint)
+      .then(result => {
+        console.log("✅ Insights fetched:", Object.keys(result || {}).length, "items");
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError' && err.name !== 'CanceledError') {
+          console.warn('Failed to fetch insights for visible items:', err.message);
+          // Remove from fetched set so it can retry
+          itemsNeedInsights.forEach(item => {
+            fetchedInsightsForRef.current.delete(item.external_id);
+          });
+        }
+      });
+  }, [rows, activeTab, switchingAccount, fetchInsightsForVisibleItems]);
+  
+  // Clear fetched insights ref when account changes
+  useEffect(() => {
+    fetchedInsightsForRef.current.clear();
+  }, [selectedAccountId]);
+
   // Toggle row
   const toggleRow = async (id) => {
     const key = getEntityKey();

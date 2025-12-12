@@ -223,8 +223,8 @@ async function saveLifetimeInsightsToAdPerformance(insightsData, account) {
       cost_per_result: item.cost_per_result !== undefined ? Number(item.cost_per_result) : null,
       
       // Metadata
-      campaign_name: item.campaign_name || campaign?.name || null,
-      adset_name: item.adset_name || adset?.name || null,
+      campaign_name: item.campaign_name || null,
+      adset_name: item.adset_name || null,
       ad_name: item.ad_name || ad.name || null,
       objective: item.objective || null,
       

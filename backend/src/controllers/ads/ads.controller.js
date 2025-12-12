@@ -102,7 +102,7 @@ export async function getAdFromDatabase(req, res) {
  */
 export async function listAdsCtrl(req, res) {
   try {
-    const { account_id, adset_id, q, status, page = 1, limit = 10, fetch_all = false } = req.query;
+    const { account_id, adset_id, q, status, page = 1, limit = 10, fetch_all = false, date_from, date_to } = req.query;
 
     if (account_id && !adset_id) {
       const normalizedId = account_id.startsWith("act_")
@@ -173,6 +173,20 @@ export async function listAdsCtrl(req, res) {
     }
     
     if (q) filter.name = new RegExp(q, "i");
+
+    // ✅ Filter theo ngày bắt đầu (start_time) - Ads không có start_time riêng, dùng created_at
+    if (date_from || date_to) {
+      filter.created_at = {};
+      if (date_from) {
+        filter.created_at.$gte = new Date(date_from);
+      }
+      if (date_to) {
+        // Thêm 1 ngày để bao gồm cả ngày kết thúc (end of day)
+        const endDate = new Date(date_to);
+        endDate.setDate(endDate.getDate() + 1);
+        filter.created_at.$lte = endDate;
+      }
+    }
 
     // Hỗ trợ fetch_all hoặc limit lớn để Frontend có thể sort và phân trang
     const limitNum = Number(limit);
@@ -309,7 +323,7 @@ export async function getAdsLiveCtrl(req, res) {
           set_id: adsetId,
           effective_status: a.effective_status,
           creative: a.creative,
-          insights: a.insights?.data?.[0] || {},
+          // Không set insights ở đây - giữ nguyên insights cũ trong DB
         };
 
         bulkOps.push({
@@ -340,7 +354,7 @@ export async function getAdsLiveCtrl(req, res) {
 
 /**
  * GET /api/ads/insights
- * Lấy insights cho danh sách ads (ids=comma,separated)
+ * Lấy insights cho danh sách ads (ids=comma,separated) VÀ LƯU VÀO DB
  */
 export async function getAdsInsightsCtrl(req, res) {
   try {
@@ -367,8 +381,36 @@ export async function getAdsInsightsCtrl(req, res) {
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    const insights = await fetchInsightsForAdIds(accessToken, adIds);
-    return res.status(200).json({ items: insights, total: insights.length });
+    const insightsData = await fetchInsightsForAdIds(accessToken, adIds);
+    
+    console.log(`📊 Fetched insights for ${insightsData.length} ads from FB`);
+    
+    // Map lại data để FE dễ xử lý và để lưu DB
+    // KHÔNG cần extract .data?.[0] vì service đã làm rồi
+    const items = insightsData.map(item => ({
+      id: item.id,
+      insights: item.insights || {}
+    }));
+
+    // LƯU INSIGHTS VÀO DB (background, không block response)
+    if (items.length > 0) {
+      const bulkOps = items
+        .filter(item => item.insights && Object.keys(item.insights).length > 0)
+        .map(item => ({
+          updateOne: {
+            filter: { external_id: item.id },
+            update: { $set: { insights: item.insights, insights_updated_at: new Date() } },
+          },
+        }));
+
+      if (bulkOps.length > 0) {
+        Ads.bulkWrite(bulkOps, { ordered: false })
+          .then(() => console.log(`✅ Saved insights for ${bulkOps.length} ads to DB`))
+          .catch(err => console.error("Error saving ad insights to DB:", err.message));
+      }
+    }
+
+    return res.status(200).json({ items, total: items.length });
   } catch (err) {
     console.error("GET Ads insights error:", err);
     return res.status(500).json({ message: "Lỗi lấy insights từ Facebook", error: err.message });

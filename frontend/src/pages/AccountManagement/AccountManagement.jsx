@@ -30,6 +30,7 @@ function AccountManagement() {
 
   // query states
   const [searchText, setSearchText] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); // Query đã được submit để tìm kiếm
   const [items, setItems] = useState([]); // raw items từ API
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -76,10 +77,10 @@ function AccountManagement() {
     []
   );
 
-  /** Lần đầu & khi đổi trang */
+  /** Lần đầu & khi đổi trang hoặc search query thay đổi */
   useEffect(() => {
-    fetchAccounts({ q: "", page, limit });
-  }, [fetchAccounts, page, limit]);
+    fetchAccounts({ q: searchQuery, page, limit });
+  }, [fetchAccounts, page, limit, searchQuery]);
 
   /** Lắng nghe sự kiện thay đổi shop và reload accounts */
   useEffect(() => {
@@ -321,7 +322,7 @@ function AccountManagement() {
   /** Tìm kiếm */
   const onSearch = () => {
     setPage(1);
-    fetchAccounts({ q: searchText.trim(), page: 1, limit });
+    setSearchQuery(searchText.trim()); // Cập nhật searchQuery sẽ trigger useEffect
   };
 
   /** Xử lý các hành động với account */

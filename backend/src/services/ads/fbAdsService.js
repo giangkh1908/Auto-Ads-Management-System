@@ -402,72 +402,138 @@ export async function updateAd(entityId, accessToken, updates) {
 }
 
 /* =========================
- *  FETCH HELPERS (giữ nguyên fields)
+ *  FETCH HELPERS (có pagination)
  * ========================= */
 
-export async function fetchCampaignsFromFacebook(accessToken, adAccountId) {
+/**
+ * Helper function để fetch tất cả pages từ Facebook API
+ * Sử dụng cursor-based pagination
+ * @param {string} url - Base URL for the API call
+ * @param {string} accessToken - Facebook access token
+ * @param {string} fields - Fields to fetch
+ * @param {string} entityName - Name for logging
+ * @param {number} limitPerPage - Items per page (default 50 to avoid timeout)
+ */
+async function fetchAllPagesFromFacebook(url, accessToken, fields, entityName = "entities", limitPerPage = 50) {
+  const allData = [];
+  let nextUrl = url;
+  let pageCount = 0;
+  const MAX_PAGES = 100; // Giới hạn để tránh loop vô hạn (100 pages x 50 items = 5000 max)
+  const MAX_RETRIES = 2;
+
   try {
-    const { withPrefix } = normalizeAccountPair(adAccountId);
-    const url = `${FB_API}/${withPrefix}/campaigns`;
-    const response = await axios.get(url, {
-      params: {
-        fields:
-          "id,name,status,objective,special_ad_categories,daily_budget,lifetime_budget,start_time,stop_time,effective_status,insights{impressions,spend,clicks,actions,reach,frequency,cpc,ctr,cost_per_inline_link_click,inline_link_click_ctr,inline_link_clicks}",
-        access_token: accessToken,
-        limit: 100,
-      },
-    });
-    return response.data?.data || [];
+    while (nextUrl && pageCount < MAX_PAGES) {
+      pageCount++;
+      let retries = 0;
+      let response = null;
+      
+      // Retry logic for transient errors
+      while (retries <= MAX_RETRIES) {
+        try {
+          response = await axios.get(nextUrl, {
+            params: nextUrl === url ? {
+              fields,
+              access_token: accessToken,
+              limit: limitPerPage,
+            } : undefined, // Nếu là URL tiếp theo thì params đã có sẵn trong URL
+            timeout: 60000, // 60 giây timeout cho mỗi request
+          });
+          break; // Success, exit retry loop
+        } catch (reqError) {
+          retries++;
+          const fbError = reqError.response?.data?.error;
+          
+          // Nếu là timeout error (subcode 1504018), giảm limit và retry
+          if (fbError?.error_subcode === 1504018 && retries <= MAX_RETRIES) {
+            console.warn(`⚠️ Request timeout for ${entityName} page ${pageCount}, retrying with smaller limit...`);
+            limitPerPage = Math.max(25, Math.floor(limitPerPage / 2)); // Giảm limit xuống còn nửa
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+            continue;
+          }
+          
+          // Nếu hết retry hoặc lỗi khác, throw error
+          if (retries > MAX_RETRIES) {
+            throw reqError;
+          }
+          
+          // Retry cho các lỗi transient khác
+          console.warn(`⚠️ Error fetching ${entityName} page ${pageCount}, retry ${retries}/${MAX_RETRIES}...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * retries)); // Exponential backoff
+        }
+      }
+      
+      if (!response) break;
+
+      const data = response.data?.data || [];
+      if (data.length === 0) {
+        break;
+      }
+
+      allData.push(...data);
+
+      // Check for next page
+      const paging = response.data?.paging;
+      if (paging?.next) {
+        nextUrl = paging.next;
+      } else if (paging?.cursors?.after) {
+        // Build next URL with cursor
+        const separator = url.includes('?') ? '&' : '?';
+        nextUrl = `${url}${separator}fields=${encodeURIComponent(fields)}&access_token=${accessToken}&limit=${limitPerPage}&after=${paging.cursors.after}`;
+      } else {
+        break;
+      }
+
+      // Rate limit: delay giữa các requests (500ms để tránh rate limit)
+      if (nextUrl) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    if (pageCount >= MAX_PAGES) {
+      console.warn(`⚠️ Reached max pages (${MAX_PAGES}) for ${entityName}. Total fetched: ${allData.length}`);
+    } else {
+      console.log(`✅ Fetched ${allData.length} ${entityName} in ${pageCount} page(s)`);
+    }
+
+    return allData;
   } catch (err) {
-    console.error(
-      `Error fetching campaigns from Facebook for account ${adAccountId}:`,
-      err.response?.data || err.message
-    );
-    return [];
+    console.error(`Error fetching ${entityName} from Facebook:`, err.response?.data || err.message);
+    // Return what we have so far instead of empty array
+    if (allData.length > 0) {
+      console.log(`⚠️ Returning partial data: ${allData.length} ${entityName}`);
+    }
+    return allData;
   }
+}
+
+export async function fetchCampaignsFromFacebook(accessToken, adAccountId) {
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const url = `${FB_API}/${withPrefix}/campaigns`;
+  // Không fetch insights ở đây để tránh timeout khi có nhiều campaigns
+  // Insights sẽ được fetch riêng qua /api/campaigns/insights endpoint
+  const fields = "id,name,status,objective,special_ad_categories,daily_budget,lifetime_budget,start_time,stop_time,effective_status";
+  
+  return fetchAllPagesFromFacebook(url, accessToken, fields, "campaigns");
 }
 
 export async function fetchAdsetsFromFacebook(accessToken, adAccountId) {
-  try {
-    const { withPrefix } = normalizeAccountPair(adAccountId);
-    const url = `${FB_API}/${withPrefix}/adsets`;
-    const response = await axios.get(url, {
-      params: {
-        fields:
-          "id,name,status,campaign_id,daily_budget,lifetime_budget,optimization_goal,targeting,start_time,end_time,effective_status,insights{impressions,spend,clicks,actions,reach,frequency,cpc,ctr,cost_per_inline_link_click,inline_link_click_ctr,inline_link_clicks}",
-        access_token: accessToken,
-        limit: 100,
-      },
-    });
-    return response.data?.data || [];
-  } catch (err) {
-    console.error(
-      `Error fetching adsets from Facebook for account ${adAccountId}:`,
-      err.response?.data || err.message
-    );
-    return [];
-  }
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const url = `${FB_API}/${withPrefix}/adsets`;
+  // Không fetch insights ở đây để tránh timeout khi có nhiều adsets (800+)
+  // Insights sẽ được fetch riêng qua /api/adsets/insights endpoint
+  const fields = "id,name,status,campaign_id,daily_budget,lifetime_budget,optimization_goal,targeting,start_time,end_time,effective_status";
+  
+  return fetchAllPagesFromFacebook(url, accessToken, fields, "adsets");
 }
 
 export async function fetchAdsFromFacebook(accessToken, adAccountId) {
-  try {
-    const { withPrefix } = normalizeAccountPair(adAccountId);
-    const url = `${FB_API}/${withPrefix}/ads`;
-    const response = await axios.get(url, {
-      params: {
-        fields: "id,name,status,adset_id,creative,effective_status,insights{impressions,spend,clicks,actions,reach,frequency,cpc,ctr,cost_per_inline_link_click,inline_link_click_ctr,inline_link_clicks}",
-        access_token: accessToken,
-        limit: 100,
-      },
-    });
-    return response.data?.data || [];
-  } catch (err) {
-    console.error(
-      `Error fetching ads from Facebook for account ${adAccountId}:`,
-      err.response?.data || err.message
-    );
-    return [];
-  }
+  const { withPrefix } = normalizeAccountPair(adAccountId);
+  const url = `${FB_API}/${withPrefix}/ads`;
+  // Không fetch insights ở đây để tránh timeout khi có nhiều ads
+  // Insights sẽ được fetch riêng qua /api/ads/insights endpoint
+  const fields = "id,name,status,adset_id,creative,effective_status";
+  
+  return fetchAllPagesFromFacebook(url, accessToken, fields, "ads");
 }
 
 /**
@@ -485,8 +551,6 @@ export async function fetchLifetimeInsightsForAds(accessToken, adAccountId, opti
   const timeIncrement = options.time_increment ?? 1;
   
   const fields = [
-    // Names for mapping
-    'campaign_name', 'adset_name',
     // IDs & Names
     'ad_id', 'ad_name',
     'adset_id', 'adset_name',
@@ -786,7 +850,7 @@ export async function fetchInsightsForAdIds(accessToken, adIds = []) {
   
   try {
     const url = `${FB_API}/?ids=${adIds.join(",")}`;
-    const fields = "insights.date_preset(lifetime){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
+    const fields = "insights.date_preset(maximum){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
     const { data } = await axios.get(url, {
       params: { fields, access_token: accessToken },
     });
@@ -818,7 +882,7 @@ export async function fetchInsightsForAdsetIds(accessToken, adsetIds = []) {
 
   try {
     const url = `${FB_API}/?ids=${adsetIds.join(",")}`;
-    const fields = "insights.date_preset(lifetime){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
+    const fields = "insights.date_preset(maximum){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
     const { data } = await axios.get(url, {
       params: { fields, access_token: accessToken },
     });
@@ -849,7 +913,7 @@ export async function fetchInsightsForCampaignIds(accessToken, campaignIds = [])
 
   try {
     const url = `${FB_API}/?ids=${campaignIds.join(",")}`;
-    const fields = "insights.date_preset(lifetime){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
+    const fields = "insights.date_preset(maximum){impressions,reach,spend,clicks,actions,quality_ranking,engagement_rate_ranking,conversion_rate_ranking}";
     const { data } = await axios.get(url, {
       params: { fields, access_token: accessToken },
     });
