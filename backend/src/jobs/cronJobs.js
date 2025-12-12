@@ -6,12 +6,41 @@ import User from "../models/user/user.model.js";
 import pLimit from "p-limit";
 
 export function startSyncCronJobs() {
+  // Run every hour at minute 0
   cron.schedule("0 * * * *", async () => {
     const startTime = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     console.log(`🔄 [${startTime}] Starting ads entity + ads insights sync...`);
     const limit = pLimit(1);
 
     try {
+      // Reset any stuck sync status (syncing for more than 1 hour)
+      const oneHourAgo = new Date(Date.now() - 3600000);
+      const resetResult = await AdsAccount.updateMany(
+        {
+          status: "ACTIVE",
+          "sync_metadata.entities_status": "syncing",
+          $or: [
+            { "sync_metadata.entities_sync_started_at": { $lt: oneHourAgo } },
+            { 
+              "sync_metadata.entities_sync_started_at": { $exists: false },
+              "sync_metadata.entities_last_synced_at": { $exists: false }
+            }
+          ]
+        },
+        {
+          $set: {
+            "sync_metadata.entities_status": "idle",
+            "sync_metadata.entities_error": "Reset stuck sync status"
+          },
+          $unset: {
+            "sync_metadata.entities_sync_started_at": ""
+          }
+        }
+      );
+      if (resetResult.modifiedCount > 0) {
+        console.log(`🔄 Reset ${resetResult.modifiedCount} stuck sync status(es)`);
+      }
+
       const accounts = await AdsAccount.find({
         status: "ACTIVE"
       })
@@ -32,11 +61,15 @@ export function startSyncCronJobs() {
                 return;
               }
 
+              console.log(`🔄 [${account.external_id}] Starting entity sync...`);
               await syncEntitiesForAccount(account.external_id, accessToken);
-              console.log(`✅ Synced ads entities (campaign/adset/ad) for account ${account.external_id}`);
+              console.log(`✅ [${account.external_id}] Entity sync completed`);
+              
+              console.log(`🔄 [${account.external_id}] Starting insights sync...`);
               await syncInsightsForAccount(account._id);
+              console.log(`✅ [${account.external_id}] Insights sync completed`);
+              
               successCount++;
-              console.log(`✅ Synced ads insights -> AdPerformance for account ${account.external_id}`);
             } catch (err) {
               console.error(`❌ Failed to sync account ${account.external_id}:`, err.message);
               errorCount++;
@@ -53,7 +86,7 @@ export function startSyncCronJobs() {
   });
 
   console.log("✅ Sync cron jobs started:");
-  console.log("  - Ads Entities + Ads Insights: Every 1 hour (minute 0)");
+  console.log("  - Ads Entities + Ads Insights: Every hour (at minute 0)");
 }
 
 

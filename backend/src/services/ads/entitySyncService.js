@@ -264,9 +264,37 @@ export async function syncEntitiesForAccount(accountExternalId, accessToken) {
     throw new Error("AdsAccount not found");
   }
 
-  if (account.sync_metadata?.entities_status === "syncing") {
+  // Check if sync is stuck (syncing for more than 1 hour)
+  const syncStartedAt = account.sync_metadata?.entities_sync_started_at;
+  const isStuck = account.sync_metadata?.entities_status === "syncing" && 
+                  syncStartedAt && 
+                  (Date.now() - new Date(syncStartedAt).getTime()) > 3600000; // 1 hour
+
+  if (account.sync_metadata?.entities_status === "syncing" && !isStuck) {
     console.log(`⏭️ Skip sync - already syncing for account ${accountExternalId}`);
     return;
+  }
+
+  // Reset stuck sync status
+  if (isStuck) {
+    console.log(`⚠️ Reset stuck sync status for account ${accountExternalId}`);
+    await AdsAccount.updateOne(
+      { _id: account._id },
+      {
+        $set: {
+          "sync_metadata.entities_status": "idle",
+          "sync_metadata.entities_error": "Previous sync was stuck, resetting...",
+        },
+        $unset: {
+          "sync_metadata.entities_sync_started_at": ""
+        }
+      }
+    );
+    // Re-fetch account after reset
+    const refreshedAccount = await findAdsAccountByExternalId(accountExternalId);
+    if (refreshedAccount) {
+      account = refreshedAccount;
+    }
   }
 
   await AdsAccount.updateOne(
@@ -274,6 +302,7 @@ export async function syncEntitiesForAccount(accountExternalId, accessToken) {
     {
       $set: {
         "sync_metadata.entities_status": "syncing",
+        "sync_metadata.entities_sync_started_at": new Date(),
         "sync_metadata.entities_error": null,
       },
     }

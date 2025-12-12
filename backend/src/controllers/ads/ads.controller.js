@@ -117,37 +117,37 @@ export async function listAdsCtrl(req, res) {
         external_id: { $in: [account_id, `act_${normalizedId}`] },
       });
 
-      if (accountAdsCount === 0 && account && account.sync_metadata?.entities_status === "idle") {
-        let accessToken = req.query.access_token;
-        if (!accessToken && req.user?._id) {
-          const user = await User.findById(req.user._id).select("+facebookAccessToken");
-          accessToken = user?.facebookAccessToken || null;
-        }
+      // if (accountAdsCount === 0 && account && account.sync_metadata?.entities_status === "idle") {
+      //   let accessToken = req.query.access_token;
+      //   if (!accessToken && req.user?._id) {
+      //     const user = await User.findById(req.user._id).select("+facebookAccessToken");
+      //     accessToken = user?.facebookAccessToken || null;
+      //   }
 
-        if (!accessToken) {
-          return res.status(400).json({
-            items: [],
-            total: 0,
-            page: Number(page),
-            limit: Number(limit),
-            pages: 1,
-            status: "initial_sync",
-            message: "Hệ thống đang tải dữ liệu lần đầu. Vui lòng refresh sau 15-30s.",
-          });
-        }
+      //   if (!accessToken) {
+      //     return res.status(400).json({
+      //       items: [],
+      //       total: 0,
+      //       page: Number(page),
+      //       limit: Number(limit),
+      //       pages: 1,
+      //       status: "initial_sync",
+      //       message: "Hệ thống đang tải dữ liệu lần đầu. Vui lòng refresh sau 15-30s.",
+      //     });
+      //   }
 
-        syncEntitiesForAccount(account_id, accessToken).catch(() => {});
+      //   syncEntitiesForAccount(account_id, accessToken).catch(() => {});
 
-        return res.status(200).json({
-          items: [],
-          total: 0,
-          page: Number(page),
-          limit: Number(limit),
-          pages: 1,
-          status: "initial_sync",
-          message: "Hệ thống đang tải dữ liệu lần đầu. Vui lòng refresh sau 15-30s.",
-        });
-      }
+      //   return res.status(200).json({
+      //     items: [],
+      //     total: 0,
+      //     page: Number(page),
+      //     limit: Number(limit),
+      //     pages: 1,
+      //     status: "initial_sync",
+      //     message: "Hệ thống đang tải dữ liệu lần đầu. Vui lòng refresh sau 15-30s.",
+      //   });
+      // }
     }
 
     const filter = {};

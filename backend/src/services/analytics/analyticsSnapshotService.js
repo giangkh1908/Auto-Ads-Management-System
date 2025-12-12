@@ -8,24 +8,26 @@ import Ads from "../../models/ads/ads.model.js";
  */
 export async function syncAnalyticsSnapshots(account) {
   try {
-    const accountId = account.external_id;
+    const rawAccountId = account.external_id;
 
-    if (!accountId) {
+    if (!rawAccountId) {
       console.error(`[analyticsSnapshotService] ❌ No external_id for account: ${account.name || account._id}`);
       return { synced: 0, errors: 1 };
     }
 
-    console.log(`[analyticsSnapshotService] 📊 Syncing analytics snapshots for account: ${account.name || accountId}`);
+    // Normalize account ID - luôn lưu với "act_" prefix để consistent
+    const withoutPrefix = rawAccountId.replace(/^act_/, '');
+    const withPrefix = rawAccountId.startsWith('act_') ? rawAccountId : `act_${rawAccountId}`;
 
-    // ✅ SIMPLIFIED: Lấy insights trực tiếp từ Ads model (không cần aggregate AdPerformance nữa)
-    // Fetch all ads for this account with insights
-    const normalizedAccountId = accountId.replace(/^act_/, '');
+    console.log(`[analyticsSnapshotService] 📊 Syncing analytics snapshots for account: ${account.name || withPrefix}`);
+
+    // Lấy insights trực tiếp từ Ads model
     let allAds = [];
     try {
       allAds = await Ads.find({ 
         $or: [
-          { external_account_id: normalizedAccountId },
-          { external_account_id: accountId }
+          { external_account_id: withoutPrefix },
+          { external_account_id: withPrefix }
         ]
       })
         .populate({
@@ -33,14 +35,14 @@ export async function syncAnalyticsSnapshots(account) {
           populate: { path: 'campaign_id' }
         })
         .lean();
-      console.log(`[analyticsSnapshotService] 📊 Found ${allAds.length} total ads in DB for account ${accountId}`);
+      console.log(`[analyticsSnapshotService] 📊 Found ${allAds.length} total ads in DB for account ${withPrefix}`);
     } catch (err) {
       console.warn(`[analyticsSnapshotService] ⚠️ Error fetching all ads:`, err.message);
       return { synced: 0, errors: 1 };
     }
 
     if (allAds.length === 0) {
-      console.log(`[analyticsSnapshotService] ⚠️ No ads found for account ${accountId}`);
+      console.log(`[analyticsSnapshotService] ⚠️ No ads found for account ${withPrefix}`);
       return { synced: 0, errors: 0 };
     }
 
@@ -134,7 +136,7 @@ export async function syncAnalyticsSnapshots(account) {
                 $set: {
                   external_ad_id: ad.external_id,
                   account_id: account._id,
-                  external_account_id: accountId,
+                  external_account_id: withPrefix,  // Luôn lưu với "act_" prefix
                   campaign_id: campaignId,
                   campaign_name: campaignName,
                   campaign_objective: campaignObjective,

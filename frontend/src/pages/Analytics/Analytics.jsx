@@ -6,15 +6,10 @@ import "./Analytics.css";
 import { useMyPackage } from "../../hooks/shop/useMyPackage";
 import { toast } from "sonner";
 import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
+import Pagination from "../../components/common/Pagination/Pagination";
+import { useDebounce } from "../../hooks/common/useDebounce";
+import DateRangePicker from "../../components/common/DateRangePicker/DateRangePicker";
 
-/**
- * Analytics Page - Ad Level Performance with Breakdown Panel
- * 
- * Features:
- * - Breakdown Panel: User can select which breakdown columns to show
- * - Dynamic Data Columns: Changes based on campaign objective
- * - 6 Campaign Objectives supported
- */
 
 // Breakdown options (always available)
 const BREAKDOWN_OPTIONS = [
@@ -93,7 +88,20 @@ function Analytics() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState("");
   const [selectedObjective, setSelectedObjective] = useState("ALL");
+  
+  // Debounce search query (500ms) để tránh gọi API quá nhiều khi user gõ
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20, // Default 20 items per page
+    total: 0,
+    totalPages: 1
+  });
+  const [dataDate, setDataDate] = useState(null);
 
   // Breakdown selections
   const [selectedBreakdowns, setSelectedBreakdowns] = useState(
@@ -166,21 +174,20 @@ function Analytics() {
     fetchAdAccounts();
   }, []);
 
-  // Fetch ads when account changes
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    if (selectedAccount) {
+      setPagination(prev => ({ ...prev, page: 1 }));
+    }
+  }, [selectedAccount, selectedObjective, debouncedSearchQuery, dateRange]);
+
+  // Fetch ads when account, filters, or pagination changes
   useEffect(() => {
     if (selectedAccount) {
       fetchAds();
-
-      // ✅ THÊM: Auto-sync lần đầu để đảm bảo data mới nhất
-      // (vì AnalyticsSnapshot chỉ sync daily lúc 4 AM)
-      const hasAutoSynced = sessionStorage.getItem(`analytics_synced_${selectedAccount}`);
-      if (!hasAutoSynced) {
-        console.log(`[Analytics] Auto-syncing snapshots for account ${selectedAccount}...`);
-        syncAnalytics();
-        sessionStorage.setItem(`analytics_synced_${selectedAccount}`, 'true');
-      }
     }
-  }, [selectedAccount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccount, selectedObjective, debouncedSearchQuery, dateRange, pagination.page, pagination.limit]);
 
   const fetchAdAccounts = async () => {
     try {
@@ -215,13 +222,20 @@ function Analytics() {
         params: {
           account_id: selectedAccount,
           objective: selectedObjective !== 'ALL' ? selectedObjective : undefined,
-          search: searchQuery || undefined,
+          search: debouncedSearchQuery || undefined,
+          date_range: dateRange || undefined,
+          page: pagination.page,
+          limit: pagination.limit,
         }
       });
 
       const snapshotsData = response.data?.items || [];
+      const responseTotal = response.data?.total || 0;
+      const responseDataDate = response.data?.dataDate;
+      const responsePage = response.data?.page || pagination.page;
+      const responseLimit = response.data?.limit || pagination.limit;
 
-      // Data is already in the correct format from AnalyticsSnapshot
+      // Process data
       const processedAds = snapshotsData.map(snapshot => ({
         id: snapshot._id,
         name: snapshot.ad_name,
@@ -230,10 +244,9 @@ function Analytics() {
         campaign_objective: snapshot.campaign_objective,
         adset_name: snapshot.adset_name,
         page_name: snapshot.page_name || 'N/A',
-        ad_text: 'N/A', // TODO: Get from creative
+        ad_text: 'N/A',
         age_range: snapshot.age_range || 'N/A',
-        date: new Date(snapshot.last_synced).toLocaleDateString('vi-VN'),
-        // All metrics are already in snapshot
+        date: responseDataDate ? new Date(responseDataDate).toLocaleDateString('vi-VN') : 'N/A',
         spend: snapshot.spend,
         impressions: snapshot.impressions,
         clicks: snapshot.clicks,
@@ -262,6 +275,18 @@ function Analytics() {
       }));
 
       setAds(processedAds);
+      
+      // Update pagination
+      const totalPages = Math.ceil(responseTotal / responseLimit) || 1;
+      setPagination(prev => ({
+        ...prev,
+        total: responseTotal,
+        totalPages,
+        page: responsePage,
+        limit: responseLimit
+      }));
+      
+      setDataDate(responseDataDate);
     } catch (error) {
       console.error("Error fetching analytics snapshots:", error);
     } finally {
@@ -312,39 +337,18 @@ function Analytics() {
     }
   };
 
-  // Filter ads
-  const filteredAds = ads.filter(ad => {
-    const matchesSearch = !searchQuery ||
-      ad.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ad.campaign_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ad.adset_name?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Pagination handlers
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
 
-    // Map ad objective to new format for comparison
-    let adObjective = ad.campaign_objective;
-    if (adObjective === "LINK_CLICKS") adObjective = "OUTCOME_TRAFFIC";
-    if (adObjective === "BRAND_AWARENESS" || adObjective === "REACH") adObjective = "OUTCOME_AWARENESS";
-    if (adObjective === "POST_ENGAGEMENT" || adObjective === "PAGE_LIKES" || adObjective === "EVENT_RESPONSES") adObjective = "OUTCOME_ENGAGEMENT";
-    if (adObjective === "LEAD_GENERATION" || adObjective === "MESSAGES") adObjective = "OUTCOME_LEADS";
-    if (adObjective === "CONVERSIONS" || adObjective === "CATALOG_SALES" || adObjective === "STORE_VISITS") adObjective = "OUTCOME_SALES";
-    if (adObjective === "APP_INSTALLS") adObjective = "OUTCOME_APP_PROMOTION";
+  const handleItemsPerPageChange = (newLimit) => {
+    setPagination(prev => ({ ...prev, page: 1, limit: newLimit }));
+  };
 
-    const matchesObjective = selectedObjective === "ALL" ||
-      adObjective === selectedObjective;
-
-    // ✅ THÊM: Chỉ hiển thị ads có số liệu thực tế (không phải tất cả = 0)
-    const hasData = ad.spend > 0 ||
-      ad.impressions > 0 ||
-      ad.clicks > 0 ||
-      ad.reach > 0 ||
-      ad.link_clicks > 0 ||
-      ad.post_engagement > 0 ||
-      ad.leads > 0 ||
-      ad.conversions > 0 ||
-      ad.website_purchases > 0 ||
-      ad.mobile_app_install > 0;
-
-    return matchesSearch && matchesObjective && hasData;
-  });
+  // Filter ads - Backend already filters by hasData and objective
+  // Only need client-side search filter for immediate response
+  const filteredAds = ads;
 
   // Calculate highlighters
   const highlighters = (() => {
@@ -529,12 +533,11 @@ function Analytics() {
             />
           </div>
 
-          {/* Date Range Placeholder */}
-          <input
-            type="text"
-            className="analytics-date-input"
+          {/* Date Range Picker */}
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
             placeholder="dd/mm/yyyy - dd/mm/yyyy"
-            readOnly
           />
 
           {/* Sync Button */}
@@ -566,42 +569,67 @@ function Analytics() {
               <p>Vui lòng chọn Objective để xem dữ liệu.</p>
             </div>
           ) : (
-            <div className="analytics-table-container">
-              <table className="analytics-table">
-                <thead>
-                  <tr>
-                    {columns.map(col => (
-                      <th key={col.key} className={col.fixed ? 'analytics-breakdown-column' : ''}>
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAds.length === 0 ? (
+            <>
+              {/* Data info bar */}
+              <div className="analytics-info-bar">
+                <span>
+                  Hiển thị {ads.length} / {pagination.total} ads có dữ liệu
+                </span>
+                {dataDate && <span>Cập nhật: {new Date(dataDate).toLocaleDateString('vi-VN')}</span>}
+              </div>
+              
+              <div className="analytics-table-container">
+                <table className="analytics-table">
+                  <thead>
                     <tr>
-                      <td colSpan={columns.length} className="analytics-empty-table">
-                        Không có dữ liệu
-                      </td>
+                      {columns.map(col => (
+                        <th key={col.key} className={col.fixed ? 'analytics-breakdown-column' : ''}>
+                          {col.label}
+                        </th>
+                      ))}
                     </tr>
-                  ) : (
-                    filteredAds.map(ad => (
-                      <tr key={ad.id}>
-                        {columns.map(col => {
-                          const isHighlighted = highlighters.has(`${ad.id}-${col.key}`);
-                          return (
-                            <td key={col.key} className={`${col.fixed ? 'analytics-breakdown-column' : ''} ${isHighlighted ? 'analytics-highlight-cell' : ''}`}>
-                              {isHighlighted && <span> </span>}
-                              {formatValue(ad[col.key], col.format)}
-                            </td>
-                          );
-                        })}
+                  </thead>
+                  <tbody>
+                    {filteredAds.length === 0 ? (
+                      <tr>
+                        <td colSpan={columns.length} className="analytics-empty-table">
+                          Không có dữ liệu
+                        </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      filteredAds.map(ad => (
+                        <tr key={ad.id}>
+                          {columns.map(col => {
+                            const isHighlighted = highlighters.has(`${ad.id}-${col.key}`);
+                            return (
+                              <td key={col.key} className={`${col.fixed ? 'analytics-breakdown-column' : ''} ${isHighlighted ? 'analytics-highlight-cell' : ''}`}>
+                                {isHighlighted && <span> </span>}
+                                {formatValue(ad[col.key], col.format)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                
+                {/* Pagination */}
+                {pagination.total > 0 && (
+                  <Pagination
+                    currentPage={pagination.page}
+                    totalPages={pagination.totalPages}
+                    itemsPerPage={pagination.limit}
+                    totalItems={pagination.total}
+                    startIndex={(pagination.page - 1) * pagination.limit + 1}
+                    endIndex={Math.min(pagination.page * pagination.limit, pagination.total)}
+                    onPageChange={handlePageChange}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    disabled={loading || syncing}
+                  />
+                )}
+              </div>
+            </>
           )}
         </div>
 
