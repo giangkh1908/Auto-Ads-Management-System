@@ -193,9 +193,69 @@ export class AgentExecutor {
   // RESPONSE GENERATION
   // ============================================
   async _generateResponse(userMessage, plan, toolResult, context) {
-    // Format date range for display
+    // Check if user is asking about system features/capabilities
+    const lowerMessage = userMessage.toLowerCase();
+    const systemFeatureKeywords = [
+      'chức năng', 'tính năng', 'features', 'capabilities',
+      'hệ thống có gì', 'hệ thống làm gì', 'hệ thống có thể',
+      'có những gì', 'làm được gì', 'có gì', 'tính năng nào',
+      'chức năng nào', 'có chức năng gì', 'có tính năng gì',
+      'hệ thống này', 'nền tảng này', 'ứng dụng này',
+      'bạn có thể', 'bạn làm được', 'bạn giúp được gì'
+    ];
+    const isAskingAboutSystem = systemFeatureKeywords.some(keyword => 
+      lowerMessage.includes(keyword)
+    );
+
+    // If asking about system features, return predefined response
+    if (isAskingAboutSystem) {
+      const systemFeaturesContent = [
+        '<h4>📋 Các chức năng chính của hệ thống:</h4>',
+        '<h4>1. 📊 Quản lý Quảng cáo (Ads Management)</h4>',
+        '<p>• Quản lý chiến dịch (Campaigns), nhóm quảng cáo (Ad Sets) và quảng cáo (Ads)</p>',
+        '<p>• Đồng bộ dữ liệu từ Facebook Marketing API</p>',
+        '<p>• Xem và cập nhật thông tin quảng cáo trực tiếp</p>',
+        '<p>• Lọc và tìm kiếm theo tên, trạng thái, mục tiêu</p>',
+        '<p>• Xem insights chi tiết (spend, impressions, clicks, CTR, CPC, v.v.)</p>',
+        '<h4>2. 📈 Phân tích & Báo cáo (Analytics)</h4>',
+        '<p>• Phân tích hiệu suất quảng cáo theo thời gian</p>',
+        '<p>• Xem dữ liệu insights đã được đồng bộ</p>',
+        '<p>• Lọc theo mục tiêu quảng cáo (objective)</p>',
+        '<p>• Phân trang và tìm kiếm ads có dữ liệu</p>',
+        '<h4>3. ⚡ Tự động hóa (Automation Rules)</h4>',
+        '<p>• Tự động bật/tắt quảng cáo dựa trên điều kiện</p>',
+        '<p>• Tự động tăng/giảm ngân sách</p>',
+        '<p>• Thiết lập quy tắc theo metrics (spend, CTR, CPC, v.v.)</p>',
+        '<p>• Chạy theo lịch định kỳ (hàng phút, hàng giờ, hàng ngày)</p>',
+        '<h4>4. 🏪 Quản lý Shop & Tài khoản</h4>',
+        '<p>• Quản lý nhiều cửa hàng (Shops)</p>',
+        '<p>• Quản lý nhân viên và phân quyền</p>',
+        '<p>• Kết nối Facebook Pages</p>',
+        '<p>• Kết nối Facebook Ad Accounts</p>',
+        '<h4>5. 🤖 AI Chat Hỗ trợ</h4>',
+        '<p>• Hỏi đáp về dữ liệu quảng cáo bằng tiếng Việt</p>',
+        '<p>• Phân tích xu hướng và hiệu suất</p>',
+        '<p>• Truy vấn thông tin campaigns, adsets, ads</p>',
+        '<p>• Đưa ra insights và khuyến nghị</p>',
+        '<h4>6. 🔄 Đồng bộ dữ liệu</h4>',
+        '<p>• Đồng bộ tự động entities (campaigns, adsets, ads) từ Facebook</p>',
+        '<p>• Đồng bộ insights theo lịch (cron job)</p>',
+        '<p>• Cache dữ liệu để tối ưu hiệu suất</p>',
+        '<p>• Lazy loading insights khi cần</p>'
+      ].join('\n');
+      
+      return { content: systemFeaturesContent };
+    }
+
+    // Check if we have real data (not GENERAL_CHAT)
+    const hasRealData = plan.intent !== "GENERAL_CHAT" && 
+                       toolResult && 
+                       toolResult.message !== "General conversation - no tool needed" &&
+                       !toolResult.error;
+    
+    // Format date range for display - ONLY if we have real data
     let dateRangeText = "";
-    if (plan.time_range?.from && plan.time_range?.to) {
+    if (hasRealData && plan.time_range?.from && plan.time_range?.to) {
       const formatDate = (dateStr) => {
         const d = new Date(dateStr);
         return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
@@ -218,7 +278,13 @@ DATA FROM TOOLS:
 ${JSON.stringify(toolResult, null, 2)}
 
 CRITICAL RULES:
-1. **ALWAYS START with date range**: Begin your response with the date range in format "Từ ngày DD/MM/YYYY đến DD/MM/YYYY" (use Date Range from context above)
+1. **Date Range Display**: 
+   - ONLY show date range (e.g., "Từ ngày DD/MM/YYYY đến DD/MM/YYYY") if:
+     * Intent is QUERY_DATA or ANALYZE_TREND
+     * AND there is actual data from tools (not "General conversation - no tool needed")
+     * AND date range is available
+   - DO NOT show date range for GENERAL_CHAT or questions without data
+   - If showing date range, put it on a single line at the start, then add ONE blank line before content
 2. **Use HTML for formatting** - Output will be rendered as HTML
 3. **For lists/tables**: Use clean HTML tables with proper styling
 4. **Highlighting**: 
@@ -229,6 +295,10 @@ CRITICAL RULES:
 6. **NO FOLLOW-UP QUESTIONS**: Do not generate suggestions
 7. **Language**: ALWAYS respond in VIETNAMESE (Tiếng Việt)
 8. **Be concise**: Keep analysis brief and actionable
+9. **Minimize whitespace**: 
+   - Remove extra blank lines (max 1 blank line between sections)
+   - Remove trailing spaces
+   - Keep paragraphs compact
 
 If data is missing or error, politely explain what went wrong.
 `;
@@ -244,7 +314,21 @@ If data is missing or error, politely explain what went wrong.
       ];
       
       const result = await this.llm.invoke(messages);
-      const content = result.content?.trim() || "⚠️ Không thể tạo câu trả lời";
+      let content = result.content?.trim() || "⚠️ Không thể tạo câu trả lời";
+      
+      // Clean up excessive whitespace
+      // Remove multiple consecutive blank lines (more than 1)
+      content = content.replace(/\n{3,}/g, '\n\n');
+      // Remove trailing spaces from each line
+      content = content.split('\n').map(line => line.trimEnd()).join('\n');
+      // Remove leading/trailing whitespace
+      content = content.trim();
+      // Remove blank lines between HTML tags (but keep structure)
+      content = content.replace(/>\s*\n\s*</g, '><');
+      // Add back single newline between major sections (h4 tags)
+      content = content.replace(/<\/h4><h4>/g, '</h4>\n<h4>');
+      // Add back single newline between h4 and p
+      content = content.replace(/<\/h4><p>/g, '</h4>\n<p>');
       
       return { content };
     } catch (error) {
