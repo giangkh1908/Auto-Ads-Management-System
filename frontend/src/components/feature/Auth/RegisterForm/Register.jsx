@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react'
-import { useAuth } from '../../../../hooks/useAuth'
+import { useAuth } from '../../../../hooks/auth/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
-import { validateFullName, validateEmail, validatePhone, validatePassword, buildErrors } from '../../../../utils/validation'
+import { validateFullName, validateEmail, validatePhone, validatePassword, buildErrors } from '../../../../utils/validation/validation'
 import './Register.css'
 import ReCAPTCHA from 'react-google-recaptcha'
-import {toast} from 'sonner'
+import { toast } from 'sonner'
 
 function Register({ onSwitchLogin }) {
     const { t } = useTranslation()
@@ -47,9 +47,9 @@ function Register({ onSwitchLogin }) {
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (loading) return
-        
+
         if (!validateForm()) return
-        
+
         // Kiểm tra reCAPTCHA
         if (!captchaToken) {
             toast.warning(t('auth.captcha_required'));
@@ -58,7 +58,7 @@ function Register({ onSwitchLogin }) {
 
         // Gửi kèm token qua backend để verify
         const result = await register({ ...formData, captchaToken }, onSwitchLogin)
-        
+
         if (result.success) {
             // Hiển thị form xác thực email thay vì chuyển sang login
             setRegisteredEmail(formData.email)
@@ -83,65 +83,65 @@ function Register({ onSwitchLogin }) {
     // Nếu đang hiển thị form xác thực email
     if (showVerificationForm) {
         return (
-            <EmailVerification 
+            <EmailVerification
                 email={registeredEmail}
                 onBack={handleBackToLogin}
                 title={t('auth.email_verification_title')}
             />
         )
-    }   
-        return (
-            <form className="auth-form" onSubmit={handleSubmit}>
-                <div className="input-group-auth">
-                    <div className="input-icon-auth"><User size={16} /></div>
-                    <input 
-                        placeholder={t('auth.fullname_placeholder')} 
-                        value={formData.full_name} 
-                        onChange={(e) => handleInputChange('full_name', e.target.value)}
-                        className={errors.full_name ? 'error' : ''}
-                    />
-                    {errors.full_name && <div className="error-message">{errors.full_name}</div>}
+    }
+    return (
+        <form className="auth-form" onSubmit={handleSubmit}>
+            <div className="input-group-auth">
+                <div className="input-icon-auth"><User size={16} /></div>
+                <input
+                    placeholder={t('auth.fullname_placeholder')}
+                    value={formData.full_name}
+                    onChange={(e) => handleInputChange('full_name', e.target.value)}
+                    className={errors.full_name ? 'error' : ''}
+                />
+                {errors.full_name && <div className="error-message">{errors.full_name}</div>}
+            </div>
+
+            <div className="input-group-auth">
+                <div className="input-icon-auth"><Mail size={16} /></div>
+                <input
+                    type="email"
+                    placeholder={t('auth.email_placeholder')}
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={errors.email ? 'error' : ''}
+                />
+                {errors.email && <div className="error-message">{errors.email}</div>}
+            </div>
+
+            <div className="input-group-auth">
+                <div className="input-icon-auth"><Phone size={16} /></div>
+                <input
+                    placeholder={t('auth.phone_placeholder')}
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    className={errors.phone ? 'error' : ''}
+                />
+                {errors.phone && <div className="error-message">{errors.phone}</div>}
+            </div>
+
+            <div className="input-group-auth">
+                <div className="input-icon-auth" aria-hidden="true"><Lock size={16} /></div>
+                <input
+                    type={showPwd ? 'text' : 'password'}
+                    placeholder={t('auth.password_placeholder')}
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className={errors.password ? 'error' : ''}
+                />
+                <div className="input-action" onClick={() => setShowPwd(v => !v)}>
+                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                 </div>
-                
-                <div className="input-group-auth">
-                    <div className="input-icon-auth"><Mail size={16} /></div>
-                    <input 
-                        type="email" 
-                        placeholder={t('auth.email_placeholder')} 
-                        value={formData.email} 
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        className={errors.email ? 'error' : ''}
-                    />
-                    {errors.email && <div className="error-message">{errors.email}</div>}
-                </div>
-                
-                <div className="input-group-auth">
-                    <div className="input-icon-auth"><Phone size={16} /></div>
-                    <input 
-                        placeholder={t('auth.phone_placeholder')} 
-                        value={formData.phone} 
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        className={errors.phone ? 'error' : ''}
-                    />
-                    {errors.phone && <div className="error-message">{errors.phone}</div>}
-                </div>
-                
-                <div className="input-group-auth">
-                    <div className="input-icon-auth" aria-hidden="true"><Lock size={16} /></div>
-                    <input 
-                        type={showPwd ? 'text' : 'password'} 
-                        placeholder={t('auth.password_placeholder')} 
-                        value={formData.password} 
-                        onChange={(e) => handleInputChange('password', e.target.value)}
-                        className={errors.password ? 'error' : ''}
-                    />
-                    <div className="input-action" onClick={() => setShowPwd(v => !v)}>
-                        {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </div>
-                    {errors.password && <div className="error-message">{errors.password}</div>}
-                </div>
-    
-                {/* Google reCAPTCHA */}
+                {errors.password && <div className="error-message">{errors.password}</div>}
+            </div>
+
+            {/* Google reCAPTCHA */}
             <div className="captcha-box">
                 <ReCAPTCHA
                     key={captchaKey}
@@ -157,15 +157,15 @@ function Register({ onSwitchLogin }) {
                 {errors.captcha && <div className="error-message">{errors.captcha}</div>}
             </div>
 
-                <button type="submit" className="btn-login-form" disabled={loading}>
-                    {loading ? t('auth.processing') : t('auth.register_button')}
-                </button>
-    
-                <div className="form-switch">
-                    {t('auth.has_account')} <span className="link" onClick={onSwitchLogin}>{t('auth.login_now')}</span>
-                </div>
-            </form>
-        )
+            <button type="submit" className="btn-login-form" disabled={loading}>
+                {loading ? t('auth.processing') : t('auth.register_button')}
+            </button>
+
+            <div className="form-switch">
+                {t('auth.has_account')} <span className="link" onClick={onSwitchLogin}>{t('auth.login_now')}</span>
+            </div>
+        </form>
+    )
 }
 
 export default Register

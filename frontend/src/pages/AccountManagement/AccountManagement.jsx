@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import axiosInstance from "../../utils/axios";
+import axiosInstance from "../../utils/api/axios";
 import { toast } from "sonner";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import "./AccountManagement.css";
 import { CheckCircle, XCircle, Archive, Trash2, Play, Pause, Crown } from "lucide-react";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
-import { onShopChange } from "../../utils/shopCache";
-import { useShopPackage } from "../../hooks/useShopPackage";
+import { onShopChange } from "../../utils/cache/shopCache";
+// import { useShopPackage } from "../../hooks/useShopPackage";
 
 function AccountManagement() {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
-  const { shopPkg } = useShopPackage();
-  
+  // const navigate = useNavigate();
+  // const { shopPkg } = useShopPackage();
+
   // Lấy package của shop owner (từ shop package)
   const ownerPackage = shopPkg?.package;
 
@@ -32,7 +32,7 @@ function AccountManagement() {
 
   // state thống kê
   const [accountStats, setAccountStats] = useState({});
-  
+
   // state cho confirmation popup
   const [confirmationPopup, setConfirmationPopup] = useState({
     isOpen: false,
@@ -61,8 +61,8 @@ function AccountManagement() {
         console.error(err);
         setError(
           err?.response?.data?.message ||
-            err?.message ||
-            "Không thể tải dữ liệu tài khoản quảng cáo."
+          err?.message ||
+          "Không thể tải dữ liệu tài khoản quảng cáo."
         );
       } finally {
         setLoading(false);
@@ -83,7 +83,7 @@ function AccountManagement() {
       setPage(1);
       fetchAccounts({ q: searchText.trim(), page: 1, limit });
     });
-    
+
     return unsubscribe;
   }, [fetchAccounts, limit, searchText]);
 
@@ -91,13 +91,41 @@ function AccountManagement() {
   const handleSync = async () => {
     try {
       setSyncing(true);
-      const accountIds = items.map((acc) => acc.external_id).filter(Boolean);
-      if (accountIds.length === 0) return;
-      await fetchAccountStats(accountIds);
-      toast.success(t('account_management.sync_success'));
-    } catch (e) {
-      console.error(e);
-      toast.error(t('account_management.sync_error'));
+
+      // 1. Gọi sync API để lấy tất cả ads accounts từ Facebook và lưu vào DB
+      const syncResponse = await axiosInstance.get('/api/ads-accounts/sync');
+
+      // 2. Reload danh sách accounts
+      await fetchAccounts({ q: searchText.trim(), page, limit });
+
+      // 3. Tự động refresh stats sau khi sync accounts xong
+      // Ưu tiên lấy accountIds từ response của sync API
+      const syncedAccounts = syncResponse.data?.accounts || [];
+      let accountIds = [];
+
+      if (syncedAccounts.length > 0) {
+        // Sử dụng accounts từ sync response
+        accountIds = syncedAccounts
+          .map((acc) => acc.external_id || acc._id?.toString())
+          .filter(Boolean);
+      } else {
+        // Fallback: sử dụng items hiện tại (sẽ được cập nhật sau fetchAccounts)
+        accountIds = items.map((acc) => acc.external_id).filter(Boolean);
+      }
+
+      // 4. Refresh stats cho tất cả accounts
+      if (accountIds.length > 0) {
+        await fetchAccountStats(accountIds);
+      }
+
+      toast.success(t('account_management.sync_success') || 'Đã đồng bộ tài khoản và làm mới dữ liệu thành công');
+    } catch (error) {
+      console.error('Sync accounts error:', error);
+      toast.error(
+        error?.response?.data?.message ||
+        t('account_management.sync_error') ||
+        'Lỗi đồng bộ tài khoản'
+      );
     } finally {
       setSyncing(false);
     }
@@ -156,7 +184,7 @@ function AccountManagement() {
 
       // Lấy status từ DB và hiển thị trực tiếp
       const internalStatus = acc.status || 'ACTIVE';
-      const displayStatus = internalStatus === 'ACTIVE' 
+      const displayStatus = internalStatus === 'ACTIVE'
         ? t('account_management.status_active')
         : t('account_management.status_inactive');
 
@@ -186,7 +214,7 @@ function AccountManagement() {
   const handleAccountAction = async (accountId, action, accountName) => {
     try {
       setConfirmationPopup(prev => ({ ...prev, isLoading: true }));
-      
+
       switch (action) {
         case 'activate':
           await axiosInstance.patch(`/api/ads-accounts/${accountId}`, { status: 'ACTIVE' });
@@ -210,19 +238,19 @@ function AccountManagement() {
           // Tìm account trong danh sách hiện tại để lấy external_id trước khi xóa
           const accountToDelete = items.find(acc => acc._id === accountId || acc.id === accountId);
           const externalId = accountToDelete?.external_id;
-          
+
           const deleteResponse = await axiosInstance.delete(`/api/ads-accounts/${accountId}`);
-          
+
           // Xóa tất cả cache liên quan đến tài khoản quảng cáo đã disconnect
           if (externalId || deleteResponse?.data?.account?.external_id) {
             const deletedExternalId = deleteResponse?.data?.account?.external_id || externalId;
-            
+
             try {
               // 1. Xóa cache FB_AD_ACCOUNTS (danh sách tài khoản quảng cáo từ Facebook)
               const cachedAccounts = JSON.parse(
                 localStorage.getItem(STORAGE_KEYS.FB_AD_ACCOUNTS) || '[]'
               );
-              
+
               const updatedAccounts = cachedAccounts.filter(
                 (acc) => {
                   const accExternalId = acc.external_id || acc.id;
@@ -230,29 +258,29 @@ function AccountManagement() {
                   return accExternalId !== deletedExternalId && accId !== accountId;
                 }
               );
-              
+
               localStorage.setItem(
                 STORAGE_KEYS.FB_AD_ACCOUNTS,
                 JSON.stringify(updatedAccounts)
               );
-              
+
               // 2. Xóa selectedAdAccount nếu nó là account bị disconnect
               const selectedAdAccount = localStorage.getItem('selectedAdAccount');
               if (selectedAdAccount === deletedExternalId || selectedAdAccount === accountId) {
                 localStorage.removeItem('selectedAdAccount');
                 console.log('✅ Đã xóa selectedAdAccount:', selectedAdAccount);
               }
-              
+
               // 3. Xóa tất cả cache keys liên quan đến account trong localStorage
               // Cache keys có format: `${entityType}_${contextId}_${accountId}` hoặc `${accountId}_${entityType}`
               // Chỉ xóa các keys có pattern cụ thể để tránh xóa nhầm
               const entityTypes = ['campaigns', 'adsets', 'ads'];
               const cacheKeysToRemove = [];
-              
+
               for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (!key) continue;
-                
+
                 // Kiểm tra các pattern cache keys của campaigns, adsets, ads
                 const matchesPattern = entityTypes.some(type => {
                   // Pattern: `${type}_all_${accountId}` hoặc `${type}_${contextId}_${accountId}`
@@ -261,23 +289,23 @@ function AccountManagement() {
                   const pattern2 = new RegExp(`^(${deletedExternalId}|${accountId})_${type}$`);
                   return pattern1.test(key) || pattern2.test(key);
                 });
-                
+
                 if (matchesPattern) {
                   cacheKeysToRemove.push(key);
                 }
               }
-              
+
               cacheKeysToRemove.forEach(key => {
                 localStorage.removeItem(key);
                 console.log(' Đã xóa cache key:', key);
               });
-              
+
               console.log(' Đã xóa tất cả cache của tài khoản quảng cáo:', deletedExternalId);
             } catch (error) {
               console.error(' Lỗi khi xóa cache tài khoản quảng cáo:', error);
             }
           }
-          
+
           toast.success(t('account_management.disconnect_success'), {
             description: t('account_management.disconnect_description', { name: accountName })
           });
@@ -286,16 +314,16 @@ function AccountManagement() {
         default:
           throw new Error(t('common.error'));
       }
-      
+
       // Refresh danh sách sau khi thực hiện hành động
       await fetchAccounts({ q: searchText.trim(), page, limit });
-      
+
     } catch (error) {
       console.error(`Lỗi ${action} account:`, error);
       toast.error(`Lỗi ${action} tài khoản`, {
-        description: error?.response?.data?.message || 
-        error?.message || 
-        `Không thể ${action} tài khoản ${accountName}`
+        description: error?.response?.data?.message ||
+          error?.message ||
+          `Không thể ${action} tài khoản ${accountName}`
       });
     } finally {
       setConfirmationPopup(prev => ({ ...prev, isLoading: false, isOpen: false }));
@@ -449,7 +477,7 @@ function AccountManagement() {
                         <div className="action-buttons">
                           {/* Hiển thị button dựa trên trạng thái internal (ACTIVE/INACTIVE) */}
                           {acc.internalStatus === 'ACTIVE' ? (
-                            <button 
+                            <button
                               className="btn-inactive-account"
                               onClick={() => showConfirmDialog(acc.id, acc.name, 'deactivate')}
                               disabled={loading}
@@ -458,7 +486,7 @@ function AccountManagement() {
                               <Pause size={15} />
                             </button>
                           ) : (
-                            <button 
+                            <button
                               className="btn-active-account"
                               onClick={() => showConfirmDialog(acc.id, acc.name, 'activate')}
                               disabled={loading}
@@ -467,7 +495,7 @@ function AccountManagement() {
                               <Play size={15} />
                             </button>
                           )}
-                          
+
                           {/* <button 
                             className="btn-archive-account"
                             onClick={() => showConfirmDialog(acc.id, acc.name, 'archive')}
@@ -476,8 +504,8 @@ function AccountManagement() {
                           >
                             <Archive size={15} />
                           </button> */}
-                          
-                          <button 
+
+                          <button
                             className="btn-disconnect-account"
                             onClick={() => showConfirmDialog(acc.id, acc.name, 'disconnect')}
                             disabled={loading}

@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Search, RefreshCw, Settings } from "lucide-react";
 import ChatAIWidget from "../../components/feature/ChatAI/ChatAIWidget";
-import axiosInstance from "../../utils/axios";
+import axiosInstance from "../../utils/api/axios";
 import "./Analytics.css";
-import { useMyPackage } from "../../hooks/useMyPackage";
+import { useMyPackage } from "../../hooks/shop/useMyPackage";
+import { toast } from "sonner";
 
 /**
  * Analytics Page - Ad Level Performance with Breakdown Panel
@@ -262,7 +263,7 @@ function Analytics() {
   // Sync analytics snapshots from Facebook
   const syncAnalytics = async () => {
     if (!selectedAccount) {
-      alert("Vui lòng chọn tài khoản để sync");
+      toast.warning("Vui lòng chọn tài khoản để sync");
       return;
     }
 
@@ -277,12 +278,12 @@ function Analytics() {
       });
 
       if (response.data) {
-        const { synced, errors, rateLimitReached, retryAfter } = response.data;
+        const { rateLimitReached, retryAfter } = response.data;
 
         if (rateLimitReached) {
-          alert(`⚠️ ${response.data.message}\nVui lòng thử lại sau ${retryAfter} giây.`);
+          toast.warning(`${response.data.message} Vui lòng thử lại sau ${retryAfter} giây.`);
         } else {
-          alert(`✅ Sync hoàn tất!\nĐã sync: ${synced} ads\nLỗi: ${errors}`);
+          toast.success(`Làm mới hoàn tất!`);
           setTimeout(() => {
             fetchAds();
           }, 5000);
@@ -293,9 +294,9 @@ function Analytics() {
       const errorResponse = error.response?.data;
 
       if (errorResponse?.rateLimitReached) {
-        alert(`⚠️ ${errorResponse.message}\nVui lòng thử lại sau ${errorResponse.retryAfter || 60} giây.`);
+        toast.warning(`${errorResponse.message}\nVui lòng thử lại sau ${errorResponse.retryAfter || 60} giây.`);
       } else {
-        alert(`❌ Lỗi khi sync: ${errorResponse?.message || error.message}`);
+        toast.error(`Lỗi khi sync: ${errorResponse?.message || error.message}`);
       }
     } finally {
       setSyncing(false);

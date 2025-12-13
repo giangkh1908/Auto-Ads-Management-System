@@ -1,14 +1,14 @@
 import Shop from "../../models/shops/shop.model.js";
-import User from "../../models/user.model.js";
+import User from "../../models/user/user.model.js";
 import fetch from "node-fetch";
-import Log from "../../models/log.model.js";
-import UserRole from "../../models/userRole.model.js";
+import Log from "../../models/admin/log.model.js";
+import UserRole from "../../models/user/userRole.model.js";
 import ShopUser from "../../models/shops/shopUser.model.js";
-import Role from "../../models/role.model.js";
+import Role from "../../models/admin/role.model.js";
 import { saveLog } from "../../utils/log.js";
-import UserPackage from "../../models/userPackage.model.js";
+import UserPackage from "../../models/package/userPackage.model.js";
 import mongoose from "mongoose";
-import { getUserEntitlements } from "../../services/entitlementService.js";
+import { getUserEntitlements } from "../../services/admin/entitlementService.js";
 
 //  Tạo Shop
 export const createShop = async (req, res) => {

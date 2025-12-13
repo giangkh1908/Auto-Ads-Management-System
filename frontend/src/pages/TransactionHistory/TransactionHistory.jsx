@@ -4,10 +4,10 @@ import "./TransactionHistory.css";
 import { Search, Download, Eye } from "lucide-react";
 import DateRangePicker from "../../components/common/DateRangePicker/DateRangePicker";
 import Pagination from "../../components/common/Pagination/Pagination";
-import paymentTransactionService from "../../services/paymentTransactionService";
-import invoiceService from "../../services/invoiceService";
+import paymentTransactionService from "../../services/shop/paymentTransactionService";
+import invoiceService from "../../services/shop/invoiceService";
 import { toast } from "sonner";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../hooks/auth/useAuth";
 import Invoice from "../../components/feature/Invoice/Invoice";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -318,14 +318,17 @@ export default function TransactionHistory() {
       const response = await paymentTransactionService.getPaymentTransactions(params);
 
       if (response.success) {
-        // Use server-provided paginated data and counts so pagination reflects DB
-        const transactionsFromServer = response.data || [];
+        // Filter out transactions with status "initializing" (Đang khởi tạo)
+        const filteredData = response.data.filter(
+          (txn) => (txn.status || "").toLowerCase() !== "initializing"
+        );
 
-        setRawTransactions(transactionsFromServer);
-        const mappedTransactions = transactionsFromServer.map((txn) => mapTransactionData(txn));
+        setRawTransactions(filteredData);
+        const mappedTransactions = filteredData.map((txn) => mapTransactionData(txn));
         setRows(mappedTransactions);
 
-        // Use server totals/pages (backend returns total and pages)
+        // Tính lại total và pages sau khi filter
+        const filteredTotal = filteredData.length;
         setPagination(prev => ({
           ...prev,
           total: typeof response.total === 'number' ? response.total : (response.data || []).length,
@@ -384,7 +387,7 @@ export default function TransactionHistory() {
 
       <div className="transaction-filters">
         <div className="filter-group">
-        <label className="filter-label">{t("transactionHistory.search")}</label>
+          <label className="filter-label">{t("transactionHistory.search")}</label>
           <div className="filter-input-wrapper">
             <Search size={18} className="search-icon" />
             <input

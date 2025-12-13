@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../../hooks/useAuth'
-import { useToast } from '../../hooks/useToast'
-import profileService from '../../services/profileService'
+import { useAuth } from '../../hooks/auth/useAuth'
+import { useToast } from '../../hooks/common/useToast'
+import profileService from '../../services/auth/profileService'
 import './Profile.css'
 import { getNames } from "country-list";
-import {User, AtSign, Mail, Phone, Lock, Eye, EyeOff } from "lucide-react";
-import { validateRequired, validatePassword, validateEmail, validatePhone } from '../../utils/validation'
+import { User, AtSign, Mail, Phone, Lock, Eye, EyeOff } from "lucide-react";
+import { validateRequired, validatePassword, validateEmail, validatePhone } from '../../utils/validation/validation'
 import no_avatar from '../../assets/no-avatar.jpg';
 
 function Profile() {

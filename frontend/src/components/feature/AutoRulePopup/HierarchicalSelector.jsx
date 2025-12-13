@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
-import { buildApplyToText } from "../../../utils/autoRuleUtils";
+import { buildApplyToText } from "../../../utils/business-logic/autoRuleUtils";
 
 /**
  * Hierarchical Selector Component for selecting campaigns, adsets, and ads
@@ -494,14 +494,14 @@ const HierarchicalSelector = memo(({
   if (prevProps.loading !== nextProps.loading) return false;
   if (prevProps.expandedCampaigns !== nextProps.expandedCampaigns) return false;
   if (prevProps.expandedAdsets !== nextProps.expandedAdsets) return false;
-  
+
   // Compare arrays by reference first (most common case)
   if (prevProps.selectedCampaignIds === nextProps.selectedCampaignIds &&
-      prevProps.selectedAdsetIds === nextProps.selectedAdsetIds &&
-      prevProps.selectedAdIds === nextProps.selectedAdIds) {
+    prevProps.selectedAdsetIds === nextProps.selectedAdsetIds &&
+    prevProps.selectedAdIds === nextProps.selectedAdIds) {
     return true;
   }
-  
+
   // If references differ, compare by length and content (shallow comparison)
   // This prevents re-render if arrays have same content but different reference
   const sameCampaignIds = prevProps.selectedCampaignIds.length === nextProps.selectedCampaignIds.length &&
@@ -510,7 +510,7 @@ const HierarchicalSelector = memo(({
     prevProps.selectedAdsetIds.every((id, i) => id?.toString() === nextProps.selectedAdsetIds[i]?.toString());
   const sameAdIds = prevProps.selectedAdIds.length === nextProps.selectedAdIds.length &&
     prevProps.selectedAdIds.every((id, i) => id?.toString() === nextProps.selectedAdIds[i]?.toString());
-  
+
   return sameCampaignIds && sameAdsetIds && sameAdIds;
 });
 

@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import "./ConnectPage.css";
-import { useToast } from "../../hooks/useToast";
-import shopService from "../../services/shopService";
-import { getShopCache } from "../../utils/shopCache";
-import axiosInstance from "../../utils/axios.js";
+import { useToast } from "../../hooks/common/useToast";
+import shopService from "../../services/shop/shopService";
+import { getShopCache } from "../../utils/cache/shopCache";
+import axiosInstance from "../../utils/api/axios.js";
 import logo from "../../assets/Logo_Fchat.png";
 
 function ConnectPage() {
@@ -75,8 +75,8 @@ function ConnectPage() {
     };
     return (fbPages || []).map((p) => {
       const isConnectedToCurrentShop = p.connected_shop?.is_current_shop || false;
-      const isConnectedToOtherShop = p.connected_shop && !p.connected_shop.is_current_shop;
-      
+      const isConnectedToOtherShop = isConnected && !isConnectedToCurrentShop;
+
       return {
         id: p.id,
         name: p.name,
@@ -84,11 +84,11 @@ function ConnectPage() {
           p.picture || `https://graph.facebook.com/${p.id}/picture?type=square`,
         link: `https://www.facebook.com/${p.id}`,
         role: deriveRole(p.tasks),
-        status: isConnectedToCurrentShop 
-          ? t('connect_page.status_connected') 
+        status: isConnectedToCurrentShop
+          ? t('connect_page.status_connected')
           : isConnectedToOtherShop
-          ? `Đã kết nối với shop "${p.connected_shop.shop_name}"`
-          : t('connect_page.status_not_connected'),
+            ? `Đã kết nối với shop "${p.connected_shop?.shop_name || 'Unknown'}"`
+            : t('connect_page.status_not_connected'),
         connectedBy: p.connected_shop?.shop_name || null,
         isConnectedToCurrentShop,
         isConnectedToOtherShop,
@@ -125,8 +125,8 @@ function ConnectPage() {
     // - Không thể kết nối (canConnect = false)
     if (page && (
       page.isConnectedToCurrentShop ||
-      page.isConnectedToOtherShop || 
-      page.role !== "ADMIN" || 
+      page.isConnectedToOtherShop ||
+      page.role !== "ADMIN" ||
       !page.canConnect
     )) {
       return;
@@ -171,12 +171,12 @@ function ConnectPage() {
           pageAccessToken: page.pageAccessToken,
         });
       }
-      
+
       // Reload pages để cập nhật trạng thái
       const pagesRes = await shopService.fetchFacebookPages();
       const realPages = pagesRes?.data?.pages || [];
       setFbPages(realPages);
-      
+
       toast.success(t('connect_page.toast_connect_success', { count: selected.length }));
       navigate("/dashboard");
     } catch (e) {
@@ -229,7 +229,7 @@ function ConnectPage() {
     );
     setSelectAll(
       selectablePages.length > 0 &&
-        selectedPages.length === selectablePages.length
+      selectedPages.length === selectablePages.length
     );
   }, [selectedPages, filteredPages, t]);
 

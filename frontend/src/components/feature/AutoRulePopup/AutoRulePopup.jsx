@@ -12,12 +12,13 @@ import {
   ACTION_VI_TO_BE,
   DAYS_OPTIONS,
 } from "../../../constants/autoRuleConstants";
-import { useAutoRuleForm } from "../../../hooks/useAutoRuleForm";
-import { useHierarchicalData } from "../../../hooks/useHierarchicalData";
-import { validateAndConvertToBackend, validateAutoRule } from "../../../utils/autoRuleValidation";
+import { useAutoRuleForm } from "../../../hooks/auto/useAutoRuleForm";
+import { useHierarchicalData } from "../../../hooks/targeting/useHierarchicalData";
+import { validateAndConvertToBackend, validateAutoRule } from "../../../utils/validation/autoRuleValidation";
 import HierarchicalSelector from "./HierarchicalSelector";
 import ConditionRow from "./ConditionRow";
 import CustomSchedule from "./CustomSchedule";
+import { toast } from "sonner";
 
 const AutoRulePopup = ({
   isOpen,
@@ -60,7 +61,7 @@ const AutoRulePopup = ({
         // Nếu đã có customSchedule nhưng thiếu một số days, đảm bảo có đủ 7 days
         const existingDays = prev.customSchedule.days.map(d => d.day);
         const missingDays = DAYS_OPTIONS.filter(day => !existingDays.includes(day));
-        
+
         if (missingDays.length > 0) {
           const newDays = [...prev.customSchedule.days];
           missingDays.forEach(day => {
@@ -74,7 +75,7 @@ const AutoRulePopup = ({
           newDays.sort((a, b) => {
             return DAYS_OPTIONS.indexOf(a.day) - DAYS_OPTIONS.indexOf(b.day);
           });
-          
+
           return {
             ...prev,
             schedule: value,
@@ -84,7 +85,7 @@ const AutoRulePopup = ({
           };
         }
       }
-      
+
       return {
         ...prev,
         [field]: value,
@@ -114,7 +115,7 @@ const AutoRulePopup = ({
         ...newConditions[index],
         [field]: value,
       };
-      
+
       // Nếu thay đổi metric, tự động cập nhật unit theo mapping
       if (field === "metric") {
         const availableUnits = getAvailableUnits(value);
@@ -123,7 +124,7 @@ const AutoRulePopup = ({
           updatedCondition.unit = availableUnits[0] || "";
         }
       }
-      
+
       newConditions[index] = updatedCondition;
       return {
         ...prev,
@@ -230,7 +231,7 @@ const AutoRulePopup = ({
   const removeTimeSlot = useCallback((dayIndex, slotIndex) => {
     // Không cho phép xóa slot đầu tiên
     if (slotIndex === 0) return;
-    
+
     setFormData((prev) => {
       const newDays = [...prev.customSchedule.days];
       const newTimeSlots = newDays[dayIndex].timeSlots.filter((_, index) => index !== slotIndex);
@@ -250,8 +251,8 @@ const AutoRulePopup = ({
 
   // Validate form data
   const validationErrors = useMemo(() => {
-    return validateAutoRule(formData);
-  }, [formData]);
+    return validateAutoRule(formData, !!editingRule);
+  }, [formData, editingRule]);
 
   const isFormValid = useMemo(() => {
     return validationErrors.length === 0;
@@ -260,8 +261,8 @@ const AutoRulePopup = ({
   const handleSave = useCallback(() => {
     // Double check validation before saving
     if (!isFormValid) {
-      const errors = validateAutoRule(formData);
-      alert(errors.join("\n"));
+      const errors = validateAutoRule(formData, !!editingRule);
+      errors.forEach(error => toast.error(error));
       return;
     }
 
@@ -279,8 +280,7 @@ const AutoRulePopup = ({
       }
       onClose();
     } catch (error) {
-      alert(error.message || "Có lỗi xảy ra khi lưu quy tắc");
-      console.error("Error saving rule:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi lưu quy tắc");
     }
   }, [formData, onSave, onClose, isFormValid]);
 
@@ -289,15 +289,15 @@ const AutoRulePopup = ({
   return (
     <div className="auto-rule-popup-overlay">
       <div className="auto-rule-popup-modal">
-          {/* Header */}
-          <div className="auto-rule-popup-header">
-            <h2 className="auto-rule-popup-title">
-              {editingRule ? "Chỉnh sửa quy tắc" : "Thêm quy tắc mới"}
-            </h2>
-            <button className="auto-rule-popup-close" onClick={onClose}>
-              <X size={20} />
-            </button>
-          </div>
+        {/* Header */}
+        <div className="auto-rule-popup-header">
+          <h2 className="auto-rule-popup-title">
+            {editingRule ? "Chỉnh sửa quy tắc" : "Thêm quy tắc mới"}
+          </h2>
+          <button className="auto-rule-popup-close" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
 
         {/* Body */}
         <div className="auto-rule-popup-body">
@@ -344,11 +344,11 @@ const AutoRulePopup = ({
                 onChange={(e) => handleInputChange("action", e.target.value)}
               >
                 <option value="">Chọn hành động</option>
-                    {ACTIONS_OPTIONS.map((action, idx) => (
-                      <option key={idx} value={action}>
-                        {action}
-                      </option>
-                    ))}
+                {ACTIONS_OPTIONS.map((action, idx) => (
+                  <option key={idx} value={action}>
+                    {action}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -385,7 +385,7 @@ const AutoRulePopup = ({
                     onRemove={removeCondition}
                     onAdd={addCondition}
                   />
-              ))}
+                ))}
               </div>
             )}
           </div>
@@ -393,7 +393,7 @@ const AutoRulePopup = ({
           {/* Lịch trình */}
           <div className="auto-rule-popup-field">
             <div className="auto-rule-popup-label-with-info">
-            <label className="auto-rule-popup-label">Lịch trình</label>
+              <label className="auto-rule-popup-label">Lịch trình</label>
               <div className="auto-rule-popup-info-icon" title="Xác định tần suất kiểm tra quy tắc. Quy tắc sẽ được kiểm tra theo múi giờ của tài khoản quảng cáo.">
                 <Info size={16} />
               </div>

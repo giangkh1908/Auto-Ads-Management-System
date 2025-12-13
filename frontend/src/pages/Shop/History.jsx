@@ -6,9 +6,9 @@ import { ROUTES } from "../../constants/app.constants";
 import "./Shop.css";
 import { STORAGE_KEYS } from "../../constants/app.constants";
 import { toast } from "sonner";
-import axiosInstance from "../../utils/axios.js";
-import { getShopCache, saveShopCache } from "../../utils/shopCache";
-import { Store, Plus, Delete, ClipboardList, Replace, Link, Info, UserCheck, UserMinus, Pause, Play} from "lucide-react";
+import axiosInstance from "../../utils/api/axios.js";
+import { getShopCache, saveShopCache } from "../../utils/cache/shopCache";
+import { Store, Plus, Delete, ClipboardList, Replace, Link, Info, UserCheck, UserMinus, Pause, Play } from "lucide-react";
 // import { formatDistanceToNow, format } from "date-fns";
 // import { vi, enUS } from "date-fns/locale";
 
@@ -62,12 +62,12 @@ function History() {
 
         if (data.success && Array.isArray(data.data)) {
           const currentShop = data.data.find((shop) => shop.is_current);
-          
+
           // Lưu role của user và cập nhật cache
           if (currentShop?.user_role?.role_name) {
             const role = currentShop.user_role.role_name;
             setUserRoleInShop(role);
-            
+
             // Cập nhật cache với role mới
             const cachedShop = getShopCache();
             if (cachedShop && cachedShop.id === currentShop._id) {
@@ -145,8 +145,8 @@ function History() {
           </NavLink>
         )}
 
-        <NavLink 
-          to={actualShopId ? ROUTES.SHOP_HISTORY.replace(":shopId", actualShopId) : ROUTES.SHOP} 
+        <NavLink
+          to={actualShopId ? ROUTES.SHOP_HISTORY.replace(":shopId", actualShopId) : ROUTES.SHOP}
           className={({ isActive }) => `shop-tab ${isActive ? "active" : ""}`}
         >
           {t("shop.history")}

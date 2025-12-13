@@ -1,9 +1,9 @@
 import crypto from "crypto";
 import querystring from "qs";
 import axios from "axios";
-import PaymentTransaction from "../../models/paymentTransaction.model.js";
-import UserPackage from "../../models/userPackage.model.js";
-import Package from "../../models/package.model.js";
+import PaymentTransaction from "../../models/transaction/paymentTransaction.model.js";
+import UserPackage from "../../models/package/userPackage.model.js";
+import Package from "../../models/package/package.model.js";
 import { createInvoice } from "../invoice/invoiceControllers.js";
 
 const config = {

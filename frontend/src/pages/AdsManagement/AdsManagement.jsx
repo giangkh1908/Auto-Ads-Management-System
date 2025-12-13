@@ -6,7 +6,7 @@ import "./AdsManagement.css";
 import CreateAdsWizard from "../../components/feature/CreateAdsWizard/CreateAdsWizard";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 import ProgressPopup from "../../components/common/ProgressPopup/Progress";
-import { handleSelectAll, handleSelectItem } from "../../utils/selectionUtils";
+import { handleSelectAll, handleSelectItem } from "../../utils/business-logic/selectionUtils";
 import {
   deleteCampaign,
   deleteAdSet,
@@ -14,21 +14,22 @@ import {
   archiveCampaign,
   archiveAdSet,
   archiveAd,
-} from "../../services/adService";
+} from "../../services/ads/adService";
 // import { getAdPerformance, refreshAdPerformance } from "../../services/adPerformanceService";
-import { toggleEntityStatus } from "../../services/toggleStatusService";
-import { useToast } from "../../hooks/useToast";
-import { useProgressState } from "../../hooks/useProgressState";
-import { useAdsSelection } from "../../hooks/useAdsSelection";
-import { useAdsAccount } from "./hooks/useAdsAccount";
-import { useAdsDataFetching } from "./hooks/useAdsDataFetching";
-import { useAdsSync } from "./hooks/useAdsSync";
-import { useAdsTableState } from "./hooks/useAdsTableState";
-import { invalidateCache } from "./services/adsCacheService";
-import AdsToolbar from "./components/AdsToolbar";
-import AdsTabs from "./components/AdsTabs";
-import AdsTable from "./components/AdsTable";
-import AdsBreadcrumb from "./components/AdsBreadcrumb";
+import { toggleEntityStatus } from "../../services/ads/toggleStatusService";
+import { useToast } from "../../hooks/common/useToast";
+import { useProgressState } from "../../hooks/common/useProgressState";
+import { useAdsSelection } from "../../hooks/ads/useAdsSelection";
+import { useAdsAccount } from "../../hooks/ads/useAdsAccount";
+import { useAdsDataFetching } from "../../hooks/ads/useAdsDataFetching";
+import { useAdsSync } from "../../hooks/ads/useAdsSync";
+import { useAdsTableState } from "../../hooks/ads/useAdsTableState";
+import { invalidateCache } from "../../services/ads/adsCacheService";
+import AdsToolbar from "../../components/feature/AdsManagement/AdsToolbar";
+import AdsTabs from "../../components/feature/AdsManagement/AdsTabs";
+import AdsTable from "../../components/feature/AdsManagement/AdsTable";
+import AdsBreadcrumb from "../../components/feature/AdsManagement/AdsBreadcrumb";
+import { RefreshCw } from "lucide-react";
 
 function AdsManagement() {
   const { t } = useTranslation(['ads']);
@@ -819,6 +820,14 @@ function AdsManagement() {
 
   return (
     <div className="ads-management-layout">
+      {switchingAccount && (
+        <div className="account-switch-overlay">
+          <div className="account-switch-spinner">
+            <div className="spinner-icon"><RefreshCw size={20} /></div>
+            <div className="spinner-text">Đang tải...</div>
+          </div>
+        </div>
+      )}
       <div className="ads-management-content">
         <div className="ads-management-center">
           <div className="ads-card">

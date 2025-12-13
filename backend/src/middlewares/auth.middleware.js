@@ -1,9 +1,9 @@
 import { verifyAccessToken } from '../utils/jwt.js';
-import User from '../models/user.model.js';
-import UserRole from '../models/userRole.model.js';
-import Role from '../models/role.model.js';
+import User from '../models/user/user.model.js';
+import UserRole from '../models/user/userRole.model.js';
+import Role from '../models/admin/role.model.js';
 import Shop from '../models/shops/shop.model.js';
-import UserPackage from "../models/userPackage.model.js"
+import UserPackage from "../models/package/userPackage.model.js"
 import ShopUser from "../models/shops/shopUser.model.js"
 /**
  * 🧩 Middleware xác thực Access Token

@@ -5,7 +5,7 @@ import { CreditCard, Building2, Wallet, DollarSign } from "lucide-react";
 import bankIcon from "../../assets/cknh.png";
 import momoIcon from "../../assets/momo.png";
 import "./CheckOut.css";
-import axiosInstance from "../../utils/axios.js";
+import axiosInstance from "../../utils/api/axios.js";
 import { STORAGE_KEYS } from "../../constants/app.constants";
 import { toast } from "sonner";
 

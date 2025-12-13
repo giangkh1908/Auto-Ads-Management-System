@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mail, Lock, Eye, EyeOff, Facebook } from 'lucide-react'
-import { useAuth } from '../../../../hooks/useAuth'
+import { useAuth } from '../../../../hooks/auth/useAuth'
 import EmailVerification from '../EmailVerification/EmailVerification'
 import AccountStatusError from '../AccountStatusError/AccountStatusError'
 import axios from 'axios'
@@ -19,28 +19,28 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     const [accountStatus, setAccountStatus] = useState(null)
     const [userEmail, setUserEmail] = useState('')
     const [fbLoading, setFbLoading] = useState(false)
-    
+
     const { login, loading, completeExternalLogin } = useAuth()
-    
+
     // Facebook Business Login Configuration
     const FB_CONFIG_ID = '812719094956340'
     const API_BASE_URL = import.meta.env.VITE_API_URL // Backend URL
 
     const validateForm = () => {
         const newErrors = {}
-        
+
         if (!email.trim()) {
             newErrors.email = t('validation.email_required')
         } else if (!/\S+@\S+\.\S+/.test(email)) {
             newErrors.email = t('validation.email_invalid')
         }
-        
+
         if (!password.trim()) {
             newErrors.password = t('validation.password_required')
         } else if (password.length < 6) {
             newErrors.password = t('validation.password_min_length')
         }
-        
+
         setErrors(newErrors)
         return Object.keys(newErrors).length === 0
     }
@@ -48,14 +48,14 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (loading) return
-        
+
         if (!validateForm()) return
-        
+
         // Clear errors trước khi submit
         setErrors({})
-        
+
         const result = await login({ email, password })
-        
+
         if (result.success) {
             // Close modal after successful login (navigation handled by AuthContext)
             if (onSuccess) onSuccess()
@@ -88,7 +88,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
         const initFacebookSDK = () => {
             if (window.FB) return; // Đã được tải rồi
 
-            window.fbAsyncInit = function() {
+            window.fbAsyncInit = function () {
                 window.FB.init({
                     appId: '1445692036729400', // App ID từ Facebook Developer
                     cookie: true,
@@ -99,10 +99,10 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
             };
 
             // Load Facebook SDK script
-            (function(d, s, id) {
+            (function (d, s, id) {
                 var js, fjs = d.getElementsByTagName(s)[0];
                 if (d.getElementById(id)) return;
-                js = d.createElement(s); 
+                js = d.createElement(s);
                 js.id = id;
                 js.src = "https://connect.facebook.net/en_US/sdk.js";
                 fjs.parentNode.insertBefore(js, fjs);
@@ -115,7 +115,7 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     // Facebook Business Login Handler
     const handleFacebookBusinessLogin = () => {
         setFbLoading(true);
-        
+
         if (!window.FB) {
             toast.error(t('auth.facebook_sdk_error'));
             setFbLoading(false);
@@ -124,9 +124,9 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
 
         // Sử dụng FB.login với config_id cho Business Login
         window.FB.login(
-            function(response) {
+            function (response) {
                 console.log('Facebook Business Login Response:', response);
-                
+
                 if (response.status === 'connected') {
                     // Xử lý khi đăng nhập thành công
                     handleFacebookLoginSuccess(response);
@@ -146,93 +146,93 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     const handleFacebookLoginSuccess = async (response) => {
         try {
             const { authResponse } = response;
-            if (!authResponse?.accessToken){
+            if (!authResponse?.accessToken) {
                 toast.error(t('auth.login_failed'));
                 return;
             }
             console.log("🔵 Facebook Auth Response:", authResponse);
-            
+
             // 🔹 Gọi trực tiếp backend để BE xử lý tất cả (xác thực + lấy user info + pages)
             console.log("🔵 Calling backend API...");
-            
+
             const loginResponse = await axios.post(
                 `${API_BASE_URL}/api/auth/facebook`,
                 {
-                  facebookId: authResponse.userID,
-                  accessToken: authResponse.accessToken,
+                    facebookId: authResponse.userID,
+                    accessToken: authResponse.accessToken,
                 },
                 {
-                  timeout: 15000,
-                  headers: { "Content-Type": "application/json" },
+                    timeout: 15000,
+                    headers: { "Content-Type": "application/json" },
                 }
-              );
-          
-              console.log("🔵 Backend Response:", loginResponse.data);
-          
-              // 🔹 Xử lý kết quả trả về
-              if (loginResponse.data.success) {
-                const { user, tokens, pages} = loginResponse.data.data;
-          
+            );
+
+            console.log("🔵 Backend Response:", loginResponse.data);
+
+            // 🔹 Xử lý kết quả trả về
+            if (loginResponse.data.success) {
+                const { user, tokens, pages } = loginResponse.data.data;
+
                 console.log("✅ Facebook Login Success!");
-          
+
                 // 🔹 Cập nhật AuthContext để đồng bộ UI
                 // Await completeExternalLogin vì nó là async function
-                const result = await completeExternalLogin({ user, tokens, pages});
+                const result = await completeExternalLogin({ user, tokens, pages });
                 if (result?.success && onSuccess) {
-                  // Đóng popup sau khi login thành công
-                  onSuccess();
+                    // Đóng popup sau khi login thành công
+                    onSuccess();
                 }
-              } else {
+            } else {
                 // Kiểm tra xem có phải lỗi inactive/banned không
                 const errorResponse = loginResponse.data;
                 const errorCode = errorResponse?.error?.code;
                 const status = errorResponse?.status;
-                
+
                 if (errorCode === 'AUTH_010' || errorCode === 'AUTH_011') {
-                  // Hiển thị AccountStatusError component
-                  setAccountStatus(status);
-                  setShowAccountStatusError(true);
-                  setFbLoading(false);
-                  return;
+                    // Hiển thị AccountStatusError component
+                    setAccountStatus(status);
+                    setShowAccountStatusError(true);
+                    setFbLoading(false);
+                    return;
                 }
-                
+
                 console.error("❌ Backend login failed:", loginResponse.data);
                 toast.error(errorResponse?.error?.message || errorResponse?.message || t('auth.login_failed'));
                 setFbLoading(false);
-              }
-            } catch (error) {
-              console.error("❌ Backend login error:", error);
-          
-              // Kiểm tra xem có phải lỗi inactive/banned không
-              const errorResponse = error.response?.data;
-              const errorCode = errorResponse?.error?.code;
-              const status = errorResponse?.status;
-              
-              if (errorCode === 'AUTH_010' || errorCode === 'AUTH_011') {
+            }
+        } catch (error) {
+            console.error("❌ Backend login error:", error);
+
+            // Kiểm tra xem có phải lỗi inactive/banned không
+            const errorResponse = error.response?.data;
+            const errorCode = errorResponse?.error?.code;
+            const status = errorResponse?.status;
+
+            if (errorCode === 'AUTH_010' || errorCode === 'AUTH_011') {
                 // Hiển thị AccountStatusError component
                 setAccountStatus(status);
                 setShowAccountStatusError(true);
                 setFbLoading(false);
                 return;
-              }
-          
-              if (error.code === "ECONNABORTED") {
+            }
+
+            if (error.code === "ECONNABORTED") {
                 toast.error(t('errors.network_error'));
-              } else if (error.response?.status === 500) {
+            } else if (error.response?.status === 500) {
                 toast.error(t('errors.server_error'));
-              } else {
+            } else {
                 console.error("❌ Error response:", error.response?.data);
                 toast.error(errorResponse?.error?.message || errorResponse?.message || t('common.error'));
-              }
-              setFbLoading(false);
             }
-        };
+            setFbLoading(false);
+        }
+    };
 
 
     // Nếu đang hiển thị AccountStatusError
     if (showAccountStatusError && accountStatus) {
         return (
-            <AccountStatusError 
+            <AccountStatusError
                 status={accountStatus}
                 onBack={handleBackToLogin}
             />
@@ -242,14 +242,14 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
     // Nếu đang hiển thị form xác thực email
     if (showVerificationForm) {
         return (
-            <EmailVerification 
+            <EmailVerification
                 email={userEmail}
                 onBack={handleBackToLogin}
                 title={t('auth.email_verification_title')}
             />
         )
     }
-    
+
     return (
         <form className="auth-form" onSubmit={handleSubmit}>
             <button type="button" className="btn-fb" onClick={handleFacebookBusinessLogin} disabled={fbLoading}>
@@ -261,13 +261,13 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
 
             <div className="input-group-auth">
                 <div className="input-icon-auth"><Mail size={16} /></div>
-                <input 
-                    type="email" 
-                    placeholder={t('auth.email_placeholder')} 
-                    value={email} 
+                <input
+                    type="email"
+                    placeholder={t('auth.email_placeholder')}
+                    value={email}
                     onChange={(e) => {
                         setEmail(e.target.value)
-                        if (errors.email) setErrors(prev => ({...prev, email: ''}))
+                        if (errors.email) setErrors(prev => ({ ...prev, email: '' }))
                     }}
                     className={errors.email ? 'error' : ''}
                 />
@@ -276,13 +276,13 @@ function LoginForm({ onSuccess, onSwitchRegister, onSwitchReset }) {
 
             <div className="input-group-auth">
                 <div className="input-icon-auth" aria-hidden="true"><Lock size={16} /></div>
-                <input 
-                    type={showPwd ? 'text' : 'password'} 
-                    placeholder={t('auth.password_placeholder')} 
-                    value={password} 
+                <input
+                    type={showPwd ? 'text' : 'password'}
+                    placeholder={t('auth.password_placeholder')}
+                    value={password}
                     onChange={(e) => {
                         setPassword(e.target.value)
-                        if (errors.password) setErrors(prev => ({...prev, password: ''}))
+                        if (errors.password) setErrors(prev => ({ ...prev, password: '' }))
                     }}
                     className={errors.password ? 'error' : ''}
                 />
