@@ -7,10 +7,10 @@ import Package from "../../models/package/package.model.js";
 import { createInvoice } from "../invoice/invoiceControllers.js";
 
 const config = {
-  vnp_TmnCode: process.env.VNPAY_TMN_CODE || "Y4DJ13B6",
-  vnp_HashSecret: process.env.VNPAY_HASH_SECRET || "BIYMKPJPKLOEPMWRKCRWIXJLOIETVDUN",
+  vnp_TmnCode: process.env.VNPAY_TMN_CODE,
+  vnp_HashSecret: process.env.VNPAY_HASH_SECRET,
   vnp_Url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
-  vnp_ReturnUrl: process.env.VNPAY_RETURN_URL || "https://api.vibestoneoficial.store/api/vnpay/return",
+  vnp_ReturnUrl: process.env.VNPAY_RETURN_URL,
 };
 
 /* ============== HÀM SORT OBJECT THEO THỨ TỰ A-Z (CHÍNH XÁC NHƯ DEMO VNPAY) ============== */
