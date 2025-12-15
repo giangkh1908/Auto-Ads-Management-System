@@ -280,8 +280,12 @@ export const chatAnalyze = async (req, res) => {
     });
 
     // Step 3: Process with Agent Executor
-    // We pass the last few messages as history
-    const history = conversation.messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+    // We pass the last few messages as history (include data field for assistant messages)
+    const history = conversation.messages.slice(-10).map(m => ({
+      role: m.role,
+      content: m.content,
+      data: m.data || null
+    }));
     
     let result;
     try {
