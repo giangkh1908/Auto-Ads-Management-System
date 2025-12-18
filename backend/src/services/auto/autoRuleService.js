@@ -413,7 +413,7 @@ export async function evaluateConditions(rule) {
     } else {
       // Nếu không có điều kiện nào, return false
       console.log(
-        `[AutoRule Evaluate] ❌ Không lấy được external IDs tương ứng từ apply_to_ids, returning false`
+        `Không có điều kiện nào thỏa mãn`
       );
       return false;
     }
@@ -949,7 +949,7 @@ export async function processRule(rule) {
       },
     });
 
-    // Chuẩn bị update error info
+    // Lên lịch cho lần chạy tiếp nếu rule bị lỗi
     const now = new Date();
     const nextRunAt = calculateNextRunAt(rule.schedule);
 

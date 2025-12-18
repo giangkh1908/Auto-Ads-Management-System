@@ -55,7 +55,7 @@ export function startAutoRuleScheduler() {
       console.error("Error in AutoRule scheduler:", error);
     }
   });
-  console.log("AutoRule scheduler started. Running every minute.");
+  console.log("✅ AutoRule scheduler started. Running every minute.");
 }
 
 /**
@@ -87,10 +87,10 @@ async function processScheduledRules() {
 
     // Query tất cả rules cần chạy (bao gồm ACTIVE và TRIGGERED)
     const rules = await AutomationRule.find({
-      enabled: true,
+      enabled: true, //Lấy các rule được bật
       status: { $in: ["ACTIVE", "TRIGGERED"] },
       deleted_at: null,
-      next_run_at: { $lte: now },
+      next_run_at: { $lte: now }, //Lấy các rule đã đến lúc chạy
     })
       .populate("account_id", "external_id name")
       .populate("created_by", "full_name email")

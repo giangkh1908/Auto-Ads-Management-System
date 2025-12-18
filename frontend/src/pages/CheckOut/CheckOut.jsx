@@ -249,8 +249,8 @@ function CheckOut() {
               />
               <div className="co-payment-content">
                 <div className="co-payment-info">
-                  <div className="co-payment-name">VÍ ĐIỆN TỬ VNPAY</div>
-                  <div className="co-payment-desc">Bạn cần có app hoặc ví VNPAY</div>
+                  <div className="co-payment-name">{t("checkout.methods.vnpay.name")}</div>
+                  <div className="co-payment-desc">{t("checkout.methods.vnpay.description")}</div>
                 </div>
                 <div className="co-payment-icon co-payment-icon-vnpay">
                   <img
@@ -268,7 +268,7 @@ function CheckOut() {
             </label>
 
             {/* Stripe */}
-            <label className="co-payment-option">
+            {/* <label className="co-payment-option">
               <input
                 type="radio"
                 name="payment"
@@ -287,7 +287,7 @@ function CheckOut() {
                   <DollarSign size={40} />
                 </div>
               </div>
-            </label>
+            </label> */}
 
             {/* Service Wallet */}
             {/* <label className="co-payment-option">

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { X, Plus, Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import "./AutoRulePopup.css";
 import {
   ACTIONS_OPTIONS,
@@ -28,6 +29,7 @@ const AutoRulePopup = ({
   subscriber = null,
   editingRule = null,
 }) => {
+  const { t } = useTranslation('automationRule');
   // Use custom hooks for form and hierarchical data
   const [formData, setFormData] = useAutoRuleForm(editingRule);
   const {
@@ -280,7 +282,7 @@ const AutoRulePopup = ({
       }
       onClose();
     } catch (error) {
-      toast.error(error.message || "Có lỗi xảy ra khi lưu quy tắc");
+      toast.error(error.message || t('popup.saveError'));
     }
   }, [formData, onSave, onClose, isFormValid]);
 
@@ -292,7 +294,7 @@ const AutoRulePopup = ({
         {/* Header */}
         <div className="auto-rule-popup-header">
           <h2 className="auto-rule-popup-title">
-            {editingRule ? "Chỉnh sửa quy tắc" : "Thêm quy tắc mới"}
+            {editingRule ? t('popup.titleEdit') : t('popup.titleAdd')}
           </h2>
           <button className="auto-rule-popup-close" onClick={onClose}>
             <X size={20} />
@@ -303,23 +305,23 @@ const AutoRulePopup = ({
         <div className="auto-rule-popup-body">
           {/* Tên quy tắc */}
           <div className="auto-rule-popup-field">
-            <label className="auto-rule-popup-label">* Tên quy tắc</label>
+            <label className="auto-rule-popup-label">* {t('popup.ruleName')}</label>
             <input
               type="text"
               className="auto-rule-popup-input"
               value={formData.ruleName}
               onChange={(e) => handleInputChange("ruleName", e.target.value)}
-              placeholder="Nhập tên quy tắc"
+              placeholder={t('popup.ruleNamePlaceholder')}
             />
           </div>
 
           {/* Áp dụng quy tắc cho & Hành động */}
           <div className="auto-rule-popup-row">
             <div className="auto-rule-popup-field auto-rule-popup-field-half">
-              <label className="auto-rule-popup-label">* Áp dụng quy tắc cho</label>
+              <label className="auto-rule-popup-label">* {t('popup.applyTo')}</label>
               {!accountId ? (
                 <div className="auto-rule-popup-error-text">
-                  Vui lòng chọn tài khoản quảng cáo
+                  {t('popup.selectAccountFirst')}
                 </div>
               ) : (
                 <HierarchicalSelector
@@ -337,16 +339,16 @@ const AutoRulePopup = ({
               )}
             </div>
             <div className="auto-rule-popup-field auto-rule-popup-field-half">
-              <label className="auto-rule-popup-label">Hành động</label>
+              <label className="auto-rule-popup-label">{t('popup.action')}</label>
               <select
                 className="auto-rule-popup-select"
                 value={formData.action}
                 onChange={(e) => handleInputChange("action", e.target.value)}
               >
-                <option value="">Chọn hành động</option>
+                <option value="">{t('popup.selectAction')}</option>
                 {ACTIONS_OPTIONS.map((action, idx) => (
                   <option key={idx} value={action}>
-                    {action}
+                    {t(`actions.${action}`)}
                   </option>
                 ))}
               </select>
@@ -356,13 +358,13 @@ const AutoRulePopup = ({
           {/* Điều kiện */}
           <div className="auto-rule-popup-field">
             <div className="auto-rule-popup-label-with-info">
-              <label className="auto-rule-popup-label">Điều kiện</label>
-              <div className="auto-rule-popup-info-icon" title="Điều kiện của quy tắc. Quy tắc sẽ được thực hiện khi một trong các điều kiện được đáp ứng.">
+              <label className="auto-rule-popup-label">{t('popup.conditions')}</label>
+              <div className="auto-rule-popup-info-icon" title={t('popup.conditionsTooltip')}>
                 <Info size={16} />
               </div>
             </div>
             <p className="auto-rule-popup-conditions-description">
-              Tất cả các điều kiện sau đây phải khớp. Lưu ý rằng một số số liệu quảng cáo có thể bị trễ và dao động trong vài giờ. Hãy cân nhắc thêm một số buffer cho các điều kiện dựa trên dữ liệu để tránh cảnh báo sai.
+              {t('popup.conditionsDescription')}
             </p>
             {formData.conditions.length === 0 ? (
               <div className="auto-rule-popup-conditions-empty">
@@ -393,8 +395,8 @@ const AutoRulePopup = ({
           {/* Lịch trình */}
           <div className="auto-rule-popup-field">
             <div className="auto-rule-popup-label-with-info">
-              <label className="auto-rule-popup-label">Lịch trình</label>
-              <div className="auto-rule-popup-info-icon" title="Xác định tần suất kiểm tra quy tắc. Quy tắc sẽ được kiểm tra theo múi giờ của tài khoản quảng cáo.">
+              <label className="auto-rule-popup-label">{t('popup.schedule')}</label>
+              <div className="auto-rule-popup-info-icon" title={t('popup.scheduleTooltip')}>
                 <Info size={16} />
               </div>
             </div>
@@ -409,9 +411,9 @@ const AutoRulePopup = ({
                   className="auto-rule-popup-radio"
                 />
                 <div className="auto-rule-popup-radio-content">
-                  <span className="auto-rule-popup-radio-title">Liên tục</span>
+                  <span className="auto-rule-popup-radio-title">{t('popup.scheduleContinuous')}</span>
                   <span className="auto-rule-popup-radio-description">
-                    Quy tắc chạy thường xuyên nhất có thể (thường là 30-60 phút/lần).
+                    {t('popup.scheduleContinuousDesc')}
                   </span>
                 </div>
               </label>
@@ -426,9 +428,9 @@ const AutoRulePopup = ({
                   className="auto-rule-popup-radio"
                 />
                 <div className="auto-rule-popup-radio-content">
-                  <span className="auto-rule-popup-radio-title">Hàng ngày</span>
+                  <span className="auto-rule-popup-radio-title">{t('popup.scheduleDaily')}</span>
                   <span className="auto-rule-popup-radio-description">
-                    giữa {formData.dailyTime.start} và {formData.dailyTime.end} theo Giờ TP Hồ Chí Minh
+                    {t('popup.scheduleDailyDesc', { start: formData.dailyTime.start, end: formData.dailyTime.end })}
                   </span>
                 </div>
               </label>
@@ -445,7 +447,7 @@ const AutoRulePopup = ({
                     }
                     className="auto-rule-popup-time-input"
                   />
-                  <span className="auto-rule-popup-time-separator"> đến </span>
+                  <span className="auto-rule-popup-time-separator"> {t('popup.timeTo')} </span>
                   <input
                     type="time"
                     value={formData.dailyTime.end}
@@ -470,9 +472,9 @@ const AutoRulePopup = ({
                   className="auto-rule-popup-radio"
                 />
                 <div className="auto-rule-popup-radio-content">
-                  <span className="auto-rule-popup-radio-title">Tùy chỉnh</span>
+                  <span className="auto-rule-popup-radio-title">{t('popup.scheduleCustom')}</span>
                   <span className="auto-rule-popup-radio-description">
-                    Hãy điều chỉnh lịch chạy quy tắc để chạy vào những ngày và giờ cụ thể. Nếu thời gian bắt đầu và kết thúc giống nhau, quy tắc sẽ chạy mỗi ngày một lần trong vòng 30-60 phút sau thời gian đã đặt. Tất cả thời gian đều theo Giờ TP Hồ Chí Minh
+                    {t('popup.scheduleCustomDesc')}
                   </span>
                 </div>
               </label>
@@ -501,17 +503,17 @@ const AutoRulePopup = ({
                 }
                 className="auto-rule-popup-checkbox"
               />
-              <span className="auto-rule-popup-checkbox-text">Trên Facebook</span>
+              <span className="auto-rule-popup-checkbox-text">{t('popup.notificationLabel')}</span>
             </label>
             <p className="auto-rule-popup-description">
-              Bạn sẽ nhận được thông báo khi đạt điều kiện của quy tắc này
+              {t('popup.notificationDesc')}
             </p>
           </div>
 
           {/* Người đăng ký */}
           {subscriber && (
             <div className="auto-rule-popup-field">
-              <label className="auto-rule-popup-label">Người đăng ký</label>
+              <label className="auto-rule-popup-label">{t('popup.subscriber')}</label>
               <div className="auto-rule-popup-subscriber">
                 {subscriber.full_name || subscriber.email}
               </div>
@@ -526,7 +528,7 @@ const AutoRulePopup = ({
             className="auto-rule-popup-btn-cancel"
             onClick={onClose}
           >
-            Hủy
+            {t('popup.cancel')}
           </button>
           <button
             type="button"
@@ -535,7 +537,7 @@ const AutoRulePopup = ({
             disabled={!isFormValid}
             title={!isFormValid ? validationErrors.join("\n") : ""}
           >
-            Lưu quy tắc
+            {t('popup.save')}
           </button>
         </div>
       </div>

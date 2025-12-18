@@ -587,6 +587,10 @@
         "name": "Thẻ Visa / Master Việt Nam",
         "description": "Hỗ trợ các loại thẻ Visa mở tại Việt Nam"
       },
+      "vnpay": {
+        "name": "VÍ ĐIỆN TỬ VNPAY",
+        "description": "Bạn cần có app hoặc ví VNPAY"
+      },
       "momo": {
         "name": "VÍ ĐIỆN TỬ MOMO",
         "description": "Bạn cần có app Momo"

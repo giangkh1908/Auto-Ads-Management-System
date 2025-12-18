@@ -361,12 +361,12 @@ function CreateAdsWizard({
       }
     );
 
-    // ✅ Quyết định action dựa trên status, không chỉ mode
+    // Quyết định action dựa trên status, không chỉ mode
     // CREATE: mode === "create" HOẶC có items DRAFT/FAILED (không có external_id)
     // UPDATE: mode === "update" VÀ tất cả items đã publish (có external_id hoặc FAILED có external_id)
     const shouldPublish = mode === "create" || hasDraftStatus;
 
-    // ✅ Mở progress popup
+    // Mở progress popup
     openProgress({
       type: shouldPublish ? "create" : "update",
       title: shouldPublish
@@ -375,26 +375,26 @@ function CreateAdsWizard({
       total: totalEntities,
     });
 
-    // ✅ Check status để gọi đúng function
+    // Check status để gọi đúng function
     if (shouldPublish) {
       console.log(
-        "➕ Calling handleFlexiblePublish (CREATE: DRAFT/FAILED without external_id → ACTIVE)"
+        "Calling handleFlexiblePublish (CREATE: DRAFT/FAILED without external_id → ACTIVE)"
       );
       handleFlexiblePublish({
         campaignsList: finalCampaignsList,
         selectedAccountId,
         onSuccess,
-        onError, // ✅ Truyền callback để refresh data khi thất bại
+        onError, // Truyền callback để refresh data khi thất bại
         onClose,
         updateProgress,
       });
     } else {
-      console.log("🔄 Calling handleFlexibleUpdate (UPDATE: existing ACTIVE or FAILED with external_id)");
+      console.log("Calling handleFlexibleUpdate (UPDATE: existing ACTIVE or FAILED with external_id)");
       handleFlexibleUpdate({
         campaignsList: finalCampaignsList,
         selectedAccountId,
         onSuccess,
-        onError, // ✅ Truyền callback để refresh data khi thất bại
+        onError, // Truyền callback để refresh data khi thất bại
         onClose,
         updateProgress,
       });
@@ -402,15 +402,15 @@ function CreateAdsWizard({
   };
 
   // ==============================
-  // 💾 SAVE DRAFT: Logic lưu nháp
+  // SAVE DRAFT: Logic lưu nháp
   // ==============================
 
   // Khi người dùng click "Đóng" (X hoặc nút Hủy)
   const handleCloseWizard = () => {
-    // ✅ Kiểm tra campaign hiện tại đã được publish chưa?
+    // Kiểm tra campaign hiện tại đã được publish chưa?
     const isPublished = campaign?.external_id;
 
-    // ✅ Chỉ hiển thị popup khi wizardStep > 0 VÀ chưa publish
+    // Chỉ hiển thị popup khi wizardStep > 0 VÀ chưa publish
     if (wizardStep > 0 && !isPublished) {
       // Hiển thị popup xác nhận lưu nháp
       setShowSaveDraftPopup(true);
@@ -460,7 +460,7 @@ function CreateAdsWizard({
       toast.success("Đã lưu nháp thành công!");
       setShowSaveDraftPopup(false);
 
-      // ✅ GỌI onDraftSaved() ĐỂ CHỈ FETCH LẠI TỪ DB (KHÔNG SYNC FACEBOOK)
+      // GỌI onDraftSaved() ĐỂ CHỈ FETCH LẠI TỪ DB (KHÔNG SYNC FACEBOOK)
       if (onDraftSaved) {
         onDraftSaved();
       }
@@ -477,7 +477,7 @@ function CreateAdsWizard({
   };
 
   // ==============================
-  // 🎯 HANDLE CREATECHILD SAVE: Chuyển từ CreateChild sang Wizard
+  // HANDLE CREATECHILD SAVE: Chuyển từ CreateChild sang Wizard
   // ==============================
   const handleCreateChildSave = async (data) => {
     try {
@@ -545,10 +545,10 @@ function CreateAdsWizard({
           ...INITIAL_DATA.adset,
           _id: firstAdsetId,
           name: adsetName || "Nhóm quảng cáo mới",
-          // ✅ Mỗi adset có targeting.locations riêng (không dùng chung)
+          // Mỗi adset có targeting.locations riêng (không dùng chung)
           targeting: {
             ...INITIAL_DATA.adset.targeting,
-            // ✅ Khởi tạo locations với structure mới, mỗi adset có riêng
+            // Khởi tạo locations với structure mới, mỗi adset có riêng
             locations: {
               regions: [],
               cities: [],
@@ -580,7 +580,7 @@ function CreateAdsWizard({
               : "",
           },
           targeting: {
-            // ✅ NEW: Parse targeting (prioritizes locations with names, falls back to geo_locations)
+            // NEW: Parse targeting (prioritizes locations with names, falls back to geo_locations)
             locations: parseGeoLocationsToFrontend(adsetData.targeting),
             ageMin: adsetData.targeting?.age_min || 18,
             ageMax: adsetData.targeting?.age_max || 65,
@@ -661,7 +661,7 @@ function CreateAdsWizard({
       setAdset(mappedAdset);
       setAd(mappedAd);
 
-      toast.success("Đã tải thông tin thành công");
+      //toast.success("Đã tải thông tin thành công");
     } catch (error) {
       console.error("Error handling CreateChild save:", error);
       toast.error(

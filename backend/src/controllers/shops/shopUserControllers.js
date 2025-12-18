@@ -106,24 +106,7 @@ export const inviteEmployee = async (req, res) => {
       // Gửi email mời (fire-and-forget)
       queueInvitationEmail(email);
       // Note: Không cần update UserPackage.employees ở đây vì đã được tính trong countUsage
-
-      await saveLog({
-        user_id: invitedBy,
-        user_name: currentUser.full_name || currentUser.email,
-        shop_id: shopId,
-        shop_name: shop.shop_name,
-        action: "ADD_EMPLOYEE",
-        target_type: "User",
-        target_id: user._id.toString(),
-        target_name: user.full_name || user.email,
-        description: `${currentUser.full_name || currentUser.email} đã thêm nhân viên "${user.full_name || user.email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
-        request: req.body,
-        response: shopUser,
-        success: true,
-        source: "manual",
-        ip_address: req.ip,
-        meta: { role_assigned: roleId, invited_email: email },
-      });
+      // Note: Không ghi log ở đây vì user chưa tồn tại trong hệ thống
 
       return res.status(200).json({
         success: true,

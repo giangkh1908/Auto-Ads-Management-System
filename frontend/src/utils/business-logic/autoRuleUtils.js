@@ -37,16 +37,19 @@ export const isExcludedStatus = (status) => {
  * @param {string[]} adIds - Selected ad IDs
  * @returns {string} - Formatted text
  */
-export const buildApplyToText = (campaignIds, adsetIds, adIds) => {
-  const parts = [];
+export const buildApplyToText = (campaignIds, adsetIds, adIds, t = null) => {
+  const parts =[];
   if (campaignIds.length > 0) {
-    parts.push(`${campaignIds.length} chiến dịch`);
+    const label = t ? t('applyToLabels.campaigns', { count: campaignIds.length }) : `${campaignIds.length} chiến dịch`;
+    parts.push(label);
   }
   if (adsetIds.length > 0) {
-    parts.push(`${adsetIds.length} nhóm quảng cáo`);
+    const label = t ? t('applyToLabels.adsets', { count: adsetIds.length }) : `${adsetIds.length} nhóm quảng cáo`;
+    parts.push(label);
   }
   if (adIds.length > 0) {
-    parts.push(`${adIds.length} quảng cáo`);
+    const label = t ? t('applyToLabels.ads', { count: adIds.length }) : `${adIds.length} quảng cáo`;
+    parts.push(label);
   }
   return parts.join(", ") || "";
 };

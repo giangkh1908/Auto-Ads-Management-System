@@ -12,10 +12,7 @@ export const publishAdsWizard = async (wizardData) => {
 
 export const updateAdsWizard = async (wizardData) => {
   try {
-    const response = await axiosInstance.put(
-      "/api/ads-wizard/update",
-      wizardData
-    );
+    const response = await axiosInstance.put("/api/ads-wizard/update",wizardData);
     return response.data;
   } catch (error) {
     // Rethrow original axios error to preserve error.response (including error_user_msg)
@@ -24,16 +21,12 @@ export const updateAdsWizard = async (wizardData) => {
 };
 
 /**
- * 🔄 Update nhiều campaigns với cấu trúc linh hoạt (cascade update)
+ * Update nhiều campaigns với cấu trúc linh hoạt (cascade update)
  * Hỗ trợ update matching entities, tạo mới nếu chưa có
  */
 export const updateFlexibleAdsWizard = async (wizardData) => {
   try {
-    const response = await axiosInstance.put(
-      '/api/ads-wizard/update-flexible',
-      wizardData,
-      { timeout: 120000 } // 120 seconds = 2 minutes (đủ cho update nhiều ads)
-    );
+    const response = await axiosInstance.put('/api/ads-wizard/update-flexible',wizardData,{ timeout: 120000 });
     return response.data;
   } catch (error) {
     // Rethrow original axios error to preserve error.response (including error_user_msg)
@@ -42,7 +35,7 @@ export const updateFlexibleAdsWizard = async (wizardData) => {
 };
 
 /**
- * 💾 Lưu nháp campaign/adset/ad
+ * Lưu nháp campaign/adset/ad
  */
 export const saveDraft = async (data) => {
   try {

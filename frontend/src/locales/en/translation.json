@@ -592,6 +592,10 @@
         "name": "MOMO E-WALLET",
         "description": "You need to have Momo app"
       },
+      "vnpay": {
+        "name": "VNPAY E-WALLET",
+        "description": "You need to have Vnpay app"
+      },
       "paypal": {
         "name": "PAY WITH PAYPAL",
         "description": "You need to have PayPal e-wallet account"
