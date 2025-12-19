@@ -2026,7 +2026,7 @@ export async function publishAdService({
         name: ad.name,
         adset_id: adsetId,
         creative: { creative_id: fbCreativeId }, // Đã có fbCreativeId
-        status: "PAUSED",
+        status: "ACTIVE",
         ...(ad.destination_url && { destination_url: ad.destination_url }),
       };
 
@@ -2053,7 +2053,7 @@ export async function publishAdService({
       external_id: fbAdId,
       external_account_id: ad_account_id,
       creative_id: draftCreative._id, // ✅ Link với creative
-      status: "PAUSED", // ✅ CHUYỂN TỪ DRAFT THÀNH PAUSED
+      status: "ACTIVE", // ✅ CHUYỂN TỪ DRAFT THÀNH ACTIVE
       synced_at: now,
       updated_at: now,
     });
