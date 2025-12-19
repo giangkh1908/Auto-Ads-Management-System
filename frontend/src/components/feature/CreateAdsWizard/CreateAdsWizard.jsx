@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Control from "../CreateAdsWizard/Control/Control.jsx";
 import FooterWizard from "../CreateAdsWizard/FooterWizard/FooterWizard.jsx";
 import TargetStep from "../CreateAdsWizard/TargetStep/TargetStep.jsx";
@@ -43,6 +44,8 @@ function CreateAdsWizard({
   selectedCampaign: _selectedCampaign = null, // eslint-disable-line no-unused-vars
   setDatasets: _setDatasets = null, // eslint-disable-line no-unused-vars
 }) {
+  const { t } = useTranslation('wizard');
+
   // Normalize backend outcome objective to UI key (AWARENESS, TRAFFIC, ...)
   const toUiObjective = (obj) => {
     if (!obj) return obj;
@@ -283,7 +286,7 @@ function CreateAdsWizard({
   // 📤 SUBMIT: Sync states → campaignsList trước khi gửi
   // ==============================
   const handlePublishClick = () => {
-    console.log("🚀 [SUBMIT] Preparing payload...");
+    // console.log("🚀 [SUBMIT] Preparing payload...");
 
     // ✅ Sync current states vào campaignsList trước khi submit
     const finalCampaignsList = campaignsList.map((camp, cIdx) => {
@@ -370,8 +373,8 @@ function CreateAdsWizard({
     openProgress({
       type: shouldPublish ? "create" : "update",
       title: shouldPublish
-        ? "Đang đăng chiến dịch quảng cáo"
-        : "Đang cập nhật chiến dịch quảng cáo",
+        ? t('main.publishing')
+        : t('main.updating'),
       total: totalEntities,
     });
 
@@ -457,7 +460,7 @@ function CreateAdsWizard({
         campaigns: finalCampaignsList,
       });
 
-      toast.success("Đã lưu nháp thành công!");
+      toast.success(t('save_draft.success'));
       setShowSaveDraftPopup(false);
 
       // GỌI onDraftSaved() ĐỂ CHỈ FETCH LẠI TỪ DB (KHÔNG SYNC FACEBOOK)
@@ -469,7 +472,7 @@ function CreateAdsWizard({
     } catch (error) {
       console.error("Error saving draft:", error);
       toast.error(
-        "Lỗi khi lưu nháp: " + (error.response?.data?.message || error.message)
+        t('save_draft.error', { message: error.response?.data?.message || error.message })
       );
     } finally {
       setSavingDraft(false);
@@ -486,7 +489,7 @@ function CreateAdsWizard({
       const { campaignId, adsetMode, adset: adsetName, adsetId, ad: adName } = data;
 
       if (!campaignId) {
-        toast.error("Vui lòng chọn campaign");
+        toast.error(t('validation.select_campaign'));
         return;
       }
 
@@ -497,7 +500,7 @@ function CreateAdsWizard({
       const campaignData = campaignRes.data.data;
 
       if (!campaignData) {
-        toast.error("Không tìm thấy campaign");
+        toast.error(t('validation.campaign_not_found'));
         return;
       }
 
@@ -510,7 +513,7 @@ function CreateAdsWizard({
         adsetData = adsetRes.data.data;
 
         if (!adsetData) {
-          toast.error("Không tìm thấy adset");
+          toast.error(t('validation.adset_not_found'));
           return;
         }
       }
@@ -520,7 +523,7 @@ function CreateAdsWizard({
         id: campaignData._id,
         _id: campaignData._id,
         external_id: campaignData.external_id,
-        name: campaignData.name || "Chiến dịch mới",
+        name: campaignData.name || t('main.default_campaign_name'),
         objective: campaignData.objective || "",
         status: campaignData.status || "PAUSED",
         budgetType: campaignData.daily_budget ? "CAMPAIGN" : "ADSET",
@@ -544,7 +547,7 @@ function CreateAdsWizard({
         mappedAdset = {
           ...INITIAL_DATA.adset,
           _id: firstAdsetId,
-          name: adsetName || "Nhóm quảng cáo mới",
+          name: adsetName || t('main.default_adset_name'),
           // Mỗi adset có targeting.locations riêng (không dùng chung)
           targeting: {
             ...INITIAL_DATA.adset.targeting,
@@ -563,7 +566,7 @@ function CreateAdsWizard({
           id: adsetData._id,
           _id: adsetData._id,
           external_id: adsetData.external_id,
-          name: adsetData.name || "Nhóm quảng cáo mới",
+          name: adsetData.name || t('main.default_adset_name'),
           status: adsetData.status || "PAUSED",
           budgetType: adsetData.daily_budget ? "daily" : "lifetime",
           budgetAmount: adsetData.daily_budget || adsetData.lifetime_budget,
@@ -622,7 +625,7 @@ function CreateAdsWizard({
       const mappedAd = {
         ...INITIAL_DATA.ad,
         adset_id: firstAdsetId,
-        name: adName || "Quảng cáo mới",
+        name: adName || t('main.default_ad_name'),
         page_id: campaignData.page_id || null,
       };
 
@@ -665,7 +668,7 @@ function CreateAdsWizard({
     } catch (error) {
       console.error("Error handling CreateChild save:", error);
       toast.error(
-        error?.response?.data?.message || "Lỗi khi tải thông tin. Vui lòng thử lại."
+        error?.response?.data?.message || t('validation.load_info_error')
       );
     } finally {
       setLoading(false);
@@ -699,13 +702,13 @@ function CreateAdsWizard({
   const getModalTitle = () => {
     if (mode === "edit") {
       const typeMap = {
-        [EDITING_ITEM_TYPES.CAMPAIGN]: "chiến dịch",
-        [EDITING_ITEM_TYPES.ADSET]: "nhóm quảng cáo",
-        [EDITING_ITEM_TYPES.AD]: "quảng cáo",
+        [EDITING_ITEM_TYPES.CAMPAIGN]: t('main.edit_campaign_title'),
+        [EDITING_ITEM_TYPES.ADSET]: t('main.edit_adset_title'),
+        [EDITING_ITEM_TYPES.AD]: t('main.edit_ad_title'),
       };
-      return `Chỉnh sửa ${typeMap[editingItem?.type] || "quảng cáo"}`;
+      return typeMap[editingItem?.type] || t('main.edit_ad_title');
     }
-    return "Tạo chiến dịch";
+    return t('main.create_title');
   };
 
   return (
@@ -731,7 +734,7 @@ function CreateAdsWizard({
                   }`}
                 onClick={() => setActiveTab(TAB_TYPES.CHILD)}
               >
-                Nhóm quảng cáo hoặc quảng cáo mới
+                {t('main.tab_child')}
               </button>
             </div>
           )}
@@ -867,11 +870,11 @@ function CreateAdsWizard({
       <ConfirmationPopup
         isOpen={showSaveDraftPopup}
         type="save-draft"
-        title="Lưu nháp trước khi thoát?"
-        message="Bạn có muốn lưu nháp chiến dịch hiện tại không? Bạn có thể tiếp tục chỉnh sửa sau."
-        confirmText="Lưu nháp"
-        cancelText="Hủy"
-        discardText="Không lưu"
+        title={t('save_draft.title')}
+        message={t('save_draft.message')}
+        confirmText={t('save_draft.confirm')}
+        cancelText={t('save_draft.cancel')}
+        discardText={t('save_draft.discard')}
         onConfirm={handleSaveDraft}
         onClose={handleCancelSaveDraft}
         onDiscard={handleDiscardDraft}

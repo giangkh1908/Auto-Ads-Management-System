@@ -21,6 +21,8 @@ import { useToast } from "../../../../hooks/common/useToast";
 import { validateNonEmpty } from "../../../../utils/validation/validation";
 import { CTA_OPTIONS } from "../../../../constants/ctaConstants";
 import { aiConfigService } from "../../../../services/chat/aiConfigService";
+import { useTranslation } from "react-i18next";
+
 function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -39,6 +41,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
     synonymousKeywords: '',
   });
   const toast = useToast();
+  const { t } = useTranslation('wizard');
 
   const ensureContentAi = () => {
     if (contentAiEnabled) return true;
@@ -236,7 +239,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
           toast.warning("Video dài hơn 4 phút. Facebook khuyến nghị video 15-240 giây để tối ưu hiệu suất.");
         }
 
-        console.log(`📹 Video duration: ${duration.toFixed(1)}s`);
+        // console.log(`📹 Video duration: ${duration.toFixed(1)}s`);
       };
 
       video.src = URL.createObjectURL(file);
@@ -257,7 +260,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          console.log(`Upload progress: ${percentCompleted}%`);
+          // console.log(`Upload progress: ${percentCompleted}%`);
         }
       });
 
@@ -532,7 +535,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                 : "Nâng cấp lên Chatbot AI+ để dùng AI nội dung"
             }
           >
-            Tạo bằng AI
+            {t('ad_step.create_with_ai')}
             {!contentAiEnabled && (
               <span className="premium-badge">
                 <Crown size={12} />
@@ -648,7 +651,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
         <div className="config-section">
           <div className="section-header-ads">
             <Circle size={8} fill="#2563eb" color="#2563eb" />
-            <h3 className="section-title-ads">Tên quảng cáo</h3>
+            <h3 className="section-title-ads">{t('ad_step.ad_name_title')}</h3>
           </div>
           <input
             type="text"
@@ -658,7 +661,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
               setAd((prev) => ({ ...prev, name: e.target.value }))
             }
             onBlur={() => validateNonEmpty(ad.name, "tên quảng cáo", toast)}
-            placeholder="Quảng cáo mới"
+            placeholder={t('ad_step.ad_name_placeholder')}
           />
         </div>
 
@@ -666,13 +669,13 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
         <div className="config-section">
           <div className="section-header-ads">
             <FileText size={16} color="#2563eb" />
-            <h3 className="section-title-ads">Nội dung quảng cáo</h3>
+            <h3 className="section-title-ads">{t('ad_step.ad_content_title')}</h3>
           </div>
           <div className="ad-content-fields">
             {/* Headline */}
             <div className="field-group">
               <div className="field-label-container">
-                <label className="field-label">Tiêu đề</label>
+                <label className="field-label">{t('ad_step.headline_label')}</label>
                 <button
                   onClick={() => generateAIContent('headline', 40)}
                   disabled={
@@ -682,7 +685,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                   title={getAiActionTooltip()}
                 >
                   <Bot size={14} />
-                  {isGenerating.headline ? 'Đang tạo...' : 'AI'}
+                  {isGenerating.headline ? t('ad_step.ai_generating') : t('ad_step.ai_button')}
                 </button>
               </div>
               <input
@@ -692,14 +695,14 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                 onChange={(e) =>
                   setAd((prev) => ({ ...prev, headline: e.target.value }))
                 }
-                placeholder="Sản phẩm/Dịch vụ chất lượng cao"
+                placeholder={t('ad_step.headline_placeholder')}
               />
             </div>
 
             {/* Primary Text */}
             <div className="field-group">
               <div className="field-label-container">
-                <label className="field-label">Văn bản chính</label>
+                <label className="field-label">{t('ad_step.primary_text_label')}</label>
                 <button
                   onClick={() => generateAIContent('primaryText', 125)}
                   disabled={
@@ -709,7 +712,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                   title={getAiActionTooltip()}
                 >
                   <Bot size={14} />
-                  {isGenerating.primaryText ? 'Đang tạo...' : 'AI'}
+                  {isGenerating.primaryText ? t('ad_step.ai_generating') : t('ad_step.ai_button')}
                 </button>
               </div>
               <textarea
@@ -719,14 +722,14 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                   setAd((prev) => ({ ...prev, primaryText: e.target.value }))
                 }
                 rows={4}
-                placeholder="Nội dung chính của quảng cáo..."
+                placeholder={t('ad_step.primary_text_placeholder')}
               />
             </div>
 
             {/* Description */}
             <div className="field-group">
               <div className="field-label-container">
-                <label className="field-label">Mô tả</label>
+                <label className="field-label">{t('ad_step.description_label')}</label>
                 <button
                   onClick={() => generateAIContent('description', 30)}
                   disabled={
@@ -736,7 +739,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                   title={getAiActionTooltip()}
                 >
                   <Bot size={14} />
-                  {isGenerating.description ? 'Đang tạo...' : 'AI'}
+                  {isGenerating.description ? t('ad_step.ai_generating') : t('ad_step.ai_button')}
                 </button>
               </div>
               <textarea
@@ -746,14 +749,14 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                   setAd((prev) => ({ ...prev, description: e.target.value }))
                 }
                 rows={3}
-                placeholder="Mô tả ngắn gọn bổ sung..."
+                placeholder={t('ad_step.description_placeholder')}
               />
             </div>
 
             {/* Call to Action */}
             <div className="field-group">
               <div className="field-label-container">
-                <label className="field-label">Nút kêu gọi hành động</label>
+                <label className="field-label">{t('ad_step.cta_label')}</label>
               </div>
               <select
                 className="cta-select"
@@ -772,7 +775,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
 
             {/* Destination URL */}
             <div className="field-group">
-              <label className="field-label">* URL đích</label>
+              <label className="field-label">{t('ad_step.destination_url_label')}</label>
               <input
                 type="url"
                 className="url-input"
@@ -783,13 +786,13 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                 onBlur={() =>
                   validateNonEmpty(ad.destinationUrl, "URL đích", toast)
                 }
-                placeholder="https://example.com"
+                placeholder={t('ad_step.url_placeholder')}
               />
             </div>
 
             {/* Media File */}
             <div className="field-group">
-              <label className="field-label">* File phương tiện ({guidance.mediaLabel})</label>
+              <label className="field-label">* {t('ad_step.media_file_label')} ({guidance.mediaLabel})</label>
               <small className="media-description-hint">
                 {guidance.mediaDescription}
               </small>
@@ -800,7 +803,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                   <span className="file-type-badge">
                     {ad.media === 'video' ? '🎥 Video' : '🖼️ Ảnh'}
                   </span>
-                  <span className="file-status">Đã upload thành công</span>
+                  <span className="file-status">{t('ad_step.upload_success')}</span>
                 </div>
               )}
 
@@ -811,12 +814,11 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                   disabled={uploading}
                 >
                   <Image size={18} className="media-icon" />
-
                   {uploading
-                    ? "Đang tải lên..."
+                    ? t('ad_step.uploading')
                     : ad.mediaUrl
-                      ? `Thay đổi ${guidance.mediaLabel.toLowerCase()}`
-                      : `Thêm ${guidance.mediaLabel.toLowerCase()}`}
+                      ? `${t('ad_step.change_media')} ${guidance.mediaLabel.toLowerCase()}`
+                      : `${t('ad_step.add_media')} ${guidance.mediaLabel.toLowerCase()}`}
                 </button>
                 {guidance.mediaType !== 'video' && (
                   <button
@@ -839,7 +841,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                     title={getAiActionTooltip()}
                   >
                     <Image size={18} className="button-icon" />
-                    {isGeneratingImages ? "Đang tạo ảnh..." : "AI tạo ảnh"}
+                    {isGeneratingImages ? t('ad_step.generating_image') : t('ad_step.ai_generate_image')}
                   </button>
                 )}
               </div>
@@ -852,7 +854,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                       // Loading text with wave effect
                       <div className="loading-wave-container">
                         <div className="loading-wave-text">
-                          {'Vui lòng chờ đợi...'.split('').map((char, index) => (
+                          {t('ad_step.please_wait').split('').map((char, index) => (
                             <span key={index} style={{ animationDelay: `${index * 0.1}s` }}>
                               {char === ' ' ? '\u00A0' : char}
                             </span>
@@ -876,13 +878,13 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                   <div className="ai-info-section">
                     <div className="ai-info-text">
                       <div className="ai-info-line">
-                        Ảnh đã tạo {aiImages.length}/{aiImages.length}
+                        {t('ad_step.images_created')} {aiImages.length}/{aiImages.length}
                       </div>
                       <div className="ai-info-line">
-                        Ảnh có thể thêm {10 - aiImages.length}
+                        {t('ad_step.images_can_add')} {10 - aiImages.length}
                       </div>
                       <div className="ai-info-line">
-                        Ảnh đã chọn {selectedAiImages.length}/{selectedAiImages.length}
+                        {t('ad_step.images_selected')} {selectedAiImages.length}/{selectedAiImages.length}
                       </div>
                     </div>
                     <button
@@ -897,7 +899,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                         setSelectedAiImages(allSelected);
                       }}
                     >
-                      Chọn ảnh tự động
+                      {t('ad_step.auto_select_images')}
                     </button>
                   </div>
                 </div>

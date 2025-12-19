@@ -35,7 +35,7 @@ export function useWizardPublish() {
     setSuccess(false);
 
     try {
-      console.log("📝 Using Sequential API for all campaigns");
+      // console.log("📝 Using Sequential API for all campaigns");
 
       let totalSuccessCount = 0;
       let totalAds = 0;
@@ -148,7 +148,7 @@ export function useFlexibleWizardPublish() {
     setSuccess(false);
 
     try {
-      console.log("🚀 Using Flexible API for all campaigns");
+      // console.log("🚀 Using Flexible API for all campaigns");
 
       // Đếm tổng số entities để tính %
       const totalEntities = campaignsList.reduce((sum, camp) => {
@@ -202,7 +202,7 @@ export function useFlexibleWizardPublish() {
               return match;
             });
 
-            console.log(`  ✅ Filtered ads count: ${filteredAds.length}`);
+            // console.log(`  ✅ Filtered ads count: ${filteredAds.length}`);
 
             return {
               ...buildAdsetPayload(adset, campaign),
@@ -297,10 +297,10 @@ export function useFlexibleWizardPublish() {
             const firstError = errors?.[0];
             const fbErrorMsg = firstError?.error_user_msg || firstError?.error || 'Tạo quảng cáo thất bại';
             
-            console.log("🔍 All ads failed!");
-            console.log("🔍 Errors array:", errors);
-            console.log("🔍 First error:", firstError);
-            console.log("🔍 FB Error Message:", fbErrorMsg);
+            // console.log("🔍 All ads failed!");
+            // console.log("🔍 Errors array:", errors);
+            // console.log("🔍 First error:", firstError);
+            // console.log("🔍 FB Error Message:", fbErrorMsg);
             
             updateProgress?.({
               status: 'error',
@@ -386,7 +386,7 @@ export function useFlexibleWizardPublish() {
     setSuccess(false);
 
     try {
-      console.log("🎯 Using Step-by-Step API for all campaigns");
+      // console.log("🎯 Using Step-by-Step API for all campaigns");
 
       let totalSuccessCount = 0;
       const results = {
@@ -580,7 +580,7 @@ export function useFlexibleWizardPublish() {
     setSuccess(false);
 
     try {
-      console.log("🔄 Using Flexible Update API for all campaigns");
+      // console.log("🔄 Using Flexible Update API for all campaigns");
 
       // Đếm tổng số entities để tính %
       const totalEntities = campaignsList.reduce((sum, camp) => {
@@ -643,7 +643,7 @@ export function useFlexibleWizardPublish() {
               return match;
             });
 
-            console.log(`  ✅ Filtered ads count: ${filteredAds.length}`);
+            // console.log(`  ✅ Filtered ads count: ${filteredAds.length}`);
 
             return {
               // ✅ CHỈ GỬI external_id NẾU CÓ (buildAdsetPayload đã handle _id và draftId)
@@ -742,7 +742,7 @@ export function useFlexibleWizardPublish() {
             const firstError = errors?.[0];
             const fbErrorMsg = firstError?.error_user_msg || firstError?.error || 'Cập nhật thất bại';
             
-            console.log("🔍 All updates failed. First error:", fbErrorMsg);
+            // console.log("🔍 All updates failed. First error:", fbErrorMsg);
             
             updateProgress?.({
               status: 'error',
