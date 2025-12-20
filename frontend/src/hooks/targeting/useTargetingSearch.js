@@ -83,7 +83,7 @@ export function useTargetingSearch(options = {}) {
           return;
         }
         
-        console.error('❌ Targeting error:', err);
+        //console.error('❌ Targeting error:', err);
         setError(err.response?.data?.message || err.message || 'Failed to search targeting');
         setResults([]);
       } finally {

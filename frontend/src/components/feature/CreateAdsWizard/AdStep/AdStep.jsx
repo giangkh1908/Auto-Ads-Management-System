@@ -57,16 +57,16 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
     switch (destType) {
       case 'ON_VIDEO':
         return {
-          title: '🎬 Mục tiêu: Lượt xem video',
+          title: 'Mục tiêu: Lượt xem video',
           mediaType: 'video',
           mediaLabel: 'Video',
           mediaAccept: 'video/*',
-          mediaDescription: '⚠️ BẮT BUỘC upload video',
+          mediaDescription: 'BẮT BUỘC upload video',
           requirements: [
-            '✅ Video phải hấp dẫn trong 3 giây đầu',
-            '✅ Độ dài khuyến nghị: 15-60 giây',
-            '✅ Định dạng: MP4, MOV (tối đa 4GB)',
-            '✅ Tỷ lệ: 9:16 (Stories), 1:1 (Feed), 16:9 (Landscape)',
+            '* Video phải hấp dẫn trong 3 giây đầu',
+            '* Độ dài khuyến nghị: 15-60 giây',
+            '* Định dạng: MP4, MOV (tối đa 4GB)',
+            '* Tỷ lệ: 9:16 (Stories), 1:1 (Feed), 16:9 (Landscape)',
           ],
           ctaRecommendations: ['Tìm hiểu thêm', 'Xem khuyến mãi', 'Nghe ngay'],
           destinationNote: 'URL đích sẽ hiển thị khi người dùng nhấp vào video hoặc CTA'
@@ -74,16 +74,16 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
 
       case 'ON_POST':
         return {
-          title: '💬 Mục tiêu: Tương tác bài viết',
+          title: 'Mục tiêu: Tương tác bài viết',
           mediaType: 'image-or-video',
           mediaLabel: 'Ảnh hoặc Video',
           mediaAccept: 'image/*,video/*',
-          mediaDescription: '📸 Ảnh hoặc video để tăng tương tác',
+          mediaDescription: 'Ảnh hoặc video để tăng tương tác',
           requirements: [
-            '✅ Nội dung văn bản phải khuyến khích tương tác (like, comment, share)',
-            '✅ Ảnh: Độ phân giải tối thiểu 1080x1080px',
-            '✅ Video: Độ dài 15-30 giây cho tương tác tốt nhất',
-            '✅ Sử dụng câu hỏi hoặc call-to-action trong văn bản',
+            '* Nội dung văn bản phải khuyến khích tương tác (like, comment, share)',
+            '* Ảnh: Độ phân giải tối thiểu 1080x1080px',
+            '* Video: Độ dài 15-30 giây cho tương tác tốt nhất',
+            '* Sử dụng câu hỏi hoặc call-to-action trong văn bản',
           ],
           ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
           destinationNote: 'Tập trung vào engagement, URL đích là phụ (có thể dẫn đến trang fanpage hoặc website)'
@@ -91,66 +91,66 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
 
       case 'ON_PAGE':
         return {
-          title: '👍 Mục tiêu: Lượt thích trang',
+          title: 'Mục tiêu: Lượt thích trang',
           mediaType: 'image-or-video',
           mediaLabel: 'Ảnh hoặc Video',
           mediaAccept: 'image/*,video/*',
-          mediaDescription: '📸 Ảnh/video giới thiệu trang của bạn',
+          mediaDescription: 'Ảnh/video giới thiệu trang của bạn',
           requirements: [
-            '✅ Nội dung phải thể hiện rõ giá trị của trang Facebook',
-            '✅ Highlight những lợi ích khi like trang (cập nhật, ưu đãi...)',
-            '✅ Ảnh cover hoặc logo trang nên xuất hiện',
-            '✅ Văn bản chính: Mô tả ngắn gọn về trang',
+            '* Nội dung phải thể hiện rõ giá trị của trang Facebook',
+            '* Highlight những lợi ích khi like trang (cập nhật, ưu đãi...)',
+            '* Ảnh cover hoặc logo trang nên xuất hiện',
+            '* Văn bản chính: Mô tả ngắn gọn về trang',
           ],
           ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
-          destinationNote: '🎯 Quảng cáo sẽ hiển thị nút "Thích trang" trực tiếp, URL đích thường là link trang Facebook'
+          destinationNote: 'Quảng cáo sẽ hiển thị nút "Thích trang" trực tiếp, URL đích thường là link trang Facebook'
         };
 
       case 'ON_EVENT':
         return {
-          title: '📅 Mục tiêu: Phản hồi sự kiện',
+          title: 'Mục tiêu: Phản hồi sự kiện',
           mediaType: 'image-or-video',
           mediaLabel: 'Ảnh hoặc Video',
           mediaAccept: 'image/*,video/*',
-          mediaDescription: '🎉 Ảnh/video về sự kiện',
+          mediaDescription: 'Ảnh/video về sự kiện',
           requirements: [
-            '✅ Hiển thị rõ thông tin sự kiện (ngày, giờ, địa điểm)',
-            '✅ Sử dụng ảnh chất lượng cao về venue hoặc sự kiện tương tự',
-            '✅ Văn bản chính: Mô tả highlights của sự kiện',
-            '✅ Tạo cảm giác FOMO (Fear of Missing Out)',
+            '* Hiển thị rõ thông tin sự kiện (ngày, giờ, địa điểm)',
+            '* Sử dụng ảnh chất lượng cao về venue hoặc sự kiện tương tự',
+            '* Văn bản chính: Mô tả highlights của sự kiện',
+            '* Tạo cảm giác FOMO (Fear of Missing Out)',
           ],
           ctaRecommendations: ['Đăng ký ngay', 'Đặt ngay', 'Nhận ưu đãi'],
-          destinationNote: '🎯 Quảng cáo sẽ hiển thị nút phản hồi sự kiện (Quan tâm/Tham gia), URL đích thường là link sự kiện Facebook'
+          destinationNote: 'Quảng cáo sẽ hiển thị nút phản hồi sự kiện (Quan tâm/Tham gia), URL đích thường là link sự kiện Facebook'
         };
 
       case 'MESSAGING_APPS':
         return {
-          title: '💬 Mục tiêu: Bắt đầu hội thoại',
+          title: 'Mục tiêu: Bắt đầu hội thoại',
           mediaType: 'image-or-video',
           mediaLabel: 'Ảnh hoặc Video',
           mediaAccept: 'image/*,video/*',
-          mediaDescription: '💬 Ảnh/video khuyến khích nhắn tin',
+          mediaDescription: 'Ảnh/video khuyến khích nhắn tin',
           requirements: [
-            '✅ Nội dung phải khuyến khích người dùng nhắn tin (Hỏi, Tư vấn, Hỗ trợ...)',
-            '✅ Văn bản chính: Đề cập rõ lợi ích khi nhắn tin (tư vấn miễn phí, ưu đãi...)',
-            '✅ Ảnh nên thể hiện sự thân thiện, sẵn sàng hỗ trợ',
-            '✅ Chuẩn bị auto-reply hoặc chatbot để phản hồi nhanh',
+            '* Nội dung phải khuyến khích người dùng nhắn tin (Hỏi, Tư vấn, Hỗ trợ...)',
+            '* Văn bản chính: Đề cập rõ lợi ích khi nhắn tin (tư vấn miễn phí, ưu đãi...)',
+            '* Ảnh nên thể hiện sự thân thiện, sẵn sàng hỗ trợ',
+            '* Chuẩn bị auto-reply hoặc chatbot để phản hồi nhanh',
           ],
           ctaRecommendations: ['Liên hệ ngay', 'Nhận ưu đãi', 'Tìm hiểu thêm'],
-          destinationNote: '🎯 Quảng cáo sẽ có nút "Nhắn tin" mở Messenger, URL đích không quan trọng (có thể để link fanpage)'
+          destinationNote: 'Quảng cáo sẽ có nút "Nhắn tin" mở Messenger, URL đích không quan trọng (có thể để link fanpage)'
         };
 
       default:
         return {
-          title: '📢 Tạo quảng cáo',
+          title: 'Tạo quảng cáo',
           mediaType: 'image-or-video',
           mediaLabel: 'Ảnh hoặc Video',
           mediaAccept: 'image/*,video/*',
           mediaDescription: 'Hỗ trợ ảnh hoặc video',
           requirements: [
-            '✅ Nội dung phải rõ ràng, hấp dẫn',
-            '✅ Ảnh: Độ phân giải tối thiểu 1080x1080px',
-            '✅ Video: Độ dài 15-60 giây',
+            '* Nội dung phải rõ ràng, hấp dẫn',
+            '* Ảnh: Độ phân giải tối thiểu 1080x1080px',
+            '* Video: Độ dài 15-60 giây',
           ],
           ctaRecommendations: ['Tìm hiểu thêm', 'Liên hệ ngay', 'Nhận ưu đãi'],
           destinationNote: 'URL đích là trang bạn muốn người dùng truy cập'
@@ -171,12 +171,12 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
 
   const getAiActionTooltip = () => {
     if (!contentAiEnabled) {
-      return "Nâng cấp lên Chatbot AI+ để dùng AI nội dung";
+      return "Nâng cấp lên Chatbot AI để dùng AI nội dung";
     }
     if (!contextId) {
       return "Thiết lập AI trước khi tạo nội dung";
     }
-    return "Sinh nội dung bằng AI";
+    return "Tạo nội dung bằng AI";
   };
 
   useEffect(() => {
@@ -202,7 +202,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // ✅ Validate file type based on destination type
+    // Validate file type based on destination type
     const fileType = file.type || "";
     const isVideoFile = fileType.startsWith("video/");
 
@@ -213,7 +213,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
       return;
     }
 
-    // ✅ Validate file size (max 100MB for video, 10MB for image)
+    // Validate file size (max 100MB for video, 10MB for image)
     const maxSizeVideo = 100 * 1024 * 1024; // 100MB
     const maxSizeImage = 10 * 1024 * 1024;  // 10MB
     const maxSize = isVideoFile ? maxSizeVideo : maxSizeImage;
@@ -225,7 +225,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
       return;
     }
 
-    // ✅ For video files, validate duration (optional - requires reading video metadata)
+    // For video files, validate duration (optional - requires reading video metadata)
     if (isVideoFile) {
       const video = document.createElement('video');
       video.preload = 'metadata';
@@ -284,8 +284,8 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
 
         toast.success(
           mediaType === "video"
-            ? "✅ Upload video thành công!"
-            : "✅ Upload ảnh thành công!"
+            ? "Upload video thành công!"
+            : "Upload ảnh thành công!"
         );
       } else {
         toast.error(res.data?.message || "Upload thất bại");
@@ -501,7 +501,7 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
             </h3>
             <div className="guidance-banner-box">
               <h4 className="guidance-banner-box-header">
-                📋 Yêu cầu nội dung:
+                Yêu cầu nội dung:
               </h4>
               {guidance.requirements.map((req, idx) => (
                 <div key={idx} className="guidance-banner-requirement">
@@ -510,10 +510,10 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
               ))}
             </div>
             <div className="guidance-banner-cta-box">
-              <strong>💡 Gợi ý CTA:</strong> {guidance.ctaRecommendations.join(', ')}
+              <strong>Gợi ý CTA:</strong> {guidance.ctaRecommendations.join(', ')}
             </div>
             <div className="guidance-banner-note">
-              ℹ️ {guidance.destinationNote}
+              {guidance.destinationNote}
             </div>
           </div>
         )}
@@ -797,11 +797,11 @@ function AdStepInner({ ad, setAd, adset, contentAiEnabled = true }, ref) {
                 {guidance.mediaDescription}
               </small>
 
-              {/* ✅ Hiển thị thông tin file đã chọn */}
+              {/* Hiển thị thông tin file đã chọn */}
               {ad.mediaUrl && (
                 <div className="selected-file-info">
                   <span className="file-type-badge">
-                    {ad.media === 'video' ? '🎥 Video' : '🖼️ Ảnh'}
+                    {ad.media === 'video' ? 'Video' : 'Ảnh'}
                   </span>
                   <span className="file-status">{t('ad_step.upload_success')}</span>
                 </div>

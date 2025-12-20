@@ -36,8 +36,8 @@ import { parseGeoLocationsToFrontend } from "../../../utils/parsers/locationPars
 function CreateAdsWizard({
   onClose,
   onSuccess = null,
-  onError = null, // ✅ Callback khi publish thất bại (để refresh data)
-  onDraftSaved = null, // ✅ Callback cho draft (chỉ fetch từ DB, không sync Facebook)
+  onError = null, // Callback khi publish thất bại (để refresh data)
+  onDraftSaved = null, // Callback cho draft (chỉ fetch từ DB, không sync Facebook)
   mode = "create",
   editingItem = null,
   selectedAccountId = null,
@@ -162,7 +162,7 @@ function CreateAdsWizard({
   }, [mode, editingItem, setWizardStep]);
 
   // ==============================
-  // 🔄 SYNC: Load từ campaignsList khi click item khác
+  // SYNC: Load từ campaignsList khi click item khác
   // ==============================
   useEffect(() => {
     if (campaignsList.length === 0) return;
@@ -184,12 +184,12 @@ function CreateAdsWizard({
       setCampaign(selectedCampaign);
     }
     if (selectedAdset) {
-      // ✅ Đảm bảo mỗi adset có targeting.locations riêng khi load
+      // Đảm bảo mỗi adset có targeting.locations riêng khi load
       const adsetWithLocations = {
         ...selectedAdset,
         targeting: {
           ...selectedAdset.targeting,
-          // ✅ Nếu chưa có locations hoặc locations không phải object, khởi tạo mới
+          // Nếu chưa có locations hoặc locations không phải object, khởi tạo mới
           locations: selectedAdset.targeting?.locations &&
             typeof selectedAdset.targeting.locations === 'object' &&
             !Array.isArray(selectedAdset.targeting.locations)
@@ -226,7 +226,7 @@ function CreateAdsWizard({
   ]);
 
   // ==============================
-  // 🔄 SYNC: Sync adset state về campaignsList ngay khi có thay đổi
+  // SYNC: Sync adset state về campaignsList ngay khi có thay đổi
   // ==============================
   const prevAdsetRef = useRef(null);
   useEffect(() => {
@@ -251,15 +251,15 @@ function CreateAdsWizard({
             ...camp,
             adsets: camp.adsets?.map((as, aIdx) => {
               if (aIdx === selectedAdsetIndex) {
-                // ✅ Deep merge để giữ nguyên các field khác và update adset
+                // Deep merge để giữ nguyên các field khác và update adset
                 return {
                   ...as,
                   ...adset,
-                  // ✅ Đảm bảo targeting.locations là object riêng (không share reference)
+                  // Đảm bảo targeting.locations là object riêng (không share reference)
                   targeting: {
                     ...as.targeting,
                     ...adset.targeting,
-                    // ✅ Deep clone locations để tránh reference sharing
+                    // Deep clone locations để tránh reference sharing
                     locations: adset.targeting?.locations
                       ? JSON.parse(JSON.stringify(adset.targeting.locations))
                       : (as.targeting?.locations || {
@@ -283,12 +283,12 @@ function CreateAdsWizard({
   }, [adset, selectedCampaignIndex, selectedAdsetIndex]);
 
   // ==============================
-  // 📤 SUBMIT: Sync states → campaignsList trước khi gửi
+  // SUBMIT: Sync states → campaignsList trước khi gửi
   // ==============================
   const handlePublishClick = () => {
-    // console.log("🚀 [SUBMIT] Preparing payload...");
+    // console.log("[SUBMIT] Preparing payload...");
 
-    // ✅ Sync current states vào campaignsList trước khi submit
+    // Sync current states vào campaignsList trước khi submit
     const finalCampaignsList = campaignsList.map((camp, cIdx) => {
       if (cIdx === selectedCampaignIndex) {
         return {
@@ -321,12 +321,12 @@ function CreateAdsWizard({
       return camp;
     });
 
-    console.log("📦 Final payload:", {
-      campaigns: finalCampaignsList.length,
-      mode,
-      hasIds: finalCampaignsList[0]?._id ? "✅" : "❌",
-      status: finalCampaignsList[0]?.status, // Log status
-    });
+    // console.log("Final payload:", {
+    //   campaigns: finalCampaignsList.length,
+    //   mode,
+    //   hasIds: finalCampaignsList[0]?._id ? "✅" : "❌",
+    //   status: finalCampaignsList[0]?.status, // Log status
+    // });
 
     // Đếm tổng số entities để hiển thị trong progress
     const totalEntities = finalCampaignsList.reduce((sum, camp) => {
@@ -380,9 +380,9 @@ function CreateAdsWizard({
 
     // Check status để gọi đúng function
     if (shouldPublish) {
-      console.log(
-        "Calling handleFlexiblePublish (CREATE: DRAFT/FAILED without external_id → ACTIVE)"
-      );
+      // console.log(
+      //   "Calling handleFlexiblePublish (CREATE: DRAFT/FAILED without external_id → ACTIVE)"
+      // );
       handleFlexiblePublish({
         campaignsList: finalCampaignsList,
         selectedAccountId,
@@ -392,7 +392,7 @@ function CreateAdsWizard({
         updateProgress,
       });
     } else {
-      console.log("Calling handleFlexibleUpdate (UPDATE: existing ACTIVE or FAILED with external_id)");
+      //console.log("Calling handleFlexibleUpdate (UPDATE: existing ACTIVE or FAILED with external_id)");
       handleFlexibleUpdate({
         campaignsList: finalCampaignsList,
         selectedAccountId,
@@ -470,7 +470,7 @@ function CreateAdsWizard({
 
       onClose();
     } catch (error) {
-      console.error("Error saving draft:", error);
+      //console.error("Error saving draft:", error);
       toast.error(
         t('save_draft.error', { message: error.response?.data?.message || error.message })
       );
@@ -666,7 +666,7 @@ function CreateAdsWizard({
 
       //toast.success("Đã tải thông tin thành công");
     } catch (error) {
-      console.error("Error handling CreateChild save:", error);
+      //console.error("Error handling CreateChild save:", error);
       toast.error(
         error?.response?.data?.message || t('validation.load_info_error')
       );

@@ -42,7 +42,7 @@ const EngagementSchema = {
         {
           type: "select",
           name: "optimization_goal",
-          label: "Loại tương tác",
+          label: "* Loại tương tác",
           options: (objective) => {
             const config = ADSET_CONFIG_BY_OBJECTIVE[objective];
             const goals = config?.optimization_goals || [];
@@ -97,7 +97,7 @@ const EngagementSchema = {
       id: "engagement-destination",
       title: i18n.t('wizard:objective_schema.conversion_destination_title'),
       icon: "Target",
-      // ✅ Ẩn section này nếu chưa chọn optimization_goal
+      // Ẩn section này nếu chưa chọn optimization_goal
       visibleIf: (adset) => {
         return adset?.optimization_goal && adset.optimization_goal !== "";
       },
@@ -106,7 +106,7 @@ const EngagementSchema = {
           type: "radio-group",
           name: "engagement_destination",
           // label: "Chọn nơi bạn muốn người dùng tương tác",
-          // ✅ Filter options dựa trên optimization_goal
+          // Filter options dựa trên optimization_goal
           options: (objective, adset) => {
             const allOptions = [
               {
