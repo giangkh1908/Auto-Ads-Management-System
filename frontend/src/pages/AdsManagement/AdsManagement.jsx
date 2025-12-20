@@ -224,8 +224,11 @@ function AdsManagement() {
             console.error("Error fetching data:", error);
           }
         } finally {
-          // Ensure switching indicator is cleared when fetch completes (success/error)
-          setSwitchingAccount(false);
+          // Ensure switching indicator is cleared when fetch completes (success/error/abort)
+          // Only clear if this is still the active controller
+          if (abortControllerRef.current === abortController) {
+            setSwitchingAccount(false);
+          }
         }
       };
 
@@ -234,8 +237,13 @@ function AdsManagement() {
       return () => {
         if (abortControllerRef.current === abortController) {
           abortController.abort();
+          // Tắt loading khi cleanup nếu controller này vẫn đang active
+          setSwitchingAccount(false);
         }
       };
+    } else if (initialized && !selectedAccountId) {
+      // Đảm bảo tắt loading nếu không có account được chọn
+      setSwitchingAccount(false);
     }
   }, [
     selectedAccountId,
