@@ -67,20 +67,20 @@ export const inviteEmployee = async (req, res) => {
     try {
       const ownerEntitlements = await getUserEntitlements(shopOwnerId.toString());
       const employeeLimit = ownerEntitlements?.limits?.employees || 1;
-      
+
       // Đếm số employee hiện tại trong shop này (bao gồm cả owner)
       const shopUserCount = await ShopUser.countDocuments({
         shop_id: shopId,
         status: "active",
       });
-      
+
       // Kiểm tra xem owner có trong ShopUser chưa, nếu chưa thì +1
       const ownerInShopUser = await ShopUser.findOne({
         shop_id: shopId,
         user_id: shopOwnerId,
         status: "active",
       });
-      
+
       const currentEmployeeCount = ownerInShopUser ? shopUserCount : shopUserCount + 1;
 
       // Kiểm tra nếu đã đạt giới hạn
@@ -593,7 +593,7 @@ export const updateUserStatus = async (req, res) => {
     // Xác định action và description dựa trên status
     let logAction = "UPDATE_USER_STATUS";
     let logDescription = `${currentUser.full_name || currentUser.email} đã ${newStatus} nhân viên "${targetUser.full_name || targetUser.email}" trong cửa hàng "${shop.shop_name}"`;
-    
+
     if (newStatus === StatusEnum.REMOVED) {
       logAction = "REMOVE_EMPLOYEE";
       logDescription = `${currentUser.full_name || currentUser.email} đã xóa nhân viên "${targetUser.full_name || targetUser.email}" ra khỏi cửa hàng "${shop.shop_name}"`;
@@ -639,7 +639,7 @@ export const removeEmployee = async (req, res) => {
   try {
     const { shopId, userId } = req.params;
     const { currentUserId } = req.body;
-    
+
     if (!currentUserId) {
       return res.status(401).json({
         success: false,
@@ -764,7 +764,7 @@ export const removeEmployee = async (req, res) => {
         shop_id: { $ne: shopId },
         revoked_at: null,
       });
-      
+
       if (otherUserRole) {
         await UserRole.findByIdAndUpdate(otherUserRole._id, {
           is_current: true,
@@ -908,7 +908,7 @@ export const relinquishOwnership = async (req, res) => {
 
     // Đồng bộ package của shop với package của owner mới
     try {
-      const { syncSingleShopPackage } = await import("../../services/shopPackageSyncService.js");
+      const { syncSingleShopPackage } = await import("../../services/shop/shopPackageSyncService.js");
       await syncSingleShopPackage(shopId);
       console.log(`✅ Đã sync package cho shop ${shopId} sau khi chuyển giao quyền owner`);
     } catch (syncError) {
@@ -1014,9 +1014,6 @@ export const assignPagesToEmployee = async (req, res) => {
       assigned_at: new Date(),
     }));
 
-    // Merge: giữ page cũ không bị mất nếu không có trong danh sách mới
-    const existingPages = employee.facebook_pages || [];
-
     // TẠO DANH SÁCH TÊN PAGE ĐỂ LƯU LOG
     const pageNames = normalizedPages
       .map(p => p.page_name)
@@ -1024,15 +1021,11 @@ export const assignPagesToEmployee = async (req, res) => {
       .join(", ");
     const pageCount = normalizedPages.length;
 
-    const mergedPages = [
-      ...normalizedPages,
-      ...existingPages.filter((old) => !normalizedPages.some((np) => np.page_id === old.page_id)),
-    ];
-
-    // Cập nhật employee bằng findOneAndUpdate (thay vì .save())
+    // ✅ THAY ĐỔI: Thay thế hoàn toàn thay vì merge
+    // Điều này cho phép bỏ chọn pages để xóa phân quyền
     const updatedEmployee = await ShopUser.findOneAndUpdate(
       { user_id: employeeObjectId, shop_id: shopObjectId },
-      { $set: { facebook_pages: mergedPages } },
+      { $set: { facebook_pages: normalizedPages } }, // Replace thay vì merge
       { new: true }
     );
 
@@ -1154,6 +1147,78 @@ export const deleteShopUser = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       status: false,
+      error: {
+        code: ErrorCode.COMMON_999,
+        message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),
+      },
+    });
+  }
+};
+
+/**
+ * Lấy danh sách page_id của các Pages đã được phân quyền cho employee
+ */
+export const getEmployeeAssignedPages = async (req, res) => {
+  try {
+    const { shopId, employeeId } = req.params;
+    const currentUserId = req.user._id;
+
+    if (!shopId || !employeeId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: ErrorCode.COMMON_003,
+          message: getErrorMessage(ErrorCode.COMMON_003, 'vi'),
+        },
+      });
+    }
+
+    const shopObjectId = new mongoose.Types.ObjectId(shopId);
+    const employeeObjectId = new mongoose.Types.ObjectId(employeeId);
+
+    // Kiểm tra quyền xem
+    const hasPermission = await UserRole.hasPermission(currentUserId, shopObjectId, "employee", "view");
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: ErrorCode.ROLE_006,
+          message: getErrorMessage(ErrorCode.ROLE_006, 'vi'),
+        },
+      });
+    }
+
+    // Lấy ShopUser của employee
+    const employee = await ShopUser.findOne({
+      user_id: employeeObjectId,
+      shop_id: shopObjectId,
+    }).select('facebook_pages');
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: ErrorCode.EMP_001,
+          message: getErrorMessage(ErrorCode.EMP_001, 'vi'),
+        },
+      });
+    }
+
+    // Lấy danh sách page_id từ facebook_pages
+    const pageIds = (employee.facebook_pages || [])
+      .filter(p => p.connected_status === 'connected')
+      .map(p => p.page_id);
+
+    return res.status(200).json({
+      success: true,
+      code: SuccessCode.SUCCESS_000,
+      message: getSuccessMessage(SuccessCode.SUCCESS_000, 'vi'),
+      data: pageIds,
+    });
+  } catch (error) {
+    console.error("getEmployeeAssignedPages error:", error);
+    return res.status(500).json({
+      success: false,
       error: {
         code: ErrorCode.COMMON_999,
         message: getErrorMessage(ErrorCode.COMMON_999, 'vi'),

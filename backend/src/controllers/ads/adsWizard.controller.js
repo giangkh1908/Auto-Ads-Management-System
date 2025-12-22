@@ -9,6 +9,7 @@ import {
   updateFlexibleService,
 } from "../../services/ads/adsWizardService.js";
 import User from "../../models/user/user.model.js";
+import UserRole from "../../models/user/userRole.model.js";
 import AdsAccount from "../../models/ads/adsAccount.model.js";
 import AdsCampaign from "../../models/ads/adsCampaign.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
@@ -16,6 +17,12 @@ import Ads from "../../models/ads/ads.model.js";
 import Creative from "../../models/ads/creative.model.js";
 import { convertCTAToFacebookType } from "../../utils/ctaUtils.js";
 import { saveLog } from "../../utils/log.js";
+
+// Helper: Get current shop_id from user's active UserRole
+async function getCurrentShopId(userId) {
+  const currentRole = await UserRole.findOne({ user_id: userId, is_current: true }).lean();
+  return currentRole?.shop_id || null;
+}
 
 /**
  * Publish Ads Wizard
@@ -694,12 +701,15 @@ export async function publishFlexibleController(req, res) {
     });
     // Log tạo campaigns thành công
     if (result.success && !dry_run) {
+      // Get shop_id from UserRole
+      const currentShopId = await getCurrentShopId(req.user._id);
+
       // Log for each created campaign
       for (const campaign of campaignsList) {
         await saveLog({
           user_id: req.user._id,
           user_name: user.full_name,
-          shop_id: account.shop_id || req.user.shop_id,
+          shop_id: currentShopId || account.shop_id,
           action: "CREATE_CAMPAIGN",
           target_type: "Campaign",
           target_id: result.data?.campaigns?.[campaignsList.indexOf(campaign)]?._id?.toString() || campaign.name,
@@ -721,7 +731,7 @@ export async function publishFlexibleController(req, res) {
     });
 
   } catch (error) {
-    console.error("❌ Lỗi publish flexible structure:", error);
+    console.error("Lỗi publish flexible structure:", error);
     const error_user_msg = error?.response?.data?.error_user_msg || error.message;
     const status = error?.response?.status || 500;
 
@@ -810,13 +820,16 @@ export async function updateFlexibleController(req, res) {
     });
     // Log cập nhật campaigns thành công
     if (result.success && result.totalUpdated > 0) {
+      // Get shop_id from UserRole
+      const currentShopId = await getCurrentShopId(req.user._id);
+
       // Log for each updated campaign
       for (const campaign of campaignsList) {
         if (campaign._id || campaign.external_id) {
           await saveLog({
             user_id: req.user._id,
             user_name: user.full_name,
-            shop_id: account.shop_id || req.user.shop_id,
+            shop_id: currentShopId || account.shop_id,
             action: "UPDATE_CAMPAIGN",
             target_type: "Campaign",
             target_id: campaign._id?.toString() || campaign.external_id,
@@ -1062,7 +1075,7 @@ export async function saveDraftController(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Lỗi lưu draft:', error);
+    console.error('Lỗi lưu draft:', error);
     return res.status(500).json({
       success: false,
       message: 'Lỗi khi lưu nháp',

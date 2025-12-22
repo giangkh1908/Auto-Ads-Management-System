@@ -29,8 +29,8 @@ async function simpleEntityResolution(accountId, entityName, type) {
 // ============================================
 export class AgentExecutor {
   constructor() {
-    this.llm = new ChatOpenAI({ 
-      modelName: "gpt-4o", 
+    this.llm = new ChatOpenAI({
+      modelName: "gpt-4o",
       temperature: 0.3,
       timeout: 30000,
       maxRetries: 1,
@@ -65,15 +65,15 @@ export class AgentExecutor {
 
   async _executeTool(intent, toolName, params, tool, rankPosition = null) {
     console.log(`[AgentExecutor] Executing tool ${toolName}...`);
-    
+
     try {
       const rawResult = await tool.invoke(params);
       const toolResult = JSON.parse(rawResult);
-      
+
       if (rankPosition) {
         return this._extractRankFromResult(toolResult, rankPosition);
       }
-      
+
       return { ...toolResult, cache_used: false };
     } catch (e) {
       console.error(`[AgentExecutor] Tool ${toolName} failed:`, e);
@@ -97,7 +97,7 @@ export class AgentExecutor {
 
   _formatRankingResponse(toolResult, plan) {
     if (!toolResult || toolResult.error) {
-      return `<p>⚠️ ${toolResult?.error || 'Không thể lấy dữ liệu'}: ${toolResult?.message || ''}</p>`;
+      return `<p>${toolResult?.error || 'Không thể lấy dữ liệu'}: ${toolResult?.message || ''}</p>`;
     }
 
     const level = toolResult.level || plan.level || 'campaign';
@@ -126,13 +126,13 @@ export class AgentExecutor {
         cpa: 'CPA',
         cpl: 'CPL'
       };
-      html += `<p style="font-size: 13px; color: #059669; margin-bottom: 12px;">⚡ Xếp hạng theo: ${metricNames[sortMetric] || sortMetric.toUpperCase()} (Chi phí chỉ để tham khảo)</p>\n`;
+      html += `<p style="font-size: 13px; color: #059669; margin-bottom: 12px;">Xếp hạng theo: ${metricNames[sortMetric] || sortMetric.toUpperCase()} (Chi phí chỉ để tham khảo)</p>\n`;
     }
 
     // Get data to display - handle both "top" array and "groups" object
     let items = [];
     let hasGroups = false;
-    
+
     if (toolResult.groups && typeof toolResult.groups === 'object') {
       // When grouped by objectives (objective=null in request)
       hasGroups = true;
@@ -142,7 +142,7 @@ export class AgentExecutor {
       // When filtering by specific objective
       items = toolResult.top;
     }
-    
+
     if (items.length === 0) {
       html += '<p>Không có dữ liệu trong khoảng thời gian này.</p>';
       return html;
@@ -151,12 +151,12 @@ export class AgentExecutor {
     // If has groups, display by objective sections
     if (hasGroups && toolResult.groups) {
       const objectiveLabels = {
-        OUTCOME_SALES: '🛒 Doanh số',
-        OUTCOME_LEADS: '📋 Khách hàng tiềm năng',
-        OUTCOME_TRAFFIC: '🔗 Lưu lượng truy cập',
-        OUTCOME_AWARENESS: '👁️ Mức độ nhận biết',
-        OUTCOME_ENGAGEMENT: '💬 Tương tác',
-        OUTCOME_APP_PROMOTION: '📱 Quảng bá ứng dụng'
+        OUTCOME_SALES: 'Doanh số',
+        OUTCOME_LEADS: 'Khách hàng tiềm năng',
+        OUTCOME_TRAFFIC: 'Lưu lượng truy cập',
+        OUTCOME_AWARENESS: 'Mức độ nhận biết',
+        OUTCOME_ENGAGEMENT: 'Tương tác',
+        OUTCOME_APP_PROMOTION: 'Quảng bá ứng dụng'
       };
 
       for (const [objective, groupItems] of Object.entries(toolResult.groups)) {
@@ -165,7 +165,7 @@ export class AgentExecutor {
         const objLabel = objectiveLabels[objective] || objective;
         // Get primary metric label from first item
         const primaryMetricLabel = groupItems[0]?.primary_metric?.label || 'Chỉ số chính';
-        
+
         html += `<h3 style="font-size: 16px; font-weight: 600; color: #1f2937; margin: 20px 0 12px 0;">${objLabel}</h3>\n`;
 
         html += `<table style="width: 100%; border-collapse: collapse; margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">\n`;
@@ -196,7 +196,7 @@ export class AgentExecutor {
     } else {
       // Single table (when objective was specified)
       const primaryMetricLabel = items[0]?.primary_metric?.label || metricLabel;
-      
+
       html += `<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">\n`;
       html += `  <thead>\n`;
       html += `    <tr style="background-color: #667eea; color: white;">\n`;
@@ -228,7 +228,7 @@ export class AgentExecutor {
 
   _formatQueryDataResponse(toolResult, plan) {
     if (!toolResult || toolResult.error) {
-      return `<p>⚠️ ${toolResult?.error || 'Không thể lấy dữ liệu'}: ${toolResult?.message || ''}</p>`;
+      return `<p>${toolResult?.error || 'Không thể lấy dữ liệu'}: ${toolResult?.message || ''}</p>`;
     }
 
     const queryType = toolResult.query_type || plan.query_type;
@@ -244,15 +244,15 @@ export class AgentExecutor {
     // OVERVIEW
     if (queryType === 'overview') {
       const metrics = toolResult.metrics || {};
-      let html = '<h4>📊 Tổng quan hiệu suất</h4>\n';
-      
+      let html = '<h4>Tổng quan hiệu suất</h4>\n';
+
       if (toolResult.period) {
         html += `<p style="font-size: 14px; color: #6b7280; margin-bottom: 12px;">Từ ngày ${this._formatDate(toolResult.period.from)} đến ${this._formatDate(toolResult.period.to)}</p>\n`;
       }
 
       html += '<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">\n';
       html += '  <tbody>\n';
-      
+
       const metricRows = [
         { label: 'Chi phí', value: metrics.spend?.formatted || '0₫', color: '#dc2626' },
         { label: 'Lượt hiển thị', value: metrics.impressions?.formatted || '0', color: '#3b82f6' },
@@ -284,7 +284,7 @@ export class AgentExecutor {
         return `<p>Không tìm thấy ${entityLabels[entityType].toLowerCase()} nào.</p>`;
       }
 
-      let html = `<h4>📋 Danh sách ${entityLabels[entityType]}</h4>\n`;
+      let html = `<h4>Danh sách ${entityLabels[entityType]}</h4>\n`;
       html += '<ul style="list-style: none; padding: 0; margin: 12px 0;">\n';
 
       entities.forEach(entity => {
@@ -322,7 +322,7 @@ export class AgentExecutor {
         return '<p>Không có dữ liệu để hiển thị.</p>';
       }
 
-      let html = `<h4>🏆 Top ${entityLabels[entityType]} theo ${metricLabels[metric] || metric}</h4>\n`;
+      let html = `<h4>Top ${entityLabels[entityType]} theo ${metricLabels[metric] || metric}</h4>\n`;
       html += '<table style="width: 100%; border-collapse: collapse; margin: 16px 0;">\n';
       html += '  <tbody>\n';
 
@@ -376,7 +376,7 @@ export class AgentExecutor {
       // 2.5. Merge context entities if user uses reference words
       if (frontendContext?.entities && frontendContext.entities.length > 0) {
         const hasReference = /\b(này|đó|nó|it|this|that)\b/i.test(message);
-        
+
         if (hasReference) {
           // Override plan entities with context (even if plan has entities)
           // Because LLM might extract wrong entity type from reference
@@ -392,7 +392,7 @@ export class AgentExecutor {
           }
         }
       }
-      
+
       console.log("[AgentExecutor] Final plan.entities:", plan.entities);
 
       // 3. Execute Tool based on Intent
@@ -408,17 +408,17 @@ export class AgentExecutor {
       if (plan.intent === "RANK_CAMPAIGNS" || plan.intent === "RANK_ADSETS" || plan.intent === "RANK_ADS") {
         toolName = "rank_campaigns";
         const tool = analyticsTools.find(t => t.name === toolName);
-        
+
         if (tool) {
           let defaultLevel = "campaign";
           if (plan.intent === "RANK_ADSETS") defaultLevel = "adset";
           else if (plan.intent === "RANK_ADS") defaultLevel = "ad";
-          
+
           const baseTopN = 5;
-          const topN = plan.rank_position 
-            ? Math.max(baseTopN, plan.rank_position) 
+          const topN = plan.rank_position
+            ? Math.max(baseTopN, plan.rank_position)
             : baseTopN;
-          
+
           const params = {
             account_id: accountId,
             level: plan.level || defaultLevel,
@@ -428,7 +428,7 @@ export class AgentExecutor {
             top_n: topN,
             sort_by_metric: plan.metrics && plan.metrics.length > 0 ? plan.metrics[0] : null,
           };
-          
+
           try {
             toolResult = await this._executeTool(plan.intent, toolName, params, tool, plan.rank_position);
           } catch (e) {
@@ -446,7 +446,7 @@ export class AgentExecutor {
               (Array.isArray(toolResult.top) && toolResult.top.length === 0) ||
               (!toolResult.top && toolResult.groups && Object.keys(toolResult.groups).length === 0)
             );
-          
+
           const isShortRange =
             (plan.time_range?.preset === "last_7_days") ||
             (
@@ -465,7 +465,7 @@ export class AgentExecutor {
               const hasFallbackData =
                 (Array.isArray(fallbackResult?.top) && fallbackResult.top.length > 0) ||
                 (fallbackResult?.groups && Object.keys(fallbackResult.groups).length > 0);
-              
+
               if (hasFallbackData) {
                 toolResult = { ...fallbackResult, fallback_to_30d: true };
                 plan.time_range = { preset: "last_30_days", from: thirtyDaysAgo, to: today };
@@ -476,19 +476,19 @@ export class AgentExecutor {
           }
         }
       }
-      
+
       // ============================================
       // INTENT: GET_ENTITY_METADATA
       // ============================================
       else if (plan.intent === "GET_ENTITY_METADATA") {
         toolName = "get_entity_metadata";
         const tool = analyticsTools.find(t => t.name === toolName);
-        
+
         // Check if entities are available (from plan or context)
         if (!plan.entities || plan.entities.length === 0) {
           // No entity context - provide clarification
           return {
-            response: "<p>⚠️ Xin lỗi, tôi không rõ bạn đang hỏi về entity nào. Vui lòng cung cấp tên <strong>campaign/adset/ad</strong> cụ thể.</p><p style=\"margin-top: 12px; color: #6b7280;\">Ví dụ: \"Campaign ABC thuộc về mục tiêu gì?\" hoặc \"Adset XYZ thuộc campaign nào?\"</p>",
+            response: "<p>Xin lỗi, tôi không rõ bạn đang hỏi về entity nào. Vui lòng cung cấp tên <strong>campaign/adset/ad</strong> cụ thể.</p><p style=\"margin-top: 12px; color: #6b7280;\">Ví dụ: \"Campaign ABC thuộc về mục tiêu gì?\" hoặc \"Adset XYZ thuộc campaign nào?\"</p>",
             intent: "GENERAL_CHAT",
             tool_used: null,
             data: null,
@@ -496,21 +496,21 @@ export class AgentExecutor {
             entities: []
           };
         }
-        
+
         if (tool) {
           let entityIds = [];
-          
+
           if (plan.entities && plan.entities.length > 0) {
             for (const ent of plan.entities) {
               const res = await simpleEntityResolution(accountId, ent.name, ent.type);
               if (res) entityIds.push(res.id);
             }
           }
-          
+
           if (entityIds.length === 0) {
-            toolResult = { 
-              error: "Không tìm thấy entity IDs", 
-              message: "Vui lòng chỉ định rõ entities cần xem thông tin." 
+            toolResult = {
+              error: "Không tìm thấy entity IDs",
+              message: "Vui lòng chỉ định rõ entities cần xem thông tin."
             };
           } else {
             const params = {
@@ -518,7 +518,7 @@ export class AgentExecutor {
               entity_type: plan.entities?.[0]?.type || "ad",
               entity_ids: entityIds,
             };
-            
+
             try {
               toolResult = await this._executeTool(plan.intent, toolName, params, tool);
             } catch (e) {
@@ -528,14 +528,14 @@ export class AgentExecutor {
           }
         }
       }
-      
+
       // ============================================
       // INTENT: QUERY_DATA
       // ============================================
       else if (plan.intent === "QUERY_DATA") {
         toolName = "query_data";
         const tool = analyticsTools.find(t => t.name === toolName);
-        
+
         if (tool) {
           const params = {
             account_id: accountId,
@@ -543,7 +543,7 @@ export class AgentExecutor {
             date_from: plan.time_range?.from || thirtyDaysAgo,
             date_to: plan.time_range?.to || today,
           };
-          
+
           // Add entity info if present
           if (plan.entities && plan.entities.length > 0) {
             // Pass entity names directly to tool - let tool handle resolution
@@ -559,45 +559,12 @@ export class AgentExecutor {
             // Fallback: use level if entities not provided
             params.entity_type = plan.level;
           }
-          
+
           // Add metric if present (for top_bottom queries)
           if (plan.metrics && plan.metrics.length > 0) {
             params.metric = plan.metrics[0];
           }
-          
-          try {
-            toolResult = await this._executeTool(plan.intent, toolName, params, tool);
-          } catch (e) {
-            console.error(`[AgentExecutor] Tool ${toolName} failed:`, e);
-            toolResult = { error: "Failed to fetch data", message: e.message };
-          }
-        }
-      } 
-      
-      // ============================================
-      // INTENT: ANALYZE_TREND
-      // ============================================
-      else if (plan.intent === "ANALYZE_TREND") {
-        toolName = "get_trend";
-        const tool = analyticsTools.find(t => t.name === toolName);
-        
-        if (tool) {
-          const params = {
-            account_id: accountId,
-            metric: plan.metrics?.[0] || "spend",
-            granularity: "day",
-            date_from: plan.time_range?.from || thirtyDaysAgo,
-            date_to: plan.time_range?.to || today,
-          };
-          
-          // Add entity name directly - getTrendTool will handle resolution
-          if (plan.entities && plan.entities.length > 0) {
-            const ent = plan.entities[0];
-            if (ent.type === "campaign") params.campaign_id = ent.name;
-            else if (ent.type === "adset") params.adset_id = ent.name;
-            else if (ent.type === "ad") params.ad_id = ent.name;
-          }
-          
+
           try {
             toolResult = await this._executeTool(plan.intent, toolName, params, tool);
           } catch (e) {
@@ -606,7 +573,40 @@ export class AgentExecutor {
           }
         }
       }
-      
+
+      // ============================================
+      // INTENT: ANALYZE_TREND
+      // ============================================
+      else if (plan.intent === "ANALYZE_TREND") {
+        toolName = "get_trend";
+        const tool = analyticsTools.find(t => t.name === toolName);
+
+        if (tool) {
+          const params = {
+            account_id: accountId,
+            metric: plan.metrics?.[0] || "spend",
+            granularity: "day",
+            date_from: plan.time_range?.from || thirtyDaysAgo,
+            date_to: plan.time_range?.to || today,
+          };
+
+          // Add entity name directly - getTrendTool will handle resolution
+          if (plan.entities && plan.entities.length > 0) {
+            const ent = plan.entities[0];
+            if (ent.type === "campaign") params.campaign_id = ent.name;
+            else if (ent.type === "adset") params.adset_id = ent.name;
+            else if (ent.type === "ad") params.ad_id = ent.name;
+          }
+
+          try {
+            toolResult = await this._executeTool(plan.intent, toolName, params, tool);
+          } catch (e) {
+            console.error(`[AgentExecutor] Tool ${toolName} failed:`, e);
+            toolResult = { error: "Failed to fetch data", message: e.message };
+          }
+        }
+      }
+
       // ============================================
       // INTENT: GENERAL_CHAT
       // ============================================
@@ -621,9 +621,9 @@ export class AgentExecutor {
         content = response.content;
       } catch (responseError) {
         console.error("[AgentExecutor] Response generation error:", responseError);
-        content = "⚠️ Xin lỗi, tôi gặp khó khăn khi tạo câu trả lời. Vui lòng thử lại.";
+        content = "Xin lỗi, tôi gặp khó khăn khi tạo câu trả lời. Vui lòng thử lại.";
       }
-      
+
       return {
         response: content,
         intent: plan.intent,
@@ -636,7 +636,7 @@ export class AgentExecutor {
     } catch (error) {
       console.error("[AgentExecutor] Fatal Error:", error);
       return {
-        response: "⚠️ Xin lỗi, hệ thống đang gặp sự cố. Vui lòng thử lại sau.",
+        response: "Xin lỗi, hệ thống đang gặp sự cố. Vui lòng thử lại sau.",
         intent: "GENERAL_CHAT",
         error: error.message,
         suggestions: [],
@@ -682,56 +682,56 @@ export class AgentExecutor {
       'hệ thống này', 'nền tảng này', 'ứng dụng này',
       'bạn có thể', 'bạn làm được', 'bạn giúp được gì'
     ];
-    const isAskingAboutSystem = systemFeatureKeywords.some(keyword => 
+    const isAskingAboutSystem = systemFeatureKeywords.some(keyword =>
       lowerMessage.includes(keyword)
     );
 
     // If asking about system features, return predefined response
     if (isAskingAboutSystem) {
       const systemFeaturesContent = [
-        '<h4>📋 Các chức năng chính của hệ thống:</h4>',
-        '<h4>1. 📊 Quản lý Quảng cáo (Ads Management)</h4>',
+        '<h4>Các chức năng chính của hệ thống:</h4>',
+        '<h4>1. Quản lý Quảng cáo (Ads Management)</h4>',
         '<p>• Quản lý chiến dịch (Campaigns), nhóm quảng cáo (Ad Sets) và quảng cáo (Ads)</p>',
         '<p>• Đồng bộ dữ liệu từ Facebook Marketing API</p>',
         '<p>• Xem và cập nhật thông tin quảng cáo trực tiếp</p>',
         '<p>• Lọc và tìm kiếm theo tên, trạng thái, mục tiêu</p>',
         '<p>• Xem insights chi tiết (spend, impressions, clicks, CTR, CPC, v.v.)</p>',
-        '<h4>2. 📈 Phân tích & Báo cáo (Analytics)</h4>',
+        '<h4>2. Phân tích & Báo cáo (Analytics)</h4>',
         '<p>• Phân tích hiệu suất quảng cáo theo thời gian</p>',
         '<p>• Xem dữ liệu insights đã được đồng bộ</p>',
         '<p>• Lọc theo mục tiêu quảng cáo (objective)</p>',
         '<p>• Phân trang và tìm kiếm ads có dữ liệu</p>',
-        '<h4>3. ⚡ Tự động hóa (Automation Rules)</h4>',
+        '<h4>3. Tự động hóa (Automation Rules)</h4>',
         '<p>• Tự động bật/tắt quảng cáo dựa trên điều kiện</p>',
         '<p>• Tự động tăng/giảm ngân sách</p>',
         '<p>• Thiết lập quy tắc theo metrics (spend, CTR, CPC, v.v.)</p>',
         '<p>• Chạy theo lịch định kỳ (hàng phút, hàng giờ, hàng ngày)</p>',
-        '<h4>4. 🏪 Quản lý Shop & Tài khoản</h4>',
+        '<h4>4. Quản lý Shop & Tài khoản</h4>',
         '<p>• Quản lý nhiều cửa hàng (Shops)</p>',
         '<p>• Quản lý nhân viên và phân quyền</p>',
         '<p>• Kết nối Facebook Pages</p>',
         '<p>• Kết nối Facebook Ad Accounts</p>',
-        '<h4>5. 🤖 AI Chat Hỗ trợ</h4>',
+        '<h4>5. AI Chat Hỗ trợ</h4>',
         '<p>• Hỏi đáp về dữ liệu quảng cáo bằng tiếng Việt</p>',
         '<p>• Phân tích xu hướng và hiệu suất</p>',
         '<p>• Truy vấn thông tin campaigns, adsets, ads</p>',
         '<p>• Đưa ra insights và khuyến nghị</p>',
-        '<h4>6. 🔄 Đồng bộ dữ liệu</h4>',
+        '<h4>6. Đồng bộ dữ liệu</h4>',
         '<p>• Đồng bộ tự động entities (campaigns, adsets, ads) từ Facebook</p>',
         '<p>• Đồng bộ insights theo lịch (cron job)</p>',
         '<p>• Cache dữ liệu để tối ưu hiệu suất</p>',
         '<p>• Lazy loading insights khi cần</p>'
       ].join('\n');
-      
+
       return { content: systemFeaturesContent };
     }
 
     // Check if we have real data (not GENERAL_CHAT)
     const hasRealData = plan.intent !== "GENERAL_CHAT" &&
-                       toolResult && 
-                       toolResult.message !== "General conversation - no tool needed" &&
-                       !toolResult.error;
-    
+      toolResult &&
+      toolResult.message !== "General conversation - no tool needed" &&
+      !toolResult.error;
+
     // Format date range for display - ONLY if we have real data
     let dateRangeText = "";
     if (hasRealData) {
@@ -750,10 +750,10 @@ export class AgentExecutor {
         dateRangeText = `từ ${formatDate(plan.time_range.from)} đến ${formatDate(plan.time_range.to)}`;
       }
     }
-    
+
     // Note: conversationHistory is passed to intentClassifier for context,
     // but we don't use it here in response generation anymore.
-    
+
     // Simplified prompt for GENERAL_CHAT, ANALYZE_TREND, GET_ENTITY_METADATA
     const systemPrompt = `
 You are a Senior Marketing Consultant for Facebook Ads.
@@ -788,10 +788,10 @@ If data is missing, explain politely.
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage }
       ];
-      
+
       const result = await this.llm.invoke(messages);
-      let content = result.content?.trim() || "⚠️ Không thể tạo câu trả lời";
-      
+      let content = result.content?.trim() || "Không thể tạo câu trả lời";
+
       // Clean up excessive whitespace
       // Remove multiple consecutive blank lines (more than 1)
       content = content.replace(/\n{3,}/g, '\n\n');
@@ -805,12 +805,12 @@ If data is missing, explain politely.
       content = content.replace(/<\/h4><h4>/g, '</h4>\n<h4>');
       // Add back single newline between h4 and p
       content = content.replace(/<\/h4><p>/g, '</h4>\n<p>');
-      
+
       return { content };
     } catch (error) {
       console.error("[AgentExecutor] Error generating response:", error);
-      return { 
-        content: "⚠️ Xin lỗi, tôi đang gặp chút khó khăn khi tạo câu trả lời. Bạn vui lòng thử lại nhé!"
+      return {
+        content: "Xin lỗi, tôi đang gặp chút khó khăn khi tạo câu trả lời. Bạn vui lòng thử lại nhé!"
       };
     }
   }

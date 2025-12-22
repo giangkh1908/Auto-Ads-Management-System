@@ -20,7 +20,7 @@ export class ContextManager {
       const todayStats = await this._getTodayStats(account._id);
 
       // 3. Get Recent Alerts/Insights (Placeholder for now)
-      const alerts = []; 
+      const alerts = [];
 
       return {
         account: {
@@ -55,7 +55,7 @@ export class ContextManager {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    // ✅ Query directly from AdPerformance table
+    // Query directly from AdPerformance table
     const stats = await AdPerformance.aggregate([
       {
         $match: {

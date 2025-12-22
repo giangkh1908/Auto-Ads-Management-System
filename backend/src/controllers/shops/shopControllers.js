@@ -81,8 +81,8 @@ export const createShop = async (req, res) => {
     }
 
     // Gán package của owner vào shop
-    const shop = new Shop({ 
-      ...req.body, 
+    const shop = new Shop({
+      ...req.body,
       owner_id: ownerId,
       current_package_id: userPackage.package_id._id,
       package_expired_at: userPackage.to_date || null,
@@ -192,7 +192,7 @@ export const getShopsByOwner = async (req, res) => {
           shop_id: shop._id,
           status: "active", // chỉ tính nhân viên đang hoạt động
         });
-        
+
         // Kiểm tra xem owner có trong ShopUser chưa, nếu chưa thì +1
         let count = shopUserCount;
         if (ownerId) {
@@ -205,7 +205,7 @@ export const getShopsByOwner = async (req, res) => {
             count = shopUserCount + 1; // +1 cho owner
           }
         }
-        
+
         return { shop_id: shop._id.toString(), employee_count: count };
       })
     );
@@ -214,7 +214,7 @@ export const getShopsByOwner = async (req, res) => {
     const ownerIds = [...new Set(shops.map(shop => shop.owner_id?._id?.toString()).filter(Boolean))];
     const ownerPackagesMap = new Map();
     const ownerShopCountsMap = new Map();
-    
+
     if (ownerIds.length > 0) {
       const ownerPackages = await UserPackage.find({
         user_id: { $in: ownerIds },
@@ -227,8 +227,8 @@ export const getShopsByOwner = async (req, res) => {
       // Tạo map: ownerId -> package (lấy package mới nhất của mỗi owner)
       ownerPackages.forEach(up => {
         const ownerIdStr = up.user_id.toString();
-        if (!ownerPackagesMap.has(ownerIdStr) || 
-            (ownerPackagesMap.get(ownerIdStr)?.created_at < up.created_at)) {
+        if (!ownerPackagesMap.has(ownerIdStr) ||
+          (ownerPackagesMap.get(ownerIdStr)?.created_at < up.created_at)) {
           ownerPackagesMap.set(ownerIdStr, up);
         }
       });
@@ -277,7 +277,7 @@ export const getShopsByOwner = async (req, res) => {
       let employeeLimit = 1;
       let pageLimit = 0;
       let shopLimit = 0;
-      
+
       if (shopPackage && packageName !== "Basic") {
         // Có package thực sự - lấy từ ownerPackage (có thể đã được customize) hoặc từ package template
         if (ownerPackage) {
@@ -331,16 +331,16 @@ export const updateShop = async (req, res) => {
     const { id } = req.params;
     const userId = req.user._id;
     const currentUser = await User.findById(userId);
-    
+
     // Lấy shop trước khi update để so sánh
     const oldShop = await Shop.findById(id);
     if (!oldShop) return res.status(404).json({ message: "Shop not found" });
-    
+
     const updatedShop = await Shop.findByIdAndUpdate(id, req.body, {
       new: true, // trả về bản ghi đã cập nhật
       runValidators: true,
     });
-    
+
     // Ghi log UPDATE_SHOP
     await saveLog({
       user_id: userId,
@@ -361,7 +361,7 @@ export const updateShop = async (req, res) => {
         new_industry: updatedShop.industry,
       },
     });
-    
+
     res.status(200).json({
       success: true,
       message: "Shop updated successfully",
@@ -437,8 +437,8 @@ export const switchCurrentShop = async (req, res) => {
       }
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Current shop switched successfully",
       shop: {
         id: shop?._id,
@@ -547,31 +547,31 @@ export const getCurrentShopPackage = async (req, res) => {
           if (ownerEntitlements.limits) {
             limits = ownerEntitlements.limits;
           }
-          
+
           // Đếm usage riêng cho shop này
           // Đếm số employee trong shop này (bao gồm cả owner)
           const shopUserCount = await ShopUser.countDocuments({
             shop_id: shopId,
             status: "active",
           });
-          
+
           // Kiểm tra xem owner có trong ShopUser chưa, nếu chưa thì +1
           const ownerInShopUser = await ShopUser.findOne({
             shop_id: shopId,
             user_id: ownerId,
             status: "active",
           });
-          
+
           const shopEmployeeCount = ownerInShopUser ? shopUserCount : shopUserCount + 1;
-          
+
           // Đếm số page trong shop này
           const shopPageCount = Array.isArray(shop.facebook_pages)
             ? shop.facebook_pages.filter((p) => p.connected_status === "connected").length
             : 0;
-          
+
           // Lấy số shop của owner (từ entitlements)
           const ownerShopCount = ownerEntitlements.usage?.shops || 0;
-          
+
           usage = {
             employees: shopEmployeeCount,
             pages: shopPageCount,
@@ -711,7 +711,7 @@ export const getFacebookPages = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Không lấy được danh sách page từ Facebook', detail: fbData });
     }
 
-    // ✅ Lấy shop hiện tại của user để check connected pages
+    // Lấy shop hiện tại của user để check connected pages
     const userId = req.user._id;
     const currentRole = await UserRole.findOne({
       user_id: userId,
@@ -721,14 +721,14 @@ export const getFacebookPages = async (req, res) => {
 
     const currentShopId = currentRole?.shop_id;
 
-    // ✅ Lấy tất cả shops có pages đã kết nối với các page_id này
+    // Lấy tất cả shops có pages đã kết nối với các page_id này
     const pageIds = fbData.data.map(p => p.id);
     const shopsWithPages = await Shop.find({
       'facebook_pages.page_id': { $in: pageIds },
       'facebook_pages.connected_status': 'connected'
     }).select('_id shop_name facebook_pages').lean();
 
-    // ✅ Tạo map để tra cứu nhanh: page_id -> shop info
+    // Tạo map để tra cứu nhanh: page_id -> shop info
     const pageToShopMap = {};
     shopsWithPages.forEach(shop => {
       shop.facebook_pages?.forEach(page => {
@@ -742,7 +742,7 @@ export const getFacebookPages = async (req, res) => {
       });
     });
 
-    // ✅ Map pages với thông tin connected_shop
+    // Map pages với thông tin connected_shop
     const pages = fbData.data.map(p => {
       const connectedShop = pageToShopMap[p.id];
       return {
@@ -752,7 +752,7 @@ export const getFacebookPages = async (req, res) => {
         pageAccessToken: p.access_token,
         tasks: p.tasks || [],
         picture: p.picture?.data?.url || null,
-        // ✅ Thêm thông tin connected_shop
+        // Thêm thông tin connected_shop
         connected_shop: connectedShop || null,
         can_connect: !connectedShop, // Chỉ có thể connect nếu chưa có shop nào kết nối
       };
@@ -772,7 +772,7 @@ export const refreshUserFacebookPages = async (req, res) => {
     if (!user?.facebookAccessToken) {
       return res.status(400).json({
         success: false,
-        message: "Không có Facebook access token. Vui lòng đăng nhập Facebook.",
+        message: "Không có dữ liệu.",
       });
     }
 
@@ -991,11 +991,11 @@ export const connectFacebookPage = async (req, res) => {
       target_name: pageInfo?.name || pageId,
       page_info: pageInfo,
       request: { pageId },
-      response: { 
-        success: true, 
-        pageId, 
+      response: {
+        success: true,
+        pageId,
         pageName: pageInfo?.name,
-        connectedPagesCount: shop.facebook_pages.length 
+        connectedPagesCount: shop.facebook_pages.length
       },
       ip_address: req.ip,
     });
@@ -1149,10 +1149,10 @@ export const updatePageStatus = async (req, res) => {
       ip_address: req.ip,
     });
 
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       message: pageStatus === "pause" ? 'Đã tạm dừng page.' : 'Đã kích hoạt lại page.',
-      data: { shop, shopUser } 
+      data: { shop, shopUser }
     });
   } catch (error) {
     console.log('updatePageStatus error:', error);

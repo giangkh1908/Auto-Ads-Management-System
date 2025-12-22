@@ -3,7 +3,7 @@ import Log from "../models/admin/log.model.js";
 export const saveLog = async (logData) => {
   try {
     // DEBUG: Log the incoming data
-    // console.log("[saveLog] 📝 Receiving logData:", {
+    // console.log("[saveLog] Receiving logData:", {
     //   action: logData.action,
     //   shop_id: logData.shop_id,
     //   user_id: logData.user_id,
@@ -12,7 +12,7 @@ export const saveLog = async (logData) => {
 
     // Nếu không có shop_id, log warning và skip
     if (!logData.shop_id) {
-      console.warn("[saveLog] ⚠️ shop_id is null/undefined! Log will NOT be visible in Shop History.");
+      console.warn("[saveLog] shop_id is null/undefined! Log will NOT be visible in Shop History.");
     }
 
     // Tạo description tự động theo action

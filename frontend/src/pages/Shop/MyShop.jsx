@@ -76,7 +76,7 @@ function MyShop() {
       const res = await axiosInstance.get("/api/shops/owner");
       const data = res.data;
 
-      // console.log("🔹 API response:", data);
+      // console.log("API response:", data);
 
       if (data.success && Array.isArray(data.data)) {
         const formatted = data.data.map((shop) => {
@@ -492,7 +492,7 @@ function MyShop() {
                     if (data.success) {
                       toast.success("Tạo shop thành công!");
                       setIsAddOpen(false);
-                      // 👉 Gọi lại API để refresh danh sách
+                      // Gọi lại API để refresh danh sách
                       await loadShops();
                     } else {
                       toast.error(data.message || "Không thể tạo shop");

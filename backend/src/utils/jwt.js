@@ -8,7 +8,7 @@ const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
 
 /**
- * 🧩 Hàm tạo JWT token
+ * Hàm tạo JWT token
  * @param {Object} payload - Dữ liệu lưu trong token
  * @param {String} secret - Secret key tương ứng (access hoặc refresh)
  * @param {String} expiresIn - Thời gian hết hạn token
@@ -18,7 +18,7 @@ export const generateToken = (payload, secret, expiresIn) => {
 };
 
 /**
- * ✅ Tạo Access + Refresh Tokens
+ * Tạo Access + Refresh Tokens
  * @param {String} userId - ID người dùng
  */
 export const generateTokens = (userId) => {
@@ -40,14 +40,14 @@ export const generateTokens = (userId) => {
 };
 
 /**
- * 🔐 Verify Access Token
+ * Verify Access Token
  */
 export const verifyAccessToken = (token) => {
   return jwt.verify(token, ACCESS_SECRET);
 };
 
 /**
- * 🔁 Verify Refresh Token
+ * Verify Refresh Token
  */
 export const verifyRefreshToken = (token) => {
   return jwt.verify(token, REFRESH_SECRET);

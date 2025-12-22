@@ -30,7 +30,7 @@ function extractObjectId(value) {
 export async function getAdFromDatabase(req, res) {
   try {
     const { ad_id, campaign_id } = req.query;
-    
+
     if (!ad_id && !campaign_id) {
       return res.status(400).json({
         success: false,
@@ -61,20 +61,20 @@ export async function getAdFromDatabase(req, res) {
       ad = await Ads.findById(cleanAdId).populate('created_by', 'full_name email');
     } else if (cleanCampaignId) {
       // Tìm ads thông qua campaign_id
-      const ads = await Ads.find({ 
+      const ads = await Ads.find({
         $or: [
           { campaign_id: cleanCampaignId },
           { set_id: { $in: await AdsSet.find({ campaign_id: cleanCampaignId }).distinct('_id') } }
         ]
       })
-      .populate('created_by', 'full_name email')
-      .sort({ createdAt: -1 });
+        .populate('created_by', 'full_name email')
+        .sort({ createdAt: -1 });
       return res.status(200).json({
         success: true,
         data: ads
       });
     }
-    
+
     if (!ad) {
       return res.status(404).json({
         success: false,
@@ -156,11 +156,11 @@ export async function listAdsCtrl(req, res) {
       const normalizedId = account_id.startsWith("act_")
         ? account_id.substring(4)
         : account_id;
-      
+
       const accountAdsets = await AdsSet.find({
         external_account_id: { $in: [normalizedId, `act_${normalizedId}`] }
       }).distinct('_id');
-      
+
       filter.$or = [
         { external_account_id: { $in: [normalizedId, `act_${normalizedId}`] } },
         { set_id: { $in: accountAdsets } }
@@ -171,10 +171,10 @@ export async function listAdsCtrl(req, res) {
     if (status) {
       filter.status = status;
     }
-    
+
     if (q) filter.name = new RegExp(q, "i");
 
-    // ✅ Filter theo ngày bắt đầu (start_time) - Ads không có start_time riêng, dùng created_at
+    // Filter theo ngày bắt đầu (start_time) - Ads không có start_time riêng, dùng created_at
     if (date_from || date_to) {
       filter.created_at = {};
       if (date_from) {
@@ -191,9 +191,9 @@ export async function listAdsCtrl(req, res) {
     // Hỗ trợ fetch_all hoặc limit lớn để Frontend có thể sort và phân trang
     const limitNum = Number(limit);
     const shouldFetchAll = fetch_all === 'true' || fetch_all === true || limitNum === 0 || limitNum > 10000;
-    
+
     let items, total;
-    
+
     if (shouldFetchAll) {
       // Fetch tất cả (không phân trang) - để Frontend sort và phân trang
       [items, total] = await Promise.all([
@@ -210,7 +210,7 @@ export async function listAdsCtrl(req, res) {
           .sort({ createdAt: -1 }), // Sort ở Backend trước
         Ads.countDocuments(filter)
       ]);
-      
+
       return res.status(200).json({
         items,
         total,
@@ -237,7 +237,7 @@ export async function listAdsCtrl(req, res) {
           .limit(Number(limit)),
         Ads.countDocuments(filter),
       ]);
-      
+
       return res.status(200).json({
         items,
         total,
@@ -382,9 +382,9 @@ export async function getAdsInsightsCtrl(req, res) {
       .filter((s) => s.length > 0);
 
     const insightsData = await fetchInsightsForAdIds(accessToken, adIds);
-    
-    console.log(`📊 Fetched insights for ${insightsData.length} ads from FB`);
-    
+
+    console.log(`Fetched insights for ${insightsData.length} ads from FB`);
+
     // Map lại data để FE dễ xử lý và để lưu DB
     // KHÔNG cần extract .data?.[0] vì service đã làm rồi
     const items = insightsData.map(item => ({
@@ -405,7 +405,7 @@ export async function getAdsInsightsCtrl(req, res) {
 
       if (bulkOps.length > 0) {
         Ads.bulkWrite(bulkOps, { ordered: false })
-          .then(() => console.log(`✅ Saved insights for ${bulkOps.length} ads to DB`))
+          .then(() => console.log(`Saved insights for ${bulkOps.length} ads to DB`))
           .catch(err => console.error("Error saving ad insights to DB:", err.message));
       }
     }

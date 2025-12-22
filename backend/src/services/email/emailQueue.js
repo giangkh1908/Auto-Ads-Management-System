@@ -45,7 +45,7 @@ export const addToQueue = (emailFunction, metadata = {}) => {
   queue.push(job);
   stats.pending++;
 
-  console.log(`📧 [EmailQueue] Added to queue: ${metadata.type || 'unknown'} -> ${metadata.to || 'unknown'} (Queue size: ${queue.length})`);
+  console.log(`[EmailQueue] Added to queue: ${metadata.type || 'unknown'} -> ${metadata.to || 'unknown'} (Queue size: ${queue.length})`);
 
   // Start processor if not running
   if (!isProcessorRunning) {
@@ -63,29 +63,29 @@ const processJob = async (job) => {
   stats.pending--;
 
   try {
-    console.log(`📤 [EmailQueue] Sending: ${job.metadata.type || 'unknown'} -> ${job.metadata.to || 'unknown'}`);
-    
+    console.log(`[EmailQueue] Sending: ${job.metadata.type || 'unknown'} -> ${job.metadata.to || 'unknown'}`);
+
     await job.emailFunction();
-    
+
     stats.sent++;
-    console.log(`✅ [EmailQueue] Sent successfully: ${job.metadata.type || 'unknown'} -> ${job.metadata.to || 'unknown'}`);
+    console.log(`[EmailQueue] Sent successfully: ${job.metadata.type || 'unknown'} -> ${job.metadata.to || 'unknown'}`);
   } catch (error) {
-    console.error(`❌ [EmailQueue] Failed: ${job.metadata.type || 'unknown'} -> ${job.metadata.to || 'unknown'}`, error.message);
+    console.error(`[EmailQueue] Failed: ${job.metadata.type || 'unknown'} -> ${job.metadata.to || 'unknown'}`, error.message);
 
     // Retry logic
     if (job.retries < CONFIG.maxRetries) {
       job.retries++;
       const delay = CONFIG.retryDelays[job.retries - 1] || CONFIG.retryDelays[CONFIG.retryDelays.length - 1];
-      
-      console.log(`🔄 [EmailQueue] Scheduling retry ${job.retries}/${CONFIG.maxRetries} in ${delay / 1000}s...`);
-      
+
+      console.log(`[EmailQueue] Scheduling retry ${job.retries}/${CONFIG.maxRetries} in ${delay / 1000}s...`);
+
       setTimeout(() => {
         queue.push(job);
         stats.pending++;
       }, delay);
     } else {
       stats.failed++;
-      console.error(`💀 [EmailQueue] Max retries exceeded for: ${job.metadata.type || 'unknown'} -> ${job.metadata.to || 'unknown'}`);
+      console.error(`[EmailQueue] Max retries exceeded for: ${job.metadata.type || 'unknown'} -> ${job.metadata.to || 'unknown'}`);
     }
   } finally {
     processing--;
@@ -112,9 +112,9 @@ const processQueue = async () => {
  */
 const startProcessor = () => {
   if (isProcessorRunning) return;
-  
+
   isProcessorRunning = true;
-  console.log('🚀 [EmailQueue] Processor started');
+  console.log('[EmailQueue] Processor started');
 
   const intervalId = setInterval(() => {
     processQueue();
@@ -123,7 +123,7 @@ const startProcessor = () => {
     if (queue.length === 0 && processing === 0) {
       clearInterval(intervalId);
       isProcessorRunning = false;
-      console.log('⏸️ [EmailQueue] Processor stopped (queue empty)');
+      console.log('[EmailQueue] Processor stopped (queue empty)');
     }
   }, CONFIG.processInterval);
 };

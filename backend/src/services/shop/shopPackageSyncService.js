@@ -1,5 +1,5 @@
 import Shop from "../../models/shops/shop.model.js";
-import UserPackage from "../models/userPackage.model.js";
+import UserPackage from "../../models/package/userPackage.model.js";
 import User from "../../models/user/user.model.js";
 import { saveLog } from "../../utils/log.js";
 

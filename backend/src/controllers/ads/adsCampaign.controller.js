@@ -31,26 +31,26 @@ function extractObjectId(value) {
 export async function listCampaignsCtrl(req, res) {
   try {
     const { account_id, q, status, page = 1, limit = 10, fetch_all = false, date_from, date_to } = req.query;
-    
+
     // Xây dựng filter
     const filter = {};
-    
-    // ✅ Lấy tất cả items (không filter theo status) - Frontend sẽ filter
+
+    // Lấy tất cả items (không filter theo status) - Frontend sẽ filter
     if (account_id) {
       // Hỗ trợ cả định dạng có act_ và không có act_
       const normalizedId = account_id.startsWith('act_') ? account_id.substring(4) : account_id;
       filter.external_account_id = { $in: [normalizedId, `act_${normalizedId}`] };
     }
-    
+
     // Nếu có filter status cụ thể, áp dụng filter đó (bao gồm cả DELETED nếu query)
     if (status) {
       filter.status = status;
     }
     // Nếu không có status parameter, lấy tất cả (bao gồm cả DELETED)
-    
+
     if (q) filter.name = new RegExp(q, 'i');
-    
-    // ✅ Filter theo ngày bắt đầu chiến dịch (start_time)
+
+    // Filter theo ngày bắt đầu chiến dịch (start_time)
     if (date_from || date_to) {
       filter.start_time = {};
       if (date_from) {
@@ -63,13 +63,13 @@ export async function listCampaignsCtrl(req, res) {
         filter.start_time.$lte = endDate;
       }
     }
-    
+
     // Hỗ trợ fetch_all hoặc limit lớn để Frontend có thể sort và phân trang
     const limitNum = Number(limit);
     const shouldFetchAll = fetch_all === 'true' || fetch_all === true || limitNum === 0 || limitNum > 10000;
-    
+
     let items, total;
-    
+
     if (shouldFetchAll) {
       // Fetch tất cả (không phân trang) - để Frontend sort và phân trang
       [items, total] = await Promise.all([
@@ -78,7 +78,7 @@ export async function listCampaignsCtrl(req, res) {
           .sort({ createdAt: -1 }), // Sort ở Backend trước
         AdsCampaign.countDocuments(filter)
       ]);
-      
+
       return res.status(200).json({
         items,
         total,
@@ -97,7 +97,7 @@ export async function listCampaignsCtrl(req, res) {
           .limit(Number(limit)),
         AdsCampaign.countDocuments(filter)
       ]);
-      
+
       return res.status(200).json({
         items,
         total,
@@ -108,9 +108,9 @@ export async function listCampaignsCtrl(req, res) {
     }
   } catch (err) {
     console.error("GET Campaigns error:", err);
-    return res.status(500).json({ 
-      message: "Lỗi khi lấy danh sách chiến dịch", 
-      error: err.message 
+    return res.status(500).json({
+      message: "Lỗi khi lấy danh sách chiến dịch",
+      error: err.message
     });
   }
 }
@@ -121,7 +121,7 @@ export async function listCampaignsCtrl(req, res) {
 export async function getCampaignFromDatabase(req, res) {
   try {
     const { campaign_id } = req.query;
-    
+
     if (!campaign_id) {
       return res.status(400).json({
         success: false,
@@ -140,7 +140,7 @@ export async function getCampaignFromDatabase(req, res) {
 
     const campaign = await AdsCampaign.findById(cleanCampaignId)
       .populate('created_by', 'full_name email');
-    
+
     if (!campaign) {
       return res.status(404).json({
         success: false,
@@ -175,9 +175,9 @@ export async function getCampaignCtrl(req, res) {
     return res.status(200).json(campaign);
   } catch (err) {
     console.error("GET Campaign error:", err);
-    return res.status(500).json({ 
-      message: "Lỗi khi lấy chi tiết chiến dịch", 
-      error: err.message 
+    return res.status(500).json({
+      message: "Lỗi khi lấy chi tiết chiến dịch",
+      error: err.message
     });
   }
 }
@@ -221,7 +221,7 @@ export async function getCampaignsLiveCtrl(req, res) {
     if (!adsAccount) {
       // Nếu không tìm thấy account trong DB, vẫn trả về data từ FB nhưng không lưu (hoặc báo lỗi tùy logic)
       // Ở đây ta chọn vẫn trả về data để UI không bị gãy, nhưng log warning
-      console.warn(`⚠️ getCampaignsLiveCtrl: Không tìm thấy AdsAccount ${account_id} trong DB. Sẽ không lưu data.`);
+      console.warn(`getCampaignsLiveCtrl: Không tìm thấy AdsAccount ${account_id} trong DB. Sẽ không lưu data.`);
     }
 
     // 2. Fetch từ Facebook
@@ -308,7 +308,7 @@ export async function deleteCampaignCascadeCtrl(req, res) {
     if (!campaign)
       return res.status(404).json({ message: "Không tìm thấy chiến dịch." });
 
-    // ✅ Lấy token từ user hoặc query
+    // Lấy token từ user hoặc query
     let accessToken = req.query.access_token;
     if (!accessToken && req.user?._id) {
       const user = await User.findById(req.user._id).select(
@@ -330,7 +330,7 @@ export async function deleteCampaignCascadeCtrl(req, res) {
     const adsetIds = adsets.map((a) => a._id);
     const ads = await Ads.find({ set_id: { $in: adsetIds } });
 
-    // ✅ Nếu có token → xoá thật trên Facebook
+    // Nếu có token → xoá thật trên Facebook
     if (accessToken) {
       try {
         if (campaign.external_id)
@@ -346,11 +346,11 @@ export async function deleteCampaignCascadeCtrl(req, res) {
         }
 
         console.log(
-          `🧹 Đã xoá campaign ${campaign.name} và ${adsets.length} adsets trên Facebook.`
+          `Đã xoá campaign ${campaign.name} và ${adsets.length} adsets trên Facebook.`
         );
       } catch (fbErr) {
         console.warn(
-          "⚠️ Lỗi khi xoá campaign trên Facebook:",
+          "Lỗi khi xoá campaign trên Facebook:",
           fbErr?.response?.data || fbErr.message
         );
       }
@@ -390,7 +390,7 @@ export async function deleteCampaignCascadeCtrl(req, res) {
       message: `Đã xoá chiến dịch "${campaign.name}" cùng toàn bộ nhóm quảng cáo & quảng cáo liên quan.`,
     });
   } catch (err) {
-    console.error("❌ Xoá Campaign cascade lỗi:", err);
+    console.error("Xoá Campaign cascade lỗi:", err);
     return res.status(500).json({
       message: "Xoá thất bại",
       error: err.message,
@@ -409,7 +409,7 @@ export async function archiveCampaignCascadeCtrl(req, res) {
     if (!campaign)
       return res.status(404).json({ message: "Không tìm thấy chiến dịch." });
 
-    // ✅ Lấy token từ user hoặc query
+    // Lấy token từ user hoặc query
     let accessToken = req.query.access_token;
     if (!accessToken && req.user?._id) {
       const user = await User.findById(req.user._id).select(
@@ -431,7 +431,7 @@ export async function archiveCampaignCascadeCtrl(req, res) {
     const adsetIds = adsets.map((a) => a._id);
     const ads = await Ads.find({ set_id: { $in: adsetIds } });
 
-    // ✅ Nếu có token → Xóa thật trên Facebook (giống delete)
+    // Nếu có token → Xóa thật trên Facebook (giống delete)
     if (accessToken) {
       try {
         if (campaign.external_id)
@@ -447,17 +447,17 @@ export async function archiveCampaignCascadeCtrl(req, res) {
         }
 
         console.log(
-          `📦 Đã xóa (archive) campaign ${campaign.name} và ${adsets.length} adsets trên Facebook.`
+          `Đã xóa (archive) campaign ${campaign.name} và ${adsets.length} adsets trên Facebook.`
         );
       } catch (fbErr) {
         console.warn(
-          "⚠️ Lỗi khi xóa (archive) campaign trên Facebook:",
+          "Lỗi khi xóa (archive) campaign trên Facebook:",
           fbErr?.response?.data || fbErr.message
         );
       }
     }
 
-    // ✅ Cập nhật status ARCHIVED trong DB
+    // Cập nhật status ARCHIVED trong DB
     const now = new Date();
     await Promise.all([
       Ads.updateMany(
@@ -491,7 +491,7 @@ export async function archiveCampaignCascadeCtrl(req, res) {
       message: `Đã lưu trữ chiến dịch "${campaign.name}" cùng toàn bộ nhóm quảng cáo & quảng cáo liên quan.`,
     });
   } catch (err) {
-    console.error("❌ Archive Campaign cascade lỗi:", err);
+    console.error("Archive Campaign cascade lỗi:", err);
     return res.status(500).json({
       message: "Lưu trữ thất bại",
       error: err.message,
@@ -585,7 +585,7 @@ export async function copyCampaignCascadeCtrl(req, res) {
       },
     });
   } catch (err) {
-    console.error("❌ Copy campaign cascade lỗi:", err);
+    console.error("Copy campaign cascade lỗi:", err);
     return res.status(500).json({ message: "Copy thất bại", error: err.message });
   }
 }
@@ -612,8 +612,8 @@ export async function getCampaignInsightsCtrl(req, res) {
 
     // Gọi service để lấy insights từ Facebook
     const insightsData = await fetchInsightsForCampaignIds(accessToken, campaignIds);
-    
-    console.log(`📊 Fetched insights for ${insightsData.length} campaigns from FB`);
+
+    console.log(`Fetched insights for ${insightsData.length} campaigns from FB`);
 
     // Map lại data để FE dễ xử lý: { id: '...', insights: {...} }
     // KHÔNG cần extract .data?.[0] vì service đã làm rồi
@@ -635,7 +635,7 @@ export async function getCampaignInsightsCtrl(req, res) {
 
       if (bulkOps.length > 0) {
         AdsCampaign.bulkWrite(bulkOps, { ordered: false })
-          .then(() => console.log(`✅ Saved insights for ${bulkOps.length} campaigns to DB`))
+          .then(() => console.log(`Saved insights for ${bulkOps.length} campaigns to DB`))
           .catch(err => console.error("Error saving campaign insights to DB:", err.message));
       }
     }
@@ -644,9 +644,9 @@ export async function getCampaignInsightsCtrl(req, res) {
 
   } catch (err) {
     console.error("GET Campaign Insights error:", err.response?.data || err.message);
-    return res.status(500).json({ 
-      message: "Không thể lấy dữ liệu insights", 
-      detail: err.response?.data || err.message 
+    return res.status(500).json({
+      message: "Không thể lấy dữ liệu insights",
+      detail: err.response?.data || err.message
     });
   }
 }
