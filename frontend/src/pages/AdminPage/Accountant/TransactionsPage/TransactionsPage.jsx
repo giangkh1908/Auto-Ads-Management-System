@@ -476,8 +476,8 @@ export default function TransactionsPage() {
               >
                 <option value="">{t("common.all")}</option>
                 {filterOptions.packages.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name}
+                  <option key={p} value={p}>
+                    {p}
                   </option>
                 ))}
               </select>

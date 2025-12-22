@@ -913,7 +913,7 @@ function buildAdsetPayload(adset, campaign) {
     targeting: {
       age_min: adset.targeting.ageMin || 18,
       age_max: adset.targeting.ageMax || 65,
-      
+
       // NEW: Check if locations is object structure (new) or array (old)
       ...(adset.targeting?.locations &&
         typeof adset.targeting.locations === "object" &&

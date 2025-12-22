@@ -84,7 +84,7 @@ app.use("/api/ads/performance", adPerformanceRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/creatives", creativeRoutes);
 app.use("/api/location", locationRoutes);
-// app.use("/api/targeting", targetingRoutes);
+app.use("/api/targeting", targetingRoutes);
 app.use("/api/ads-wizard", adsWizardRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/ai", aiRoutes);

@@ -33,18 +33,17 @@ export function useAdsAccount() {
         if (response.data?.items) {
           setAdAccounts(response.data.items);
           
-          // Chỉ load tài khoản đã chọn từ localStorage nếu nó tồn tại trong danh sách
-          // Không tự động chọn account đầu tiên
           const savedAccountId = localStorage.getItem(STORAGE_KEY);
+          
           if (savedAccountId && !selectedAccountId) {
-            // Kiểm tra account có tồn tại trong danh sách không
+            // Kiểm tra account đã lưu có tồn tại trong danh sách không
             const account = response.data.items.find(
               (acc) => acc.external_id === savedAccountId
             );
             if (account) {
               setSelectedAccountId(savedAccountId);
             } else {
-              // Nếu account không tồn tại, xóa khỏi localStorage và không chọn gì
+              // Nếu account không tồn tại, xóa khỏi localStorage
               localStorage.removeItem(STORAGE_KEY);
               // Không auto-select, để user tự chọn
             }

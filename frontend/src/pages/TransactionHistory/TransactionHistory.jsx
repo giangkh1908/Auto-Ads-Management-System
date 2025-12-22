@@ -331,8 +331,8 @@ export default function TransactionHistory() {
         const filteredTotal = filteredData.length;
         setPagination(prev => ({
           ...prev,
-          total: typeof response.total === 'number' ? response.total : (response.data || []).length,
-          totalPages: typeof response.pages === 'number' ? response.pages : Math.ceil((response.data || []).length / prev.limit)
+          total: filteredTotal,
+          totalPages: Math.ceil(filteredTotal / prev.limit)
         }));
       } else {
         toast.error(response.message || "Không thể tải lịch sử giao dịch");
@@ -413,8 +413,8 @@ export default function TransactionHistory() {
             >
               <option value="">{t("common.all") || "All"}</option>
               {filterOptions.packages.map((pkg) => (
-                <option key={pkg._id} value={pkg._id}>
-                  {pkg.name}
+                <option key={pkg} value={pkg}>
+                  {pkg}
                 </option>
               ))}
             </select>

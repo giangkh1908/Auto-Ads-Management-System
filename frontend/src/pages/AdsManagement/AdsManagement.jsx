@@ -119,6 +119,8 @@ function AdsManagement() {
   // Action states
   const [refreshing, setRefreshing] = useState(false);
   const [togglingItems, setTogglingItems] = useState(new Set());
+  // Loading state when switching accounts
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const [confirmationPopup, setConfirmationPopup] = useState({
     isOpen: false,
     type: "delete",
@@ -143,6 +145,8 @@ function AdsManagement() {
 
   // Handle account change
   const handleAccountChange = (accountId) => {
+    // show loading animation while switching
+    setSwitchingAccount(true);
     handleAccountChangeBase(accountId);
     resetSelection();
     setActiveTab("campaigns");
@@ -150,6 +154,8 @@ function AdsManagement() {
     if (!accountId) {
       setDatasets({ campaigns: [], adsets: [], ads: [] });
       setCache({ lastSync: null, lastFetch: {} });
+      // no target account -> stop switching indicator
+      setSwitchingAccount(false);
     }
   };
 
@@ -195,6 +201,8 @@ function AdsManagement() {
       }
 
       const fetchData = async () => {
+        // Ensure loading overlay is shown while we fetch data (covers cached-account load)
+        setSwitchingAccount(true);
         try {
           if (activeTab === "campaigns") {
             await fetchCampaignsForAccount(selectedAccountId, abortController.signal);

@@ -81,13 +81,17 @@ function Dashboard() {
           // Shop model dùng page_info.name
           name: p.page_info?.name || p.page_name || "Facebook Page",
           pageId: p.page_id,
-          link: `https://www.facebook.com/${p.id}`,
+          link: p.page_info?.link || `https://www.facebook.com/${p.page_id}`,
           avatar:
             p.page_info?.picture_url ||
             p.picture_url ||
             `https://graph.facebook.com/${p.page_id}/picture?type=square`,
           status: p.page_status || "active",
           followerCount: 0,
+          userHasAccess:
+            userAccessiblePageIds.size === 0
+              ? true
+              : userAccessiblePageIds.has(p.page_id),
         }));
       setConnectedPages(normalized);
       return true;

@@ -287,8 +287,8 @@ const AiPopup = ({
   };
 
   return (
-    <div className="ai-config-modal-overlay" onClick={onClose}>
-      <div className="ai-config-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="ai-config-modal-overlay">
+      <div className="ai-config-modal">
         <div className="ai-config-header">
           <h3>Auto Ads AI</h3>
           <button
@@ -371,7 +371,10 @@ const AiPopup = ({
             <select
               className="ai-config-select"
               value={aiConfig.language}
-              onChange={(e) => setAiConfig(prev => ({ ...prev, language: e.target.value }))}
+              onChange={(e) => {
+                userModifiedRef.current = true;
+                setAiConfig(prev => ({ ...prev, language: e.target.value }));
+              }}
             >
               <option value="Tiếng Việt">Tiếng Việt</option>
               <option value="English">English</option>
@@ -385,7 +388,10 @@ const AiPopup = ({
             <select
               className="ai-config-select"
               value={aiConfig.tone}
-              onChange={(e) => setAiConfig(prev => ({ ...prev, tone: e.target.value }))}
+              onChange={(e) => {
+                userModifiedRef.current = true;
+                setAiConfig(prev => ({ ...prev, tone: e.target.value }));
+              }}
             >
               <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
               <option value="Thân Thiện">Thân Thiện</option>
@@ -400,7 +406,10 @@ const AiPopup = ({
             <select
               className="ai-config-select"
               value={aiConfig.aiModel}
-              onChange={(e) => setAiConfig(prev => ({ ...prev, aiModel: e.target.value }))}
+              onChange={(e) => {
+                userModifiedRef.current = true;
+                setAiConfig(prev => ({ ...prev, aiModel: e.target.value }));
+              }}
             >
               <option value="openai">OpenAI GPT-4o-mini</option>
               <option value="gemini">Google Gemini 2.5 Flash</option>
@@ -472,22 +481,29 @@ const AiPopup = ({
               backgroundColor: '#f8f9fa'
             }}>
               {aiConfig.synonymousKeywords.split(',').filter(k => k.trim()).map((keyword, index) => (
-                <span key={index} className="keyword-tag" style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '500'
-                }}>
+                <span
+                  key={index}
+                  className="keyword-tag"
+                  onClick={() => handleSynonymClick(keyword.trim())}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
                   {keyword.trim()}
                   <button
                     className="keyword-remove"
-                    onClick={() => {
-                      const keywords = aiConfig.synonymousKeywords.split(',').filter(k => k.trim());
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const keywords = aiConfig.synonymousKeywords.split(',').map(k => k.trim()).filter(k => k);
                       keywords.splice(index, 1);
                       setAiConfig(prev => ({ ...prev, synonymousKeywords: keywords.join(', ') }));
                     }}

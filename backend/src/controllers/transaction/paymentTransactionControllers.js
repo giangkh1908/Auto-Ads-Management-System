@@ -249,12 +249,11 @@ export const getPaymentTransactionFilters = async (req, res) => {
           PaymentTransaction.findOne({ package_id: id, deleted_at: null }).populate("package_id", "name")
         )
     );
-    // Build array of package objects { _id, name } and dedupe by _id
-    const packageObjects = packages
+    const packageNames = packages
       .filter(txn => txn?.package_id)
-      .map(txn => ({ _id: String(txn.package_id._id), name: txn.package_id.name }))
-      .filter((v, i, arr) => arr.findIndex(x => x._id === v._id) === i)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .map(txn => txn.package_id.name)
+      .filter((v, i, arr) => arr.indexOf(v) === i) // Remove duplicates
+      .sort();
 
     // Lấy distinct payment methods
     const methods = await PaymentTransaction.distinct("method", { deleted_at: null });
@@ -271,7 +270,7 @@ export const getPaymentTransactionFilters = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        packages: packageObjects,
+        packages: packageNames,
         methods: methodsList,
         statuses: statusesList,
       },

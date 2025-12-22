@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axiosInstance from "../../utils/api/axios";
 import { toast } from "sonner";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import "./AccountManagement.css";
-import { CheckCircle, XCircle, Archive, Trash2, Play, Pause, Crown } from "lucide-react";
+import { CheckCircle, XCircle, Archive, Trash2, Play, Pause } from "lucide-react";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 import { onShopChange } from "../../utils/cache/shopCache";
 import { useAuth } from "../../hooks/auth/useAuth";
@@ -25,7 +25,7 @@ function AccountManagement() {
 
   // UI states
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [syncing, setSyncing] = useState(false); // Cho sync accounts và refresh stats
   const [error, setError] = useState("");
 
   // query states
@@ -510,35 +510,26 @@ function AccountManagement() {
                   >
                     {loading ? t('account_management.searching') : t('account_management.search')}
                   </button>
-                  <button
-                    className="btn-find"
-                    onClick={handleSync}
-                    disabled={loading || syncing}
-                  >
-                    {syncing ? t('account_management.refreshing') : t('account_management.refresh')}
-                  </button>
                 </div>
               </div>
 
               <div>
                 <button
-                  className={`add-account ${!ownerPackage ? 'premium-feature' : ''}`}
-                  onClick={() => {
-                    if (!ownerPackage) {
-                      toast.error("Tính năng này yêu cầu shop owner có gói dịch vụ. Vui lòng yêu cầu shop owner mua gói để sử dụng.");
-                      navigate(ROUTES.SERVICE_PACKAGE);
-                      return;
-                    }
-                    navigate(ROUTES.CONNECT_AD_ACCOUNT);
-                  }}
-                  disabled={!ownerPackage}
-                  title={!ownerPackage ? "Shop owner cần mua gói dịch vụ để sử dụng tính năng này" : ""}
+                  className="add-account"
+                  onClick={handleSyncAccounts}
+                  disabled={syncing || loading}
+                  title={t('account_management.sync_accounts_tooltip') || "Đồng bộ tài khoản quảng cáo từ Facebook và làm mới dữ liệu"}
                 >
-                  + {t('account_management.add_account')}
-                  {!ownerPackage && (
-                    <span className="premium-badge">
-                      <Crown size={12} />
-                    </span>
+                  {syncing ? (
+                    <>
+                      <span className="refresh-icon spinning">↻</span>
+                      {t('account_management.syncing') || 'Đang đồng bộ...'}
+                    </>
+                  ) : (
+                    <>
+                      <span className="refresh-icon">↻</span>
+                      {t('account_management.sync_accounts') || 'Đồng bộ tài khoản'}
+                    </>
                   )}
                 </button>
               </div>

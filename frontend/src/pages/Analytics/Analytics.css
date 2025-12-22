@@ -802,14 +802,9 @@
     order: -1;
   }
 
-.analytics-table-wrapper {
-  flex: 1;
-  overflow-x: auto;
-  overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #ffffff;
-}
+  .analytics-table-wrapper {
+    overflow-x: auto;
+  }
 
   .analytics-table {
     min-width: 800px;

@@ -112,13 +112,13 @@ function ConnectPage() {
     });
   }, [fbPages, t]);
 
-  //Đếm số page đã kết nối và còn lại
+  //Đếm số page đã kết nối với shop nào đó và còn lại
   const connectedCount = pages.filter(
-    (page) => page.status === t('connect_page.status_connected')
+    (page) => page.isConnectedToCurrentShop || page.isConnectedToOtherShop
   ).length;
   const remainingCount = pages.length - connectedCount;
 
-  // Loại bỏ các page đã kết nối (với shop hiện tại hoặc shop khác) hoặc không thể kết nối khỏi selectedPages
+  // Loại bỏ các page đã kết nối với shop nào đó hoặc không thể kết nối khỏi selectedPages
   useEffect(() => {
     setSelectedPages((prev) =>
       prev.filter((pageId) => {
@@ -331,8 +331,8 @@ function ConnectPage() {
     const isConnected = page.isConnectedToCurrentShop || page.isConnectedToOtherShop;
     const matchesStatus =
       statusFilter === "status" ||
-      (statusFilter === "connected" && isConnectedToCurrent) ||
-      (statusFilter === "not-connected" && !isConnectedToCurrent && !page.isConnectedToOtherShop);
+      (statusFilter === "connected" && isConnected) ||
+      (statusFilter === "not-connected" && !isConnected);
     return matchesSearch && matchesStatus;
   });
 
@@ -346,7 +346,7 @@ function ConnectPage() {
       selectablePages.length > 0 &&
       selectedPages.length === selectablePages.length
     );
-  }, [selectedPages, filteredPages, t]);
+  }, [selectedPages, filteredPages]);
 
   return (
     <div className="connect-page">
@@ -375,7 +375,7 @@ function ConnectPage() {
           ) : (
             <>
               {/* Search and Filter Bar */}
-              <div className="search-filter-bar">
+              <div className="search-filter-bar-connect-page">
                 <div className="search-section">
                   <input
                     type="text"

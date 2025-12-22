@@ -239,25 +239,25 @@ const EngagementSchema = {
         adset.optimization_goal === "CONVERSATIONS" ||
         adset.optimization_goal === "EVENT_RESPONSES",
       fields: [
-        {
-          type: "input",
-          name: "promoted_object.page_id",
-          label: "Page ID",
-          placeholder: "Nhập Page ID cần quảng cáo",
-          visibleIf: (adset) =>
-            adset.optimization_goal === "PAGE_LIKES" ||
-            adset.optimization_goal === "CONVERSATIONS",
-          validate: (value, adset) => {
-            if (
-              (adset.optimization_goal === "PAGE_LIKES" ||
-                adset.optimization_goal === "CONVERSATIONS") &&
-              !value
-            ) {
-              return "Page ID là bắt buộc cho mục tiêu này";
-            }
-            return true;
-          },
-        },
+        // {
+        //   type: "input",
+        //   name: "promoted_object.page_id",
+        //   label: "Page ID",
+        //   placeholder: "Nhập Page ID cần quảng cáo",
+        //   visibleIf: (adset) =>
+        //     adset.optimization_goal === "PAGE_LIKES" ||
+        //     adset.optimization_goal === "CONVERSATIONS",
+        //   validate: (value, adset) => {
+        //     if (
+        //       (adset.optimization_goal === "PAGE_LIKES" ||
+        //         adset.optimization_goal === "CONVERSATIONS") &&
+        //       !value
+        //     ) {
+        //       return "Page ID là bắt buộc cho mục tiêu này";
+        //     }
+        //     return true;
+        //   },
+        // },
         {
           type: "input",
           name: "promoted_object.event_id",

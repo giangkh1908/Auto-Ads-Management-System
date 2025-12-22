@@ -145,7 +145,6 @@ export const vnpayReturn = async (req, res) => {
 
         if (transaction.status !== "success") {
           const pkg = transaction.package_id;
-          const metaData = transaction.metadata || {};
 
           if (!pkg) {
             console.error("Package not found for transaction:", orderId);
@@ -156,8 +155,8 @@ export const vnpayReturn = async (req, res) => {
           const userPackage = await UserPackage.create({
             user_id: transaction.user_id._id,
             package_id: pkg._id,
-            pages: metaData.pages,
-            employees: metaData.employees,
+            pages: pkg.pages,
+            employees: pkg.employees,
             shops: pkg.shops,
             from_date: new Date(),
             to_date: new Date(Date.now() + pkg.duration_days * 86400000),

@@ -4,14 +4,17 @@ import { useToast } from "../common/useToast";
 
 /**
  * Custom hook để quản lý Facebook pages
+ * Lấy danh sách pages từ Shop hiện tại của user
  */
 export function useFacebookPages() {
   const [facebookPages, setFacebookPages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const toast = useToast();
 
   useEffect(() => {
     const loadPages = async () => {
       try {
+        setLoading(true);
         // Lấy thông tin shop hiện tại và các page đã kết nối
         const me = await profileService.getCurrentProfile();
 
@@ -70,15 +73,18 @@ export function useFacebookPages() {
 
         setFacebookPages(connectedPages);
       } catch (e) {
-        // silent fail; selection will just be empty
-        console.log("Failed to load connected facebook pages", e);
+        // silent fail; selection sẽ rỗng
+        console.error("Failed to load connected facebook pages from Shop:", e);
         toast.error("Không tải được danh sách Page", {
           description: "Vui lòng kiểm tra kết nối mạng và thử lại",
         });
+        setFacebookPages([]);
+      } finally {
+        setLoading(false);
       }
     };
     loadPages();
   }, [toast]);
 
-  return facebookPages;
+  return { facebookPages, loading };
 }
