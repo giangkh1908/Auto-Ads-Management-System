@@ -7,10 +7,10 @@ import Package from "../../models/package/package.model.js";
 import { createInvoice } from "../invoice/invoiceControllers.js";
 
 const config = {
-  vnp_TmnCode: process.env.VNPAY_TMN_CODE,
-  vnp_HashSecret: process.env.VNPAY_HASH_SECRET,
+  vnp_TmnCode: process.env.VNPAY_TMN_CODE || "Y4DJ13B6",
+  vnp_HashSecret: process.env.VNPAY_HASH_SECRET || "BIYMKPJPKLOEPMWRKCRWIXJLOIETVDUN",
   vnp_Url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
-  vnp_ReturnUrl: process.env.VNPAY_RETURN_URL,
+  vnp_ReturnUrl: process.env.VNPAY_RETURN_URL || "https://api.vibestoneoficial.store/api/vnpay/return",
 };
 
 /* ============== HÀM SORT OBJECT THEO THỨ TỰ A-Z (CHÍNH XÁC NHƯ DEMO VNPAY) ============== */
@@ -145,7 +145,7 @@ export const vnpayReturn = async (req, res) => {
 
         if (transaction.status !== "success") {
           const pkg = transaction.package_id;
-          const metaData = transaction.metadata ? JSON.parse(transaction.metadata) : {};
+          const metaData = transaction.metadata || {};
 
           if (!pkg) {
             console.error("Package not found for transaction:", orderId);
