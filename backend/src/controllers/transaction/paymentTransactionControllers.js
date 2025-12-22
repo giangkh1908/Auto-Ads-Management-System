@@ -2,6 +2,10 @@ import PaymentTransaction from "../../models/transaction/paymentTransaction.mode
 import UserPackage from "../../models/package/userPackage.model.js";
 import User from "../../models/user/user.model.js";
 import Package from "../../models/package/package.model.js";
+import Shop from "../../models/shops/shop.model.js";
+import ShopUser from "../../models/shops/shopUser.model.js";
+import UserRole from "../../models/user/userRole.model.js";
+import { RoleEnum } from "../../constants/enum.js";
 import mongoose from "mongoose";
 import { queuePackageApprovalEmail } from "../../services/email/emailService.js";
 import { createInvoice } from "../invoice/invoiceControllers.js";
@@ -135,23 +139,23 @@ export const getPaymentTransactions = async (req, res) => {
     // Handle date range - parse dd/mm/yyyy format
     if (startDate || endDate) {
       matchStage.$match.payment_at = {};
-      
+
       const parseDate = (dateStr) => {
         if (!dateStr || typeof dateStr !== 'string') return null;
         // Parse dd/mm/yyyy format
         const parts = dateStr.trim().split('/');
         if (parts.length !== 3) return null;
-        
+
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
         const year = parseInt(parts[2], 10);
-        
+
         if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-        
+
         const date = new Date(year, month - 1, day);
         return date;
       };
-      
+
       if (startDate) {
         const start = parseDate(startDate);
         if (start && !isNaN(start)) {
@@ -159,7 +163,7 @@ export const getPaymentTransactions = async (req, res) => {
           matchStage.$match.payment_at.$gte = start;
         }
       }
-      
+
       if (endDate) {
         const end = parseDate(endDate);
         if (end && !isNaN(end)) {
@@ -185,7 +189,7 @@ export const getPaymentTransactions = async (req, res) => {
 
     // Add sort and pagination
     pipeline.push({ $sort: { created_at: -1 } });
-    
+
     // Get total count before pagination
     const countResult = await PaymentTransaction.aggregate([
       ...pipeline.slice(0, pipeline.length - 1), // Remove sort before counting
@@ -245,7 +249,7 @@ export const getPaymentTransactionFilters = async (req, res) => {
     const packages = await Promise.all(
       packageIds
         .filter(id => id != null)
-        .map(id => 
+        .map(id =>
           PaymentTransaction.findOne({ package_id: id, deleted_at: null }).populate("package_id", "name")
         )
     );
@@ -319,7 +323,7 @@ export const getPaymentTransactionById = async (req, res) => {
 export const updatePaymentTransaction = async (req, res) => {
   try {
     const data = req.body;
-    
+
     // Lấy transaction hiện tại để lấy user_id và package_id
     const currentTransaction = await PaymentTransaction.findById(req.params.id);
     if (!currentTransaction) {
@@ -360,10 +364,10 @@ export const updatePaymentTransaction = async (req, res) => {
         // Tìm UserPackage có user_id và package_id tương ứng
         // - Khi approve: chỉ tìm status = "pending"
         // - Khi reject: tìm status = "pending" hoặc "active" (nếu đã approve trước đó)
-        const statusFilter = data.status === "success" 
+        const statusFilter = data.status === "success"
           ? { status: "pending" }
           : { status: { $in: ["pending", "active"] } };
-        
+
         // Tìm UserPackage mới nhất (theo created_at) để tránh trường hợp có nhiều UserPackage
         const userPackage = await UserPackage.findOne({
           user_id: currentTransaction.user_id,
@@ -374,7 +378,7 @@ export const updatePaymentTransaction = async (req, res) => {
         if (userPackage) {
           // Update status của UserPackage
           const newStatus = data.status === "success" ? "active" : "cancelled";
-          
+
           // Nếu approve (success), cần set from_date và to_date nếu chưa có
           const userPackageUpdateData = {
             status: newStatus,
@@ -385,7 +389,7 @@ export const updatePaymentTransaction = async (req, res) => {
             // Set from_date = hiện tại, to_date dựa trên duration trong metadata
             const duration = currentTransaction.metadata?.duration || "12months";
             const durationDays = duration === "12months" ? 365 : duration === "6months" ? 180 : 90;
-            
+
             userPackageUpdateData.from_date = new Date();
             userPackageUpdateData.to_date = new Date();
             userPackageUpdateData.to_date.setDate(userPackageUpdateData.to_date.getDate() + durationDays);
@@ -398,10 +402,111 @@ export const updatePaymentTransaction = async (req, res) => {
           );
 
           console.log(`✅ Đã cập nhật UserPackage ${userPackage._id} status từ "${userPackage.status}" thành "${newStatus}"`);
+          const user = await User.findById(currentTransaction.user_id);
+          const full_name = user?.full_name || "Shop Owner";
 
           // Nếu payment thành công, disable tất cả package cũ của user
           if (data.status === "success") {
             try {
+              // ✨ KIỂM TRA NÂNG CẤP PACKAGE: "Chatbot AI" → "Chatbot" - XÓA TẤT CẢ SHOPS
+              try {
+                // Lấy thông tin package mới (mua)
+                const newPackageInfo = await Package.findById(currentTransaction.package_id).select("name");
+
+                // Tìm tất cả active UserPackage khác của user (package cũ)
+                const oldActivePackages = await UserPackage.find({
+                  user_id: currentTransaction.user_id,
+                  _id: { $ne: userPackage._id },
+                  status: { $in: ["active", "expiring soon", "new signup"] },
+                  deleted_at: null,
+                }).populate("package_id", "name");
+
+                // Kiểm tra nếu user đang dùng "Chatbot AI" và muốn mua "Chatbot"
+                const currentHasChatbotAI = oldActivePackages.some(
+                  pkg => pkg.package_id?.name === "Chatbot AI"
+                );
+                const newIsChatbot = newPackageInfo?.name === "Chatbot";
+
+                if (currentHasChatbotAI && newIsChatbot) {
+                  // Xóa toàn bộ shops có owner_id = user_id
+                  const deletedShops = await Shop.deleteMany({
+                    owner_id: currentTransaction.user_id,
+                  });
+
+                  console.log(`🗑️ Đã xóa ${deletedShops.deletedCount} shops của user ${currentTransaction.user_id} (downgrade: Chatbot AI → Chatbot)`);
+
+                  const userPackage = await UserPackage.findOne({
+                    user_id: user._id,
+                    status: "active",
+                  }).populate("package_id");
+
+                  // Tạo shop mặc định cho user
+                  const shop = await Shop.create({
+                    shop_name: full_name,
+                    owner_id: user._id,
+                    status: "active",
+                    settings: {
+                      currency: "VND",
+                      timezone: "Asia/Ho_Chi_Minh",
+                      language: "vi",
+                    },
+                    current_package_id: userPackage.package_id._id,
+                    package_expired_at: userPackage.to_date || null,
+                    created_by: user._id,
+                    updated_by: user._id,
+                  });
+                  console.log("Shop created:", shop._id);
+
+                  // Tạo ShopUser với status "active" để được tính vào employee count
+                  let shopUser;
+                  try {
+                    shopUser = await ShopUser.create({
+                      user_id: user._id,
+                      shop_id: shop._id,
+                      is_manager: true,
+                      status: "active", // Đảm bảo status là "active" để được tính vào employee count
+                    });
+                    console.log("ShopUser created:", shopUser._id);
+                  } catch (shopUserError) {
+                    console.error("Error creating ShopUser:", shopUserError);
+                    console.error("ShopUser error details:", {
+                      message: shopUserError.message,
+                      code: shopUserError.code,
+                      keyPattern: shopUserError.keyPattern,
+                      keyValue: shopUserError.keyValue,
+                    });
+                    throw shopUserError;
+                  }
+
+                  // Tạo UserRole với role Shop Owner
+                      try {
+                        await UserRole.create({
+                          user_id: user._id,
+                          role_id: RoleEnum.SHOP_OWNER,
+                          shop_id: shop._id,
+                          shop_user_id: shopUser._id,
+                          is_current: true,
+                          source: "system", // Đánh dấu là được tạo tự động từ hệ thống
+                        });
+                        console.log("UserRole created successfully");
+                      } catch (userRoleError) {
+                        console.error("Error creating UserRole:", userRoleError);
+                        console.error("UserRole error details:", {
+                          message: userRoleError.message,
+                          code: userRoleError.code,
+                          name: userRoleError.name,
+                          keyPattern: userRoleError.keyPattern,
+                          keyValue: userRoleError.keyValue,
+                        });
+                        throw userRoleError;
+                      }
+                }
+
+              } catch (checkPackageError) {
+                console.error("⚠️ Lỗi kiểm tra package downgrade:", checkPackageError);
+                // Không throw error để không ảnh hưởng đến flow chính
+              }
+
               // Tìm tất cả package active khác của user (không phải package mới này)
               const oldActivePackages = await UserPackage.find({
                 user_id: currentTransaction.user_id,
@@ -432,7 +537,7 @@ export const updatePaymentTransaction = async (req, res) => {
 
               // Đồng bộ package cho tất cả shop của owner
               try {
-                const { syncShopPackagesWithOwner } = await import("../../services/shopPackageSyncService.js");
+                const { syncShopPackagesWithOwner } = await import("../../services/shop/shopPackageSyncService.js");
                 await syncShopPackagesWithOwner(currentTransaction.user_id);
               } catch (syncError) {
                 console.error("⚠️ Lỗi khi sync shop packages:", syncError);

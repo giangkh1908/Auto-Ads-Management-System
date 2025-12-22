@@ -96,7 +96,12 @@ export const createVnpayPayment = async (req, res) => {
       vnp_txn_ref: txnRef,
       vnp_create_date: createDate,
       status: "pending",
-      payment_method: "vnpay",
+      method: "vnpay",
+      metadata: {
+        employees: orderData.employees,
+        pages: orderData.pages,
+        duration: orderData.duration,
+      },
     });
 
     return res.json({ success: true, paymentUrl });
@@ -145,6 +150,7 @@ export const vnpayReturn = async (req, res) => {
 
         if (transaction.status !== "success") {
           const pkg = transaction.package_id;
+          const metaData = transaction.metadata || {};
 
           if (!pkg) {
             console.error("Package not found for transaction:", orderId);
@@ -155,9 +161,9 @@ export const vnpayReturn = async (req, res) => {
           const userPackage = await UserPackage.create({
             user_id: transaction.user_id._id,
             package_id: pkg._id,
-            pages: pkg.pages,
-            employees: pkg.employees,
-            shops: pkg.shops,
+            pages: metaData.pages,
+            employees: metaData.employees,
+            shops: metaData.shops,
             from_date: new Date(),
             to_date: new Date(Date.now() + pkg.duration_days * 86400000),
             status: "active",

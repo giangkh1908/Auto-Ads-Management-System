@@ -89,6 +89,10 @@ function MyShop() {
             (perm) =>
               perm.module === "employee" && perm.actions.includes("view")
           );
+          const canUpgrade = permissions.some(
+            (perm) =>
+              perm.module === "shop_owner" && perm.actions.includes("upgrade_shop")
+          );
 
           // Backend đã trả về limits, chỉ cần format lại
           // Nếu chưa có package (Basic), backend sẽ trả về 1/1 employee và 0/0 page
@@ -129,6 +133,7 @@ function MyShop() {
             status: shop.status || "Active",
             canUpdate,
             canViewEmployee,
+            canUpgrade,
           };
         });
 
@@ -379,13 +384,15 @@ function MyShop() {
                             > */}
                           {/* <Pause size={14} />
                             </button> */}
-                          <button
-                            className="shop-action-btn shop-upgrade-btn"
-                            onClick={() => handleAction(shop.id, "upgrade")}
-                            title={t('shop.upgrade')}
-                          >
-                            <Star size={14} />
-                          </button>
+                          {shop.canUpgrade && (
+                            <button
+                              className="shop-action-btn shop-upgrade-btn"
+                              onClick={() => handleAction(shop.id, "upgrade")}
+                              title={t('shop.upgrade')}
+                            >
+                              <Star size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
