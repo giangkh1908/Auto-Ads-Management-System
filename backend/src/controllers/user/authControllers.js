@@ -10,9 +10,9 @@ import UserRole from "../../models/user/userRole.model.js";
 import { RoleEnum } from "../../constants/enum.js";
 import { ErrorCode, getErrorMessage } from "../../constants/errorCode.js";
 import {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-} from "../../services/emailService.js";
+  queueVerificationEmail,
+  queuePasswordResetEmail,
+} from "../../services/email/emailService.js";
 import jwt from "jsonwebtoken";
 import { saveSystemLog, getClientIp, getUserAgent } from "../../utils/systemLog.js";
 
@@ -114,7 +114,7 @@ export const register = async (req, res) => {
       created_by: user._id,
       updated_by: user._id,
     });
-    console.log("✅ Shop created:", shop._id);
+    console.log("Shop created:", shop._id);
 
     // Tạo ShopUser với status "active" để được tính vào employee count
     let shopUser;
@@ -125,10 +125,10 @@ export const register = async (req, res) => {
         is_manager: true,
         status: "active", // Đảm bảo status là "active" để được tính vào employee count
       });
-      console.log("✅ ShopUser created:", shopUser._id);
+      console.log("ShopUser created:", shopUser._id);
     } catch (shopUserError) {
-      console.error("❌ Error creating ShopUser:", shopUserError);
-      console.error("❌ ShopUser error details:", {
+      console.error("Error creating ShopUser:", shopUserError);
+      console.error("ShopUser error details:", {
         message: shopUserError.message,
         code: shopUserError.code,
         keyPattern: shopUserError.keyPattern,
@@ -147,10 +147,10 @@ export const register = async (req, res) => {
         is_current: true,
         source: "system", // Đánh dấu là được tạo tự động từ hệ thống
       });
-      console.log("✅ UserRole created successfully");
+      console.log("UserRole created successfully");
     } catch (userRoleError) {
-      console.error("❌ Error creating UserRole:", userRoleError);
-      console.error("❌ UserRole error details:", {
+      console.error("Error creating UserRole:", userRoleError);
+      console.error("UserRole error details:", {
         message: userRoleError.message,
         code: userRoleError.code,
         name: userRoleError.name,
@@ -170,7 +170,7 @@ export const register = async (req, res) => {
     await user.save();
 
     // Gửi email xác nhận
-    await sendVerificationEmail(email, full_name, token);
+    queueVerificationEmail(email, full_name, token);
 
     // Log registration
     await saveSystemLog({
@@ -777,9 +777,9 @@ export const forgotPassword = async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user)
-      return res.status(200).json({
+      return res.status(400).json({
         success: true,
-        message: "Nếu email tồn tại, hướng dẫn đã được gửi.",
+        message: "Email không tồn tại trong hệ thống",
       });
 
     const resetToken = crypto.randomBytes(32).toString("hex");
@@ -787,10 +787,10 @@ export const forgotPassword = async (req, res) => {
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
-    user.passwordResetExpires = Date.now() + 3600000;
+    user.passwordResetExpires = Date.now() + 3600000; // 1 giờ
     await user.save({ validateBeforeSave: false });
 
-    await sendPasswordResetEmail(email, user.full_name, resetToken);
+    queuePasswordResetEmail(email, user.full_name, resetToken);
 
     // Log password reset request
     await saveSystemLog({
@@ -1052,7 +1052,7 @@ export const resendVerificationEmail = async (req, res) => {
     await user.save({ validateBeforeSave: false });
 
     // Gửi lại email xác minh
-    await sendVerificationEmail(user.email, user.full_name, token);
+    queueVerificationEmail(user.email, user.full_name, token);
 
     res.status(200).json({
       success: true,
@@ -1093,4 +1093,125 @@ export const logout = async (req, res) => {
     // Không block logout flow nếu log lỗi
   }
   res.status(200).json({ success: true, message: "Đăng xuất thành công." });
+};
+
+// Link Facebook account to existing user (không tạo user mới)
+export const linkFacebook = async (req, res) => {
+  try {
+    const currentUser = req.user;
+    const { facebookId, accessToken } = req.body;
+
+    if (!facebookId || !accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu Facebook ID hoặc access token.",
+      });
+    }
+
+    // Xác thực Facebook token
+    const fbResp = await axios.get(
+      `https://graph.facebook.com/me?access_token=${accessToken}&fields=id,name,email,picture.width(200).height(200)`
+    );
+    const fbData = fbResp.data;
+
+    if (!fbData.id || fbData.id !== facebookId) {
+      return res.status(400).json({
+        success: false,
+        message: "Xác thực Facebook thất bại.",
+      });
+    }
+
+    // Kiểm tra facebookId đã được sử dụng bởi user khác chưa
+    const existingUser = await User.findOne({ facebookId });
+    if (existingUser && existingUser._id.toString() !== currentUser._id.toString()) {
+      await saveSystemLog({
+        category: 'security',
+        level: 'warning',
+        action: 'FACEBOOK_LINK_FAILED',
+        description: `Liên kết Facebook thất bại: Facebook ID đã được sử dụng bởi user khác (${existingUser.email})`,
+        user_id: currentUser._id,
+        user_name: currentUser.full_name,
+        ip_address: getClientIp(req),
+        user_agent: getUserAgent(req),
+        success: false,
+        error_message: 'Facebook account already bound to another user',
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "FACEBOOK_ALREADY_BOUND",
+          message: "Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.",
+        },
+      });
+    }
+
+    // Đổi short-lived token thành long-lived token
+    let longLivedToken = accessToken;
+    try {
+      const tokenResp = await axios.get(
+        `https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.FB_APP_ID}&client_secret=${process.env.FB_APP_SECRET}&fb_exchange_token=${accessToken}`
+      );
+      if (tokenResp.data?.access_token) {
+        longLivedToken = tokenResp.data.access_token;
+      }
+    } catch (tokenError) {
+      console.log("Không thể đổi token, sử dụng token gốc:", tokenError.message);
+    }
+
+    // Cập nhật thông tin Facebook cho user hiện tại
+    const user = await User.findById(currentUser._id);
+    user.facebookId = fbData.id;
+    user.facebookAccessToken = longLivedToken;
+    user.avatar = user.avatar || fbData.picture?.data?.url;
+    await user.save();
+
+    // Lấy danh sách pages
+    let pages = [];
+    try {
+      const pagesResp = await axios.get(
+        `https://graph.facebook.com/me/accounts?fields=id,name,category,access_token,tasks&access_token=${accessToken}`
+      );
+
+      if (pagesResp.data?.data) {
+        pages = pagesResp.data.data.map((page) => ({
+          id: page.id,
+          name: page.name,
+          category: page.category,
+          pageAccessToken: page.access_token,
+          tasks: page.tasks || [],
+        }));
+      }
+    } catch (pageError) {
+      console.error("Failed to fetch Facebook Pages:", pageError);
+    }
+
+    // Log successful Facebook link
+    await saveSystemLog({
+      category: 'auth',
+      level: 'success',
+      action: 'FACEBOOK_LINKED',
+      description: `${user.full_name} đã liên kết tài khoản Facebook thành công`,
+      user_id: user._id,
+      user_name: user.full_name,
+      target_type: 'User',
+      target_id: user._id.toString(),
+      target_name: user.full_name,
+      ip_address: getClientIp(req),
+      user_agent: getUserAgent(req),
+      success: true,
+      meta: {
+        facebookId: user.facebookId,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Liên kết tài khoản Facebook thành công.",
+      data: { user, pages },
+    });
+  } catch (error) {
+    console.error("Link Facebook error:", error);
+    return res.status(500).json({ success: false, message: "Lỗi hệ thống." });
+  }
 };

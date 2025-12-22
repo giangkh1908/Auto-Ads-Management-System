@@ -1,14 +1,126 @@
 import { ChatOpenAI } from "@langchain/openai";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
+
+// ============================================
+// INTENT DEFINITIONS - Separated by category
+// ============================================
+
+const INTENT_DEFINITIONS = {
+  RANK_CAMPAIGNS: {
+    description: "Xếp hạng campaigns theo hiệu quả",
+    keywords: ["hiệu quả", "tốt nhất", "top", "xếp hạng", "campaign", "chiến dịch"],
+    examples: [
+      '"Campaign nào hiệu quả nhất?" → RANK_CAMPAIGNS, level=campaign, objective=null',
+      '"Top 5 campaigns bán hàng" → RANK_CAMPAIGNS, level=campaign, objective=OUTCOME_SALES',
+    ],
+    schema: 'level="campaign", objective=OUTCOME_* or null'
+  },
+  
+  RANK_ADSETS: {
+    description: "Xếp hạng adsets theo hiệu quả",
+    keywords: ["hiệu quả", "tốt nhất", "top", "xếp hạng", "adset", "nhóm quảng cáo"],
+    examples: [
+      '"Adset nào hiệu quả nhất?" → RANK_ADSETS, level=adset, objective=null',
+      '"Top adsets cho leads" → RANK_ADSETS, level=adset, objective=OUTCOME_LEADS',
+    ],
+    schema: 'level="adset", objective=OUTCOME_* or null'
+  },
+  
+  RANK_ADS: {
+    description: "Xếp hạng ads/quảng cáo theo hiệu quả",
+    keywords: ["hiệu quả", "tốt nhất", "top", "xếp hạng", "ad", "ads", "quảng cáo"],
+    examples: [
+      '"Ads nào hiệu quả nhất?" → RANK_ADS, level=ad, objective=null',
+      '"Quảng cáo có CTR cao nhất?" → RANK_ADS, level=ad, metrics=["ctr"]',
+    ],
+    schema: 'level="ad", objective=OUTCOME_* or null'
+  },
+  
+  GET_ENTITY_METADATA: {
+    description: "Lấy thông tin quan hệ giữa entities (ads → adset → campaign)",
+    keywords: ["thuộc", "của", "nó", "trên", "belong", "relationship"],
+    examples: [
+      '"Ads này thuộc adset nào?" → GET_ENTITY_METADATA, entity_type=ad',
+      '"3 cái ads trên thuộc campaign nào?" → GET_ENTITY_METADATA, entity_type=ad',
+    ],
+    schema: 'entity_type=ad/adset/campaign, entity_ids=[] (from context)'
+  },
+  
+  QUERY_DATA: {
+    description: "Truy vấn dữ liệu: overview, count, list, top_bottom",
+    keywords: ["chi tiêu", "phân tích", "xem", "có bao nhiêu", "danh sách", "thế nào"],
+    examples: [
+      '"Chi tiêu hôm nay?" → QUERY_DATA, query_type=overview',
+      '"Phân tích campaign ABC" → QUERY_DATA, query_type=overview, entities=[{type:"campaign", name:"ABC"}]',
+      '"Có bao nhiêu chiến dịch?" → QUERY_DATA, query_type=count, entities=[{type:"campaign"}]',
+      '"Danh sách campaigns" → QUERY_DATA, query_type=list',
+      '"Campaign nào spend cao nhất?" → QUERY_DATA, query_type=top_bottom, metric=spend',
+    ],
+    schema: 'query_type=overview/count/list/top_bottom, entities=[], metrics=[]'
+  },
+  
+  ANALYZE_TREND: {
+    description: "Phân tích xu hướng theo thời gian",
+    keywords: ["xu hướng", "biến động", "tăng", "giảm", "trend", "thay đổi"],
+    examples: [
+      '"Xu hướng CTR 7 ngày" → ANALYZE_TREND, metric=ctr',
+      '"Spend tháng này biến động thế nào?" → ANALYZE_TREND, metric=spend',
+    ],
+    schema: 'metrics=[], time_range={}'
+  },
+  
+  GENERAL_CHAT: {
+    description: "Chào hỏi, cảm ơn, off-topic",
+    keywords: ["xin chào", "cảm ơn", "hi", "hello", "thank"],
+    examples: [
+      '"Xin chào" → GENERAL_CHAT',
+      '"Cảm ơn bạn" → GENERAL_CHAT',
+    ],
+    schema: 'No additional fields needed'
+  }
+};
+
+// ============================================
+// SMART INTENT SELECTION
+// ============================================
+
+function selectRelevantIntents(message) {
+  const lowerMessage = message.toLowerCase();
+  const relevant = [];
+  
+  for (const [intentName, definition] of Object.entries(INTENT_DEFINITIONS)) {
+    const hasKeyword = definition.keywords.some(kw => lowerMessage.includes(kw));
+    if (hasKeyword) {
+      relevant.push(intentName);
+    }
+  }
+  
+  // Always include GENERAL_CHAT as fallback
+  if (!relevant.includes('GENERAL_CHAT')) {
+    relevant.push('GENERAL_CHAT');
+  }
+  
+  // If no match, include all (safety net)
+  if (relevant.length === 1 && relevant[0] === 'GENERAL_CHAT') {
+    return Object.keys(INTENT_DEFINITIONS);
+  }
+  
+  return relevant;
+}
 
 const IntentSchema = z.object({
   intent: z.enum([
-    "QUERY_DATA",      // ANY data query (overview, count, list, entity-specific, top/bottom)
+    "QUERY_DATA",      // ANY data query (overview, count, list, entity-specific, top_bottom)
+    "RANK_CAMPAIGNS",  // Rank campaigns by effectiveness
+    "RANK_ADSETS",     // Rank adsets by effectiveness
+    "RANK_ADS",        // Rank ads (quảng cáo) by effectiveness
+    "GET_ENTITY_METADATA", // Get entity metadata and relationships
     "ANALYZE_TREND",   // Trends over time
     "GENERAL_CHAT",    // Greetings, off-topic
   ]),
   query_type: z.enum(["overview", "count", "list", "top_bottom"]).nullable().describe("Type of data query if intent=QUERY_DATA"),
+  level: z.enum(["campaign", "adset", "ad"]).nullable().describe("Level for ranking: campaign, adset, or ad (if intent=RANK_CAMPAIGNS, RANK_ADSETS, or RANK_ADS)"),
+  objective: z.enum(["OUTCOME_SALES", "OUTCOME_LEADS", "OUTCOME_TRAFFIC", "OUTCOME_AWARENESS", "OUTCOME_ENGAGEMENT", "OUTCOME_APP_PROMOTION"]).nullable().describe("Campaign objective if mentioned, or null for all objectives"),
   entities: z.array(z.object({
     type: z.enum(["campaign", "adset", "ad"]),
     name: z.string(),
@@ -19,18 +131,19 @@ const IntentSchema = z.object({
     to: z.string().nullable().describe("YYYY-MM-DD or null"),
   }).nullable().describe("Time range or null"),
   metrics: z.array(z.string()).nullable().describe("List of metrics mentioned (e.g., spend, cpc, ctr) or null"),
+  rank_position: z.number().nullable().describe("Vị trí trong ranking (1, 2, 3...) nếu user hỏi 'thứ 2', 'thứ 3', 'top 2', etc. Null nếu không có"),
+  context_summary: z.string().nullable().describe("Tóm tắt context từ conversation history: những gì user đã hỏi, kết quả đã nhận được, entities đã được đề cập. Null nếu không có context trước đó."),
   reasoning: z.string().describe("Brief reasoning for the classification"),
 });
 
 export class IntentClassifier {
   constructor() {
-    const useOpenAI = !!process.env.OPENAI_API_KEY;
-    this.llm = useOpenAI
-      ? new ChatOpenAI({ 
-          modelName: "gpt-4o-mini", 
-          temperature: 0
-        })
-      : new ChatGoogleGenerativeAI({ modelName: "gemini-2.0-flash-exp", temperature: 0 });
+    this.llm = new ChatOpenAI({ 
+      modelName: "gpt-4o",
+      temperature: 0,
+      timeout: 30000,
+      maxRetries: 1,
+    });
   }
 
   /**
@@ -42,55 +155,50 @@ export class IntentClassifier {
    */
   async classify(message, context = {}, history = []) {
     try {
+      // Smart intent selection based on keywords
+      const relevantIntents = selectRelevantIntents(message);
+      console.log(`[IntentClassifier] Relevant intents: ${relevantIntents.join(', ')}`);
+      
+      // Build compact prompt with only relevant intents
+      let intentInstructions = '';
+      for (const intentName of relevantIntents) {
+        const def = INTENT_DEFINITIONS[intentName];
+        intentInstructions += `\n**${intentName}** - ${def.description}\n`;
+        intentInstructions += `Examples:\n${def.examples.map(ex => `  - ${ex}`).join('\n')}\n`;
+        intentInstructions += `Schema: ${def.schema}\n`;
+      }
+      
       const systemPrompt = `
-You are an expert Intent Classifier for a Facebook Ads AI Agent.
-Your job is to analyze the user's query and extract the intent, entities, time range, and metrics.
+You are an Intent Classifier for Facebook Ads AI Agent.
+CONTEXT: Date=${new Date().toISOString().split('T')[0]}, Account=${context.account?.name || "Unknown"}
 
-CONTEXT:
-Current Date: ${new Date().toISOString().split('T')[0]}
-Account Name: ${context.account?.name || "Unknown"}
+INTENT OPTIONS:
+${intentInstructions}
 
-SIMPLIFIED INTENT SYSTEM (3 intents only):
+COMMON RULES:
+- Extract entity names EXACTLY as mentioned (bao gồm số, ký tự đặc biệt, dấu gạch ngang)
+- Default time_range: last_7_days (if not mentioned)
+- Map metrics: "chi phí"→spend, "giá click"→cpc, "tỷ lệ nhấp"→ctr
+- Map objectives: "bán hàng"→OUTCOME_SALES, "leads"→OUTCOME_LEADS, "traffic"→OUTCOME_TRAFFIC, "awareness"→OUTCOME_AWARENESS, "engagement"→OUTCOME_ENGAGEMENT, "app"→OUTCOME_APP_PROMOTION
 
-1. **QUERY_DATA** - ANY data query about ads performance
-   - Also determine query_type:
-     - "overview": Metrics summary (spend, CTR, CPC, clicks, results) for account or specific entities
-     - "count": Count number of campaigns/adsets/ads
-     - "list": List campaigns/adsets/ads with names and status
-     - "top_bottom": Find top/bottom performing entities by metric
-   
-   Examples:
-   - "Chi tiêu hôm nay?" → QUERY_DATA, query_type=overview
-   - "Campaign X thế nào?" → QUERY_DATA, query_type=overview, entities=[X]
-   - "Có bao nhiêu chiến dịch?" → QUERY_DATA, query_type=count
-   - "Danh sách campaigns" → QUERY_DATA, query_type=list
-   - "Campaign nào tốt nhất?" → QUERY_DATA, query_type=top_bottom
-
-2. **ANALYZE_TREND** - Time-series analysis, changes over time
-   Examples: "Xu hướng CTR 7 ngày", "Spend tháng này biến động thế nào"
-
-3. **GENERAL_CHAT** - Greetings, thanks, unrelated topics
-   Examples: "Xin chào", "Cảm ơn", "Thời tiết hôm nay"
-
-INSTRUCTIONS:
-- If no time range mentioned, set preset="last_30_days" and calculate from/to dates (30 days ago to today)
-- Extract entity names exactly as mentioned
-- Map metrics: "chi phí"→"spend", "giá click"→"cpc", "tỷ lệ nhấp"→"ctr"
-
-OUTPUT FORMAT (JSON ONLY):
+OUTPUT (JSON only):
 {
-  "intent": "QUERY_DATA" | "ANALYZE_TREND" | "GENERAL_CHAT",
-  "query_type": "overview" | "count" | "list" | "top_bottom" (or null if not QUERY_DATA),
-  "entities": [ { "type": "campaign/adset/ad", "name": "string" } ] (or null),
-  "time_range": { "preset": "string", "from": "YYYY-MM-DD", "to": "YYYY-MM-DD" } (or null),
+  "intent": "RANK_CAMPAIGNS|RANK_ADSETS|RANK_ADS|GET_ENTITY_METADATA|QUERY_DATA|ANALYZE_TREND|GENERAL_CHAT",
+  "query_type": "overview|count|list|top_bottom" (or null),
+  "level": "campaign|adset|ad" (or null),
+  "objective": "OUTCOME_*" (or null),
+  "entities": [{"type": "campaign/adset/ad", "name": "string"}] (or null),
+  "time_range": {"preset": "last_7_days", "from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} (or null),
   "metrics": ["string"] (or null),
+  "rank_position": number (or null),
+  "context_summary": "string" (or null),
   "reasoning": "string"
 }
 `;
 
       const validHistory = history
         .filter(m => m.content && typeof m.content === 'string' && m.content.trim().length > 0)
-        .slice(-3)
+        .slice(-6)
         .map(m => ({ role: m.role, content: m.content }));
 
       const messages = [
@@ -107,13 +215,21 @@ OUTPUT FORMAT (JSON ONLY):
       try {
         parsed = JSON.parse(result.content);
       } catch (e) {
-        console.error("[IntentClassifier] JSON Parse Error:", e);
-        // Try to extract JSON from text if markdown code blocks are used
+        // Try to extract JSON from markdown code blocks first
         const match = result.content.match(/```json([\s\S]*?)```/);
         if (match) {
+          try {
             parsed = JSON.parse(match[1]);
-        } else {
+            console.log("[IntentClassifier] ✓ Parsed JSON from markdown code block");
+          } catch (parseError) {
+            console.error("[IntentClassifier] JSON Parse Error (markdown):", parseError);
+            console.error("[IntentClassifier] Content:", result.content);
             throw new Error("Failed to parse JSON response");
+          }
+        } else {
+          console.error("[IntentClassifier] JSON Parse Error (no markdown):", e);
+          console.error("[IntentClassifier] Content:", result.content);
+          throw new Error("Failed to parse JSON response");
         }
       }
 
@@ -122,10 +238,10 @@ OUTPUT FORMAT (JSON ONLY):
       let timeRange = parsed.time_range;
       if (!timeRange || !timeRange.preset || timeRange.preset === "unknown") {
         const today = new Date();
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         timeRange = {
-          preset: "last_30_days",
-          from: thirtyDaysAgo.toISOString().split('T')[0],
+          preset: "last_7_days",
+          from: sevenDaysAgo.toISOString().split('T')[0],
           to: today.toISOString().split('T')[0]
         };
       }
@@ -133,9 +249,13 @@ OUTPUT FORMAT (JSON ONLY):
       return {
         intent: parsed.intent || "GENERAL_CHAT",
         query_type: parsed.query_type || null,
+        level: parsed.level || null,
+        objective: parsed.objective || null,
         entities: parsed.entities || [],
         time_range: timeRange,
         metrics: parsed.metrics || [],
+        rank_position: parsed.rank_position || null,
+        context_summary: parsed.context_summary || null,
         reasoning: parsed.reasoning || ""
       };
 
@@ -146,7 +266,9 @@ OUTPUT FORMAT (JSON ONLY):
         intent: "GENERAL_CHAT",
         reasoning: "Error in classification or Empty Response",
         entities: [],
-        metrics: []
+        metrics: [],
+        rank_position: null,
+        context_summary: null
       };
     }
   }

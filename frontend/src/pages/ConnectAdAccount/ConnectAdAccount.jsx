@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './ConnectAdAccount.css'
 import { useToast } from '../../hooks/common/useToast'
+import { useAuth } from '../../hooks/auth/useAuth'
 import axiosInstance from '../../utils/api/axios'
 import logo from "../../assets/Logo_Fchat.png";
-import { useAuth } from '../../hooks/auth/useAuth'
 
 function ConnectAdAccount() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
+  const { user, updateUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [fbAdAccounts, setFbAdAccounts] = useState([])
@@ -18,7 +19,9 @@ function ConnectAdAccount() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('status')
   const [selectAll, setSelectAll] = useState(false)
-  const { user } = useAuth()
+
+  const FB_CONFIG_ID = import.meta.env.FB_CONFIG_ID
+  const hasFacebookConnected = !!user?.facebookId
 
   // Tải dữ liệu tài khoản quảng cáo từ Facebook API
   useEffect(() => {
@@ -152,20 +155,123 @@ function ConnectAdAccount() {
 
   //Xử lý làm mới kết nối
   const handleRefresh = async () => {
+    // Nếu user chưa có Facebook → gọi login Facebook
+    if (!hasFacebookConnected) {
+      handleFacebookBusinessLogin()
+      return
+    }
+
+    // Nếu đã có Facebook → refresh như bình thường
     try {
       setSyncing(true)
-      // Làm mới danh sách tài khoản quảng cáo từ Facebook (KHÔNG lưu DB)
       const fbRes = await axiosInstance.get('/api/ads-accounts/facebook')
       const fbAccounts = fbRes.data?.items || []
       setFbAdAccounts(fbAccounts)
       toast.success(t('connect_ad_account.refresh_success'))
     } catch (error) {
-      console.log('Refresh ad accounts error:', error)
+      // console.log('Refresh ad accounts error:', error)
       toast.error(t('connect_ad_account.refresh_error', { error: error.message || 'Unknown error' }))
     } finally {
       setSyncing(false)
     }
-  };
+  }
+
+  // Facebook Business Login Handler
+  const handleFacebookBusinessLogin = () => {
+    if (!window.FB) {
+      toast.error("Facebook SDK chưa sẵn sàng. Vui lòng thử lại.")
+      return
+    }
+
+    window.FB.login(
+      function (response) {
+        if (response.status === "connected") {
+          handleFacebookLoginSuccess(response)
+        }
+      },
+      {
+        config_id: FB_CONFIG_ID,
+        scope: "email,public_profile,pages_show_list,pages_read_engagement,pages_manage_metadata,pages_manage_posts,business_management,ads_read,ads_management",
+      }
+    )
+  }
+
+  // Xử lý khi Facebook login thành công - LINK Facebook vào account hiện tại
+  const handleFacebookLoginSuccess = async (response) => {
+    try {
+      setSyncing(true)
+      const { authResponse } = response
+      if (!authResponse?.accessToken) {
+        toast.error("Đăng nhập Facebook thất bại")
+        setSyncing(false)
+        return
+      }
+
+      // Gọi endpoint LINK thay vì LOGIN
+      const linkResponse = await axiosInstance.post(
+        "/api/auth/facebook/link",
+        {
+          facebookId: authResponse.userID,
+          accessToken: authResponse.accessToken,
+        }
+      )
+
+      if (linkResponse.data.success) {
+        const { user: updatedUser } = linkResponse.data.data
+        
+        // Cập nhật user trong context
+        updateUser(updatedUser)
+        
+        // Reload danh sách ad accounts
+        const fbRes = await axiosInstance.get('/api/ads-accounts/facebook')
+        const fbAccounts = fbRes.data?.items || []
+        setFbAdAccounts(fbAccounts)
+        toast.success("Kết nối Facebook thành công!")
+      } else {
+        const errorCode = linkResponse.data?.error?.code
+        
+        if (errorCode === "FACEBOOK_ALREADY_BOUND") {
+          toast.error("Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.")
+        } else {
+          toast.error(linkResponse.data?.error?.message || "Liên kết thất bại")
+        }
+      }
+    } catch (error) {
+      console.error("Facebook link error:", error)
+      const errorCode = error.response?.data?.error?.code
+      
+      if (errorCode === "FACEBOOK_ALREADY_BOUND") {
+        toast.error("Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.")
+      } else {
+        toast.error(error.response?.data?.error?.message || "Liên kết thất bại")
+      }
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  // Khởi tạo Facebook SDK
+  useEffect(() => {
+    if (window.FB) return
+
+    window.fbAsyncInit = function () {
+      window.FB.init({
+        appId: "1445692036729400",
+        cookie: true,
+        xfbml: true,
+        version: "v23.0",
+      })
+    }
+
+    ;(function (d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0]
+      if (d.getElementById(id)) return
+      js = d.createElement(s)
+      js.id = id
+      js.src = "https://connect.facebook.net/en_US/sdk.js"
+      fjs.parentNode.insertBefore(js, fjs)
+    })(document, "script", "facebook-jssdk")
+  }, [])
 
   //Xử lý quay lại danh sách tài khoản Quảng cáo
   const handleBackToList = () => {

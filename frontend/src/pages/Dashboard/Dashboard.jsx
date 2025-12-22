@@ -9,6 +9,7 @@ import shopService from "../../services/shop/shopService";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useShopPackage } from "../../hooks/shop/useShopPackage.js";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay.jsx";
 
 function Dashboard() {
   const [filterValue, setFilterValue] = useState("all");
@@ -44,7 +45,7 @@ function Dashboard() {
   const loadPages = useCallback(async () => {
     try {
       const me = await profileService.getCurrentProfile();
-      // ✅ Lấy từ Shop model (nguồn chính) thay vì ShopUser
+      // Lấy từ Shop model (nguồn chính) thay vì ShopUser
       const shop = me?.data?.shop || me?.shop;
       const shopUser = me?.data?.shopUser || me?.shopUser;
 
@@ -54,7 +55,7 @@ function Dashboard() {
         return false;
       }
 
-      // ✅ Lấy danh sách page mà user hiện tại có quyền truy cập
+      // Lấy danh sách page mà user hiện tại có quyền truy cập
       const shopUserPages = Array.isArray(shopUser?.facebook_pages)
         ? shopUser.facebook_pages
         : [];
@@ -68,7 +69,7 @@ function Dashboard() {
           .map((p) => p.page_id)
       );
 
-      // ✅ Lấy pages từ Shop.facebook_pages (nguồn chính trong DB)
+      // Lấy pages từ Shop.facebook_pages (nguồn chính trong DB)
       const pages = Array.isArray(shop?.facebook_pages)
         ? shop.facebook_pages
         : [];
@@ -77,7 +78,8 @@ function Dashboard() {
         .filter((p) => p.connected_status === "connected")
         .map((p) => ({
           id: p.page_id,
-          name: p.page_info?.name || "Facebook Page",
+          // Shop model dùng page_info.name
+          name: p.page_info?.name || p.page_name || "Facebook Page",
           pageId: p.page_id,
           link: `https://www.facebook.com/${p.id}`,
           avatar:
@@ -90,7 +92,7 @@ function Dashboard() {
       setConnectedPages(normalized);
       return true;
     } catch (e) {
-      console.error("Load dashboard shop info error:", e);
+      //console.error("Load dashboard shop info error:", e);
       return false;
     }
   }, []);
@@ -108,7 +110,7 @@ function Dashboard() {
     try {
       await shopService.refreshUserPages();
     } catch (error) {
-      console.error("Refresh user pages error:", error);
+      //console.error("Refresh user pages error:", error);
       toast.error(
         error?.message ||
         error?.detail?.message ||
@@ -127,7 +129,7 @@ function Dashboard() {
   };
 
   // const handleContribute = () => {
-  //   console.log("Contributing page...");
+  //   // console.log("Contributing page...");
   // };
 
   const handleAddNewPage = () => {
@@ -176,7 +178,7 @@ function Dashboard() {
           toast.warning(res.message || "Không thể tạm dừng page.");
         }
       } catch (e) {
-        console.log("Pause page error:", e);
+        // console.log("Pause page error:", e);
         toast.error("Có lỗi khi tạm dừng page.");
       }
       return;
@@ -198,7 +200,7 @@ function Dashboard() {
           toast.warning(res.message || "Không thể kích hoạt lại page.");
         }
       } catch (e) {
-        console.log("Resume page error:", e);
+        // console.log("Resume page error:", e);
         toast.error("Có lỗi khi kích hoạt lại page.");
       }
       return;
@@ -212,7 +214,7 @@ function Dashboard() {
           shopId: shop.shop_id,
           pageId,
         });
-        // ✅ Kiểm tra phản hồi
+        // Kiểm tra phản hồi
         if (res?.success) {
           setConnectedPages((prev) => prev.filter((p) => p.id !== pageId));
           toast.success(res.message || "Đã ngắt kết nối page.");
@@ -220,7 +222,7 @@ function Dashboard() {
           toast.warning(res.message || "Không thể ngắt kết nối page.");
         }
       } catch (e) {
-        console.log("Disconnect page error:", e);
+        // console.log("Disconnect page error:", e);
         toast.error("Có lỗi khi ngắt kết nối page.");
       }
     }
@@ -249,11 +251,12 @@ function Dashboard() {
   }).filter((page) => {
     // Lọc theo từ khóa tìm kiếm
     if (!searchQuery) return true;
-    return page.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return page.name.toLowerCase().includes(searchQuery.toLowerCase()) || page.pageId.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   return (
     <div className="dashboard-layout">
+      <LoadingOverlay isLoading={isRefreshing || pkgLoading} message="Đang tải..." />
       <div className="dashboard-content">
         <div className="dashboard-center">
           {/* Header with tabs */}

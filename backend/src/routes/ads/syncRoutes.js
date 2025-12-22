@@ -1,6 +1,7 @@
 import express from "express";
 import AdsAccount from "../../models/ads/adsAccount.model.js";
 import { syncEntitiesForAccount } from "../../services/ads/entitySyncService.js";
+import { syncInsightsForAccount } from "../../services/ads/insightsSyncService.js";
 import { startBackfill } from "../../services/ads/backfillService.js";
 import User from "../../models/user/user.model.js";
 
@@ -123,6 +124,107 @@ router.post("/entities", async (req, res) => {
       message: "Failed to trigger entity sync",
       error: fbError?.message || err.message,
       fbErrorCode: fbError?.code,
+    });
+  }
+});
+
+router.post("/insights", async (req, res) => {
+  try {
+    const { accountId } = req.body;
+    if (!accountId) {
+      return res.status(400).json({ message: "accountId is required" });
+    }
+
+    const account = await AdsAccount.findOne({ external_id: accountId });
+    
+    if (!account) {
+      console.error(`[sync/insights] AdsAccount not found: ${accountId}`);
+      return res.status(404).json({ message: "AdsAccount not found" });
+    }
+
+    if (account.sync_metadata?.insights_status === "syncing") {
+      return res.status(409).json({
+        success: false,
+        message: "Đang đồng bộ insights. Vui lòng chờ hoàn tất.",
+        alreadySyncing: true,
+      });
+    }
+
+    console.log(`[sync/insights] Manual trigger for account ${accountId}`);
+    await syncInsightsForAccount(account._id);
+
+    return res.json({ 
+      success: true,
+      message: "Insights sync completed"
+    });
+  } catch (err) {
+    console.error("[sync/insights] Error:", err);
+    
+    const fbError = err.response?.data?.error;
+    
+    if (fbError?.code === 17 || fbError?.code === 4) {
+      return res.status(429).json({
+        success: false,
+        message: "Rate limit exceeded. Please wait and try again.",
+        rateLimitReached: true,
+        retryAfter: 60,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to sync insights",
+      error: err.message,
+    });
+  }
+});
+
+router.post("/full", async (req, res) => {
+  try {
+    const { accountId } = req.body;
+    if (!accountId) {
+      return res.status(400).json({ message: "accountId is required" });
+    }
+
+    const account = await AdsAccount.findOne({ external_id: accountId });
+    
+    if (!account) {
+      return res.status(404).json({ message: "AdsAccount not found" });
+    }
+
+    if (!account.shop_admin_id) {
+      return res.status(400).json({ 
+        message: "Account has no shop_admin_id. Please reconnect your Facebook account." 
+      });
+    }
+
+    const user = await User.findById(account.shop_admin_id).select("+facebookAccessToken");
+    
+    if (!user?.facebookAccessToken) {
+      return res.status(400).json({ 
+        message: "Missing Facebook access token. Please reconnect your Facebook account." 
+      });
+    }
+
+    console.log(`[sync/full] Manual FULL sync for account ${accountId}`);
+    
+    await syncEntitiesForAccount(accountId, user.facebookAccessToken);
+    console.log(`[sync/full] Entity sync completed for ${accountId}`);
+    
+    await syncInsightsForAccount(account._id);
+    console.log(`[sync/full] Insights sync completed for ${accountId}`);
+
+    return res.json({ 
+      success: true,
+      message: "Full sync (entities + insights) completed"
+    });
+  } catch (err) {
+    console.error("[sync/full] Error:", err);
+    
+    return res.status(500).json({
+      success: false,
+      message: "Failed to complete full sync",
+      error: err.message,
     });
   }
 });

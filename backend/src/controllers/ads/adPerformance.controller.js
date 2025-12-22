@@ -3,7 +3,7 @@ import AdsAccount from "../../models/ads/adsAccount.model.js";
 import AdsCampaign from "../../models/ads/adsCampaign.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
 import Ads from "../../models/ads/ads.model.js";
-import { syncInsightsForAccount } from "../../services/analytics/insightsSyncService.js";
+import { syncInsightsForAccount } from "../../services/ads/insightsSyncService.js";
 
 // Normalize date to Vietnam timezone midnight
 function normalizeToVietnamMidnight(dateInput) {

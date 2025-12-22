@@ -100,7 +100,7 @@ export const authenticateSSE = async (req, res, next) => {
 };
 
 /**
- * 📨 Middleware kiểm tra email đã xác minh
+ * Middleware kiểm tra email đã xác minh
  */
 export const requireEmailVerification = (req, res, next) => {
   if (!req.user?.emailVerified) {
@@ -114,7 +114,7 @@ export const requireEmailVerification = (req, res, next) => {
 };
 
 /**
- * 🔒 Middleware kiểm tra quyền truy cập
+ * Middleware kiểm tra quyền truy cập
  * @param {String} moduleName - Tên module (ví dụ: "campaign", "ads", "shop")
  * @param {String} action - Hành động cụ thể (ví dụ: "create", "update", "delete", "view")
  */
@@ -150,7 +150,7 @@ export const authorize = (moduleName, action) => {
 };
 
 /**
- * 🔒 Middleware kiểm tra quyền truy cập trong shop cụ thể
+ * Middleware kiểm tra quyền truy cập trong shop cụ thể
  * @param {String} module - Tên module (ví dụ: "shop", "product")
  * @param {String} action - Hành động cụ thể (ví dụ: "create", "update", "delete", "view")
  */

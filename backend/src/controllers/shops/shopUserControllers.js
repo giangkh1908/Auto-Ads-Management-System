@@ -3,7 +3,7 @@ import UserRole from "../../models/user/userRole.model.js";
 import User from "../../models/user/user.model.js";
 import Role from "../../models/admin/role.model.js";
 import Shop from "../../models/shops/shop.model.js";
-import { sendInvitationEmail } from "../../services/emailService.js";
+import { queueInvitationEmail } from "../../services/email/emailService.js";
 import mongoose from "mongoose";
 import { ErrorCode, getErrorMessage } from "../../constants/errorCode.js";
 import { SuccessCode, getSuccessMessage } from "../../constants/successCode.js";
@@ -103,27 +103,10 @@ export const inviteEmployee = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Gửi email mời
-      await sendInvitationEmail(email);
+      // Gửi email mời (fire-and-forget)
+      queueInvitationEmail(email);
       // Note: Không cần update UserPackage.employees ở đây vì đã được tính trong countUsage
-
-      await saveLog({
-        user_id: invitedBy,
-        user_name: currentUser.full_name || currentUser.email,
-        shop_id: shopId,
-        shop_name: shop.shop_name,
-        action: "ADD_EMPLOYEE",
-        target_type: "User",
-        target_id: user._id.toString(),
-        target_name: user.full_name || user.email,
-        description: `${currentUser.full_name || currentUser.email} đã thêm nhân viên "${user.full_name || user.email}" (vai trò: ${role.role_name}) vào cửa hàng "${shop.shop_name}"`,
-        request: req.body,
-        response: shopUser,
-        success: true,
-        source: "manual",
-        ip_address: req.ip,
-        meta: { role_assigned: roleId, invited_email: email },
-      });
+      // Note: Không ghi log ở đây vì user chưa tồn tại trong hệ thống
 
       return res.status(200).json({
         success: true,

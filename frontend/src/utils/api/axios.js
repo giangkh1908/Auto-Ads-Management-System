@@ -10,7 +10,7 @@ const axiosInstance = axios.create({
 })
 
 /**
- * ✅ Validate token chỉ chứa ký tự ASCII (ISO-8859-1)
+ * Validate token chỉ chứa ký tự ASCII (ISO-8859-1)
  * HTTP headers KHÔNG hỗ trợ Unicode
  */
 const isValidToken = (token) => {
@@ -25,9 +25,9 @@ axiosInstance.interceptors.request.use(
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
     
     if (token) {
-      // ✅ Validate token trước khi set vào header
+      // Validate token trước khi set vào header
       if (!isValidToken(token)) {
-        console.error('❌ Invalid token detected (contains non-ASCII characters). Clearing...')
+        console.error('Invalid token detected (contains non-ASCII characters). Clearing...')
         localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
         localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
         localStorage.removeItem(STORAGE_KEYS.USER_DATA)
@@ -78,12 +78,9 @@ axiosInstance.interceptors.response.use(
             if (refreshToken) {
               try {
                 // gọi trực tiếp axios (không dùng axiosInstance) để tránh interceptor đệ quy
-                const resp = await axios.post(
-                  `${API_CONFIG.BASE_URL}/api/auth/refresh`,
-                  { refreshToken } // 👈 đúng schema backend
-                )
+                const resp = await axios.post(`${API_CONFIG.BASE_URL}/api/auth/refresh`,{ refreshToken })
 
-                // 👇 đúng chỗ lấy token theo backend của bạn
+                // đúng chỗ lấy token theo backend của bạn
                 const tokens = resp?.data?.data?.tokens
                 const accessToken = tokens?.accessToken
                 const newRefreshToken = tokens?.refreshToken

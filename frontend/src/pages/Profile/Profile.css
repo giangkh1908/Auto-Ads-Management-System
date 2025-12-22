@@ -290,7 +290,34 @@
   margin-top: 20px;
 }
 
-/* Responsive */
+/* Error Messages */
+.error-message {
+  color: #ef4444;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.form-input-profile.error {
+  border-color: #ef4444;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+/* Tablet (768px - 1024px) */
+@media (max-width: 1024px) {
+  .profile-container {
+    max-width: 90%;
+    padding: 20px 16px;
+  }
+
+  .profile-content {
+    padding: 32px 24px;
+  }
+}
+
+/* Mobile lớn (481px - 767px) */
 @media (max-width: 768px) {
   .profile-container {
     padding: 20px 16px;

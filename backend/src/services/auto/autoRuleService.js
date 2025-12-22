@@ -9,7 +9,7 @@ import {
   updateAdsetStatus,
   updateAdStatus,
 } from "../ads/fbAdsService.js";
-import { sendAutoRuleNotificationEmail } from "../emailService.js";
+import { queueAutoRuleNotificationEmail } from "../email/emailService.js";
 import { saveSystemLog } from "../../utils/systemLog.js";
 
 /**
@@ -57,8 +57,8 @@ export function calculateNextRunAt(schedule) {
   const currentTime = now.getHours() * 60 + now.getMinutes(); // minutes since midnight
 
   if (schedule.type === "CONTINUOUS") {
-    // Chạy sau 30 phút
-    return new Date(now.getTime() + 30 * 60 * 1000);
+    // Chạy sau 1 phút
+    return new Date(now.getTime() + 1 * 60 * 1000);
   } else if (schedule.type === "DAILY") {
     // DAILY: 30 phút/lần trong khoảng thời gian từ start_time đến end_time
     if (schedule.daily_time && schedule.daily_time.start_time && schedule.daily_time.end_time) {
@@ -413,7 +413,7 @@ export async function evaluateConditions(rule) {
     } else {
       // Nếu không có điều kiện nào, return false
       console.log(
-        `[AutoRule Evaluate] ❌ Không lấy được external IDs tương ứng từ apply_to_ids, returning false`
+        `Không có điều kiện nào thỏa mãn`
       );
       return false;
     }
@@ -810,8 +810,8 @@ async function executeSendNotification(rule) {
       entities.ads = ads.map((a) => a.name || a.external_id);
     }
 
-    // Gửi email notification
-    await sendAutoRuleNotificationEmail(user.email, user.full_name || user.email, {
+    // Gửi email notification (fire-and-forget)
+    queueAutoRuleNotificationEmail(user.email, user.full_name || user.email, {
       ruleName: rule.name,
       conditions: rule.conditions,
       action: rule.action,
@@ -949,7 +949,7 @@ export async function processRule(rule) {
       },
     });
 
-    // Chuẩn bị update error info
+    // Lên lịch cho lần chạy tiếp nếu rule bị lỗi
     const now = new Date();
     const nextRunAt = calculateNextRunAt(rule.schedule);
 

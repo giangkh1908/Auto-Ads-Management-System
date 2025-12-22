@@ -108,11 +108,9 @@ export function useAdsDataFetching(
   ) => {
     if (!visibleItems || visibleItems.length === 0) return {};
     
+    // Caller (AdsManagement.jsx) đã filter items cần insights rồi
+    // Chỉ cần lấy external_id, không filter lại
     const entityIds = visibleItems
-      .filter(item => {
-        // Chỉ fetch insights cho items chưa có insights hoặc insights rỗng
-        return item.external_id && (!item.insights || Object.keys(item.insights || {}).length === 0);
-      })
       .map(item => item.external_id)
       .filter(Boolean);
     
@@ -166,16 +164,19 @@ export function useAdsDataFetching(
             acc[item.status] = (acc[item.status] || 0) + 1;
             return acc;
           }, {});
-          console.log(`📊 Backend returned campaigns by status:`, statusCount);
+          // console.log(`📊 Backend returned campaigns by status:`, statusCount);
         }
         
         const mapped = items.map(transformCampaign);
         
-        // Progressive loading: Hiển thị data ngay, insights load sau
+        // Hiển thị data ngay (insights sẽ được fetch riêng cho visible items)
         setDatasets(prev => ({
           ...prev,
           campaigns: mapped,
         }));
+        
+        // KHÔNG auto-fetch insights cho TẤT CẢ items
+        // Insights sẽ được fetch riêng cho visible items (current page) via fetchInsightsForVisibleItems
       }
     } catch (error) {
       if (error.name === 'AbortError' || error.name === 'CanceledError') {
@@ -183,7 +184,7 @@ export function useAdsDataFetching(
       }
       console.error("Error fetching campaigns:", error);
     }
-  }, [fetchInsightsBatch, setDatasets]);
+  }, [setDatasets]);
 
   /**
    * Fetch adsets for campaign
@@ -203,7 +204,7 @@ export function useAdsDataFetching(
              a.status !== "ARCHIVED"
       );
       if (cachedAdsets.length > 0) {
-        console.log(`✅ Using ${cachedAdsets.length} cached adsets for campaign ${campaignId}`);
+        // console.log(`✅ Using ${cachedAdsets.length} cached adsets for campaign ${campaignId}`);
         return;
       }
     }
@@ -227,7 +228,7 @@ export function useAdsDataFetching(
             acc[item.status] = (acc[item.status] || 0) + 1;
             return acc;
           }, {});
-          console.log(`📊 Backend returned adsets by status:`, statusCount);
+          // console.log(`📊 Backend returned adsets by status:`, statusCount);
         }
         
         const mapped = items.map((adset) => transformAdset(adset, campaignId));
@@ -272,7 +273,7 @@ export function useAdsDataFetching(
              a.status !== "ARCHIVED"
       );
       if (cachedAds.length > 0) {
-        console.log(`✅ Using ${cachedAds.length} cached ads for adset ${adsetId}`);
+        // console.log(`✅ Using ${cachedAds.length} cached ads for adset ${adsetId}`);
         return;
       }
     }
@@ -297,7 +298,7 @@ export function useAdsDataFetching(
             acc[item.status] = (acc[item.status] || 0) + 1;
             return acc;
           }, {});
-          console.log(`📊 Backend returned ads by status:`, statusCount);
+          // console.log(`📊 Backend returned ads by status:`, statusCount);
         }
         
         const mapped = items.map((ad) => ({
@@ -343,7 +344,7 @@ export function useAdsDataFetching(
         a => a.status !== "DELETED" && a.status !== "ARCHIVED"
       );
       if (cachedAdsets.length > 0) {
-        console.log(`✅ Using ${cachedAdsets.length} cached adsets for account ${accountId}`);
+        // console.log(`✅ Using ${cachedAdsets.length} cached adsets for account ${accountId}`);
         return;
       }
     }
@@ -367,12 +368,12 @@ export function useAdsDataFetching(
             acc[item.status] = (acc[item.status] || 0) + 1;
             return acc;
           }, {});
-          console.log(`📊 Backend returned adsets by status:`, statusCount);
+          // console.log(`📊 Backend returned adsets by status:`, statusCount);
         }
         
         const mapped = items.map((adset) => transformAdset(adset));
         
-        // Progressive loading: Hiển thị data ngay, insights load sau
+        // Hiển thị data ngay (insights sẽ được fetch riêng cho visible items)
         setDatasets((prev) => ({
           ...prev,
           adsets: mapped,
@@ -380,6 +381,9 @@ export function useAdsDataFetching(
         
         // Update cache
         setCache(prev => updateCacheTimestamp(prev, cacheKey));
+        
+        // KHÔNG auto-fetch insights cho TẤT CẢ items
+        // Insights sẽ được fetch riêng cho visible items via fetchInsightsForVisibleItems
       }
     } catch (error) {
       if (error.name === 'AbortError' || error.name === 'CanceledError') {
@@ -387,7 +391,7 @@ export function useAdsDataFetching(
       }
       console.error("Error fetching adsets:", error);
     }
-  }, [fetchInsightsBatch, setDatasets, setCache]);
+  }, [setDatasets, setCache]);
 
   /**
    * Fetch all ads for account
@@ -405,7 +409,7 @@ export function useAdsDataFetching(
         a => a.status !== "DELETED" && a.status !== "ARCHIVED"
       );
       if (cachedAds.length > 0) {
-        console.log(`✅ Using ${cachedAds.length} cached ads for account ${accountId}`);
+        // console.log(`✅ Using ${cachedAds.length} cached ads for account ${accountId}`);
         return;
       }
     }
@@ -448,7 +452,7 @@ export function useAdsDataFetching(
             acc[item.status] = (acc[item.status] || 0) + 1;
             return acc;
           }, {});
-          console.log(`📊 Backend returned ads by status:`, statusCount);
+          // console.log(`📊 Backend returned ads by status:`, statusCount);
         }
         
         const mapped = items.map((ad) => ({
@@ -456,11 +460,14 @@ export function useAdsDataFetching(
           updated_at: ad.updated_at || ad.updatedAt,
         }));
         
-        // Progressive loading: Hiển thị data ngay, insights load sau
+        // Hiển thị data ngay (insights sẽ được fetch riêng cho visible items)
         setDatasets((prev) => ({ ...prev, ads: mapped }));
         
         // Update cache
         setCache(prev => updateCacheTimestamp(prev, cacheKey));
+        
+        // KHÔNG auto-fetch insights cho TẤT CẢ items
+        // Insights sẽ được fetch riêng cho visible items via fetchInsightsForVisibleItems
       }
     } catch (error) {
       if (error.name === 'AbortError' || error.name === 'CanceledError') {
@@ -468,7 +475,7 @@ export function useAdsDataFetching(
       }
       console.error("Error fetching ads:", error);
     }
-  }, [fetchInsightsBatch, setDatasets, setCache]);
+  }, [setDatasets, setCache]);
 
   return {
     fetchCampaignsForAccount,

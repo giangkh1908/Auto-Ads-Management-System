@@ -329,11 +329,39 @@ export const getShopsByOwner = async (req, res) => {
 export const updateShop = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user._id;
+    const currentUser = await User.findById(userId);
+    
+    // Lấy shop trước khi update để so sánh
+    const oldShop = await Shop.findById(id);
+    if (!oldShop) return res.status(404).json({ message: "Shop not found" });
+    
     const updatedShop = await Shop.findByIdAndUpdate(id, req.body, {
       new: true, // trả về bản ghi đã cập nhật
       runValidators: true,
     });
-    if (!updatedShop) return res.status(404).json({ message: "Shop not found" });
+    
+    // Ghi log UPDATE_SHOP
+    await saveLog({
+      user_id: userId,
+      user_name: currentUser?.full_name || currentUser?.email,
+      shop_id: updatedShop._id,
+      shop_name: updatedShop.shop_name,
+      action: "UPDATE_SHOP",
+      target_type: "Shop",
+      target_id: updatedShop._id.toString(),
+      target_name: updatedShop.shop_name,
+      request: req.body,
+      response: updatedShop,
+      ip_address: req.ip,
+      meta: {
+        old_name: oldShop.shop_name,
+        new_name: updatedShop.shop_name,
+        old_industry: oldShop.industry,
+        new_industry: updatedShop.industry,
+      },
+    });
+    
     res.status(200).json({
       success: true,
       message: "Shop updated successfully",

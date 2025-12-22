@@ -10,7 +10,7 @@ export const validateEmail = (value) => {
 }
 
 export const validatePhone = (value) => {
-  if (!value) return true // optional by default
+  if (!validateRequired(value)) return false
   return /^(\+)?\d{9,11}$/.test(String(value).trim())
 }
 
@@ -19,8 +19,17 @@ export const validateMinLength = (value, min) => {
   return String(value).trim().length >= min
 }
 
-export const validatePassword = (value, { minLength = 6 } = {}) => {
-  return validateMinLength(value, minLength)
+export const validatePassword = (value, { minLength = 8 } = {}) => {
+  if (!validateRequired(value)) return false
+  if (value.length < minLength) return false
+  
+  // Kiểm tra có chữ cái viết hoa
+  if (!/[A-Z]/.test(value)) return false
+  
+  // Kiểm tra có ký tự đặc biệt
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(value)) return false
+  
+  return true
 }
 
 export const validateFullName = (value) => {

@@ -105,11 +105,11 @@ function ServicePackage() {
           </p>
           {shopPkg?.package ? (
             <p style={{ marginTop: '20px' }}>
-              Shop đang sử dụng gói <strong>{shopPkg.package.name}</strong> | Thời hạn: <strong>{shopPkg.package.planType === '3months' ? '3 tháng' : shopPkg.package.planType === '12months' ? '1 năm' : 'N/A'}</strong>
+              Bạn đang sử dụng gói <strong>{shopPkg.package.name}</strong> | Thời hạn: <strong>{shopPkg.package.planType === '3months' ? '3 tháng' : shopPkg.package.planType === '12months' ? '1 năm' : 'N/A'}</strong>
             </p>
           ) : (
             <p style={{ marginTop: '20px' }}>
-              Shop chưa sử dụng gói nào
+              Chưa có gói
             </p>
           )}
         </div>

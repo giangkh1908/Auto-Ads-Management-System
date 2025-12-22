@@ -237,6 +237,7 @@ function Header({ onLoginClick }) {
   const handleLanguageChange = (lang) => {
     i18n.changeLanguage(lang);
     setOpenMenu(null);
+    window.location.reload();
   };
 
   const handleShopSelect = async (shop) => {
@@ -302,7 +303,7 @@ function Header({ onLoginClick }) {
           );
         } else {
           // Fallback nhẹ nhàng
-          console.log(`Switched to: ${shop.shop_name}`);
+          // console.log(`Switched to: ${shop.shop_name}`);
         }
 
         // Reload lại trang để cập nhật dữ liệu với shop mới

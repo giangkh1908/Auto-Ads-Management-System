@@ -99,6 +99,7 @@ export const mergeInsights = (entity, insights) => {
   
   return {
     ...entity,
+    insights: insights,  // ← THÊM DÒNG NÀY để cập nhật insights object
     impressions: Number(insights.impressions) || 0,
     reach: Number(insights.reach) || 0,
     clicks: Number(insights.clicks) || 0,

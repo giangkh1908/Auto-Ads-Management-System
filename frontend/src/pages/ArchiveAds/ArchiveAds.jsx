@@ -18,6 +18,7 @@ import { translateStatus, getStatusClass } from "../../utils/formatters/statusUt
 import { useProgressState } from "../../hooks/common/useProgressState";
 import { useTranslation } from "react-i18next";
 import { translateObjective, translateOptimizationGoal, formatTargetingVN } from "../../utils/formatters/translationUtils";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 
 function ArchiveAds() {
   const { t } = useTranslation(['ads']);
@@ -266,7 +267,7 @@ function ArchiveAds() {
 
   //   try {
   //     // TODO: Implement restore API calls
-  //     console.log(`Khôi phục ${idsToRestore.length} items:`, idsToRestore);
+  //     // console.log(`Khôi phục ${idsToRestore.length} items:`, idsToRestore);
 
   //     // Simulate API call
   //     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -288,7 +289,7 @@ function ArchiveAds() {
   //   }
   // };
 
-  // 🔹 Delete (main)
+  // Delete (main)
   const handleDelete = (id) => {
     const key =
       activeTab === "campaigns"
@@ -342,14 +343,14 @@ function ArchiveAds() {
     });
 
     try {
-      // 🧩 Lấy token FB từ localStorage
+      // Lấy token FB từ localStorage
       const fbToken = localStorage.getItem("fb_access_token") || null;
 
       let successCount = 0;
       let errorCount = 0;
       const errors = [];
 
-      // 🔹 Gọi đúng service cho từng loại và cập nhật progress
+      // Gọi đúng service cho từng loại và cập nhật progress
       for (let i = 0; i < idsToDelete.length; i++) {
         const delId = idsToDelete[i];
 
@@ -383,7 +384,7 @@ function ArchiveAds() {
         }
       }
 
-      // 🔹 Cập nhật UI - xóa tất cả items đã được xử lý (bao gồm cả success)
+      // Cập nhật UI - xóa tất cả items đã được xử lý (bao gồm cả success)
       const processedIds = idsToDelete.slice(0, successCount);
 
       setDatasets((prev) => ({
@@ -441,7 +442,7 @@ function ArchiveAds() {
     }
   };
 
-  // 🔹 Navigation
+  // Navigation
   const handleCampaignClick = (campaign) => {
     setSelectedCampaign(campaign);
     setSelectedAdset(null);
@@ -458,7 +459,7 @@ function ArchiveAds() {
     fetchAdsForAdset(adset.id || adset._id || adset.external_id);
   };
 
-  // 🔹 Reset selections
+  // Reset selections
   const resetSelection = () => {
     setSelectedCampaign(null);
     setSelectedAdset(null);
@@ -466,7 +467,7 @@ function ArchiveAds() {
     setHasSelectedItems(false);
   };
 
-  // 🔹 Fetch campaigns (fetch tất cả để sort và phân trang ở FE - chỉ từ DB)
+  // Fetch campaigns (fetch tất cả để sort và phân trang ở FE - chỉ từ DB)
   const fetchCampaignsForAccount = useCallback(async (accountId) => {
     if (!accountId) return;
     try {
@@ -511,7 +512,7 @@ function ArchiveAds() {
     }
   }, []);
 
-  // 🔹 Fetch AdSets for campaign (fetch tất cả để sort và phân trang ở FE)
+  // Fetch AdSets for campaign (fetch tất cả để sort và phân trang ở FE)
   const fetchAdsetsForCampaign = useCallback(async (campaignId, accountId) => {
     if (!campaignId || !accountId) return;
     try {
@@ -559,7 +560,7 @@ function ArchiveAds() {
     }
   }, []);
 
-  // 🔹 Fetch Ads for AdSet (fetch tất cả để sort và phân trang ở FE)
+  // Fetch Ads for AdSet (fetch tất cả để sort và phân trang ở FE)
   const fetchAdsForAdset = useCallback(async (adsetId) => {
     if (!adsetId) return;
     try {
@@ -599,7 +600,7 @@ function ArchiveAds() {
     }
   }, []);
 
-  // 🔹 Fetch all Adsets & Ads by account (fetch tất cả để sort và phân trang ở FE)
+  // Fetch all Adsets & Ads by account (fetch tất cả để sort và phân trang ở FE)
   const fetchAllAdsetsForAccount = useCallback(async (accountId) => {
     if (!accountId) return;
     try {
@@ -686,7 +687,7 @@ function ArchiveAds() {
     }
   }, []);
 
-  // 🔹 Fetch Ad Accounts (chỉ lấy ACTIVE accounts)
+  // Fetch Ad Accounts (chỉ lấy ACTIVE accounts)
   useEffect(() => {
     const fetchAdAccounts = async () => {
       setLoadingAccounts(true);
@@ -695,7 +696,21 @@ function ArchiveAds() {
           params: { status: 'ACTIVE' } // Chỉ lấy accounts có status ACTIVE
         });
         if (response.data?.items) {
-          setAdAccounts(response.data.items);
+          const accounts = response.data.items;
+          setAdAccounts(accounts);
+
+          // Đọc từ cache localStorage
+          const savedAccountId = localStorage.getItem('selectedAdAccount');
+
+          if (savedAccountId && accounts.length > 0) {
+            // Kiểm tra account đã lưu có tồn tại không
+            const existingAccount = accounts.find(acc => acc.external_id === savedAccountId);
+            if (existingAccount) {
+              setSelectedAccountId(savedAccountId);
+            }
+            // Nếu không có cache hoặc account không hợp lệ -> không chọn gì
+          }
+
           setInitialized(true);
         }
       } catch (error) {
@@ -796,7 +811,7 @@ function ArchiveAds() {
         }
       }
 
-      console.log("✅ Data refreshed successfully");
+      // console.log("✅ Data refreshed successfully");
       toast.success(t('toasts.refresh_success'));
     } catch (error) {
       console.error("❌ Error refreshing data:", error);
@@ -807,6 +822,7 @@ function ArchiveAds() {
 
   return (
     <div className="archive-ads-layout">
+      <LoadingOverlay isLoading={loadingAccounts} message="Đang tải..." />
       <div className="archive-ads-content">
         <div className="archive-ads-center">
           <div className="archive-ads-card">

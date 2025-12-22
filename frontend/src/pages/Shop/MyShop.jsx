@@ -9,6 +9,7 @@ import axiosInstance from "../../utils/api/axios.js";
 import { toast } from "sonner";
 import { clearShopCache, saveShopCache, getShopCache } from "../../utils/cache/shopCache";
 import { useMyPackage } from "../../hooks/shop/useMyPackage";
+import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 
 function MyShop() {
   const { t } = useTranslation();
@@ -23,6 +24,8 @@ function MyShop() {
   // Modal states
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Forms Add
   const [addForm, setAddForm] = useState({
@@ -48,7 +51,7 @@ function MyShop() {
         const data = res.data;
         setCurrentUser(data.data.user);
       } catch (error) {
-        console.error("Error fetching user:", error);
+        //console.error("Error fetching user:", error);
         toast.error("Lỗi khi tải thông tin người dùng");
       }
     };
@@ -73,7 +76,7 @@ function MyShop() {
       const res = await axiosInstance.get("/api/shops/owner");
       const data = res.data;
 
-      console.log("🔹 API response:", data);
+      // console.log("🔹 API response:", data);
 
       if (data.success && Array.isArray(data.data)) {
         const formatted = data.data.map((shop) => {
@@ -131,12 +134,12 @@ function MyShop() {
 
         setShops(formatted);
       } else {
-        console.error("Failed to load shops:", data.message);
+        //console.error("Failed to load shops:", data.message);
         toast.error(data.message || "Không thể tải danh sách shop");
         setShops([]); // fallback an toàn
       }
     } catch (e) {
-      console.error("Load shops error:", e);
+      //console.error("Load shops error:", e);
       toast.error("Lỗi khi tải danh sách shop");
       setShops([]); // tránh lỗi map nếu lỗi API
     } finally {
@@ -150,7 +153,7 @@ function MyShop() {
       navigate(ROUTES.SERVICE_PACKAGE);
       return;
     }
-    console.log(`Action ${action} for shop ${shopId}`);
+    // console.log(`Action ${action} for shop ${shopId}`);
   };
 
   //Thêm page mới
@@ -164,6 +167,7 @@ function MyShop() {
 
   return (
     <div className="shop-border">
+      <LoadingOverlay isLoading={loading || isCreating || isUpdating} message={isCreating ? "Đang tạo shop..." : isUpdating ? "Đang cập nhật..." : "Đang tải..."} />
       {/* Tabs */}
       <div className="shop-tabs">
         <NavLink
@@ -354,7 +358,7 @@ function MyShop() {
                                   toast.error(data.message || "Không thể chuyển đổi shop");
                                 }
                               } catch (err) {
-                                console.error("Switch shop error:", err);
+                                //console.error("Switch shop error:", err);
                                 toast.error("Lỗi server khi chuyển đổi shop");
                               }
                             }}
@@ -472,14 +476,16 @@ function MyShop() {
               </button>
               <button
                 className="btn-primary-shop"
+                disabled={isCreating}
                 onClick={async () => {
                   try {
+                    setIsCreating(true);
                     const payload = {
                       shop_name: addForm.shopName,
                       industry: addForm.category,
                     };
 
-                    console.log("Submit Add:", payload);
+                    // console.log("Submit Add:", payload);
 
                     const res = await axiosInstance.post("/api/shops/", payload);
                     const data = res.data;
@@ -492,12 +498,14 @@ function MyShop() {
                       toast.error(data.message || "Không thể tạo shop");
                     }
                   } catch (err) {
-                    console.error("Error:", err);
+                    //console.error("Error:", err);
                     toast.error(err.response?.data?.message || "Lỗi server khi tạo shop");
+                  } finally {
+                    setIsCreating(false);
                   }
                 }}
               >
-                {t('shop.create')}
+                {isCreating ? "Đang tạo..." : t('shop.create')}
               </button>
             </div>
           </div>
@@ -583,8 +591,10 @@ function MyShop() {
               </button>
               <button
                 className="btn-primary-shop"
+                disabled={isUpdating}
                 onClick={async () => {
                   try {
+                    setIsUpdating(true);
                     const payload = {
                       shop_name: updateForm.shopName,
                       industry: updateForm.category,
@@ -602,12 +612,14 @@ function MyShop() {
                       toast.error(data.message || "Không thể cập nhật shop");
                     }
                   } catch (err) {
-                    console.error("Error updating shop:", err);
+                    //console.error("Error updating shop:", err);
                     toast.error(err.response?.data?.message || "Lỗi server khi cập nhật shop");
+                  } finally {
+                    setIsUpdating(false);
                   }
                 }}
               >
-                {t('shop.update')}
+                {isUpdating ? "Đang cập nhật..." : t('shop.update')}
               </button>
             </div>
           </div>

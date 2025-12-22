@@ -4,7 +4,7 @@ import { connectDB } from "./config/db.js";
 import cors from "cors";
 import path from "path";
 
-import { startAnalyticsSnapshotCron } from "./jobs/analyticsSnapshot.job.js";
+// import { startAnalyticsSnapshotCron } from "./jobs/analyticsSnapshot.job.js"; // Deprecated: Now using AdPerformance from cronJobs.js
 import { startAutoRuleScheduler } from "./services/auto/autoRuleScheduler.js";
 import { startCancelExpiredPaymentsCron } from "./jobs/cancelExpiredPayments.job.js";
 import { startSyncCronJobs } from "./jobs/cronJobs.js";
@@ -123,16 +123,16 @@ const startServer = async () => {
     await connectDB();
 
     startAutoRuleScheduler();
-    startAnalyticsSnapshotCron();
+    // startAnalyticsSnapshotCron(); // Deprecated: Now using AdPerformance from cronJobs.js
     startCancelExpiredPaymentsCron();
     startSyncCronJobs();
     startUserPackageExpiryCron();
 
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error("🚨 Failed to start server:", error);
+    console.error("Failed to start server:", error);
     process.exit(1);
   }
 };

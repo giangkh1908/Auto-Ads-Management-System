@@ -24,6 +24,7 @@ import {
   Facebook,
 } from "lucide-react";
 import { useOnClickOutside } from "../../../../utils/ui/useOnClickOutside";
+import { useTranslation } from "react-i18next";
 import { useToast } from "../../../../hooks/common/useToast";
 import {
   getOneDayAfter,
@@ -119,6 +120,7 @@ const formatDisplay = (value) => {
 };
 
 function FieldRenderer({ field, adset, setAdset, objective, mode }) {
+  const { t } = useTranslation('wizard');
   const toast = useToast();
   const value = getValue(adset, field.name || field.nameMin);
   const countries = getNames() || [];
@@ -202,7 +204,7 @@ function FieldRenderer({ field, adset, setAdset, objective, mode }) {
               if (field.name === "optimization_goal") {
                 // ✅ Không xử lý nếu chọn placeholder
                 if (!selectedValue || selectedValue === "") {
-                  toast.warning("Vui lòng chọn mục tiêu");
+                  toast.warning(t('adset_step.select_objective'));
                   return;
                 }
 
@@ -439,7 +441,7 @@ function FieldRenderer({ field, adset, setAdset, objective, mode }) {
         if (isEndField) {
           if (!isEndAtLeastOneDayAfterStart(startIso, newIsoString)) {
             toast.warning(
-              "Thời gian kết thúc phải lớn hơn thời gian bắt đầu ít nhất 1 ngày"
+              t('adset_step.end_after_start')
             );
             return;
           }
@@ -741,6 +743,7 @@ const AdsetStepInner = forwardRef(
     ref
   ) => {
     const toast = useToast();
+    const { t } = useTranslation('wizard');
     const schema = SCHEMA_MAP[objective] || SCHEMA_MAP.AWARENESS;
     const [showPageSelect, setShowPageSelect] = useState(false);
 
@@ -853,7 +856,7 @@ const AdsetStepInner = forwardRef(
             <div className="config-section">
               <div className="section-header-ads">
                 <Facebook size={16} color="#2563eb" />
-                <h3 className="section-title-ads">Trang Facebook</h3>
+                <h3 className="section-title-ads">{t('adset_step.facebook_page')}</h3>
               </div>
               <div
                 className="facebook-page-selector"
@@ -872,8 +875,8 @@ const AdsetStepInner = forwardRef(
                           alt={current?.name || "Facebook Page"}
                           className="page-logo"
                         />
-                        <div className="page-info">
-                          <div className="page-type">Trang Facebook</div>
+                        <div className="page-info-adset">
+                          <div className="page-type">{t('adset_step.facebook_page')}</div>
                           <div className="page-name">
                             {current?.name || "Chưa chọn Page"}
                           </div>
@@ -883,8 +886,8 @@ const AdsetStepInner = forwardRef(
                   })()
                 ) : (
                   <div className="page-info">
-                    <div className="page-type">Trang Facebook</div>
-                    <div className="page-name">Chưa có Page nào</div>
+                    <div className="page-type">{t('adset_step.facebook_page')}</div>
+                    <div className="page-name">{t('adset_step.no_page')}</div>
                   </div>
                 )}
 

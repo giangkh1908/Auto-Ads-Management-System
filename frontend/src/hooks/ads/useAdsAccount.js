@@ -46,8 +46,10 @@ export function useAdsAccount() {
             } else {
               // Nếu account không tồn tại, xóa khỏi localStorage và không chọn gì
               localStorage.removeItem(STORAGE_KEY);
+              // Không auto-select, để user tự chọn
             }
           }
+          // Nếu không có cache -> không chọn gì, để user tự chọn
           
           setInitialized(true);
         }

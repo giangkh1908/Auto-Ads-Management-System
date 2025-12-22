@@ -38,7 +38,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       validate: {
-        validator: (v) => !v || validator.isMobilePhone(v, "vi-VN"),
+        validator: (v) => {
+          if (!v) return true; // Optional field
+          // Chấp nhận format: 9-11 chữ số, có thể có dấu + ở đầu
+          return /^(\+)?\d{9,11}$/.test(v.trim());
+        },
         message: "Số điện thoại không hợp lệ",
       },
     },
@@ -85,21 +89,7 @@ const userSchema = new mongoose.Schema(
     facebookAccessToken: { type: String, select: false },
     facebookRefreshToken: { type: String, select: false },
     facebookTokenExpires: { type: Date },
-    facebookPermissions: [String],
-    facebookPageInfo: [
-      {
-        page_id: String,
-        page_name: String,
-        page_access_token: String,
-      },
-    ],
 
-    // 💼 Meta Business Info
-    business_info: {
-      business_id: String,
-      name: String,
-      role: String,
-    },
 
     // 🔑 Email verification
     emailVerified: { type: Boolean, default: false },
@@ -112,7 +102,6 @@ const userSchema = new mongoose.Schema(
 
     // 🧠 Audit
     last_login_at: {type: Date},
-    last_login_ip: { type: String },
 
     // 🗑️ Soft delete
     deleted_at: { type: Date, default: null },

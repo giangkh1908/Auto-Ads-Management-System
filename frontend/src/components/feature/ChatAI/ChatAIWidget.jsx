@@ -8,6 +8,7 @@ function ChatAIWidget({ accountId, accountName }) {
   const [isMinimized, setIsMinimized] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null)
 
   const { messages, isLoading, sendMessage } = useChat(accountId)
 
@@ -18,10 +19,26 @@ function ChatAIWidget({ accountId, accountName }) {
     }
   }, [messages, isOpen, isMinimized])
 
+  // Thêm useEffect để auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      // Reset height để tính toán lại
+      textareaRef.current.style.height = 'auto'
+      // Set height theo scrollHeight
+      const scrollHeight = textareaRef.current.scrollHeight
+      textareaRef.current.style.height = `${Math.min(scrollHeight, 100)}px` // Max 100px
+    }
+  }, [inputValue])
+
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading || !accountId) return
     const messageToSend = inputValue.trim()
     setInputValue('')
+    // Reset textarea height after sending
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = '24px' // Reset to min height
+    }
     await sendMessage(messageToSend)
   }
 
@@ -65,13 +82,13 @@ function ChatAIWidget({ accountId, accountName }) {
           <div className="chat-widget-body">
             {messages.length === 0 && !isLoading && (
               <div className="chat-widget-welcome">
-                <h3>Chào mừng đến với AI Analytics! 👋</h3>
+                <h3>Chào mừng đến với AI Analytics!</h3>
                 <p>Bạn có thể hỏi bất kỳ câu hỏi nào về quảng cáo:</p>
                 <ul className="chat-widget-welcome-examples">
-                  <li onClick={() => setInputValue("Chi tiêu hôm nay thế nào?")}>📊 Chi tiêu hôm nay thế nào?</li>
-                  <li onClick={() => setInputValue("Có bao nhiêu chiến dịch?")}>🔢 Có bao nhiêu chiến dịch?</li>
-                  <li onClick={() => setInputValue("Xu hướng CTR 7 ngày qua")}>📈 Xu hướng CTR 7 ngày qua</li>
-                  <li onClick={() => setInputValue("Campaign nào hiệu quả nhất?")}>🏆 Campaign nào hiệu quả nhất?</li>
+                  <li onClick={() => setInputValue("Chi tiêu hôm nay thế nào?")}>Chi tiêu hôm nay thế nào?</li>
+                  <li onClick={() => setInputValue("Có bao nhiêu chiến dịch?")}>Có bao nhiêu chiến dịch?</li>
+                  <li onClick={() => setInputValue("Xu hướng CTR 7 ngày qua")}>Xu hướng CTR 7 ngày qua</li>
+                  <li onClick={() => setInputValue("Campaign nào hiệu quả nhất?")}>Campaign nào hiệu quả nhất?</li>
                 </ul>
               </div>
             )}
@@ -80,7 +97,7 @@ function ChatAIWidget({ accountId, accountName }) {
               <div className="chat-widget-messages">
                 {messages.map((m) => (
                   <div key={m.id} className={`chat-widget-message ${m.role === 'user' ? 'user' : 'assistant'} ${m.isError ? 'error' : ''}`}>
-                    <div className="chat-widget-message-role">{m.role === 'user' ? '👤' : '🤖'}</div>
+                    <div className="chat-widget-message-role">{m.role === 'user' ? '👤' : 'AI'}</div>
                     <div
                       className="chat-widget-message-content"
                       dangerouslySetInnerHTML={{ __html: m.content }}
@@ -95,7 +112,7 @@ function ChatAIWidget({ accountId, accountName }) {
 
                 {isLoading && (
                   <div className="chat-widget-message assistant">
-                    <div className="chat-widget-message-role">🤖</div>
+                    <div className="chat-widget-message-role">AI</div>
                     <div className="chat-widget-message-content loading">
                       <div className="chat-widget-loading-dots">
                         <span></span><span></span><span></span>
@@ -112,10 +129,19 @@ function ChatAIWidget({ accountId, accountName }) {
           <div className="chat-widget-footer">
             <div className="chat-widget-input-wrapper">
               <textarea
+                ref={textareaRef}
                 className="chat-widget-input"
                 placeholder="Nhập câu hỏi..."
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={(e) => {
+                  setInputValue(e.target.value)
+                  // Auto-resize on change
+                  if (textareaRef.current) {
+                    textareaRef.current.style.height = 'auto'
+                    const scrollHeight = textareaRef.current.scrollHeight
+                    textareaRef.current.style.height = `${Math.min(scrollHeight, 100)}px`
+                  }
+                }}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading || !accountId}
                 rows={1}
@@ -124,7 +150,7 @@ function ChatAIWidget({ accountId, accountName }) {
                 <Send size={18} />
               </button>
             </div>
-            {!accountId && <div className="chat-widget-warning">⚠️ Vui lòng chọn tài khoản quảng cáo</div>}
+            {!accountId && <div className="chat-widget-warning">Vui lòng chọn tài khoản quảng cáo</div>}
           </div>
         </div>
       )}
