@@ -9,7 +9,8 @@ import {
     relinquishOwnership,
     inviteEmployee,
     deleteShopUser,
-    removeEmployee
+    removeEmployee,
+    getEmployeeAssignedPages
 } from "../../controllers/shops/shopUserControllers.js";
 import { authenticate, authorizeInShop } from "../../middlewares/auth.middleware.js";
 
@@ -18,6 +19,8 @@ const router = express.Router();
 router.get("/", getShopUsers);
 
 router.get("/:shopId", getUsersByShop);
+
+router.get("/:shopId/employee/:employeeId/pages", authenticate, getEmployeeAssignedPages);
 
 router.post("/", createShopUser);
 

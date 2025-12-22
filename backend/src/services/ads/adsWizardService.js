@@ -56,8 +56,7 @@ async function runWithConcurrencyLimit(tasks, limit = 8) {
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
     console.log(
-      `🔄 Xử lý batch ${batchIndex + 1}/${batches.length} (${
-        batch.length
+      `🔄 Xử lý batch ${batchIndex + 1}/${batches.length} (${batch.length
       } items)...`
     );
 
@@ -68,8 +67,7 @@ async function runWithConcurrencyLimit(tasks, limit = 8) {
       (r) => r?.success !== false
     ).length;
     console.log(
-      `✅ Batch ${batchIndex + 1} hoàn thành: ${successCount}/${
-        batch.length
+      `✅ Batch ${batchIndex + 1} hoàn thành: ${successCount}/${batch.length
       } thành công`
     );
   }
@@ -120,17 +118,17 @@ async function updateOrCreateCampaign({
     external_id: campaign.external_id,
     name: campaign.name,
   });
-  console.log(
-    `🔍 [updateOrCreateCampaign] Existing campaign:`,
-    existingCampaign
-      ? {
-          _id: existingCampaign._id,
-          external_id: existingCampaign.external_id,
-          status: existingCampaign.status,
-          name: existingCampaign.name,
-        }
-      : "null"
-  );
+  // console.log(
+  //   `🔍 [updateOrCreateCampaign] Existing campaign:`,
+  //   existingCampaign
+  //     ? {
+  //         _id: existingCampaign._id,
+  //         external_id: existingCampaign.external_id,
+  //         status: existingCampaign.status,
+  //         name: existingCampaign.name,
+  //       }
+  //     : "null"
+  // );
 
   // ✅ LOGIC: Nếu có status FAILED và không có external_id → publish lại (tạo mới)
   if (
@@ -138,9 +136,9 @@ async function updateOrCreateCampaign({
     existingCampaign.status === "FAILED" &&
     !existingCampaign.external_id
   ) {
-    console.log(
-      `🔄 Retry publishing FAILED campaign (no external_id): ${existingCampaign.name} (${existingCampaign._id})`
-    );
+    // console.log(
+    //   `🔄 Retry publishing FAILED campaign (no external_id): ${existingCampaign.name} (${existingCampaign._id})`
+    // );
     return await publishCampaignService({
       ad_account_id,
       access_token,
@@ -201,7 +199,7 @@ async function updateOrCreateCampaign({
         );
       } catch (fbError) {
         console.warn(
-          `⚠️ Facebook update campaign failed:`,
+          `Facebook update campaign failed:`,
           fbError.response?.data || fbError.message
         );
         // Continue với DB update ngay cả khi Facebook fail
@@ -219,7 +217,7 @@ async function updateOrCreateCampaign({
     };
   } else {
     // CREATE new campaign
-    console.log(`➕ Creating new campaign: ${campaign.name}`);
+    console.log(`Creating new campaign: ${campaign.name}`);
     return await publishCampaignService({
       ad_account_id,
       access_token,
@@ -243,32 +241,32 @@ async function updateOrCreateAdset({
   const existingAdset = await findExistingEntity(adset, AdsSet);
 
   // 🔍 DEBUG: Log để kiểm tra
-  console.log(`🔍 [updateOrCreateAdset] AdSet từ payload:`, {
+  console.log(`[updateOrCreateAdset] AdSet từ payload:`, {
     _id: adset._id,
     draftId: adset.draftId,
     external_id: adset.external_id,
     name: adset.name,
   });
   console.log(
-    `🔍 [updateOrCreateAdset] Existing adset:`,
+    `[updateOrCreateAdset] Existing adset:`,
     existingAdset
       ? {
-          _id: existingAdset._id,
-          external_id: existingAdset.external_id,
-          status: existingAdset.status,
-          name: existingAdset.name,
-        }
+        _id: existingAdset._id,
+        external_id: existingAdset.external_id,
+        status: existingAdset.status,
+        name: existingAdset.name,
+      }
       : "null"
   );
 
-  // ✅ LOGIC: Nếu có status FAILED và không có external_id → publish lại (tạo mới)
+  // LOGIC: Nếu có status FAILED và không có external_id → publish lại (tạo mới)
   if (
     existingAdset &&
     existingAdset.status === "FAILED" &&
     !existingAdset.external_id
   ) {
     console.log(
-      `🔄 Retry publishing FAILED adset (no external_id): ${existingAdset.name} (${existingAdset._id})`
+      `Retry publishing FAILED adset (no external_id): ${existingAdset.name} (${existingAdset._id})`
     );
     return await publishAdsetService({
       ad_account_id,
@@ -288,10 +286,10 @@ async function updateOrCreateAdset({
 
   if (existingAdset) {
     console.log(
-      `🔄 Updating existing adset: ${existingAdset.name} (${existingAdset._id})`
+      `Updating existing adset: ${existingAdset.name} (${existingAdset._id})`
     );
 
-    // ✅ LOGIC: Merge data từ DB với data từ payload (ưu tiên DB cho các item không FAILED)
+    // LOGIC: Merge data từ DB với data từ payload (ưu tiên DB cho các item không FAILED)
     const mergedAdset = {
       ...existingAdset.toObject(), // Lấy data từ DB
       ...adset, // Override với data mới từ payload
@@ -303,7 +301,7 @@ async function updateOrCreateAdset({
       created_by: existingAdset.created_by || adset.created_by,
     };
 
-    // 🎯 Transform targeting trước khi update (giống create)
+    // Transform targeting trước khi update (giống create)
     let transformedMergedAdset = mergedAdset;
     try {
       transformedMergedAdset = await transformAdsetTargeting(
@@ -311,7 +309,7 @@ async function updateOrCreateAdset({
         access_token
       );
       console.log(
-        "✅ [Update Existing Adset] Adset after transform:",
+        "[Update Existing Adset] Adset after transform:",
         JSON.stringify(
           {
             name: transformedMergedAdset.name,
@@ -323,7 +321,7 @@ async function updateOrCreateAdset({
       );
     } catch (targetingError) {
       console.error(
-        "❌ [Update Existing Adset] Error transforming targeting:",
+        "[Update Existing Adset] Error transforming targeting:",
         targetingError.message
       );
       throw new Error(`Targeting validation failed: ${targetingError.message}`);
@@ -360,7 +358,7 @@ async function updateOrCreateAdset({
     ) {
       cleanTargeting.geo_locations = { countries: ["VN"] };
       console.log(
-        '⚠️ [Update Existing Adset] No geo_locations found, adding default: countries: ["VN"]'
+        '[Update Existing Adset] No geo_locations found, adding default: countries: ["VN"]'
       );
     }
 
@@ -397,7 +395,7 @@ async function updateOrCreateAdset({
       ...(transformedMergedAdset.conversion_event && {
         conversion_event: transformedMergedAdset.conversion_event,
       }),
-      // ✅ Map destination: ưu tiên destination_type > engagement_destination > traffic_destination
+      // Map destination: ưu tiên destination_type > engagement_destination > traffic_destination
       ...(transformedMergedAdset.destination_type && {
         destination_type: transformedMergedAdset.destination_type
       }),
@@ -410,17 +408,17 @@ async function updateOrCreateAdset({
       updated_at: now,
     };
 
-    // ✅ Thêm engagement_destination và destination_type vào updates để lưu vào DB
+    // Thêm engagement_destination và destination_type vào updates để lưu vào DB
     updates.traffic_destination = transformedMergedAdset.traffic_destination || null;
     updates.engagement_destination = transformedMergedAdset.engagement_destination || null;
     updates.destination_type = updates.destination_type || null;
 
     console.log(
-      `📋 Updating Adset ${existingAdset.external_id} với fields:`,
+      `Updating Adset ${existingAdset.external_id} với fields:`,
       Object.keys(updates)
     );
     console.log(
-      `📍 Targeting geo_locations:`,
+      `Targeting geo_locations:`,
       JSON.stringify(updates.targeting?.geo_locations, null, 2)
     );
 
@@ -430,7 +428,7 @@ async function updateOrCreateAdset({
         await updateAdset(existingAdset.external_id, access_token, updates);
       } catch (fbError) {
         console.warn(
-          `⚠️ Facebook update adset failed:`,
+          `Facebook update adset failed:`,
           fbError.response?.data || fbError.message
         );
       }
@@ -458,7 +456,7 @@ async function updateOrCreateAdset({
     };
   } else {
     // CREATE new adset
-    console.log(`➕ Creating new adset: ${adset.name}`);
+    console.log(`Creating new adset: ${adset.name}`);
     return await publishAdsetService({
       ad_account_id,
       access_token,
@@ -484,29 +482,29 @@ async function updateOrCreateAd({
   const now = new Date();
   const existingAd = await findExistingEntity(ad, Ads);
 
-  // 🔍 DEBUG: Log để kiểm tra
-  console.log(`🔍 [updateOrCreateAd] Ad từ payload:`, {
+  // DEBUG: Log để kiểm tra
+  console.log(`[updateOrCreateAd] Ad từ payload:`, {
     _id: ad._id,
     draftId: ad.draftId,
     external_id: ad.external_id,
     name: ad.name,
   });
   console.log(
-    `🔍 [updateOrCreateAd] Existing ad:`,
+    `[updateOrCreateAd] Existing ad:`,
     existingAd
       ? {
-          _id: existingAd._id,
-          external_id: existingAd.external_id,
-          status: existingAd.status,
-          name: existingAd.name,
-        }
+        _id: existingAd._id,
+        external_id: existingAd.external_id,
+        status: existingAd.status,
+        name: existingAd.name,
+      }
       : "null"
   );
 
-  // ✅ LOGIC: Nếu có status FAILED và không có external_id → publish lại (tạo mới)
+  // LOGIC: Nếu có status FAILED và không có external_id → publish lại (tạo mới)
   if (existingAd && existingAd.status === "FAILED" && !existingAd.external_id) {
     console.log(
-      `🔄 Retry publishing FAILED ad (no external_id): ${existingAd.name} (${existingAd._id})`
+      `Retry publishing FAILED ad (no external_id): ${existingAd.name} (${existingAd._id})`
     );
 
     // Cần lấy creative từ existingAd hoặc ad
@@ -519,9 +517,9 @@ async function updateOrCreateAd({
       ad.creative ||
       (existingCreative
         ? {
-            object_story_spec: existingCreative.object_story_spec,
-            name: existingCreative.name,
-          }
+          object_story_spec: existingCreative.object_story_spec,
+          name: existingCreative.name,
+        }
         : null);
 
     const creativeDraftId =
@@ -547,10 +545,10 @@ async function updateOrCreateAd({
 
   if (existingAd) {
     console.log(
-      `🔄 Updating existing ad: ${existingAd.name} (${existingAd._id})`
+      `Updating existing ad: ${existingAd.name} (${existingAd._id})`
     );
 
-    // ✅ LOGIC: Merge data từ DB với data từ payload (ưu tiên DB cho các item không FAILED)
+    // LOGIC: Merge data từ DB với data từ payload (ưu tiên DB cho các item không FAILED)
     const mergedAd = {
       ...existingAd.toObject(), // Lấy data từ DB
       ...ad, // Override với data mới từ payload
@@ -570,7 +568,7 @@ async function updateOrCreateAd({
       updated_at: now,
     };
 
-    // ⚠️ IMPORTANT: Facebook KHÔNG cho update creative
+    // IMPORTANT: Facebook KHÔNG cho update creative
     // Nếu creative thay đổi, cần tạo ad mới (không implement ở đây để giữ metrics)
 
     // Update trên Facebook nếu có external_id
@@ -579,7 +577,7 @@ async function updateOrCreateAd({
         await updateAd(existingAd.external_id, access_token, updates);
       } catch (fbError) {
         console.warn(
-          `⚠️ Facebook update ad failed:`,
+          `Facebook update ad failed:`,
           fbError.response?.data || fbError.message
         );
       }
@@ -596,7 +594,7 @@ async function updateOrCreateAd({
     };
   } else {
     // CREATE new ad
-    console.log(`➕ Creating new ad: ${ad.name}`);
+    console.log(`Creating new ad: ${ad.name}`);
     return await publishAdService({
       ad_account_id,
       access_token,
@@ -605,13 +603,13 @@ async function updateOrCreateAd({
       creative: ad.creative,
       ad,
       adDraftId: ad.draftId,
-      creativeDraftId: ad.creative?.draftId || ad.creative?._id, // ✅ THÊM creative draft ID
+      creativeDraftId: ad.creative?.draftId || ad.creative?._id, // THÊM creative draft ID
     });
   }
 }
 
 /**
- * 🧩 Publish toàn bộ quy trình tạo quảng cáo Wizard
+ * Publish toàn bộ quy trình tạo quảng cáo Wizard
  * (Campaign → Ad Set → Creative → Ad)
  */
 export async function publishWizard({
@@ -631,72 +629,72 @@ export async function publishWizard({
   let fbCampaignId, fbAdSetId, fbCreativeId, fbAdId;
   const now = new Date();
 
-  // 🧱 1) Khởi tạo draft (nháp) với đầy đủ thông tin
+  // 1) Khởi tạo draft (nháp) với đầy đủ thông tin
   const draftCamp = campaignDraftId
     ? await AdsCampaign.findById(campaignDraftId)
     : await AdsCampaign.create({
-        name: campaign?.name,
-        objective: campaign?.objective,
-        status: "DRAFT",
-        account_id: campaign?.account_id,
-        shop_id: campaign?.shop_id,
-        page_id: campaign?.page_id,
-        page_name: campaign?.page_name,
-        daily_budget: campaign?.daily_budget,
-        lifetime_budget: campaign?.lifetime_budget,
-        start_time: campaign?.start_time,
-        stop_time: campaign?.stop_time,
-        created_by: campaign?.created_by,
-      });
+      name: campaign?.name,
+      objective: campaign?.objective,
+      status: "DRAFT",
+      account_id: campaign?.account_id,
+      shop_id: campaign?.shop_id,
+      page_id: campaign?.page_id,
+      page_name: campaign?.page_name,
+      daily_budget: campaign?.daily_budget,
+      lifetime_budget: campaign?.lifetime_budget,
+      start_time: campaign?.start_time,
+      stop_time: campaign?.stop_time,
+      created_by: campaign?.created_by,
+    });
 
   const draftSet = adsetDraftId
     ? await AdsSet.findById(adsetDraftId)
     : await AdsSet.create({
-        campaign_id: draftCamp._id,
-        name: adset?.name,
-        status: "DRAFT",
-        optimization_goal: adset?.optimization_goal,
-        conversion_event: adset?.conversion_event,
-        billing_event: adset?.billing_event,
-        bid_strategy: adset?.bid_strategy,
-        bid_amount: adset?.bid_amount,
-        targeting: adset?.targeting,
-        traffic_destination: adset?.traffic_destination || null,
-        engagement_destination: adset?.engagement_destination || null,
-        destination_type: adset?.destination_type || null,
-        daily_budget: adset?.daily_budget,
-        lifetime_budget: adset?.lifetime_budget,
-        start_time: adset?.start_time,
-        end_time: adset?.end_time,
-        created_by: adset?.created_by,
-      });
+      campaign_id: draftCamp._id,
+      name: adset?.name,
+      status: "DRAFT",
+      optimization_goal: adset?.optimization_goal,
+      conversion_event: adset?.conversion_event,
+      billing_event: adset?.billing_event,
+      bid_strategy: adset?.bid_strategy,
+      bid_amount: adset?.bid_amount,
+      targeting: adset?.targeting,
+      traffic_destination: adset?.traffic_destination || null,
+      engagement_destination: adset?.engagement_destination || null,
+      destination_type: adset?.destination_type || null,
+      daily_budget: adset?.daily_budget,
+      lifetime_budget: adset?.lifetime_budget,
+      start_time: adset?.start_time,
+      end_time: adset?.end_time,
+      created_by: adset?.created_by,
+    });
 
   const draftCreative = creativeDraftId
     ? await Creative.findById(creativeDraftId)
     : await Creative.create({
-        name: creative?.name,
-        title: creative?.object_story_spec?.link_data?.name,
-        body: creative?.object_story_spec?.link_data?.message,
-        creative_type: "LINK",
-        page_id: creative?.object_story_spec?.page_id || null,
-        object_story_spec: creative?.object_story_spec,
-        cta: creative?.object_story_spec?.link_data?.call_to_action?.type,
-        created_by: creative?.created_by,
-      });
+      name: creative?.name,
+      title: creative?.object_story_spec?.link_data?.name,
+      body: creative?.object_story_spec?.link_data?.message,
+      creative_type: "LINK",
+      page_id: creative?.object_story_spec?.page_id || null,
+      object_story_spec: creative?.object_story_spec,
+      cta: creative?.object_story_spec?.link_data?.call_to_action?.type,
+      created_by: creative?.created_by,
+    });
 
   const draftAd = adDraftId
     ? await Ads.findById(adDraftId)
     : await Ads.create({
-        set_id: draftSet._id,
-        account_id: campaign?.account_id,
-        name: ad?.name,
-        creative_id: draftCreative._id,
-        status: "DRAFT",
-        created_by: ad?.created_by,
-      });
+      set_id: draftSet._id,
+      account_id: campaign?.account_id,
+      name: ad?.name,
+      creative_id: draftCreative._id,
+      status: "DRAFT",
+      created_by: ad?.created_by,
+    });
 
   try {
-    // 🧠 Validate cơ bản
+    // Validate cơ bản
     if (!campaign?.name || !campaign?.objective) {
       throw new Error(
         "Thiếu dữ liệu chiến dịch (campaign.name hoặc objective)."
@@ -718,38 +716,38 @@ export async function publishWizard({
       throw new Error("Thiếu access_token.");
     }
 
-    // 🚀 2) Campaign
+    // 2) Campaign
     if (dry_run) {
       fbCampaignId = "dry_" + Date.now();
       console.log(`[DRY RUN] Campaign giả: ${campaign.name}`);
     } else {
       fbCampaignId = await createCampaign(ad_account_id, access_token, {
         ...campaign,
-        status: "PAUSED",
+        status: "ACTIVE",
         special_ad_categories: campaign?.special_ad_categories || ["NONE"],
       });
       steps.push(async () => deleteEntity(fbCampaignId, access_token));
     }
 
-    // ✅ UPDATE DRAFT VỚI external_id VÀ STATUS PAUSED (KHÔNG TẠO MỚI)
+    // UPDATE DRAFT VỚI external_id VÀ STATUS ACTIVE (KHÔNG TẠO MỚI)
     console.log(
-      `💾 Update draft Campaign trong database: ${draftCamp._id} -> ${fbCampaignId}`
+      `Update draft Campaign trong database: ${draftCamp._id} -> ${fbCampaignId}`
     );
     await AdsCampaign.findByIdAndUpdate(draftCamp._id, {
       external_id: fbCampaignId,
       external_account_id: ad_account_id,
-      status: "PAUSED", // ✅ CHUYỂN TỪ DRAFT THÀNH PAUSED
+      status: "ACTIVE", // CHUYỂN TỪ DRAFT THÀNH ACTIVE
       synced_at: now,
       updated_at: now,
     });
 
-    // 🚀 3) Ad Set
+    // 3) Ad Set
     if (dry_run) {
       fbAdSetId = "dry_" + (Date.now() + 1);
       console.log(`[DRY RUN] AdSet giả: ${adset.name}`);
     } else {
-      console.log(`🚀 Tạo AdSet trên Facebook: ${adset.name}`);
-      console.log("📋 AdSet data:", {
+      console.log(`Tạo AdSet trên Facebook: ${adset.name}`);
+      console.log("AdSet data:", {
         name: adset.name,
         optimization_goal: adset.optimization_goal,
         conversion_event: adset.conversion_event,
@@ -761,7 +759,7 @@ export async function publishWizard({
       fbAdSetId = await createAdSet(ad_account_id, access_token, {
         ...adset,
         campaign_id: fbCampaignId,
-        status: adset?.status || "PAUSED",
+        status: adset?.status || "ACTIVE",
         bid_strategy: adset?.bid_strategy || "LOWEST_COST_WITH_BID_CAP",
         bid_amount: adset?.bid_amount || 1000,
         billing_event: adset?.billing_event || "IMPRESSIONS", // Thêm billing_event bắt buộc
@@ -769,14 +767,14 @@ export async function publishWizard({
       steps.push(async () => deleteEntity(fbAdSetId, access_token));
     }
 
-    // ✅ UPDATE DRAFT VỚI external_id VÀ STATUS PAUSED (KHÔNG TẠO MỚI)
+    // UPDATE DRAFT VỚI external_id VÀ STATUS ACTIVE (KHÔNG TẠO MỚI)
     console.log(
-      `💾 Update draft AdSet trong database: ${draftSet._id} -> ${fbAdSetId}`
+      `Update draft AdSet trong database: ${draftSet._id} -> ${fbAdSetId}`
     );
     await AdsSet.findByIdAndUpdate(draftSet._id, {
       external_id: fbAdSetId,
       external_account_id: ad_account_id,
-      status: "PAUSED", // ✅ CHUYỂN TỪ DRAFT THÀNH PAUSED
+      status: "ACTIVE", // CHUYỂN TỪ DRAFT THÀNH ACTIVE
       optimization_goal: adset.optimization_goal,
       conversion_event: adset.conversion_event,
       billing_event: adset.billing_event,
@@ -784,7 +782,7 @@ export async function publishWizard({
       updated_at: now,
     });
 
-    // 🚀 4) Creative
+    // 4) Creative
     if (dry_run) {
       fbCreativeId = "dry_" + (Date.now() + 2);
       console.log(`[DRY RUN] Creative giả: ${creative.name}`);
@@ -799,7 +797,7 @@ export async function publishWizard({
 
     // Lưu Creative vào database
     console.log(
-      `💾 Lưu Creative vào database: ${draftCreative._id} -> ${fbCreativeId}`
+      `Lưu Creative vào database: ${draftCreative._id} -> ${fbCreativeId}`
     );
     await Creative.findByIdAndUpdate(draftCreative._id, {
       external_id: fbCreativeId,
@@ -807,7 +805,7 @@ export async function publishWizard({
       updated_at: now,
     });
 
-    // 🚀 5) Ad
+    // 5) Ad
     if (dry_run) {
       fbAdId = "dry_" + (Date.now() + 3);
       console.log(`[DRY RUN] Ad giả: ${ad.name}`);
@@ -816,24 +814,24 @@ export async function publishWizard({
         ...ad,
         adset_id: fbAdSetId,
         creative: { creative_id: fbCreativeId },
-        status: ad?.status || "PAUSED",
+        status: ad?.status || "ACTIVE",
       });
       steps.push(async () => deleteEntity(fbAdId, access_token));
     }
 
     // Lưu Ad vào database
-    console.log(`💾 Lưu Ad vào database: ${draftAd._id} -> ${fbAdId}`);
+    console.log(`Lưu Ad vào database: ${draftAd._id} -> ${fbAdId}`);
     await Ads.findByIdAndUpdate(draftAd._id, {
       external_id: fbAdId,
       external_account_id: ad_account_id,
-      status: "PAUSED",
+      status: "ACTIVE",
       synced_at: now,
       updated_at: now,
     });
 
-    // 🎁 6) Return dữ liệu đầy đủ cho FE
+    // 6) Return dữ liệu đầy đủ cho FE
     console.log(
-      `✅ Hoàn thành lưu tất cả quảng cáo vào database: Campaign(${fbCampaignId}), AdSet(${fbAdSetId}), Creative(${fbCreativeId}), Ad(${fbAdId})`
+      `Hoàn thành lưu tất cả quảng cáo vào database: Campaign(${fbCampaignId}), AdSet(${fbAdSetId}), Creative(${fbCreativeId}), Ad(${fbAdId})`
     );
     return {
       success: true,
@@ -843,7 +841,7 @@ export async function publishWizard({
       campaign: {
         id: fbCampaignId,
         name: campaign.name,
-        status: campaign.status || "PAUSED",
+        status: campaign.status || "ACTIVE",
         objective: campaign.objective,
         budget: campaign.daily_budget || campaign.lifetime_budget || "0",
         spend: 0,
@@ -856,7 +854,7 @@ export async function publishWizard({
       adset: {
         id: fbAdSetId,
         name: adset.name,
-        status: adset.status || "PAUSED",
+        status: adset.status || "ACTIVE",
         budget: adset.daily_budget || adset.lifetime_budget || "0",
         spend: 0,
         impressions: 0,
@@ -868,7 +866,7 @@ export async function publishWizard({
       ad: {
         id: fbAdId,
         name: ad.name,
-        status: ad.status || "PAUSED",
+        status: ad.status || "ACTIVE",
         spend: 0,
         impressions: 0,
         reach: 0,
@@ -889,13 +887,13 @@ export async function publishWizard({
       },
     };
   } catch (err) {
-    console.error("❌ Wizard Publish Error:", err.message);
+    console.error("Wizard Publish Error:", err.message);
     // Rollback Saga
     for (let i = steps.length - 1; i >= 0; i--) {
       try {
         await steps[i]();
       } catch (rollbackErr) {
-        console.warn("⚠️ Rollback step failed:", rollbackErr.message);
+        console.warn("Rollback step failed:", rollbackErr.message);
       }
     }
 
@@ -912,7 +910,7 @@ export async function publishWizard({
 }
 
 /**
- * 🧠 Update wizard (Campaign → AdSet → Creative → Ad)
+ * Update wizard (Campaign → AdSet → Creative → Ad)
  */
 export async function updateWizard({
   ad_account_id,
@@ -929,25 +927,22 @@ export async function updateWizard({
 
   async function fbUpdate(entityId, body, type) {
     if (!entityId || dry_run) {
-      console.log(`⚪ Skip ${type} update (no external_id or dry_run)`);
+      console.log(`Skip ${type} update (no external_id or dry_run)`);
       return false;
     }
     try {
-      console.log(`🔵 Updating ${type} on Facebook:`, entityId);
+      console.log(`Updating ${type} on Facebook:`, entityId);
       await axios.post(`${FB_API}/${entityId}`, body, {
         params: { access_token },
       });
       return true;
     } catch (e) {
-      console.warn(
-        `⚠️ Facebook ${type} update failed:`,
-        e.response?.data || e.message
-      );
+      console.warn(`Facebook ${type} update failed:`, e.response?.data || e.message);
       return false;
     }
   }
 
-  // ✅ Campaign
+  // Campaign
   if (campaign) {
     const { external_id, draftId, ...rawFields } = campaign;
     // Whitelist updateable fields for Campaign
@@ -973,7 +968,7 @@ export async function updateWizard({
     result.campaign = updated;
   }
 
-  // ✅ AdSet
+  // AdSet
   if (adset) {
     const { external_id, draftId, ...rawFields } = adset;
     // Prepare promoted_object merge (ensure page_id if provided separately)
@@ -1021,7 +1016,7 @@ export async function updateWizard({
     let fbAdSetId = external_id;
 
     if (!fbAdSetId) {
-      console.log("⚪ AdSet chưa có external_id → tạo mới trên Facebook...");
+      console.log("AdSet chưa có external_id → tạo mới trên Facebook...");
       try {
         const newAdSet = await createAdSet(ad_account_id, access_token, {
           ...adset,
@@ -1034,15 +1029,12 @@ export async function updateWizard({
         if (fbAdSetId)
           await AdsSet.findByIdAndUpdate(draftId, { external_id: fbAdSetId });
       } catch (err) {
-        console.error(
-          "❌ Không thể tạo lại AdSet:",
-          err.response?.data || err.message
-        );
+        console.error("Không thể tạo lại AdSet:", err.response?.data || err.message);
       }
     }
 
     if (fbAdSetId && Object.keys(fields).length > 0) {
-      // ✅ Facebook payload may include destination_type derived from traffic_destination or engagement_destination
+      // Facebook payload may include destination_type derived from traffic_destination or engagement_destination
       let finalDestinationType = null;
       if (rawFields?.destination_type) {
         finalDestinationType = rawFields.destination_type;
@@ -1051,14 +1043,14 @@ export async function updateWizard({
       } else if (rawFields?.traffic_destination) {
         finalDestinationType = rawFields.traffic_destination;
       }
-      
+
       const fbFields = {
         ...fields,
         ...(finalDestinationType && { destination_type: finalDestinationType }),
       };
       const ok = await fbUpdate(fbAdSetId, fbFields, "adset");
       if (!ok) {
-        console.log("⚠️ Update adset thất bại → thử tạo mới lại...");
+        console.log("Update adset thất bại → thử tạo mới lại...");
         const newAdSet = await createAdSet(ad_account_id, access_token, {
           ...adset,
           campaign_id: campaign?.external_id,
@@ -1091,19 +1083,17 @@ export async function updateWizard({
     result.adset = updated;
   }
 
-  // ✅ Creative
+  // Creative
   if (creative) {
     const { external_id, draftId, ...fields } = creative;
     let fbCreativeId = external_id;
 
     if (!fbCreativeId) {
-      console.log(
-        "⚪ Creative chưa có external_id → tạo mới lại trên Facebook..."
-      );
+      console.log("Creative chưa có external_id → tạo mới lại trên Facebook...");
       try {
         const newCreative = await createCreative(ad_account_id, access_token, {
           ...creative,
-          name: `${creative.name || "Creative"}_${Date.now()}`, // ✅ đảm bảo unique
+          name: `${creative.name || "Creative"}_${Date.now()}`, // đảm bảo unique
         });
         fbCreativeId = newCreative?.id || newCreative;
         if (fbCreativeId)
@@ -1111,10 +1101,7 @@ export async function updateWizard({
             external_id: fbCreativeId,
           });
       } catch (err) {
-        console.error(
-          "❌ Không thể tạo lại creative:",
-          err.response?.data || err.message
-        );
+        console.error("Không thể tạo lại creative:", err.response?.data || err.message);
       }
     }
 
@@ -1135,29 +1122,26 @@ export async function updateWizard({
     result.creative = updated;
   }
 
-  // ✅ Ad
+  // Ad
   if (ad) {
     const { external_id, draftId, ...fields } = ad;
     let fbAdId = external_id;
 
     if (!fbAdId && adset?.external_id && creative?.external_id) {
-      console.log("⚪ Ad chưa có external_id → tạo mới trên Facebook...");
+      console.log("Ad chưa có external_id → tạo mới trên Facebook...");
       try {
         const newAd = await createAd(ad_account_id, access_token, {
           ...ad,
           name: ad.name || "Quảng cáo mới",
           adset_id: adset.external_id,
           creative: { creative_id: creative.external_id },
-          status: ad?.status || "PAUSED",
+          status: ad?.status || "ACTIVE",
         });
         fbAdId = newAd?.id || newAd;
         if (fbAdId)
           await Ads.findByIdAndUpdate(draftId, { external_id: fbAdId });
       } catch (err) {
-        console.error(
-          "❌ Không thể tạo lại Ad:",
-          err.response?.data || err.message
-        );
+        console.error("Không thể tạo lại Ad:", err.response?.data || err.message);
       }
     }
 
@@ -1187,11 +1171,11 @@ export async function updateWizard({
 }
 
 // ========================================
-// 🎯 NEW FLEXIBLE SERVICES FOR DIFFERENT MODELS
+// NEW FLEXIBLE SERVICES FOR DIFFERENT MODELS
 // ========================================
 
 /**
- * 🎯 Service tạo Campaign riêng biệt
+ * Service tạo Campaign riêng biệt
  * Hỗ trợ mô hình: 1-1-1, 1-nhiều-nhiều, nhiều-nhiều-nhiều
  */
 export async function publishCampaignService({
@@ -1256,7 +1240,7 @@ export async function publishCampaignService({
       // Update trong MongoDB
       await AdsCampaign.findByIdAndUpdate(draftCamp._id, {
         ...updates,
-        status: "PAUSED", // Đảm bảo status là PAUSED sau khi update
+        status: "ACTIVE", // Đảm bảo status là ACTIVE sau khi update
       });
 
       return {
@@ -1345,14 +1329,14 @@ export async function publishCampaignService({
       );
     }
 
-    // ✅ UPDATE DRAFT VỚI external_id VÀ STATUS PAUSED (KHÔNG TẠO MỚI)
+    // ✅ UPDATE DRAFT VỚI external_id VÀ STATUS ACTIVE (KHÔNG TẠO MỚI)
     console.log(
       `💾 Update draft Campaign trong database: ${draftCamp._id} -> ${fbCampaignId}`
     );
     await AdsCampaign.findByIdAndUpdate(draftCamp._id, {
       external_id: fbCampaignId,
       external_account_id: ad_account_id,
-      status: "ACTIVE", // ✅ CHUYỂN TỪ DRAFT THÀNH PAUSED
+      status: "ACTIVE", // ✅ CHUYỂN TỪ DRAFT THÀNH ACTIVE
       synced_at: now,
       updated_at: now,
     });
@@ -1622,7 +1606,7 @@ export async function publishAdsetService({
         promoted_object: updateAdset.promoted_object || null,
         ...(updateAdset.page_id && { page_id: updateAdset.page_id }),
         ...(updateAdset.page_name && { page_name: updateAdset.page_name }),
-        status: "PAUSED", // Đảm bảo status là PAUSED sau khi update
+        status: "ACTIVE", // Đảm bảo status là ACTIVE sau khi update
         updated_at: new Date(),
       });
 
@@ -1753,13 +1737,13 @@ export async function publishAdsetService({
         billing_event: adset.billing_event,
         bid_strategy: adset.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
         ...(adset.daily_budget && { daily_budget: adset.daily_budget }),
-        ...(adset.lifetime_budget && {lifetime_budget: adset.lifetime_budget,}),
+        ...(adset.lifetime_budget && { lifetime_budget: adset.lifetime_budget, }),
         ...(adset.targeting && { targeting: adset.targeting }),
         ...(adset.start_time && { start_time: adset.start_time }),
         ...(adset.end_time && { end_time: adset.end_time }),
         ...(promotedObject && { promoted_object: promotedObject }),
         ...(adset.pixel_id && { pixel_id: adset.pixel_id }),
-        ...(adset.conversion_event && {conversion_event: adset.conversion_event}),
+        ...(adset.conversion_event && { conversion_event: adset.conversion_event }),
         // ✅ Map destination: ưu tiên destination_type > engagement_destination > traffic_destination
         ...(adset.destination_type && {
           destination_type: adset.destination_type
@@ -1779,14 +1763,14 @@ export async function publishAdsetService({
       fbAdSetId = await createAdSet(ad_account_id, access_token, adsetPayload);
     }
 
-    // ✅ UPDATE DRAFT VỚI external_id VÀ STATUS PAUSED (KHÔNG TẠO MỚI)
+    // ✅ UPDATE DRAFT VỚI external_id VÀ STATUS ACTIVE (KHÔNG TẠO MỚI)
     console.log(
       `💾 Update draft AdSet trong database: ${draftSet._id} -> ${fbAdSetId}`
     );
     await AdsSet.findByIdAndUpdate(draftSet._id, {
       external_id: fbAdSetId,
       external_account_id: ad_account_id,
-      status: "ACTIVE", // ✅ CHUYỂN TỪ DRAFT THÀNH PAUSED
+      status: "ACTIVE", // ✅ CHUYỂN TỪ DRAFT THÀNH ACTIVE
       optimization_goal: adset.optimization_goal,
       conversion_event: adset.conversion_event,
       billing_event: adset.billing_event,
@@ -1941,7 +1925,7 @@ export async function publishAdService({
       // Update trong MongoDB
       await Ads.findByIdAndUpdate(draftAd._id, {
         ...updates,
-        status: ad.status || "PAUSED", // Đảm bảo status
+        status: ad.status || "ACTIVE", // Đảm bảo status
       });
 
       return {
@@ -2003,7 +1987,7 @@ export async function publishAdService({
       if (!creativePageId || creativePageId === "fb_page_id_placeholder") {
         throw new Error(
           `❌ Creative không có page_id hợp lệ. Nhận được: "${creativePageId}". ` +
-            `Vui lòng chọn Facebook Page trước khi tạo Ad.`
+          `Vui lòng chọn Facebook Page trước khi tạo Ad.`
         );
       }
 
@@ -2040,20 +2024,20 @@ export async function publishAdService({
     );
     await Creative.findByIdAndUpdate(draftCreative._id, {
       external_id: fbCreativeId,
-      status: "PAUSED",
+      status: "ACTIVE",
       synced_at: now,
       updated_at: now,
     });
 
-    // ✅ UPDATE DRAFT VỚI external_id VÀ STATUS PAUSED (KHÔNG TẠO MỚI)
+    // UPDATE DRAFT VỚI external_id VÀ STATUS ACTIVE (KHÔNG TẠO MỚI)
     console.log(
-      `💾 Update draft Ad trong database: ${draftAd._id} -> ${fbAdId}`
+      `Update draft Ad trong database: ${draftAd._id} -> ${fbAdId}`
     );
     await Ads.findByIdAndUpdate(draftAd._id, {
       external_id: fbAdId,
       external_account_id: ad_account_id,
-      creative_id: draftCreative._id, // ✅ Link với creative
-      status: "ACTIVE", // ✅ CHUYỂN TỪ DRAFT THÀNH ACTIVE
+      creative_id: draftCreative._id, // Link với creative
+      status: "ACTIVE", // CHUYỂN TỪ DRAFT THÀNH ACTIVE
       synced_at: now,
       updated_at: now,
     });
@@ -2063,14 +2047,14 @@ export async function publishAdService({
       adId: fbAdId,
       adDbId: draftAd._id,
       creativeId: fbCreativeId,
-      creativeDbId: draftCreative._id, // ✅ Trả về để frontend biết
+      creativeDbId: draftCreative._id, // Trả về để frontend biết
       draftId: draftAd._id,
       message: `Ad "${ad.name}" đã được tạo thành công`,
     };
   } catch (error) {
     console.error("Lỗi tạo Ad:", error);
 
-    // ✅ Cập nhật status FAILED nếu có draftAd
+    // Cập nhật status FAILED nếu có draftAd
     if (draftAd?._id) {
       const errorMessage =
         error?.response?.data?.error_user_msg ||
@@ -2085,7 +2069,7 @@ export async function publishAdService({
         updated_at: new Date(),
       });
       console.log(
-        `⚠️ Ad ${draftAd._id} đã được đánh dấu FAILED: ${errorMessage}`
+        `Ad ${draftAd._id} đã được đánh dấu FAILED: ${errorMessage}`
       );
     }
 
@@ -2112,17 +2096,17 @@ export async function publishFlexibleService({
     errors: [],
   };
 
-  // 🔍 LOG RECEIVED PAYLOAD
-  console.log("\n🔍 ========== RECEIVED PAYLOAD IN BACKEND ==========");
-  console.log("📊 Total Campaigns:", campaignsList.length);
+  // LOG RECEIVED PAYLOAD
+  console.log("\n========== RECEIVED PAYLOAD IN BACKEND ==========");
+  console.log("Total Campaigns:", campaignsList.length);
   campaignsList.forEach((campaign, cIdx) => {
-    console.log(`\n📋 Campaign ${cIdx + 1}: ${campaign.name}`);
-    console.log(`  AdSets: ${campaign.adsets?.length || 0}`);
+    console.log(`\nCampaign ${cIdx + 1}: ${campaign.name}`);
+    console.log(`AdSets: ${campaign.adsets?.length || 0}`);
     campaign.adsets?.forEach((adset, aIdx) => {
-      console.log(`    📦 AdSet ${aIdx + 1}: ${adset.name}`);
-      console.log(`      Ads: ${adset.ads?.length || 0}`);
+      console.log(`AdSet ${aIdx + 1}: ${adset.name}`);
+      console.log(`Ads: ${adset.ads?.length || 0}`);
       adset.ads?.forEach((ad, adIdx) => {
-        console.log(`        📝 Ad ${adIdx + 1}: ${ad.name}`);
+        console.log(`Ad ${adIdx + 1}: ${ad.name}`);
       });
     });
   });
@@ -2173,8 +2157,7 @@ export async function publishFlexibleService({
               };
 
               console.log(
-                ` [${adsetIndex + 1}/${campaign.adsets.length}] Tạo AdSet: "${
-                  adset.name
+                ` [${adsetIndex + 1}/${campaign.adsets.length}] Tạo AdSet: "${adset.name
                 }"...`
               );
               const adsetResult = await publishAdsetService(adsetPayload);
@@ -2186,11 +2169,10 @@ export async function publishFlexibleService({
               // 2.2: Tạo Ads TUẦN TỰ cho AdSet này (vì phụ thuộc creative)
               if (adset.ads && adset.ads.length > 0) {
                 console.log(
-                  `🎨 Bắt đầu tạo ${adset.ads.length} Ads cho AdSet "${adset.name}"...`
+                  `Bắt đầu tạo ${adset.ads.length} Ads cho AdSet "${adset.name}"...`
                 );
-                console.log(`   AdSet._id: ${adset._id || "undefined"}`);
-                console.log(
-                  `   Ads in adset:`,
+                console.log(`AdSet._id: ${adset._id || "undefined"}`);
+                console.log(`Ads in adset:`,
                   adset.ads.map((ad) => ({
                     name: ad.name,
                     adset_id: ad.adset_id,
@@ -2202,12 +2184,10 @@ export async function publishFlexibleService({
 
                   try {
                     console.log(
-                      `   📝 [${adIndex + 1}/${adset.ads.length}] Tạo Ad: "${
-                        ad.name
-                      }"...`
+                      ` [${adIndex + 1}/${adset.ads.length}] Tạo Ad: "${ad.name}"...`
                     );
                     console.log(
-                      `      Ad.adset_id: ${ad.adset_id || "undefined"}`
+                      `Ad.adset_id: ${ad.adset_id || "undefined"}`
                     );
 
                     const adPayload = {
@@ -2219,18 +2199,16 @@ export async function publishFlexibleService({
                       ad,
                       dry_run,
                       adDraftId: ad.draftId,
-                      creativeDraftId: ad.creative?.draftId || ad.creative?._id, // ✅ THÊM creative draft ID
+                      creativeDraftId: ad.creative?.draftId || ad.creative?._id, // THÊM creative draft ID
                     };
 
                     const adResult = await publishAdService(adPayload);
                     results.ads.push(adResult);
                     results.totalSuccess++;
-                    console.log(
-                      `      ✅ Ad "${ad.name}" đã tạo (ID: ${adResult.adId})`
-                    );
+                    console.log(`Ad "${ad.name}" đã tạo (ID: ${adResult.adId})`);
                   } catch (adError) {
                     console.error(
-                      `   Lỗi tạo Ad "${ad.name}":`,
+                      `Lỗi tạo Ad "${ad.name}":`,
                       adError.response?.data || adError.message
                     );
                     results.totalErrors++;
@@ -2275,7 +2253,7 @@ export async function publishFlexibleService({
               );
               if (adsetError.response?.data) {
                 console.error(
-                  "📋 Facebook API Error:",
+                  "Facebook API Error:",
                   JSON.stringify(adsetError.response.data, null, 2)
                 );
               }
@@ -2357,7 +2335,7 @@ export async function publishFlexibleService({
 }
 
 /**
- * 🔄 UPDATE: Flexible service cho cascade update
+ * UPDATE: Flexible service cho cascade update
  * Hỗ trợ update nhiều campaigns với cấu trúc linh hoạt (giống publishFlexibleService)
  * Update matching entities, tạo mới nếu chưa có
  */
@@ -2392,8 +2370,7 @@ export async function updateFlexibleService({
       try {
         // Bước 1: Update hoặc tạo Campaign
         console.log(
-          `Processing campaign ${campaignIndex + 1}/${campaignsList.length}: ${
-            campaign.name
+          `Processing campaign ${campaignIndex + 1}/${campaignsList.length}: ${campaign.name
           }`
         );
 
@@ -2416,8 +2393,7 @@ export async function updateFlexibleService({
 
         // Bước 2: Xử lý AdSets với concurrency limit (8)
         console.log(
-          `\nProcessing ${campaign.adsets?.length || 0} AdSets cho Campaign "${
-            campaign.name
+          `\nProcessing ${campaign.adsets?.length || 0} AdSets cho Campaign "${campaign.name
           }"...`
         );
 
@@ -2428,8 +2404,7 @@ export async function updateFlexibleService({
             try {
               // 2.1: Update hoặc tạo AdSet
               console.log(
-                ` [${adsetIndex + 1}/${
-                  campaign.adsets.length
+                ` [${adsetIndex + 1}/${campaign.adsets.length
                 }] Processing AdSet: "${adset.name}"...`
               );
 
@@ -2450,25 +2425,18 @@ export async function updateFlexibleService({
                 results.details.created.adsets.push(adsetResult);
               }
 
-              console.log(
-                `   ${
-                  adsetResult.action === "updated" ? "🔄 Updated" : "➕ Created"
-                } AdSet "${adset.name}" (ID: ${adsetResult.adsetId})`
-              );
+              console.log(`${adsetResult.action === "updated" ? "Updated" : "Created"} AdSet "${adset.name}" (ID: ${adsetResult.adsetId})`);
 
               // 2.2: Xử lý Ads TUẦN TỰ cho AdSet này
               if (adset.ads && adset.ads.length > 0) {
-                console.log(
-                  `   🎨 Processing ${adset.ads.length} Ads cho AdSet "${adset.name}"...`
-                );
+                console.log(`Processing ${adset.ads.length} Ads cho AdSet "${adset.name}"...`);
 
                 for (let adIndex = 0; adIndex < adset.ads.length; adIndex++) {
                   const ad = adset.ads[adIndex];
 
                   try {
                     console.log(
-                      `     [${adIndex + 1}/${
-                        adset.ads.length
+                      `     [${adIndex + 1}/${adset.ads.length
                       }] Processing Ad: "${ad.name}"...`
                     );
 
@@ -2491,18 +2459,9 @@ export async function updateFlexibleService({
                       results.details.created.ads.push(adResult);
                     }
 
-                    console.log(
-                      `       ${
-                        adResult.action === "updated"
-                          ? "🔄 Updated"
-                          : "➕ Created"
-                      } Ad "${ad.name}" (ID: ${adResult.adId})`
-                    );
+                    console.log(`${adResult.action === "updated" ? "Updated" : "Created"} Ad "${ad.name}" (ID: ${adResult.adId})`);
                   } catch (adError) {
-                    console.error(
-                      `     ❌ Lỗi xử lý Ad "${ad.name}":`,
-                      adError.message
-                    );
+                    console.error(`Lỗi xử lý Ad "${ad.name}":`, adError.message);
                     results.totalErrors++;
                     results.errors.push({
                       type: "ad",
@@ -2524,9 +2483,7 @@ export async function updateFlexibleService({
               }
 
               const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-              console.log(
-                `   ✅ AdSet "${adset.name}" hoàn thành trong ${duration}s`
-              );
+              console.log(`AdSet "${adset.name}" hoàn thành trong ${duration}s`);
 
               return {
                 success: true,
@@ -2537,10 +2494,7 @@ export async function updateFlexibleService({
               };
             } catch (adsetError) {
               const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-              console.error(
-                `   ❌ Lỗi xử lý AdSet "${adset.name}" sau ${duration}s:`,
-                adsetError.message
-              );
+              console.error(`Lỗi xử lý AdSet "${adset.name}" sau ${duration}s:`, adsetError.message);
               results.totalErrors++;
               results.errors.push({
                 type: "adset",
@@ -2583,14 +2537,9 @@ export async function updateFlexibleService({
           (sum, r) => sum + (r.adsProcessed || 0),
           0
         );
-        console.log(
-          `Campaign "${campaign.name}" hoàn thành trong ${campaignDuration}s`
-        );
+        console.log(`Campaign "${campaign.name}" hoàn thành trong ${campaignDuration}s`);
       } catch (campaignError) {
-        console.error(
-          `❌ Lỗi xử lý Campaign "${campaign.name}":`,
-          campaignError.message
-        );
+        console.error(`Lỗi xử lý Campaign "${campaign.name}":`, campaignError.message);
         results.totalErrors++;
         results.errors.push({
           type: "campaign",
@@ -2607,24 +2556,18 @@ export async function updateFlexibleService({
       }
     }
 
-    const finalMessage = `Cập nhật ${
-      results.details.updated.campaigns.length +
+    const finalMessage = `Cập nhật ${results.details.updated.campaigns.length +
       results.details.updated.adsets.length +
       results.details.updated.ads.length
-    } entities, tạo mới ${
-      results.details.created.campaigns.length +
+      } entities, tạo mới ${results.details.created.campaigns.length +
       results.details.created.adsets.length +
       results.details.created.ads.length
-    } entities trong ${campaignsList.length} campaigns`;
+      } entities trong ${campaignsList.length} campaigns`;
 
     console.log(`\n========== KẾT QUẢ TỔNG ==========`);
-    console.log(
-      `✅ Updated: ${results.details.updated.campaigns.length} campaigns, ${results.details.updated.adsets.length} adsets, ${results.details.updated.ads.length} ads`
-    );
-    console.log(
-      `➕ Created: ${results.details.created.campaigns.length} campaigns, ${results.details.created.adsets.length} adsets, ${results.details.created.ads.length} ads`
-    );
-    console.log(`❌ Errors: ${results.totalErrors}`);
+    console.log(`Updated: ${results.details.updated.campaigns.length} campaigns, ${results.details.updated.adsets.length} adsets, ${results.details.updated.ads.length} ads`);
+    console.log(`Created: ${results.details.created.campaigns.length} campaigns, ${results.details.created.adsets.length} adsets, ${results.details.created.ads.length} ads`);
+    console.log(`Errors: ${results.totalErrors}`);
     console.log(`========================================\n`);
 
     return {
@@ -2633,7 +2576,7 @@ export async function updateFlexibleService({
       message: finalMessage,
     };
   } catch (error) {
-    console.error("❌ Lỗi tổng thể updateFlexibleService:", error);
+    console.error("Lỗi tổng thể updateFlexibleService:", error);
     throw error;
   }
 }

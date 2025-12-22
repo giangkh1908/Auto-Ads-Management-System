@@ -76,7 +76,7 @@ export function calculateNextRunAt(schedule) {
         // Chạy sau 30 phút (nhưng không được vượt quá end_time)
         const nextRun = new Date(now.getTime() + 30 * 60 * 1000);
         const nextRunTime = nextRun.getHours() * 60 + nextRun.getMinutes();
-        
+
         // Nếu sau 30 phút vượt quá end_time, thì chạy vào start_time ngày mai
         if (nextRunTime >= endTime) {
           const nextDayRun = new Date(now);
@@ -84,7 +84,7 @@ export function calculateNextRunAt(schedule) {
           nextDayRun.setHours(startHour, startMinute, 0, 0);
           return nextDayRun;
         }
-        
+
         return nextRun;
       }
       // Nếu chưa đến start_time, chạy vào start_time hôm nay
@@ -128,7 +128,7 @@ export function calculateNextRunAt(schedule) {
     // Kiểm tra xem ngày hiện tại có được chọn không
     if (currentDayConfig && currentDayConfig.checked) {
       const timeSlots = currentDayConfig.time_slots || [];
-      
+
       // Duyệt qua các time slots để tìm slot phù hợp
       for (let slotIndex = 0; slotIndex < timeSlots.length; slotIndex++) {
         const slot = timeSlots[slotIndex];
@@ -146,7 +146,7 @@ export function calculateNextRunAt(schedule) {
           // Chạy sau 30 phút (nhưng không được vượt quá end_time của slot)
           const nextRun = new Date(now.getTime() + 30 * 60 * 1000);
           const nextRunTime = nextRun.getHours() * 60 + nextRun.getMinutes();
-          
+
           // Nếu sau 30 phút vượt quá end_time của slot này, tìm slot tiếp theo
           if (nextRunTime >= slotEndTime) {
             // Tìm slot tiếp theo trong ngày
@@ -166,7 +166,7 @@ export function calculateNextRunAt(schedule) {
               break;
             }
           }
-          
+
           return nextRun;
         }
         // Nếu chưa đến time slot này, chạy vào start_time của slot này
@@ -217,13 +217,13 @@ export function calculateNextRunAt(schedule) {
  */
 function compareCondition(condition, actualValue, logContext = {}) {
   const { operator, value, metric } = condition;
-  
+
   // Log input values
   if (logContext.enableLog) {
     console.log(`[AutoRule Compare] Metric: ${metric}, Operator: ${operator}`);
     console.log(`[AutoRule Compare] Condition value: ${value}, Actual value: ${actualValue} (type: ${typeof actualValue})`);
   }
-  
+
   if (actualValue === null || actualValue === undefined) {
     if (logContext.enableLog) {
       console.log(`[AutoRule Compare] ❌ Actual value is null/undefined, returning false`);
@@ -270,7 +270,7 @@ function compareCondition(condition, actualValue, logContext = {}) {
   if (logContext.enableLog) {
     const status = result ? '✅ MATCH' : '❌ NO MATCH';
     console.log(`[AutoRule Compare] ${status} - ${comparisonDetail}`);
-    
+
     if (logContext.recordInfo) {
       console.log(`[AutoRule Compare] Record: campaign_id=${logContext.recordInfo.campaign_id || 'N/A'}, set_id=${logContext.recordInfo.set_id || 'N/A'}, ads_id=${logContext.recordInfo.ads_id || 'N/A'}`);
     }
@@ -287,10 +287,10 @@ export async function evaluateConditions(rule) {
   try {
     const ruleName = rule.name || rule._id?.toString() || 'Unknown';
     console.log(`[AutoRule Evaluate] ===== Bắt đầu đánh giá rule: "${ruleName}" =====`);
-    
+
     // Nếu không có conditions, coi như luôn thỏa mãn → rule chạy thuần theo lịch
     if (!rule.conditions || rule.conditions.length === 0) {
-      console.log(`[AutoRule Evaluate] ℹ️ Rule không có conditions, được cấu hình chạy theo lịch → tự động coi là THỎA MÃN (TRUE)`);
+      console.log(`[AutoRule Evaluate] ℹRule không có conditions, được cấu hình chạy theo lịch → tự động coi là THỎA MÃN (TRUE)`);
       return true;
     }
 
@@ -304,10 +304,10 @@ export async function evaluateConditions(rule) {
     // AdPerformance lưu external_account_id có thể là "act_xxx" hoặc "xxx"
     const externalAccountId = rule.external_account_id;
     if (!externalAccountId) {
-      console.log(`[AutoRule Evaluate] ❌ Không có external_account_id trong rule, returning false`);
+      console.log(`[AutoRule Evaluate] Không có external_account_id trong rule, returning false`);
       return false;
     }
-    
+
     // Chuẩn hóa: vừa giữ nguyên, vừa dùng bản đã bỏ prefix để match linh hoạt
     const normalizedAccountId = normalizeAccountId(externalAccountId);
     const accountIdVariants = new Set();
@@ -321,7 +321,7 @@ export async function evaluateConditions(rule) {
         accountIdVariants
       ).join(", ")}`
     );
-    
+
     const filter = {
       external_account_id: { $in: Array.from(accountIdVariants) },
     };
@@ -329,10 +329,9 @@ export async function evaluateConditions(rule) {
     // Thêm filter theo apply_to_ids
     // Match bằng external_campaign_id, external_adset_id, external_ad_id thay vì _id
     const { campaign_ids, adset_ids, ad_ids } = rule.apply_to_ids || {};
-    
+
     console.log(
-      `[AutoRule Evaluate] Apply to IDs (ObjectId) - Campaigns: ${campaign_ids?.length || 0}, Adsets: ${
-        adset_ids?.length || 0
+      `[AutoRule Evaluate] Apply to IDs (ObjectId) - Campaigns: ${campaign_ids?.length || 0}, Adsets: ${adset_ids?.length || 0
       }, Ads: ${ad_ids?.length || 0}`
     );
 
@@ -406,7 +405,7 @@ export async function evaluateConditions(rule) {
         orConditions.push({ external_ad_id: { $in: externalAdIds } });
       }
     }
-    
+
     // Nếu có điều kiện OR, thêm vào filter
     if (orConditions.length > 0) {
       filter.$or = orConditions;
@@ -434,7 +433,7 @@ export async function evaluateConditions(rule) {
     console.log(`[AutoRule Evaluate] Bước 2: Xác định bản ghi mới nhất`);
     const latestRecord = adPerformanceData[0];
     const latestDate = latestRecord.date ? new Date(latestRecord.date) : null;
-    
+
     console.log(`[AutoRule Evaluate] Ngày của bản ghi mới nhất: ${latestDate ? latestDate.toISOString() : 'N/A'}`);
     console.log(`[AutoRule Evaluate] Bản ghi mới nhất (chi tiết):`, {
       _id: latestRecord._id?.toString(),
@@ -465,13 +464,13 @@ export async function evaluateConditions(rule) {
     for (let condIdx = 0; condIdx < rule.conditions.length; condIdx++) {
       const condition = rule.conditions[condIdx];
       const fieldName = METRIC_TO_FIELD_MAP[condition.metric];
-      
+
       console.log(`[AutoRule Evaluate] --- Condition ${condIdx + 1}/${rule.conditions.length} ---`);
       console.log(`[AutoRule Evaluate] Metric: ${condition.metric}`);
       console.log(`[AutoRule Evaluate] Operator: ${condition.operator}`);
       console.log(`[AutoRule Evaluate] Condition value: ${condition.value} (${condition.unit || 'N/A'})`);
       console.log(`[AutoRule Evaluate] Mapped field: ${fieldName || 'NOT FOUND'}`);
-      
+
       if (!fieldName) {
         console.warn(`[AutoRule Evaluate] Unknown metric: ${condition.metric} - Bỏ qua condition này`);
         continue;
@@ -495,10 +494,10 @@ export async function evaluateConditions(rule) {
       };
 
       console.log(`[AutoRule Evaluate] Bắt đầu so sánh: ${condition.metric} ${condition.operator} ${condition.value} vs ${actualValue}`);
-      
+
       // So sánh condition với giá trị thực tế
       const comparisonResult = compareCondition(condition, actualValue, logContext);
-      
+
       if (comparisonResult) {
         console.log(`[AutoRule Evaluate] Condition "${condition.metric} ${condition.operator} ${condition.value}" THỎA MÃN trên bản ghi mới nhất`);
         console.log(`[AutoRule Evaluate] Record ID: ${latestRecord._id?.toString()}`);

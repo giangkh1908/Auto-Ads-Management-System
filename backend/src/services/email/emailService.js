@@ -6,29 +6,29 @@ dotenv.config();
 
 // Tạo transporter
 const createTransporter = () => {
-    return nodemailer.createTransport({
-        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-        port: process.env.EMAIL_PORT || 587,
-        secure: false, // true for 465, false for other ports
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS, // App password cho Gmail
-        },
-    });
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: process.env.EMAIL_PORT || 587,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS, // App password cho Gmail
+    },
+  });
 };
 
 // Gửi email xác nhận
 export const sendVerificationEmail = async (email, name, verificationToken) => {
-    try {
-        const transporter = createTransporter();
-        
-        const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-        
-        const mailOptions = {
-            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM}>`,
-            to: email,
-            subject: 'Xác nhận địa chỉ email của bạn',
-            html: `
+  try {
+    const transporter = createTransporter();
+
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: 'Xác nhận địa chỉ email của bạn',
+      html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #333;">Chào ${name}!</h2>
                     <p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng click vào link bên dưới để xác nhận địa chỉ email của bạn:</p>
@@ -48,28 +48,28 @@ export const sendVerificationEmail = async (email, name, verificationToken) => {
                     </p>
                 </div>
             `
-        };
-        
-        await transporter.sendMail(mailOptions);
-        
-    } catch (error) {
-        console.error('Error sending verification email:', error);
-        throw new Error('Không thể gửi email xác nhận');
-    }
+    };
+
+    await transporter.sendMail(mailOptions);
+
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    throw new Error('Không thể gửi email xác nhận');
+  }
 };
 
 // Gửi email reset password
 export const sendPasswordResetEmail = async (email, name, resetToken) => {
-    try {
-        const transporter = createTransporter();
-        
-        const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-        
-        const mailOptions = {
-            from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM}>`,
-            to: email,
-            subject: 'Đặt lại mật khẩu',
-            html: `
+  try {
+    const transporter = createTransporter();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: 'Đặt lại mật khẩu',
+      html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #333;">Chào ${name}!</h2>
                     <p>Bạn đã yêu cầu đặt lại mật khẩu. Click vào link bên dưới để tạo mật khẩu mới:</p>
@@ -89,14 +89,14 @@ export const sendPasswordResetEmail = async (email, name, resetToken) => {
                     </p>
                 </div>
             `
-        };
-        
-        await transporter.sendMail(mailOptions);
-        
-    } catch (error) {
-        console.error('Error sending password reset email:', error);
-        throw new Error('Không thể gửi email đặt lại mật khẩu');
-    }
+    };
+
+    await transporter.sendMail(mailOptions);
+
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    throw new Error('Không thể gửi email đặt lại mật khẩu');
+  }
 };
 
 export const sendInvitationEmail = async (email, token) => {
@@ -260,7 +260,7 @@ export const sendStaffCredentialsEmail = async (email, password) => {
           </div>
           
           <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
-            <p style="margin: 0; color: #856404;"><strong>⚠️ Lưu ý quan trọng:</strong></p>
+            <p style="margin: 0; color: #856404;"><strong>!!! Lưu ý quan trọng:</strong></p>
             <ul style="margin: 10px 0; padding-left: 20px; color: #856404;">
               <li>Vui lòng đổi mật khẩu ngay sau khi đăng nhập lần đầu</li>
               <li>Không chia sẻ thông tin đăng nhập với bất kỳ ai</li>

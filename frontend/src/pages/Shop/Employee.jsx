@@ -265,14 +265,40 @@ function Employee() {
   const handleOpenPageAssignModal = async (employee) => {
     try {
       setSelectedEmployee(employee);
+
+      // Lấy danh sách tất cả Pages từ Facebook
       const res = await axiosInstance.get("/api/shops/facebook/pages");
       const data = res.data;
-      if (data.success) {
-        setPages(data.data.pages || []);
-        setShowModal(true);
-      } else {
+      if (!data.success) {
         toast.error("Không thể tải danh sách Page");
+        return;
       }
+
+      const allPages = data.data.pages || [];
+      setPages(allPages);
+
+      // Lấy danh sách Pages đã được phân quyền cho employee này
+      try {
+        const assignedRes = await axiosInstance.get(
+          `/api/shop-users/${actualShopId}/employee/${employee.id}/pages`
+        );
+
+        if (assignedRes.data.success) {
+          const assignedPageIds = assignedRes.data.data || [];
+
+          // Pre-select các pages đã được phân quyền
+          const preSelected = allPages.filter(p =>
+            assignedPageIds.includes(p.id)
+          );
+          setSelectedPages(preSelected);
+        }
+      } catch (assignedError) {
+        // Nếu không lấy được pages đã phân quyền, bắt đầu với danh sách rỗng
+        console.error("Error fetching assigned pages:", assignedError);
+        setSelectedPages([]);
+      }
+
+      setShowModal(true);
     } catch (error) {
       //console.error("Error loading pages:", error);
       toast.error(
@@ -720,7 +746,7 @@ function Employee() {
                   <div className="table-cell"></div>
                   <div className="table-cell-name">{t("shop.employee")}</div>
                   <div className="table-cell">{t("shop.email")}</div>
-                  <div className="table-cell">{t("shop.page_count")}</div>
+                  {/* <div className="table-cell">{t("shop.page_count")}</div> */}
                   <div className="table-cell">{t("shop.role")}</div>
                   {/* <div className="table-cell">{t("shop.status")}</div> */}
                   <div className="table-cell">{t("shop.action")}</div>
@@ -761,7 +787,7 @@ function Employee() {
                     <div className="table-cell" data-label={t('shop.email')}>
                       <span>{employee.email}</span>
                     </div>
-                    <div
+                    {/* <div
                       className="table-cell"
                     // data-label={t("shop.page_count")}
                     >
@@ -772,7 +798,7 @@ function Employee() {
                       >
                         <Flag size={18} />
                       </button>
-                    </div>
+                    </div> */}
                     <div className="table-cell" data-label={t('shop.role')}>
                       {employee.role === "Shop Owner" ? (
                         <span className="role-badge">{employee.role}</span>

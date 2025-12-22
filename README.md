@@ -2,7 +2,7 @@
 
 A modern, full-stack application for managing Facebook advertising campaigns with a beautiful, responsive UI and comprehensive CRUD operations.
 
-## 🚀 Features
+## Features
 
 ### Frontend
 - **Modern UI/UX**: Beautiful, responsive design with smooth animations and hover effects
@@ -19,7 +19,7 @@ A modern, full-stack application for managing Facebook advertising campaigns wit
 - **Error Handling**: Comprehensive error handling and logging
 - **Modular Architecture**: Clean separation of concerns with controllers, services, and routes
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 - **React 18** - Modern React with hooks
@@ -33,7 +33,7 @@ A modern, full-stack application for managing Facebook advertising campaigns wit
 - **Facebook Marketing API** - Official Facebook SDK
 - **CORS** - Cross-origin resource sharing
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 - Node.js (v16 or higher)
@@ -103,7 +103,7 @@ The frontend will be available at `http://localhost:5173`
 - `PUT /api/ads/:id` - Update ad
 - `DELETE /api/ads/:id` - Delete ad
 
-## 🎨 UI Features
+## UI Features
 
 ### Dashboard
 - **Statistics Cards**: Real-time counts of campaigns, ad sets, ads, and creatives
@@ -124,7 +124,7 @@ The frontend will be available at `http://localhost:5173`
 - **Status Badges**: Color-coded status indicators
 - **Interactive Buttons**: Hover effects and loading states
 
-## 🔄 Data Flow
+## Data Flow
 
 1. **Frontend** makes API calls to **Backend**
 2. **Backend** processes requests and calls **Facebook Marketing API**
@@ -132,14 +132,14 @@ The frontend will be available at `http://localhost:5173`
 4. **Backend** formats and sends data to **Frontend**
 5. **Frontend** updates UI with new data and shows notifications
 
-## 📱 Responsive Design
+## Responsive Design
 
 The application is fully responsive and works on:
 - **Desktop** (1200px+): Full layout with sidebar and detailed views
 - **Tablet** (768px - 1199px): Adapted layout with collapsible elements
 - **Mobile** (320px - 767px): Stacked layout optimized for touch
 
-## 🎯 Key Features
+## Key Features
 
 ### Real-time Synchronization
 - Data automatically refreshes after create/update/delete operations
@@ -158,7 +158,7 @@ The application is fully responsive and works on:
 - Smooth animations without performance impact
 - Fast loading times
 
-## 🚀 Getting Started
+## Getting Started
 
 1. **Set up your Facebook Developer Account**:
    - Create a Facebook App
@@ -181,7 +181,7 @@ The application is fully responsive and works on:
    - Add your creative elements
    - Submit and see it appear in the dashboard!
 
-## 🔧 Development
+## Development
 
 ### Project Structure
 ```
@@ -212,11 +212,11 @@ The application is fully responsive and works on:
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -224,10 +224,10 @@ This project is licensed under the MIT License.
 4. Test thoroughly
 5. Submit a pull request
 
-## 📞 Support
+## Support
 
 For support or questions, please open an issue in the repository.
 
 ---
 
-**Built with ❤️ using React, Node.js, and Facebook Marketing API**
+**Built with love using React, Node.js, and Facebook Marketing API**
