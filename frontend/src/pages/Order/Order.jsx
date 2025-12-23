@@ -43,6 +43,8 @@ function Order() {
   const [pages, setPages] = useState(selectedPackageFromNav?.pages);
 
   const [employees, setEmployees] = useState(selectedPackageFromNav?.employees);
+  
+  const [shops, setShops] = useState(selectedPackageFromNav?.shops);
 
   // Map duration từ planType (DB format) sang UI format
   const mapDurationFromPlanType = (planType) => {
@@ -135,6 +137,7 @@ function Order() {
       // auto set pages / employees nếu chưa có hoặc nhỏ hơn min
       setPages(matchedPackage.pages);
       setEmployees(matchedPackage.employees);
+      setShops(matchedPackage.shops);
     }
   }, [packageType, packages]);
 
@@ -163,6 +166,7 @@ function Order() {
       packageType,
       pages,
       employees,
+      shops,
       duration,
       totalPrice,
     };

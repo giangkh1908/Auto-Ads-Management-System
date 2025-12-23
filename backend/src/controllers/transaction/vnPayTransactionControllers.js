@@ -44,6 +44,7 @@ export const createVnpayPayment = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { orderData } = req.body;
+    console.log("Creating VNPAY payment for orderId:", orderId, "with data:", orderData);
 
     const transaction = await PaymentTransaction.findById(orderId);
     if (!transaction || transaction.status !== "initializing") {
@@ -105,6 +106,7 @@ export const createVnpayPayment = async (req, res) => {
       metadata: {
         employees: orderData.employees,
         pages: orderData.pages,
+        shops: orderData.shops,
         duration: orderData.duration,
       },
     });
@@ -161,20 +163,37 @@ export const vnpayReturn = async (req, res) => {
             console.error("Package not found for transaction:", orderId);
             return res.redirect(`${process.env.FRONTEND_URL}/checkout?payment=failed&msg=nopkg`);
           }
-          // Tạo UserPackage
-          const userPackage = await UserPackage.create({
+          // Cập nhật UserPackage hoặc tạo mới nếu chưa có
+          console.log("Finding pending UserPackage for user:", transaction.user_id._id, "package:", pkg._id);
+          let userPackage = await UserPackage.findOne({
             user_id: transaction.user_id._id,
             package_id: pkg._id,
-            pages: metaData.pages,
-            employees: metaData.employees,
-            shops: metaData.shops,
-            from_date: new Date(),
-            to_date: new Date(Date.now() + pkg.duration_days * 86400000),
-            status: "active",
-            created_by: transaction.user_id._id,
-          });
+            status: "pending",
+            deleted_at: null,
+          }).sort({ created_at: -1 });
 
-          console.log("UserPackage created:", userPackage._id);
+          if (userPackage) {
+            userPackage.status = "active";
+            userPackage.from_date = new Date();
+            userPackage.to_date = new Date(Date.now() + (pkg.duration_days || 30) * 86400000);
+            userPackage.updated_by = transaction.user_id._id;
+            await userPackage.save();
+            console.log("✅ Updated existing pending UserPackage:", userPackage._id);
+          } else {
+            console.log("⚠️ Pending UserPackage not found, creating new one...");
+            userPackage = await UserPackage.create({
+              user_id: transaction.user_id._id,
+              package_id: pkg._id,
+              pages: metaData.pages || pkg.pages,
+              employees: metaData.employees || pkg.employees,
+              shops: metaData.shops || pkg.shops,
+              from_date: new Date(),
+              to_date: new Date(Date.now() + pkg.duration_days * 86400000),
+              status: "active",
+              created_by: transaction.user_id._id,
+            });
+            console.log("✅ Created new UserPackage:", userPackage._id);
+          }
 
           // Update PaymentTransaction status
           const updatedTransaction = await PaymentTransaction.findByIdAndUpdate(
