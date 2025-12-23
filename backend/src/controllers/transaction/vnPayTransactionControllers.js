@@ -7,6 +7,7 @@ import Package from "../../models/package/package.model.js";
 import Shop from "../../models/shops/shop.model.js";
 import ShopUser from "../../models/shops/shopUser.model.js";
 import UserRole from "../../models/user/userRole.model.js";
+import User from "../../models/user/user.model.js";
 import { RoleEnum } from "../../constants/enum.js";
 import { createInvoice } from "../invoice/invoiceControllers.js";
 
@@ -160,17 +161,45 @@ export const vnpayReturn = async (req, res) => {
             console.error("Package not found for transaction:", orderId);
             return res.redirect(`${process.env.FRONTEND_URL}/checkout?payment=failed&msg=nopkg`);
           }
-          const user = await User.findById(currentTransaction.user_id);
+          // Tạo UserPackage
+          const userPackage = await UserPackage.create({
+            user_id: transaction.user_id._id,
+            package_id: pkg._id,
+            pages: metaData.pages,
+            employees: metaData.employees,
+            shops: metaData.shops,
+            from_date: new Date(),
+            to_date: new Date(Date.now() + pkg.duration_days * 86400000),
+            status: "active",
+            created_by: transaction.user_id._id,
+          });
+
+          console.log("UserPackage created:", userPackage._id);
+
+          // Update PaymentTransaction status
+          const updatedTransaction = await PaymentTransaction.findByIdAndUpdate(
+            orderId,
+            {
+              status: "success",
+              payment_at: new Date(),
+            },
+            { new: true }
+          );
+
+          console.log("PaymentTransaction updated - new status:", updatedTransaction.status);
+
+          // Lấy thông tin user
+          const user = await User.findById(transaction.user_id);
           const full_name = user?.full_name || "Shop Owner";
 
           // ✨ KIỂM TRA NÂNG CẤP PACKAGE: "Chatbot AI" → "Chatbot" - XÓA TẤT CẢ SHOPS
               try {
                 // Lấy thông tin package mới (mua)
-                const newPackageInfo = await Package.findById(currentTransaction.package_id).select("name");
+                const newPackageInfo = await Package.findById(transaction.package_id).select("name");
 
                 // Tìm tất cả active UserPackage khác của user (package cũ)
                 const oldActivePackages = await UserPackage.find({
-                  user_id: currentTransaction.user_id,
+                  user_id: transaction.user_id,
                   _id: { $ne: userPackage._id },
                   status: { $in: ["active", "expiring soon", "new signup"] },
                   deleted_at: null,
@@ -185,15 +214,10 @@ export const vnpayReturn = async (req, res) => {
                 if (currentHasChatbotAI && newIsChatbot) {
                   // Xóa toàn bộ shops có owner_id = user_id
                   const deletedShops = await Shop.deleteMany({
-                    owner_id: currentTransaction.user_id,
+                    owner_id: transaction.user_id,
                   });
 
-                  console.log(`🗑️ Đã xóa ${deletedShops.deletedCount} shops của user ${currentTransaction.user_id} (downgrade: Chatbot AI → Chatbot)`);
-
-                  const userPackage = await UserPackage.findOne({
-                    user_id: user._id,
-                    status: "active",
-                  }).populate("package_id");
+                  console.log(`🗑️ Đã xóa ${deletedShops.deletedCount} shops của user ${transaction.user_id} (downgrade: Chatbot AI → Chatbot)`);
 
                   // Tạo shop mặc định cho user
                   const shop = await Shop.create({
@@ -261,34 +285,6 @@ export const vnpayReturn = async (req, res) => {
                 console.error("⚠️ Lỗi kiểm tra package downgrade:", checkPackageError);
                 // Không throw error để không ảnh hưởng đến flow chính
               }
-
-
-          // Tạo UserPackage
-          const userPackage = await UserPackage.create({
-            user_id: transaction.user_id._id,
-            package_id: pkg._id,
-            pages: metaData.pages,
-            employees: metaData.employees,
-            shops: metaData.shops,
-            from_date: new Date(),
-            to_date: new Date(Date.now() + pkg.duration_days * 86400000),
-            status: "active",
-            created_by: transaction.user_id._id,
-          });
-
-          console.log("UserPackage created:", userPackage._id);
-
-          // Update PaymentTransaction status
-          const updatedTransaction = await PaymentTransaction.findByIdAndUpdate(
-            orderId,
-            {
-              status: "success",
-              payment_at: new Date(),
-            },
-            { new: true }
-          );
-
-          console.log("PaymentTransaction updated - new status:", updatedTransaction.status);
 
           // Create invoice for successful payment (non-blocking)
           try {
