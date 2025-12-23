@@ -106,8 +106,9 @@ const countUsage = async (userId) => {
     };
   }
 
+  // Chỉ đếm shop được tạo bởi user (created_by), không đếm shop được chuyển quyền
   const shops = await Shop.find({
-    owner_id: new mongoose.Types.ObjectId(userId),
+    created_by: new mongoose.Types.ObjectId(userId),
     deleted_at: null,
   })
     .select("_id facebook_pages")

@@ -14,7 +14,7 @@ import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverla
 function MyShop() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { pkg } = useMyPackage();
+  const { pkg, userPkg } = useMyPackage();
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab] = useState("info");
@@ -138,7 +138,7 @@ function MyShop() {
         toast.error(data.message || "Không thể tải danh sách shop");
         setShops([]); // fallback an toàn
       }
-    } catch (e) {
+    } catch (error) {
       //console.error("Load shops error:", e);
       toast.error("Lỗi khi tải danh sách shop");
       setShops([]); // tránh lỗi map nếu lỗi API
@@ -203,11 +203,11 @@ function MyShop() {
         {/* Tạo page mới */}
         <div className="btn-add-shop">
           <div className="shop-usage-info">
-            {/* {currentShop && (
+            {userPkg?.package && (
               <span className="shop-usage-text">
-                Shop Usage: <strong>{currentShop.shopCount || 0}/{currentShop.shopLimit || 0}</strong>
+                Shop đã tạo: <strong>{userPkg?.usage?.shops || 0}/{userPkg?.limits?.shops || 1}</strong>
               </span>
-            )} */}
+            )}
           </div>
           <button
             className={`btn-add-new-page ${!pkg?.package ? 'premium-feature' : ''}`}

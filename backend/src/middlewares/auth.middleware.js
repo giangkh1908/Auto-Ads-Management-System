@@ -279,7 +279,8 @@ export const checkPackageLimit = (resource) => {
       let used = 0;
 
       if (resource === "shops") {
-        used = await Shop.countDocuments({ owner_id: req.user._id, deleted_at: null });
+        // Chỉ đếm shop được tạo bởi user (created_by), không đếm shop được chuyển quyền
+        used = await Shop.countDocuments({ created_by: req.user._id, deleted_at: null });
       } else if (resource === "employees") {
         const shopIds = await Shop.find({ owner_id: req.user._id }).distinct("_id");
         used = await ShopUser.countDocuments({

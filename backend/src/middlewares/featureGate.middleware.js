@@ -31,7 +31,7 @@ export const requireFeature = (featureKey) => {
         const featureLabel = describeFeature(featureKey);
         return res.status(403).json({
           success: false,
-          message: `Your current package does not include ${featureLabel}. Please upgrade to Chatbot AI+ to use this feature.`,
+          message: `Nhắc nhở: Gói hiện tại của bạn không bao gồm tính năng ${featureLabel}.`,
           required_feature: featureKey,
         });
       }

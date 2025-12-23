@@ -1,22 +1,22 @@
 import express from "express";
-import { 
-    createShop, 
-    getShops, 
-    getShopById, 
+import {
+    createShop,
+    getShops,
+    getShopById,
     getShopsByOwner,
-    updateShop, 
-    deleteShop, 
-    activateShop, 
+    updateShop,
+    deleteShop,
+    activateShop,
     deactivateShop,
     getShopLogs,
     switchCurrentShop,
     getCurrentShopPackage,
-    getFacebookPages, 
-    connectFacebookPage, 
+    getFacebookPages,
+    connectFacebookPage,
     disconnectFacebookPage,
     updatePageStatus,
     refreshFacebookToken,
-    refreshUserFacebookPages 
+    refreshUserFacebookPages
 } from "../../controllers/shops/shopControllers.js";
 import { authenticate, authorizeInShop } from "../../middlewares/auth.middleware.js";
 

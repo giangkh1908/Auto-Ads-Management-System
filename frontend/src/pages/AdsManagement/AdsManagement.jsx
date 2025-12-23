@@ -24,6 +24,7 @@ import { useAdsAccount } from "../../hooks/ads/useAdsAccount";
 import { useAdsDataFetching } from "../../hooks/ads/useAdsDataFetching";
 import { useAdsSync } from "../../hooks/ads/useAdsSync";
 import { useAdsTableState } from "../../hooks/ads/useAdsTableState";
+import { useShopPackage } from "../../hooks/shop/useShopPackage";
 import { invalidateCache } from "../../services/ads/adsCacheService";
 import AdsToolbar from "../../components/feature/AdsManagement/AdsToolbar";
 import AdsTabs from "../../components/feature/AdsManagement/AdsTabs";
@@ -138,6 +139,16 @@ function AdsManagement() {
   const getEntityKey = () => {
     return activeTab === "campaigns" ? "campaigns" : activeTab === "adsets" ? "adsets" : "ads";
   };
+
+  const { shopPkg, loading: pkgLoading } = useShopPackage();
+  const hasActivePackage = shopPkg?.package?.name && shopPkg?.package?.name !== "Basic" && shopPkg?.package?.name !== "None";
+
+  // Auto-clear ad account if package is not premium
+  useEffect(() => {
+    if (!pkgLoading && !hasActivePackage && selectedAccountId) {
+      handleAccountChange("");
+    }
+  }, [hasActivePackage, pkgLoading, selectedAccountId]);
 
   const getEntityType = () => {
     return activeTab === "campaigns" ? "campaign" : activeTab === "adsets" ? "adset" : "ad";

@@ -135,23 +135,23 @@ export const getPaymentTransactions = async (req, res) => {
     // Handle date range - parse dd/mm/yyyy format
     if (startDate || endDate) {
       matchStage.$match.payment_at = {};
-      
+
       const parseDate = (dateStr) => {
         if (!dateStr || typeof dateStr !== 'string') return null;
         // Parse dd/mm/yyyy format
         const parts = dateStr.trim().split('/');
         if (parts.length !== 3) return null;
-        
+
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
         const year = parseInt(parts[2], 10);
-        
+
         if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-        
+
         const date = new Date(year, month - 1, day);
         return date;
       };
-      
+
       if (startDate) {
         const start = parseDate(startDate);
         if (start && !isNaN(start)) {
@@ -159,7 +159,7 @@ export const getPaymentTransactions = async (req, res) => {
           matchStage.$match.payment_at.$gte = start;
         }
       }
-      
+
       if (endDate) {
         const end = parseDate(endDate);
         if (end && !isNaN(end)) {
@@ -185,7 +185,7 @@ export const getPaymentTransactions = async (req, res) => {
 
     // Add sort and pagination
     pipeline.push({ $sort: { created_at: -1 } });
-    
+
     // Get total count before pagination
     const countResult = await PaymentTransaction.aggregate([
       ...pipeline.slice(0, pipeline.length - 1), // Remove sort before counting
@@ -245,7 +245,7 @@ export const getPaymentTransactionFilters = async (req, res) => {
     const packages = await Promise.all(
       packageIds
         .filter(id => id != null)
-        .map(id => 
+        .map(id =>
           PaymentTransaction.findOne({ package_id: id, deleted_at: null }).populate("package_id", "name")
         )
     );
@@ -319,7 +319,7 @@ export const getPaymentTransactionById = async (req, res) => {
 export const updatePaymentTransaction = async (req, res) => {
   try {
     const data = req.body;
-    
+
     // Lấy transaction hiện tại để lấy user_id và package_id
     const currentTransaction = await PaymentTransaction.findById(req.params.id);
     if (!currentTransaction) {
@@ -360,10 +360,10 @@ export const updatePaymentTransaction = async (req, res) => {
         // Tìm UserPackage có user_id và package_id tương ứng
         // - Khi approve: chỉ tìm status = "pending"
         // - Khi reject: tìm status = "pending" hoặc "active" (nếu đã approve trước đó)
-        const statusFilter = data.status === "success" 
+        const statusFilter = data.status === "success"
           ? { status: "pending" }
           : { status: { $in: ["pending", "active"] } };
-        
+
         // Tìm UserPackage mới nhất (theo created_at) để tránh trường hợp có nhiều UserPackage
         const userPackage = await UserPackage.findOne({
           user_id: currentTransaction.user_id,
@@ -374,7 +374,7 @@ export const updatePaymentTransaction = async (req, res) => {
         if (userPackage) {
           // Update status của UserPackage
           const newStatus = data.status === "success" ? "active" : "cancelled";
-          
+
           // Nếu approve (success), cần set from_date và to_date nếu chưa có
           const userPackageUpdateData = {
             status: newStatus,
@@ -385,7 +385,7 @@ export const updatePaymentTransaction = async (req, res) => {
             // Set from_date = hiện tại, to_date dựa trên duration trong metadata
             const duration = currentTransaction.metadata?.duration || "12months";
             const durationDays = duration === "12months" ? 365 : duration === "6months" ? 180 : 90;
-            
+
             userPackageUpdateData.from_date = new Date();
             userPackageUpdateData.to_date = new Date();
             userPackageUpdateData.to_date.setDate(userPackageUpdateData.to_date.getDate() + durationDays);
@@ -427,15 +427,15 @@ export const updatePaymentTransaction = async (req, res) => {
                   }
                 );
 
-                console.log(`✅ Đã disable ${oldActivePackages.length} package cũ của user ${currentTransaction.user_id}`);
+                console.log(`Đã disable ${oldActivePackages.length} package cũ của user ${currentTransaction.user_id}`);
               }
 
               // Đồng bộ package cho tất cả shop của owner
               try {
-                const { syncShopPackagesWithOwner } = await import("../../services/shopPackageSyncService.js");
+                const { syncShopPackagesWithOwner } = await import("../../services/shop/shopPackageSyncService.js");
                 await syncShopPackagesWithOwner(currentTransaction.user_id);
               } catch (syncError) {
-                console.error("⚠️ Lỗi khi sync shop packages:", syncError);
+                console.error("Lỗi khi sync shop packages:", syncError);
                 // Không throw error để không ảnh hưởng đến flow chính
               }
 

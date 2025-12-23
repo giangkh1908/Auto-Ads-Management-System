@@ -728,11 +728,16 @@ export const removeEmployee = async (req, res) => {
     // Kiểm tra quyền hạn
     // Shop Owner: có thể xóa Marketing Admin và Marketer
     // Marketing Admin: có thể xóa Marketing Admin và Marketer (nhưng không thể xóa Shop Owner)
+    // Marketing Admin và Marketer: có thể tự xóa chính mình
+    const isSelfRemoval = userId === currentUserId;
     const canRemove =
       (actorRoleName === "Shop Owner" &&
         ["Marketing Admin", "Marketer"].includes(targetRoleName)) ||
       (actorRoleName === "Marketing Admin" &&
-        ["Marketing Admin", "Marketer"].includes(targetRoleName));
+        ["Marketing Admin", "Marketer"].includes(targetRoleName) &&
+        !isSelfRemoval) ||
+      (isSelfRemoval &&
+        ["Marketing Admin", "Marketer"].includes(actorRoleName));
 
     if (!canRemove) {
       return res.status(403).json({
@@ -744,34 +749,88 @@ export const removeEmployee = async (req, res) => {
       });
     }
 
-    // Không cho tự xóa chính mình
-    if (userId === currentUserId) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: ErrorCode.AUTH_008,
-          message: getErrorMessage(ErrorCode.AUTH_008, 'vi'),
-        },
-      });
-    }
-
     // Xử lý is_current: Nếu employee đang set shop này là current shop,
     // cần chuyển sang shop khác hoặc bỏ is_current
+    let switchedToShopId = null;
     if (targetRole.is_current) {
-      // Tìm shop khác của user (nếu có) và set làm current
-      const otherUserRole = await UserRole.findOne({
-        user_id: userId,
-        shop_id: { $ne: shopId },
-        revoked_at: null,
-      });
-
-      if (otherUserRole) {
-        await UserRole.findByIdAndUpdate(otherUserRole._id, {
-          is_current: true,
+      // Nếu là tự xóa, ưu tiên tìm shop mà user đó là owner
+      if (isSelfRemoval) {
+        const ownedShop = await Shop.findOne({
+          owner_id: userId,
+          deleted_at: null,
         });
+
+        if (ownedShop) {
+          // Tìm UserRole của user trong shop mà họ là owner
+          // Nếu chưa có UserRole, cần tạo (hoặc có thể user đã có role trong shop đó)
+          const ownerRoleInShop = await UserRole.findOne({
+            user_id: userId,
+            shop_id: ownedShop._id,
+            revoked_at: null,
+          });
+
+          if (ownerRoleInShop) {
+            // Set shop owner làm current
+            await UserRole.updateMany(
+              { user_id: userId },
+              { $set: { is_current: false } }
+            );
+            ownerRoleInShop.is_current = true;
+            await ownerRoleInShop.save();
+            switchedToShopId = ownedShop._id.toString();
+          } else {
+            // Nếu không có UserRole, tìm shop khác mà user có role
+            const otherUserRole = await UserRole.findOne({
+              user_id: userId,
+              shop_id: { $ne: shopId },
+              revoked_at: null,
+            });
+
+            if (otherUserRole) {
+              await UserRole.updateMany(
+                { user_id: userId },
+                { $set: { is_current: false } }
+              );
+              otherUserRole.is_current = true;
+              await otherUserRole.save();
+              switchedToShopId = otherUserRole.shop_id.toString();
+            }
+          }
+        } else {
+          // Nếu không có shop owner, tìm shop khác mà user có role
+          const otherUserRole = await UserRole.findOne({
+            user_id: userId,
+            shop_id: { $ne: shopId },
+            revoked_at: null,
+          });
+
+          if (otherUserRole) {
+            await UserRole.updateMany(
+              { user_id: userId },
+              { $set: { is_current: false } }
+            );
+            otherUserRole.is_current = true;
+            await otherUserRole.save();
+            switchedToShopId = otherUserRole.shop_id.toString();
+          }
+        }
+      } else {
+        // Nếu không phải tự xóa, tìm shop khác của user (nếu có) và set làm current
+        const otherUserRole = await UserRole.findOne({
+          user_id: userId,
+          shop_id: { $ne: shopId },
+          revoked_at: null,
+        });
+
+        if (otherUserRole) {
+          await UserRole.updateMany(
+            { user_id: userId },
+            { $set: { is_current: false } }
+          );
+          otherUserRole.is_current = true;
+          await otherUserRole.save();
+        }
       }
-      // Nếu không có shop nào khác, đơn giản là bỏ is_current
-      // (User sẽ phải chọn shop khác khi login lại)
     }
 
     // BƯỚC 1: Xóa UserRole trong shop này (hard delete)
@@ -790,13 +849,45 @@ export const removeEmployee = async (req, res) => {
       target_type: "ShopUser",
       target_id: userId,
       target_name: targetUser.full_name || targetUser.email,
-      description: `${currentUser.full_name || currentUser.email} đã xóa nhân viên "${targetUser.full_name || targetUser.email}" ra khỏi cửa hàng "${shop.shop_name}"`,
+      description: isSelfRemoval
+        ? `${currentUser.full_name || currentUser.email} đã tự xóa mình ra khỏi cửa hàng "${shop.shop_name}"`
+        : `${currentUser.full_name || currentUser.email} đã xóa nhân viên "${targetUser.full_name || targetUser.email}" ra khỏi cửa hàng "${shop.shop_name}"`,
       request: req.body,
       response: { removed: true },
       success: true,
       source: "manual",
       ip_address: req.ip,
     });
+
+    // Nếu là tự xóa và có shop owner, lấy thông tin shop để trả về
+    let switchedShop = null;
+    if (isSelfRemoval && switchedToShopId) {
+      switchedShop = await Shop.findById(switchedToShopId)
+        .populate("owner_id")
+        .lean();
+
+      if (switchedShop && switchedShop.owner_id) {
+        // Luôn lấy package từ owner của shop (không dùng shop.current_package_id)
+        const ownerPackage = await UserPackage.findOne({
+          user_id: switchedShop.owner_id._id || switchedShop.owner_id,
+          status: { $in: ["active", "expiring soon", "new signup"] },
+          deleted_at: null,
+        })
+          .populate({
+            path: "package_id",
+            select: "name",
+          })
+          .sort({ created_at: -1 })
+          .lean();
+
+        if (ownerPackage && ownerPackage.package_id) {
+          switchedShop.package = {
+            id: ownerPackage.package_id._id.toString(),
+            name: ownerPackage.package_id.name,
+          };
+        }
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -806,6 +897,13 @@ export const removeEmployee = async (req, res) => {
         removed: true,
         userId: userId,
         shopId: shopId,
+        isSelfRemoval,
+        switchedToShopId: switchedToShopId || null,
+        switchedShop: switchedShop ? {
+          id: switchedShop._id.toString(),
+          shop_name: switchedShop.shop_name,
+          package: switchedShop.package || null,
+        } : null,
       },
     });
   } catch (error) {
@@ -908,9 +1006,42 @@ export const relinquishOwnership = async (req, res) => {
 
     // Đồng bộ package của shop với package của owner mới
     try {
-      const { syncSingleShopPackage } = await import("../../services/shop/shopPackageSyncService.js");
-      await syncSingleShopPackage(shopId);
-      console.log(`✅ Đã sync package cho shop ${shopId} sau khi chuyển giao quyền owner`);
+      // Lấy package active của owner mới
+      const newOwnerPackage = await UserPackage.findOne({
+        user_id: employeeId,
+        status: { $in: ["active", "expiring soon", "new signup"] },
+        deleted_at: null,
+      })
+        .populate("package_id")
+        .sort({ created_at: -1 });
+
+      if (newOwnerPackage && newOwnerPackage.package_id) {
+        // Owner mới có package → cập nhật shop package
+        await Shop.findByIdAndUpdate(
+          shopId,
+          {
+            $set: {
+              current_package_id: newOwnerPackage.package_id._id,
+              package_expired_at: newOwnerPackage.to_date || null,
+              updated_at: new Date(),
+            },
+          }
+        );
+        console.log(`✅ Đã sync package cho shop ${shopId} với package của owner mới: ${newOwnerPackage.package_id.name}`);
+      } else {
+        // Owner mới không có package → set shop package thành NONE (null)
+        await Shop.findByIdAndUpdate(
+          shopId,
+          {
+            $set: {
+              current_package_id: null,
+              package_expired_at: null,
+              updated_at: new Date(),
+            },
+          }
+        );
+        console.log(`✅ Đã set shop ${shopId} package thành NONE vì owner mới không có package`);
+      }
     } catch (syncError) {
       console.error("⚠️ Lỗi khi sync shop package sau khi chuyển giao quyền:", syncError);
       // Không throw error để không ảnh hưởng đến flow chính

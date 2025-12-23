@@ -45,7 +45,8 @@ export const createShop = async (req, res) => {
     // KIỂM TRA GÓI HIỆN TẠI
     const userPackage = await UserPackage.findOne({
       user_id: ownerId,
-      status: "active",
+      status: { $in: ["active", "expiring soon", "new signup"] },
+      deleted_at: null,
     }).populate("package_id");
 
     if (!userPackage) {
@@ -55,28 +56,22 @@ export const createShop = async (req, res) => {
       });
     }
 
-    // LẤY LIMIT TỪ UserPackage (có thể mua thêm)
-    const shopLimit = userPackage.shops || 0;
+    // LẤY LIMIT TỪ PACKAGE (số shop tối đa user có thể tạo)
+    // Ưu tiên lấy từ package template (package_id.shops), fallback về userPackage.shops (có thể đã customize)
+    const shopLimit = userPackage.package_id?.shops || userPackage.shops || 1; // Mặc định là 1
 
-    // ĐẾM SỐ SHOP HIỆN TẠI (usage thực tế)
-    // Đếm cả shop mà user là owner và shop mà user được mời vào
-    const ownedShopCount = await Shop.countDocuments({
-      owner_id: ownerId,
+    // ĐẾM SỐ SHOP MÀ USER ĐÃ TẠO (chỉ đếm shop được tạo bởi user qua createShop, không đếm shop được chuyển quyền)
+    const createdShopCount = await Shop.countDocuments({
+      created_by: ownerId,
       deleted_at: null,
     });
 
-    // Đếm shop mà user có role (không phải owner)
-    const userRoleShops = await UserRole.find({
-      user_id: ownerId,
-    }).distinct("shop_id");
-
-    const totalShopCount = userRoleShops.length;
-
     // KIỂM TRA GIỚI HẠN
-    if (totalShopCount >= shopLimit) {
+    // So sánh số shop đã tạo với limit từ package
+    if (createdShopCount >= shopLimit) {
       return res.status(403).json({
         success: false,
-        message: `Đã đạt giới hạn shop: ${totalShopCount}/${shopLimit}. Bạn không thể tạo thêm shop mới.`,
+        message: `Đã đạt giới hạn shop: ${createdShopCount}/${shopLimit}. Bạn không thể tạo thêm shop mới. Vui lòng nâng cấp gói để tạo thêm shop.`,
       });
     }
 
@@ -84,6 +79,7 @@ export const createShop = async (req, res) => {
     const shop = new Shop({
       ...req.body,
       owner_id: ownerId,
+      created_by: ownerId, // Đánh dấu shop được tạo bởi user này
       current_package_id: userPackage.package_id._id,
       package_expired_at: userPackage.to_date || null,
     });
@@ -233,14 +229,15 @@ export const getShopsByOwner = async (req, res) => {
         }
       });
 
-      // Đếm số shop của mỗi owner (bao gồm cả shop được mời vào)
+      // Đếm số shop mà mỗi owner đã tạo (chỉ đếm shop được tạo bởi user qua createShop, không đếm shop được chuyển quyền)
       const shopCounts = await Promise.all(
         ownerIds.map(async (ownerId) => {
-          // Đếm shop mà user có role (bao gồm cả owner và được mời)
-          const userRoleShops = await UserRole.find({
-            user_id: new mongoose.Types.ObjectId(ownerId),
-          }).distinct("shop_id");
-          return { ownerId, count: userRoleShops.length };
+          // Chỉ đếm shop được tạo bởi user (created_by = ownerId)
+          const createdShopCount = await Shop.countDocuments({
+            created_by: new mongoose.Types.ObjectId(ownerId),
+            deleted_at: null,
+          });
+          return { ownerId, count: createdShopCount };
         })
       );
 
@@ -265,12 +262,12 @@ export const getShopsByOwner = async (req, res) => {
           .length
         : 0;
 
-      // Lấy package: ưu tiên từ shop, nếu không có thì lấy từ owner của shop đó
+      // Lấy package: luôn lấy từ owner package của shop đó (không dùng shop.current_package_id)
       const ownerIdStr = shop.owner_id?._id?.toString();
       const ownerPackage = ownerIdStr ? ownerPackagesMap.get(ownerIdStr) : null;
-      const shopPackage = shop.current_package_id || ownerPackage?.package_id;
+      const shopPackage = ownerPackage?.package_id || null;
       const packageName = shopPackage?.name || "Basic";
-      const expiredAt = shop.package_expired_at || ownerPackage?.to_date || null;
+      const expiredAt = ownerPackage?.to_date || null;
 
       // Lấy limits từ package hoặc ownerPackage
       // Nếu không có package (Basic), set default limits: 1 employee, 0 page
@@ -390,50 +387,32 @@ export const switchCurrentShop = async (req, res) => {
 
     // Lấy thông tin shop và package
     const shop = await Shop.findById(id)
-      .populate({
-        path: "current_package_id",
-        select: "name features pages employees shops planType",
-      })
       .populate("owner_id");
 
     let shopPackageInfo = null;
-    if (shop) {
-      // Lấy package từ shop hoặc từ owner
-      const shopPackage = shop.current_package_id;
-      if (shopPackage) {
-        shopPackageInfo = {
-          id: shopPackage._id.toString(),
-          name: shopPackage.name,
-          features: shopPackage.features || [],
-          pages: shopPackage.pages || 0,
-          employees: shopPackage.employees || 0,
-          shops: shopPackage.shops || 0,
-          planType: shopPackage.planType,
-        };
-      } else if (shop.owner_id) {
-        // Fallback: lấy từ owner package
-        const ownerPackage = await UserPackage.findOne({
-          user_id: shop.owner_id._id || shop.owner_id,
-          status: { $in: ["active", "expiring soon", "new signup"] },
-          deleted_at: null,
+    if (shop && shop.owner_id) {
+      // Luôn lấy package từ owner của shop (không dùng shop.current_package_id)
+      const ownerPackage = await UserPackage.findOne({
+        user_id: shop.owner_id._id || shop.owner_id,
+        status: { $in: ["active", "expiring soon", "new signup"] },
+        deleted_at: null,
+      })
+        .populate({
+          path: "package_id",
+          select: "name features pages employees shops planType",
         })
-          .populate({
-            path: "package_id",
-            select: "name features pages employees shops planType",
-          })
-          .sort({ created_at: -1 });
+        .sort({ created_at: -1 });
 
-        if (ownerPackage && ownerPackage.package_id) {
-          shopPackageInfo = {
-            id: ownerPackage.package_id._id.toString(),
-            name: ownerPackage.package_id.name,
-            features: ownerPackage.package_id.features || [],
-            pages: ownerPackage.pages || ownerPackage.package_id.pages || 0,
-            employees: ownerPackage.employees || ownerPackage.package_id.employees || 0,
-            shops: ownerPackage.shops || ownerPackage.package_id.shops || 0,
-            planType: ownerPackage.package_id.planType,
-          };
-        }
+      if (ownerPackage && ownerPackage.package_id) {
+        shopPackageInfo = {
+          id: ownerPackage.package_id._id.toString(),
+          name: ownerPackage.package_id.name,
+          features: ownerPackage.package_id.features || [],
+          pages: ownerPackage.pages || ownerPackage.package_id.pages || 0,
+          employees: ownerPackage.employees || ownerPackage.package_id.employees || 0,
+          shops: ownerPackage.shops || ownerPackage.package_id.shops || 0,
+          planType: ownerPackage.package_id.planType,
+        };
       }
     }
 
@@ -472,10 +451,6 @@ export const getCurrentShopPackage = async (req, res) => {
 
     const shopId = currentRole.shop_id;
     const shop = await Shop.findById(shopId)
-      .populate({
-        path: "current_package_id",
-        select: "name features pages employees shops planType",
-      })
       .populate("owner_id");
 
     if (!shop) {
@@ -485,30 +460,14 @@ export const getCurrentShopPackage = async (req, res) => {
       });
     }
 
-    // Lấy package từ shop hoặc từ owner
-    const shopPackage = shop.current_package_id;
+    // Lấy package: luôn lấy từ owner package của shop (không dùng shop.current_package_id)
     const ownerId = shop.owner_id?._id || shop.owner_id;
     let packageInfo = null;
     let limits = { pages: 0, employees: 1, shops: 0 };
     let usage = { pages: 0, employees: 0, shops: 0 };
 
-    if (shopPackage) {
-      packageInfo = {
-        id: shopPackage._id.toString(),
-        name: shopPackage.name,
-        features: shopPackage.features || [],
-        pages: shopPackage.pages || 0,
-        employees: shopPackage.employees || 0,
-        shops: shopPackage.shops || 0,
-        planType: shopPackage.planType,
-      };
-      limits = {
-        pages: shopPackage.pages || 0,
-        employees: shopPackage.employees || 0,
-        shops: shopPackage.shops || 0,
-      };
-    } else if (ownerId) {
-      // Fallback: lấy từ owner package
+    if (ownerId) {
+      // Luôn lấy từ owner package
       const ownerPackage = await UserPackage.findOne({
         user_id: ownerId,
         status: { $in: ["active", "expiring soon", "new signup"] },

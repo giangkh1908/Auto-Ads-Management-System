@@ -73,7 +73,7 @@ const markRecentlyExpiredAsExpired = async (now) => {
 
 const runUserPackageExpiryCheck = async () => {
   if (isRunning) {
-    console.warn("⚠️ User package expiry cron is still running. Skipping this interval.");
+    console.warn("User package expiry cron is still running. Skipping this interval.");
     return;
   }
 
@@ -82,20 +82,43 @@ const runUserPackageExpiryCheck = async () => {
   const startTime = now.toISOString();
 
   try {
+    // Get packages that will be expired to sync their shops later
+    const expiringPackages = await UserPackage.find({
+      status: { $in: ACTIVE_STATUSES },
+      to_date: { $ne: null, $lte: now },
+      deleted_at: null,
+    }).select("_id user_id to_date");
+
     const [newlyExpired, fullyExpired] = await Promise.all([
       markActivePackagesAsExpired(now),
       markRecentlyExpiredAsExpired(now),
     ]);
 
+    // Sync shop packages for users whose packages just expired
+    if (expiringPackages.length > 0) {
+      const { syncShopPackagesWithOwner } = await import("../services/shop/shopPackageSyncService.js");
+      const uniqueUserIds = [...new Set(expiringPackages.map(pkg => pkg.user_id.toString()))];
+
+      console.log(`🔄 Syncing shop packages for ${uniqueUserIds.length} users whose packages expired...`);
+
+      for (const userId of uniqueUserIds) {
+        try {
+          await syncShopPackagesWithOwner(userId);
+        } catch (syncError) {
+          console.error(`⚠️ Failed to sync shops for user ${userId}:`, syncError.message);
+        }
+      }
+    }
+
     if (newlyExpired || fullyExpired) {
       console.log(
-        `📦 [${startTime}] User package expiry cron updated ${newlyExpired} newly expired and ${fullyExpired} fully expired package(s).`
+        `[${startTime}] User package expiry cron updated ${newlyExpired} newly expired and ${fullyExpired} fully expired package(s).`
       );
     } else {
-      console.log(`📦 [${startTime}] User package expiry cron completed. No packages required updates.`);
+      console.log(`[${startTime}] User package expiry cron completed. No packages required updates.`);
     }
   } catch (error) {
-    console.error("❌ User package expiry cron failed:", error);
+    console.error("User package expiry cron failed:", error);
   } finally {
     isRunning = false;
   }
@@ -103,7 +126,7 @@ const runUserPackageExpiryCheck = async () => {
 
 export const startUserPackageExpiryCron = (schedule = DEFAULT_SCHEDULE) => {
   cron.schedule(schedule, runUserPackageExpiryCheck);
-  console.log(`✅ User package expiry cron started with schedule "${schedule}" (hourly).`);
+  console.log(`User package expiry cron started with schedule "${schedule}" (hourly).`);
 };
 
 
