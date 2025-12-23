@@ -27,7 +27,7 @@ const userPackageSchema = new mongoose.Schema(
 
     shops: {
       type: Number,
-      default: 20,
+      default: 10,
     },
 
 
@@ -49,7 +49,7 @@ const userPackageSchema = new mongoose.Schema(
       default: null,
     },
 
-    // 🧠 Audit
+    // Audit
     created_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     updated_by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     created_at: { type: Date, default: Date.now },
@@ -57,7 +57,7 @@ const userPackageSchema = new mongoose.Schema(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
 );
 
-// 📈 Indexes
+// Indexes
 userPackageSchema.index({ package_id: 1 });
 userPackageSchema.index({ status: 1 });
 userPackageSchema.index({ user_id: 1 });
