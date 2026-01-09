@@ -179,7 +179,7 @@ export const getShopsByOwner = async (req, res) => {
         populate: { path: "role_id", select: "role_name" },
       });
 
-    // 👉 Đếm số lượng employee trong mỗi shop (từ bảng ShopUser)
+    // Đếm số lượng employee trong mỗi shop (từ bảng ShopUser)
     // Đếm bao gồm cả owner
     const shopEmployeesCount = await Promise.all(
       shops.map(async (shop) => {

@@ -358,7 +358,7 @@ export const updatePaymentTransaction = async (req, res) => {
       });
     }
 
-    // ✅ Cập nhật status của UserPackage khi approve/reject transaction
+    // Cập nhật status của UserPackage khi approve/reject transaction
     if (data.status === "success" || data.status === "canceled" || data.status === "rejected") {
       try {
         // Tìm UserPackage có user_id và package_id tương ứng
@@ -479,27 +479,27 @@ export const updatePaymentTransaction = async (req, res) => {
                   }
 
                   // Tạo UserRole với role Shop Owner
-                      try {
-                        await UserRole.create({
-                          user_id: user._id,
-                          role_id: RoleEnum.SHOP_OWNER,
-                          shop_id: shop._id,
-                          shop_user_id: shopUser._id,
-                          is_current: true,
-                          source: "system", // Đánh dấu là được tạo tự động từ hệ thống
-                        });
-                        console.log("UserRole created successfully");
-                      } catch (userRoleError) {
-                        console.error("Error creating UserRole:", userRoleError);
-                        console.error("UserRole error details:", {
-                          message: userRoleError.message,
-                          code: userRoleError.code,
-                          name: userRoleError.name,
-                          keyPattern: userRoleError.keyPattern,
-                          keyValue: userRoleError.keyValue,
-                        });
-                        throw userRoleError;
-                      }
+                  try {
+                    await UserRole.create({
+                      user_id: user._id,
+                      role_id: RoleEnum.SHOP_OWNER,
+                      shop_id: shop._id,
+                      shop_user_id: shopUser._id,
+                      is_current: true,
+                      source: "system", // Đánh dấu là được tạo tự động từ hệ thống
+                    });
+                    console.log("UserRole created successfully");
+                  } catch (userRoleError) {
+                    console.error("Error creating UserRole:", userRoleError);
+                    console.error("UserRole error details:", {
+                      message: userRoleError.message,
+                      code: userRoleError.code,
+                      name: userRoleError.name,
+                      keyPattern: userRoleError.keyPattern,
+                      keyValue: userRoleError.keyValue,
+                    });
+                    throw userRoleError;
+                  }
                 }
 
               } catch (checkPackageError) {
