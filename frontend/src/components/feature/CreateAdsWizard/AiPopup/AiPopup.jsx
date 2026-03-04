@@ -1,621 +1,300 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Eye } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Sparkles, Upload, Wand2, X, Loader2, Check, RefreshCw } from 'lucide-react';
 import axiosInstance from '../../../../utils/api/axios';
-import { aiConfigService } from '../../../../services/chat/aiConfigService';
 import { useToast } from '../../../../hooks/common/useToast';
-import PromptPreviewModal from '../PromptPreview/PromptPreviewModal';
+import './AiPopup.css';
 
+/**
+ * AiPopup — Tạo quảng cáo hoàn chỉnh bằng AI
+ * Thiết kế mới: 1 textarea mô tả → AI tạo 2-3 bản (headline + body + description + ảnh)
+ * Backend xử lý toàn bộ via Manus AI API
+ */
 const AiPopup = ({
   isOpen,
   onClose,
-  onConfirm,
-  defaultConfigId = null,
-  initialPersonalization = '',
-  initialMainKeywords = '',
-  initialSynonymousKeywords = '',
-  onPersistInputs = null,
+  onSelectVariant, // callback({ headline, primaryText, description, imageUrl })
 }) => {
   const toast = useToast();
-  const [savedConfigs, setSavedConfigs] = useState([]);
-  const [selectedConfigId, setSelectedConfigId] = useState(defaultConfigId || '');
-  const [selectedConfigModel, setSelectedConfigModel] = useState(null);
-  const [selectedConfig, setSelectedConfig] = useState(null);
-  const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [aiConfig, setAiConfig] = useState({
-    language: 'Tiếng Việt',
-    tone: 'Chuyên Nghiệp',
-    personalization: '',
-    mainKeywords: '',
-    synonymousKeywords: '',
-    aiModel: 'openai'
-  });
+  const fileInputRef = useRef(null);
 
-  const [isGeneratingKeywords, setIsGeneratingKeywords] = useState(false);
-  const [showSaveConfig, setShowSaveConfig] = useState(false);
-  const [configName, setConfigName] = useState('');
-  // Track if user manually changed language/tone/aiModel to preserve selections
-  const userModifiedRef = useRef(false);
-
-
-
-  // Ensure persisted values are restored when popup opens
-  useEffect(() => {
-    if (!isOpen) return;
-    setAiConfig((prev) => ({
-      ...prev,
-      personalization:
-        typeof initialPersonalization === 'string'
-          ? initialPersonalization
-          : prev.personalization,
-      mainKeywords:
-        typeof initialMainKeywords === 'string'
-          ? initialMainKeywords
-          : prev.mainKeywords,
-      synonymousKeywords:
-        typeof initialSynonymousKeywords === 'string'
-          ? initialSynonymousKeywords
-          : prev.synonymousKeywords,
-    }));
-  }, [isOpen, initialPersonalization, initialMainKeywords, initialSynonymousKeywords]);
-
-  const loadConfig = useCallback(async (configId) => {
-    try {
-      const response = await aiConfigService.getConfig(configId);
-      if (response.success && response.config) {
-        const config = response.config;
-        const model = config.model || 'gpt-4o-mini';
-        setSelectedConfigModel(model);
-        setSelectedConfig(config);
-        setAiConfig({
-          language: config.metadata?.language === 'vi' ? 'Tiếng Việt' :
-            config.metadata?.language === 'en' ? 'English' : '中文',
-          tone: config.metadata?.tone?.replace(/_/g, ' ') || 'Chuyên Nghiệp',
-          personalization: initialPersonalization || '',
-          mainKeywords: initialMainKeywords || '',
-          synonymousKeywords: initialSynonymousKeywords || '',
-          aiModel: model.includes('gemini') ? 'gemini' : 'openai'
-        });
-      }
-    } catch (error) {
-      console.error('Error loading config:', error);
-      toast.error('Không thể tải config');
-    }
-  }, [toast, initialPersonalization, initialMainKeywords, initialSynonymousKeywords]);
-
-  const loadConfigs = useCallback(async () => {
-    setIsLoadingConfigs(true);
-    try {
-      const response = await aiConfigService.getConfigs('own,templates');
-      if (response.success) {
-        setSavedConfigs(response.configs || []);
-        const defaultConfig = response.configs?.find(c => c.is_default);
-        // Only auto-load default config if parent didn't provide defaultConfigId
-        // and the user hasn't manually changed language/tone/model in this popup.
-        if (defaultConfig && !defaultConfigId && !userModifiedRef.current) {
-          setSelectedConfigId(defaultConfig._id);
-          loadConfig(defaultConfig._id);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading configs:', error);
-    } finally {
-      setIsLoadingConfigs(false);
-    }
-  }, [defaultConfigId, loadConfig]);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadConfigs();
-      // If a defaultConfigId prop exists, only load it if user hasn't modified
-      if (defaultConfigId && !userModifiedRef.current) {
-        loadConfig(defaultConfigId);
-      }
-    }
-  }, [isOpen, defaultConfigId, loadConfig, loadConfigs]);
-
-  const handleConfigSelect = (e) => {
-    const configId = e.target.value;
-    setSelectedConfigId(configId);
-    setSelectedConfigModel(null);
-    setSelectedConfig(null);
-    if (configId) {
-      loadConfig(configId);
-    } else {
-      setAiConfig({
-        language: 'Tiếng Việt',
-        tone: 'Chuyên Nghiệp',
-        personalization: initialPersonalization || '',
-        mainKeywords: initialMainKeywords || '',
-        synonymousKeywords: initialSynonymousKeywords || '',
-        aiModel: 'openai'
-      });
-    }
-  };
-
-  const handleSaveConfig = async () => {
-    if (!configName.trim()) {
-      toast.warning('Vui lòng nhập tên config');
-      return;
-    }
-
-    try {
-      const languageMap = {
-        'Tiếng Việt': 'vi',
-        'English': 'en',
-        '中文': 'zh'
-      };
-
-      await aiConfigService.createConfig({
-        name: configName,
-        character: 'Bạn là 1 chuyên gia marketing quảng cáo Facebook với nhiều năm kinh nghiệm.',
-        skills: [
-          'Bạn có kỹ năng viết nội dung quảng cáo hấp dẫn và hiệu quả',
-          'Bạn có kỹ năng tối ưu hóa từ khóa cho Facebook Ads',
-        ],
-        limitations: [
-          'Chỉ trả lời những câu hỏi liên quan đến quảng cáo Facebook',
-          'Giữ kết luận trong khoảng 100 từ',
-        ],
-        model: aiConfig.aiModel === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini',
-        metadata: {
-          language: languageMap[aiConfig.language] || 'vi',
-          tone: aiConfig.tone.toLowerCase().replace(/\s+/g, '_'),
-          personalization: aiConfig.personalization,
-        },
-      });
-
-      toast.success('Đã lưu config thành công');
-      setShowSaveConfig(false);
-      setConfigName('');
-      loadConfigs();
-    } catch (error) {
-      console.error('Error saving config:', error);
-      toast.error('Không thể lưu config');
-    }
-  };
-
-  // Khi click vào tag từ khóa cùng nghĩa: chuyển từ đó lên Từ khóa chính
-  const handleSynonymClick = useCallback((keyword) => {
-    if (!keyword) return;
-    setAiConfig(prev => {
-      const prevMain = String(prev.mainKeywords || '')
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-
-      // Thêm nếu chưa tồn tại
-      if (!prevMain.includes(keyword)) prevMain.push(keyword);
-
-      const remaining = String(prev.synonymousKeywords || '')
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean)
-        .filter(k => k !== keyword);
-
-      return {
-        ...prev,
-        mainKeywords: prevMain.join(', '),
-        synonymousKeywords: remaining.join(', ')
-      };
-    });
-  }, []);
+  const [description, setDescription] = useState('');
+  const [imageSource, setImageSource] = useState('upload');
+  const [count, setCount] = useState(3);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [variants, setVariants] = useState([]);
+  const [selectedVariantId, setSelectedVariantId] = useState(null);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState(null);
 
   if (!isOpen) return null;
 
-  // Hàm tạo từ khóa cùng nghĩa - SỬ DỤNG AXIOS INSTANCE
-  const handleGenerateKeywords = async () => {
-    if (!aiConfig.mainKeywords.trim()) {
-      alert('Vui lòng nhập từ khóa chính trước');
-      return;
-    }
+  const isValid = description.trim().length >= 10;
 
-    setIsGeneratingKeywords(true);
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadedImagePreview(URL.createObjectURL(file));
+    // Upload lên server để lấy URL
     try {
-      // ✅ Sử dụng axiosInstance thay vì fetch
-      const response = await axiosInstance.post('/api/ai/keywords/suggest', {
-        main_keywords: aiConfig.mainKeywords.split(',').map(k => k.trim()).filter(Boolean),
-        language: aiConfig.language === 'Tiếng Việt' ? 'vi' : aiConfig.language === 'English' ? 'en' : 'zh',
-        ai_provider: aiConfig.aiModel
-      }, {
-        timeout: 60000 // 60 giây
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await axiosInstance.post('/api/upload/media', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-
-      const data = response.data;
-
-      if (data.success && data.related_keywords) {
-        // Cập nhật từ khóa cùng nghĩa
-        setAiConfig(prev => ({
-          ...prev,
-          synonymousKeywords: data.related_keywords.join(', ')
-        }));
-      } else {
-        alert('Không thể tạo từ khóa cùng nghĩa: ' + (data.message || 'Lỗi không xác định'));
+      if (res.data?.success && res.data?.url) {
+        setUploadedImageUrl(res.data.url);
       }
-    } catch (error) {
-      console.error('Error generating keywords:', error);
-      alert('Lỗi khi tạo từ khóa cùng nghĩa: ' + (error.response?.data?.message || error.message));
-    } finally {
-      setIsGeneratingKeywords(false);
+    } catch {
+      toast.error('Không thể upload ảnh, vui lòng thử lại');
     }
   };
 
-  const handleConfirm = () => {
-    const toArray = (v) =>
-      Array.isArray(v)
-        ? v
-        : String(v || '')
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean);
+  const handleGenerate = async () => {
+    if (!isValid) return;
+    setIsGenerating(true);
+    setVariants([]);
+    setSelectedVariantId(null);
 
-    const mainKeywords = [
-      ...toArray(aiConfig.mainKeywords),
-      ...toArray(aiConfig.synonymousKeywords),
-    ];
-
-    if (mainKeywords.length === 0) {
-      toast.warning('Vui lòng nhập ít nhất một từ khóa chính');
-      return;
-    }
-
-    // Nếu có selectedConfigId, gửi config_id, nếu không gửi prompt fields
-    const configData = selectedConfigId
-      ? {
-        config_id: selectedConfigId,
-        main_keywords: mainKeywords,
-        ai_provider: selectedConfigModel?.includes('gemini') ? 'gemini' : 'openai'
-      }
-      : {
-        language: aiConfig.language === 'Tiếng Việt' ? 'vi' : aiConfig.language === 'English' ? 'en' : 'zh',
-        tone: aiConfig.tone.toLowerCase().replace(/\s+/g, '_'),
-        personalization: aiConfig.personalization,
-        main_keywords: mainKeywords,
-        ai_provider: aiConfig.aiModel
-      };
-
-    // Persist latest inputs back to parent if requested
-    if (typeof onPersistInputs === 'function') {
-      onPersistInputs({
-        personalization: aiConfig.personalization,
-        mainKeywords: aiConfig.mainKeywords,
-        synonymousKeywords: aiConfig.synonymousKeywords,
+    try {
+      const res = await axiosInstance.post('/api/ai/generate-ad', {
+        description: description.trim(),
+        image_source: imageSource,
+        uploaded_image_url: imageSource === 'upload' ? uploadedImageUrl : undefined,
+        count,
       });
-    }
 
-    onConfirm(configData);
-    onClose();
+      if (res.data?.success && res.data?.variants) {
+        setVariants(res.data.variants);
+        setSelectedVariantId(res.data.variants[0]?.id);
+      } else {
+        toast.error(res.data?.message || 'Không thể tạo quảng cáo');
+      }
+    } catch (err) {
+      toast.error('Lỗi kết nối', { description: err.response?.data?.message || err.message });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePickVariant = (variant) => {
+    setSelectedVariantId(variant.id);
+    onSelectVariant?.({
+      headline: variant.headline,
+      primaryText: variant.body,
+      description: variant.description,
+      imageUrl: variant.image_url,
+    });
+    toast.success('Đã điền nội dung vào form quảng cáo');
+    handleClose();
+  };
+
+  const handleClose = () => {
+    setVariants([]);
+    setSelectedVariantId(null);
+    onClose?.();
   };
 
   return (
-    <div className="ai-config-modal-overlay">
-      <div className="ai-config-modal">
-        <div className="ai-config-header">
-          <h3>Auto Ads AI</h3>
-          <button
-            className="ai-config-close"
-            onClick={onClose}
-          >
-            ✕
+    <div className="aipopup-overlay" onClick={(e) => e.target === e.currentTarget && handleClose()}>
+      <div className="aipopup-modal">
+
+        {/* ── Header ── */}
+        <div className="aipopup-header">
+          <div className="aipopup-header-left">
+            <div className="aipopup-header-icon">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <h2 className="aipopup-title">Tạo quảng cáo bằng AI</h2>
+              <p className="aipopup-subtitle">Mô tả sản phẩm — AI tạo toàn bộ nội dung</p>
+            </div>
+          </div>
+          <button className="aipopup-close" onClick={handleClose} aria-label="Đóng">
+            <X size={20} />
           </button>
         </div>
 
-        <div className="ai-config-form">
-          {/* Chọn Config đã lưu */}
-          <div className="ai-config-field">
-            <label className="ai-config-label">Chọn config đã lưu (tùy chọn)</label>
-            <select
-              className="ai-config-select"
-              value={selectedConfigId}
-              onChange={handleConfigSelect}
-              disabled={isLoadingConfigs}
-            >
-              <option value="">-- Tạo mới --</option>
-              {savedConfigs.map(config => (
-                <option key={config._id} value={config._id}>
-                  {config.is_system_template ? '📋 ' : config.is_default ? '⭐ ' : ''}
-                  {config.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="aipopup-body">
 
-          {selectedConfigId && selectedConfig && (
-            <div style={{ marginBottom: '12px', padding: '12px', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', fontSize: '13px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div>
-                  <strong>Đang sử dụng config: {selectedConfig.name}</strong>
-                  {selectedConfig.character && (
-                    <span style={{ marginLeft: '8px', padding: '2px 6px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px', fontSize: '11px' }}>
-                      ✨ Custom Prompt
-                    </span>
-                  )}
-                  {!selectedConfig.character && (
-                    <span style={{ marginLeft: '8px', padding: '2px 6px', backgroundColor: '#f3f4f6', color: '#6b7280', borderRadius: '4px', fontSize: '11px' }}>
-                      📝 Default Prompt
-                    </span>
-                  )}
-                </div>
-                {selectedConfig.character && (
-                  <button
-                    onClick={() => setShowPreviewModal(true)}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <Eye size={14} />
-                    Xem prompt
-                  </button>
+          {/* ── Form nhập liệu ── */}
+          {variants.length === 0 && (
+            <div className="aipopup-form">
+
+              {/* Textarea mô tả */}
+              <div className="aipopup-field">
+                <label className="aipopup-label">
+                  Mô tả sản phẩm / dịch vụ <span className="aipopup-required">*</span>
+                </label>
+                <textarea
+                  className={`aipopup-textarea ${description && !isValid ? 'aipopup-textarea--error' : ''}`}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="VD: Khóa học IELTS online, cam kết đầu ra 7.0+, học phí 2.5 triệu/tháng, lớp nhỏ 5–8 học viên, giáo viên bản ngữ..."
+                  rows={4}
+                  disabled={isGenerating}
+                />
+                {description && !isValid && (
+                  <p className="aipopup-hint-error">Vui lòng nhập ít nhất 10 ký tự.</p>
                 )}
               </div>
-              {selectedConfig.character && (
-                <div style={{ marginTop: '8px', padding: '8px', backgroundColor: 'white', borderRadius: '4px', fontSize: '12px', color: '#374151', fontStyle: 'italic' }}>
-                  <strong>Character:</strong> {selectedConfig.character.substring(0, 100)}
-                  {selectedConfig.character.length > 100 ? '...' : ''}
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* Ngôn Ngữ */}
-          <div className="ai-config-field">
-            <label className="ai-config-label">Ngôn Ngữ</label>
-            <select
-              className="ai-config-select"
-              value={aiConfig.language}
-              onChange={(e) => {
-                userModifiedRef.current = true;
-                setAiConfig(prev => ({ ...prev, language: e.target.value }));
-              }}
-            >
-              <option value="Tiếng Việt">Tiếng Việt</option>
-              <option value="English">English</option>
-              <option value="中文">中文</option>
-            </select>
-          </div>
-
-          {/* Giọng Điệu */}
-          <div className="ai-config-field">
-            <label className="ai-config-label">Phong Cách</label>
-            <select
-              className="ai-config-select"
-              value={aiConfig.tone}
-              onChange={(e) => {
-                userModifiedRef.current = true;
-                setAiConfig(prev => ({ ...prev, tone: e.target.value }));
-              }}
-            >
-              <option value="Chuyên Nghiệp">Chuyên Nghiệp</option>
-              <option value="Thân Thiện">Thân Thiện</option>
-              <option value="Vui Vẻ">Vui Vẻ</option>
-              <option value="Trang Trọng">Trang Trọng</option>
-            </select>
-          </div>
-
-          {/* Model AI */}
-          <div className="ai-config-field">
-            <label className="ai-config-label">Model AI</label>
-            <select
-              className="ai-config-select"
-              value={aiConfig.aiModel}
-              onChange={(e) => {
-                userModifiedRef.current = true;
-                setAiConfig(prev => ({ ...prev, aiModel: e.target.value }));
-              }}
-            >
-              <option value="openai">OpenAI GPT-4o-mini</option>
-              <option value="gemini">Google Gemini 2.5 Flash</option>
-            </select>
-          </div>
-
-          {/* Cá nhân hóa */}
-          <div className="ai-config-field">
-            <label className="ai-config-label">Mô tả quảng cáo</label>
-            <textarea
-              className="ai-config-textarea"
-              value={aiConfig.personalization}
-              onChange={(e) => setAiConfig(prev => ({ ...prev, personalization: e.target.value }))}
-              placeholder="Công ty, sản phẩm, cá nhân, hashtag,... bạn muốn đưa vào bài viết"
-              rows={3}
-            />
-          </div>
-
-          {/* Từ khóa chính */}
-          <div className="ai-config-field">
-            <label className="ai-config-label">Từ khóa chính</label>
-            <input
-              type="text"
-              className="ai-config-input"
-              value={aiConfig.mainKeywords}
-              onChange={(e) => setAiConfig(prev => ({ ...prev, mainKeywords: e.target.value }))}
-              placeholder="nhà, quán quen"
-            />
-            <button
-              className="ai-config-button"
-              onClick={handleGenerateKeywords}
-              disabled={isGeneratingKeywords || !aiConfig.mainKeywords.trim()}
-              style={{
-                marginTop: '8px',
-                padding: '8px 16px',
-                backgroundColor: '#6f42c1',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: isGeneratingKeywords || !aiConfig.mainKeywords.trim() ? 'not-allowed' : 'pointer',
-                opacity: isGeneratingKeywords || !aiConfig.mainKeywords.trim() ? 0.6 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              {isGeneratingKeywords ? (
-                <>
-                  <span style={{ animation: 'spin 1s linear infinite' }}>⟳</span> Đang tạo...
-                </>
-              ) : (
-                'Tạo từ khóa cùng nghĩa'
-              )}
-            </button>
-          </div>
-
-          {/* Từ khóa cùng nghĩa */}
-          <div className="ai-config-field">
-            <label className="ai-config-label">Từ khóa cùng nghĩa (click chọn từ khóa để thêm vào)</label>
-            <div className="keywords-container" style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '8px',
-              marginBottom: '8px',
-              minHeight: '32px',
-              padding: '8px',
-              border: '1px solid #e1e5e9',
-              borderRadius: '4px',
-              backgroundColor: '#f8f9fa'
-            }}>
-              {aiConfig.synonymousKeywords.split(',').filter(k => k.trim()).map((keyword, index) => (
-                <span
-                  key={index}
-                  className="keyword-tag"
-                  onClick={() => handleSynonymClick(keyword.trim())}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 8px',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {keyword.trim()}
+              {/* Nguồn ảnh */}
+              <div className="aipopup-field">
+                <label className="aipopup-label">Nguồn ảnh quảng cáo</label>
+                <div className="aipopup-source-grid">
                   <button
-                    className="keyword-remove"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const keywords = aiConfig.synonymousKeywords.split(',').map(k => k.trim()).filter(k => k);
-                      keywords.splice(index, 1);
-                      setAiConfig(prev => ({ ...prev, synonymousKeywords: keywords.join(', ') }));
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'white',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      padding: '0',
-                      marginLeft: '4px',
-                      width: '16px',
-                      height: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: '50%'
-                    }}
+                    className={`aipopup-source-btn ${imageSource === 'upload' ? 'aipopup-source-btn--active' : ''}`}
+                    onClick={() => setImageSource('upload')}
+                    disabled={isGenerating}
                   >
-                    ×
+                    <Upload size={20} />
+                    <span>
+                      <strong>Ảnh của tôi</strong>
+                      <small>Upload từ máy tính</small>
+                    </span>
+                    {imageSource === 'upload' && <Check size={14} className="aipopup-source-check" />}
                   </button>
-                </span>
-              ))}
-            </div>
-            {/* <input
-              type="text"
-              className="ai-config-input"
-              value={aiConfig.synonymousKeywords}
-              onChange={(e) => setAiConfig(prev => ({ ...prev, synonymousKeywords: e.target.value }))}
-              placeholder="Từ khóa cùng nghĩa sẽ xuất hiện ở đây"
-            /> */}
-          </div>
 
-          {/* Save Config */}
-          {!selectedConfigId && (
-            <div className="ai-config-field">
+                  <button
+                    className={`aipopup-source-btn ${imageSource === 'ai' ? 'aipopup-source-btn--active' : ''}`}
+                    onClick={() => setImageSource('ai')}
+                    disabled={isGenerating}
+                  >
+                    <Wand2 size={20} />
+                    <span>
+                      <strong>AI tạo ảnh</strong>
+                      <small>Tự động theo nội dung</small>
+                    </span>
+                    {imageSource === 'ai' && <Check size={14} className="aipopup-source-check" />}
+                  </button>
+                </div>
+
+                {/* Upload area khi chọn "upload" */}
+                {imageSource === 'upload' && (
+                  <div className="aipopup-upload-area" onClick={() => fileInputRef.current?.click()}>
+                    {uploadedImagePreview ? (
+                      <>
+                        <img src={uploadedImagePreview} alt="Preview" className="aipopup-preview-img" />
+                        <button
+                          className="aipopup-preview-change"
+                          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                        >
+                          Đổi ảnh
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={26} className="aipopup-upload-icon" />
+                        <span className="aipopup-upload-text">Nhấn để chọn ảnh</span>
+                        <span className="aipopup-upload-hint">JPG, PNG — tối đa 10MB</span>
+                      </>
+                    )}
+                    <input ref={fileInputRef} type="file" accept="image/*" className="aipopup-file-input" onChange={handleImageUpload} />
+                  </div>
+                )}
+              </div>
+
+              {/* Số bản */}
+              <div className="aipopup-field aipopup-field--row">
+                <label className="aipopup-label">Số bản cần tạo</label>
+                <div className="aipopup-count-group">
+                  {[2, 3].map((n) => (
+                    <button
+                      key={n}
+                      className={`aipopup-count-btn ${count === n ? 'aipopup-count-btn--active' : ''}`}
+                      onClick={() => setCount(n)}
+                      disabled={isGenerating}
+                    >
+                      {n} bản
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* CTA */}
               <button
-                type="button"
-                onClick={() => setShowSaveConfig(!showSaveConfig)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#6f42c1',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
+                className="aipopup-generate-btn"
+                onClick={handleGenerate}
+                disabled={isGenerating || !isValid}
               >
-                {showSaveConfig ? 'Ẩn' : 'Lưu config này'}
+                {isGenerating ? (
+                  <><Loader2 size={18} className="aipopup-spin" /> Đang tạo quảng cáo...</>
+                ) : (
+                  <><Sparkles size={18} /> Tạo {count} bản quảng cáo</>
+                )}
               </button>
-              {showSaveConfig && (
-                <div style={{ marginTop: '8px' }}>
-                  <input
-                    type="text"
-                    className="ai-config-input"
-                    value={configName}
-                    onChange={(e) => setConfigName(e.target.value)}
-                    placeholder="Nhập tên config"
-                    style={{ marginBottom: '8px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveConfig}
-                    style={{
-                      padding: '6px 12px',
-                      backgroundColor: '#28a745',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '13px'
-                    }}
-                  >
-                    Lưu
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Confirm Button */}
-          <div className="ai-config-actions">
-            <button
-              className="ai-config-confirm"
-              onClick={handleConfirm}
-              style={{
-                width: '100%',
-                padding: '12px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: '500'
-              }}
-            >
-              Xác Nhận
-            </button>
-          </div>
+          {/* ── Trạng thái đang tạo ── */}
+          {isGenerating && (
+            <div className="aipopup-loading">
+              <div className="aipopup-loading-ring" />
+              <p className="aipopup-loading-text">AI đang phân tích và tạo nội dung...</p>
+              <p className="aipopup-loading-hint">Quá trình có thể mất 15–30 giây</p>
+            </div>
+          )}
+
+          {/* ── Kết quả variants ── */}
+          {variants.length > 0 && !isGenerating && (
+            <div className="aipopup-results">
+              <div className="aipopup-results-header">
+                <div>
+                  <h3 className="aipopup-results-title">Chọn bản quảng cáo</h3>
+                  <p className="aipopup-results-subtitle">
+                    Nhấn <strong>"Chọn bản này"</strong> để điền tự động vào form
+                  </p>
+                </div>
+                <button className="aipopup-regen-btn" onClick={() => setVariants([])}>
+                  <RefreshCw size={14} /> Tạo lại
+                </button>
+              </div>
+
+              <div className="aipopup-variants-grid">
+                {variants.map((variant, idx) => (
+                  <div
+                    key={variant.id}
+                    className={`aipopup-variant-card ${selectedVariantId === variant.id ? 'aipopup-variant-card--selected' : ''}`}
+                    onClick={() => setSelectedVariantId(variant.id)}
+                  >
+                    <div className="aipopup-variant-badge">Bản {idx + 1}</div>
+
+                    {variant.image_url && (
+                      <div className="aipopup-variant-image">
+                        <img src={variant.image_url} alt={`Bản ${idx + 1}`} loading="lazy" />
+                      </div>
+                    )}
+
+                    <div className="aipopup-variant-body">
+                      <div className="aipopup-variant-row">
+                        <span className="aipopup-variant-lbl">Tiêu đề</span>
+                        <p className="aipopup-variant-headline">{variant.headline}</p>
+                      </div>
+                      <div className="aipopup-variant-row">
+                        <span className="aipopup-variant-lbl">Nội dung</span>
+                        <p className="aipopup-variant-text">{variant.body}</p>
+                      </div>
+                      <div className="aipopup-variant-row">
+                        <span className="aipopup-variant-lbl">Mô tả ngắn</span>
+                        <p className="aipopup-variant-desc">{variant.description}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      className={`aipopup-pick-btn ${selectedVariantId === variant.id ? 'aipopup-pick-btn--selected' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); handlePickVariant(variant); }}
+                    >
+                      {selectedVariantId === variant.id
+                        ? <><Check size={15} /> Đang chọn</>
+                        : 'Chọn bản này'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      <PromptPreviewModal
-        isOpen={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        configId={selectedConfig?._id}
-        config={selectedConfig}
-      />
     </div>
   );
 };

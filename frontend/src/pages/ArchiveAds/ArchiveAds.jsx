@@ -1019,8 +1019,10 @@ function ArchiveAds() {
                           {row.name}
                         </span>
                       </td>
-                      <td className={getStatusClass(row.status)}>
-                        {translateStatus(row.status)}
+                      <td>
+                        <span className={getStatusClass(row.status)}>
+                          {translateStatus(row.status)}
+                        </span>
                       </td>
                       <td className="text-center">{row.budget || "0"}</td>
                       {activeTab === "adsets" && (

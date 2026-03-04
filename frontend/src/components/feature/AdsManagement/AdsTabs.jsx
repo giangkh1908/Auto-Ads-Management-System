@@ -1,5 +1,6 @@
-import { RefreshCw, Archive, Trash } from "lucide-react";
+import { Archive, Trash } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
 
 /**
  * Tabs component for Ads Management
@@ -11,32 +12,36 @@ export default function AdsTabs({
   hasSelectedItems,
   onArchive,
   onDelete,
-  onRefresh,
-  refreshing,
-  selectedAccountId,
 }) {
   const { t } = useTranslation(['ads']);
 
+  const tabs = [
+    { id: "campaigns", label: t('management.campaigns_tab'), symbol: "▦" },
+    { id: "adsets", label: t('management.adsets_tab'), symbol: "▣" },
+    { id: "ads", label: t('management.ads_tab'), symbol: "▥" },
+  ];
+
   return (
     <div className="ads-tabs">
-      <button
-        className={`tab ${activeTab === "campaigns" ? "active" : ""}`}
-        onClick={() => onTabChange("campaigns")}
-      >
-        <span className="tab-icon">▦</span> {t('management.campaigns_tab')}
-      </button>
-      <button
-        className={`tab ${activeTab === "adsets" ? "active" : ""}`}
-        onClick={() => onTabChange("adsets")}
-      >
-        <span className="tab-icon">▣</span> {t('management.adsets_tab')}
-      </button>
-      <button
-        className={`tab ${activeTab === "ads" ? "active" : ""}`}
-        onClick={() => onTabChange("ads")}
-      >
-        <span className="tab-icon">▥</span> {t('management.ads_tab')}
-      </button>
+      <div className="tabs-container">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => onTabChange(tab.id)}
+          >
+            {activeTab === tab.id && (
+              <motion.div
+                layoutId="active-tab"
+                className="active-pill"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+            <span className="tab-symbol">{tab.symbol}</span>
+            <span className="tab-label">{tab.label}</span>
+          </button>
+        ))}
+      </div>
 
       {hasSelectedItems && (
         <div className="icon-beside-tab">
@@ -56,15 +61,6 @@ export default function AdsTabs({
           </button>
         </div>
       )}
-      <button
-        className="btn-refresh-ads"
-        onClick={onRefresh}
-        disabled={refreshing || !selectedAccountId}
-        title={t('management.refresh')}
-      >
-        <RefreshCw size={16} className={refreshing ? "spinning" : ""} />
-        {refreshing ? t('management.refreshing') : t('management.refresh')}
-      </button>
     </div>
   );
 }

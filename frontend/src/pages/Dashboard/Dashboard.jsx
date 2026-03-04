@@ -95,8 +95,8 @@ function Dashboard() {
         }));
       setConnectedPages(normalized);
       return true;
-    } catch (e) {
-      //console.error("Load dashboard shop info error:", e);
+    } catch {
+      //console.error("Load dashboard shop info error");
       return false;
     }
   }, []);
@@ -181,8 +181,8 @@ function Dashboard() {
         } else {
           toast.warning(res.message || "Không thể tạm dừng page.");
         }
-      } catch (e) {
-        // console.log("Pause page error:", e);
+      } catch {
+        // console.log("Pause page error");
         toast.error("Có lỗi khi tạm dừng page.");
       }
       return;
@@ -203,8 +203,8 @@ function Dashboard() {
         } else {
           toast.warning(res.message || "Không thể kích hoạt lại page.");
         }
-      } catch (e) {
-        // console.log("Resume page error:", e);
+      } catch {
+        // console.log("Resume page error");
         toast.error("Có lỗi khi kích hoạt lại page.");
       }
       return;
@@ -225,8 +225,8 @@ function Dashboard() {
         } else {
           toast.warning(res.message || "Không thể ngắt kết nối page.");
         }
-      } catch (e) {
-        // console.log("Disconnect page error:", e);
+      } catch {
+        // console.log("Disconnect page error");
         toast.error("Có lỗi khi ngắt kết nối page.");
       }
     }
@@ -299,6 +299,9 @@ function Dashboard() {
               </select>
 
               <div className="search-box">
+                <div className="search-icon-wrapper">
+                  <SearchIcon size={18} />
+                </div>
                 <input
                   type="text"
                   className="search-input-dashboard"
@@ -306,9 +309,6 @@ function Dashboard() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <button className="search-button" aria-label="Search">
-                  <SearchIcon size={16} />
-                </button>
               </div>
 
               <button

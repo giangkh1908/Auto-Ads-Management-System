@@ -5,7 +5,7 @@ import axiosInstance from "../../utils/api/axios";
 import { toast } from "sonner";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import "./AccountManagement.css";
-import { CheckCircle, XCircle, Archive, Trash2, Play, Pause } from "lucide-react";
+import { CheckCircle, XCircle, Archive, Trash2, Play, Pause, RefreshCw } from "lucide-react";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
 import { onShopChange } from "../../utils/cache/shopCache";
 import { useAuth } from "../../hooks/auth/useAuth";
@@ -185,24 +185,24 @@ function AccountManagement() {
 
       if (linkResponse.data.success) {
         const { user: updatedUser } = linkResponse.data.data;
-        
+
         // Cập nhật user trong context (không cần đăng nhập lại)
         updateUser(updatedUser);
-        
+
         // Sau khi link FB thành công, gọi sync accounts
         const syncResponse = await axiosInstance.get('/api/ads-accounts/sync');
         await fetchAccounts({ q: searchText.trim(), page, limit });
-        
+
         const syncedAccounts = syncResponse.data?.accounts || [];
         let accountIds = syncedAccounts.map((acc) => acc.external_id || acc._id?.toString()).filter(Boolean);
         if (accountIds.length > 0) {
           await fetchAccountStats(accountIds);
         }
-        
+
         toast.success("Kết nối Facebook và đồng bộ tài khoản thành công!");
       } else {
         const errorCode = linkResponse.data?.error?.code;
-        
+
         if (errorCode === "FACEBOOK_ALREADY_BOUND") {
           toast.error("Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.");
         } else {
@@ -212,7 +212,7 @@ function AccountManagement() {
     } catch (error) {
       console.error("Facebook link error:", error);
       const errorCode = error.response?.data?.error?.code;
-      
+
       if (errorCode === "FACEBOOK_ALREADY_BOUND") {
         toast.error("Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.");
       } else {
@@ -522,12 +522,12 @@ function AccountManagement() {
                 >
                   {syncing ? (
                     <>
-                      <span className="refresh-icon spinning">↻</span>
+                      <RefreshCw size={18} className="spinning" />
                       {t('account_management.syncing') || 'Đang đồng bộ...'}
                     </>
                   ) : (
                     <>
-                      <span className="refresh-icon">↻</span>
+                      <RefreshCw size={18} />
                       {t('account_management.sync_accounts') || 'Đồng bộ tài khoản'}
                     </>
                   )}
@@ -577,7 +577,11 @@ function AccountManagement() {
                       <td className="text-right">{acc.campaignCount}</td>
                       <td className="text-right">{acc.adsetCount}</td>
                       <td className="text-right">{acc.adCount}</td>
-                      <td className={acc.internalStatus === 'ACTIVE' ? 'status-active-account' : 'status-inactive-account'}>{acc.status}</td>
+                      <td className="text-center">
+                        <span className={acc.internalStatus === 'ACTIVE' ? 'status-active-account' : 'status-inactive-account'}>
+                          {acc.status}
+                        </span>
+                      </td>
                       <td>{acc.updatedAt}</td>
                       <td>
                         <div className="action-buttons">

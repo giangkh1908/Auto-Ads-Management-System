@@ -1,38 +1,18 @@
-/* Layout container - Override animations từ các trang khác */
+/* Layout container */
 .dashboard-layout {
     display: block;
 }
 
-/* Override Header animations trong Dashboard */
-/* .dashboard-layout .app-header,
-.dashboard-layout .header-content,
-.dashboard-layout .app-nav,
-.dashboard-layout .nav-btn,
-.dashboard-layout .header-actions,
-.dashboard-layout .user-menu {
-    transition: none !important;
-    animation: none !important;
-    transform: none !important;
-} */
-
-/* Override tất cả animation và transition trong Dashboard */
-/* .dashboard-layout * {
-    transition: none !important;
-    animation: none !important;
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    transform: none !important;
-} */
-
 /* Content area */
 .dashboard-content {
-    padding: 14px 0px;
+    padding: 14px 0;
     margin-top: 55px;
 }
 
 /* Center content area */
 .dashboard-center {
     max-width: 100%;
+    margin: 0 auto;
 }
 
 /* Header section */
@@ -40,8 +20,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 0px auto;
+    margin: 0 auto 10px;
+    padding: 10px 15px;
     flex-wrap: wrap;
+    gap: 10px;
 }
 
 /* Tabs */
@@ -59,7 +41,6 @@
     font-size: 14px;
     cursor: pointer;
     border-bottom: 2px solid transparent;
-    /* transition: all 0.2s ease; */ /* Tắt animation */
     margin-left: 15px;
 }
 
@@ -76,22 +57,26 @@
 /* Controls section */
 .dashboard-controls {
     display: flex;
-    align-items: right;
+    align-items: center;
     gap: 10px;
     margin-right: 10px;
-    margin-top: -7px;
 }
 
 .filter-dropdown {
-    padding: 5px 10px;
+    padding: 5px 30px 5px 12px;
     border: 1px solid #bec0c5;
-    border-radius: 4px;
+    border-radius: 6px;
     background: white;
     color: #374151;
     font-size: 13px;
     cursor: pointer;
-    height: 35px;
+    height: 36px;
     width: 140px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 14px;
 }
 
 .filter-dropdown:focus {
@@ -106,55 +91,52 @@
     align-items: center;
 }
 
- .search-input-dashboard {
-    padding: 5px 10px 5px 10px;
-    border-radius: 4px;
-    font-size: 14px;
-    width: 200px;
-    height: 35px;
+.search-input-dashboard {
+    width: 220px;
+    height: 36px;
+    padding: 5px 12px 5px 36px;
     border: 1px solid #bec0c5;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #374151;
+    background: white;
 }
-/*
+
 .search-input-dashboard:focus {
     outline: none;
     border-color: #3b82f6;
     width: 250px;
-} */
+}
 
-.search-button {
+.search-icon-wrapper {
     position: absolute;
-    right: 8px;
-    background: none;
-    border: none;
+    left: 10px;
     color: #6b7280;
-    cursor: pointer;
-    padding: 4px;
+    pointer-events: none;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-.search-button:hover {
-    color: #374151;
 }
 
 /* Action buttons */
 .btn-refresh-dashboard {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    background: #10b981;
+    gap: 6px;
+    padding: 0 16px;
+    height: 36px;
+    background: #3b82f6;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
     transition: background 0.2s ease;
 }
 
 .btn-refresh-dashboard:hover:not(:disabled) {
-    background: #079d6e;
+    background: #2563eb;
 }
 
 .btn-refresh-dashboard:disabled {
@@ -167,12 +149,8 @@
 }
 
 @keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .btn-contribute {
@@ -199,16 +177,16 @@
     background-color: #e8e8e8;
     height: 100%;
     position: relative;
-    min-height: 90vh;          /* ✅ Chiều cao bằng toàn màn hình */
-    width: 100%;                /* ✅ Chiếm hết chiều ngang */
-    padding: 10px;              /* có thể tùy chỉnh */
+    min-height: 90vh;
+    width: 100%;
+    padding: 10px;
     box-sizing: border-box;
 }
 
 .pages-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 10px 0px;
+    gap: 30px;
 }
 
 /* Page card base styles */
@@ -217,14 +195,12 @@
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     padding: 10px;
-    /* transition: all 0.2s ease; */ /* Tắt animation */
     cursor: pointer;
-    overflow: visible; /* đảm bảo dropdown không bị cắt */
+    overflow: visible;
 }
 
 .page-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    /* transform: translateY(-2px); */ /* Tắt hiệu ứng di chuyển */
 }
 
 /* Add new page card */
@@ -234,9 +210,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 260px;
+    width: 100%;
     height: 80px;
-    margin-top: 20px;
 }
 
 .add-page-content {
@@ -265,9 +240,8 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    width: 270px;
+    width: 100%;
     height: 80px;
-    margin-top: 20px;
     padding: 10px;
     background: #ffffff;
     border-radius: 8px;
@@ -282,7 +256,7 @@
     width: 100%;
 }
 
-/* Avatar section with dark green background */
+/* Avatar section */
 .page-avatar-dashboard {
     width: 60px;
     height: 60px;
@@ -341,19 +315,6 @@
     color: #dc2626;
 }
 
-.page-access-warning {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    color: #dc2626;
-}
-
-.page-access-warning svg {
-    width: 12px;
-    height: 12px;
-}
-
 .page-id-dashboard {
     margin: 0;
     font-size: 12px;
@@ -391,15 +352,6 @@
     gap: 6px;
 }
 
-.follower-count {
-    font-size: 13px;
-    color: #374151;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
 .fb_icon {
     height: 14px;
     width: 14px;
@@ -422,7 +374,10 @@
 
 .page-status.active {
     color: #059669;
-    background: transparent;
+}
+
+.page-status.pause {
+    color: #d97706;
 }
 
 .page-menu-button {
@@ -435,7 +390,6 @@
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    /* transition: all 0.2s ease; */ /* Tắt animation */
     font-size: 16px;
     font-weight: bold;
 }
@@ -449,23 +403,21 @@
 .page-menu-container {
     position: relative;
     display: inline-block;
-    z-index: 1; /* tạo stacking context cho dropdown */
 }
 
 /* Dropdown menu */
 .page-dropdown-menu {
     position: absolute;
     top: 100%;
+    right: 0;
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 9999; /* nổi lên trên các phần khác */
-    min-width: 200px;
+    z-index: 9999;
+    min-width: 180px;
     padding: 8px 0;
     margin-top: 4px;
-    pointer-events: auto; /* đảm bảo nhận click */
-    will-change: transform; /* hint tối ưu */
 }
 
 /* Dropdown menu items */
@@ -481,57 +433,30 @@
     cursor: pointer;
     font-size: 14px;
     color: #374151;
-    /* transition: background-color 0.2s ease; */ /* Tắt animation */
-    user-select: none; /* tránh bôi đen gây mất focus */
 }
 
 .dropdown-menu-item:hover {
     background-color: #f3f4f6;
 }
 
-.dropdown-menu-item:active {
-    background-color: #e5e7eb;
-}
-
-/* Menu item icon */
-.menu-item-icon {
-    font-size: 16px;
-    width: 20px;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-/* Menu item text */
-.menu-item-text {
-    flex: 1;
-    font-weight: 400;
-}
-
-/* ============================================
-   RESPONSIVE DESIGN
-   ============================================ */
-
-/* Tablet (768px - 1024px) */
-@media (max-width: 1024px) {
+/* Responsive Overrides */
+@media (max-width: 768px) {
     .dashboard-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
+        padding: 16px;
     }
-
+    
     .dashboard-controls {
+        flex-direction: column;
+        align-items: stretch;
         width: 100%;
-        flex-wrap: wrap;
-        margin-right: 0;
-        margin-top: 0;
     }
-
-    .pages-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    
+    .search-box {
+        min-width: 0;
     }
-
-    .search-input-dashboard {
-        width: 180px;
+    
+    .filter-dropdown {
+        min-width: 0;
     }
 }
 
@@ -657,11 +582,11 @@
     }
 
     .pages-grid {
-        gap: 8px;
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 
-    .page-card,
-    .connected-page-card {
+    .page-card {
         padding: 8px;
     }
 

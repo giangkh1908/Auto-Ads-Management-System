@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Search, RefreshCw, Settings } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Search, RefreshCw, Settings, Users, BarChart2, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import ChatAIWidget from "../../components/feature/ChatAI/ChatAIWidget";
 import axiosInstance from "../../utils/api/axios";
@@ -129,7 +130,7 @@ function Analytics() {
   const ALL_DATA_COLUMNS = getAllDataColumns();
 
   // Get default data columns based on selected objective
-  const getDefaultDataColumns = () => {
+  const getDefaultDataColumns = useCallback(() => {
     if (selectedObjective === "ALL") return [];
     let objectiveKey = selectedObjective;
 
@@ -150,7 +151,7 @@ function Analytics() {
 
     const defaultCols = DATA_COLUMNS_BY_OBJECTIVE[objectiveKey] || [];
     return defaultCols.map(col => col.key);
-  };
+  }, [selectedObjective]);
 
   const [selectedDataColumns, setSelectedDataColumns] = useState([]);
 
@@ -162,7 +163,7 @@ function Analytics() {
     } else {
       setSelectedDataColumns([]);
     }
-  }, [selectedObjective]);
+  }, [selectedObjective, getDefaultDataColumns]);
 
   // Chat AI Logic
   const { hasFeature, loading: entitlementsLoading } = useMyPackage();
@@ -370,7 +371,6 @@ function Analytics() {
     // Determine metric to highlight based on objective
     let metricKey = "";
     // Map legacy objectives to current keys if needed, similar to getDefaultDataColumns
-    let objectiveKey = selectedObjective;
     if (selectedObjective === "OUTCOME_TRAFFIC" || selectedObjective === "LINK_CLICKS") {
       metricKey = "link_clicks";
     } else if (selectedObjective === "OUTCOME_AWARENESS" || selectedObjective === "BRAND_AWARENESS" || selectedObjective === "REACH") {
@@ -493,6 +493,7 @@ function Analytics() {
           <select
             className="analytics-select"
             value={selectedAccount}
+            aria-label={t('selectAccount')}
             onChange={(e) => {
               const newAccountId = e.target.value;
               setSelectedAccount(newAccountId);
@@ -513,6 +514,7 @@ function Analytics() {
           <select
             className="analytics-select"
             value={selectedObjective}
+            aria-label={t('selectObjective')}
             onChange={(e) => setSelectedObjective(e.target.value)}
           >
             <option value="ALL">{t('selectObjective')}</option>
@@ -529,6 +531,7 @@ function Analytics() {
             <input
               type="text"
               placeholder={t('searchPlaceholder')}
+              aria-label={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -538,6 +541,7 @@ function Analytics() {
           <DateRangePicker
             value={dateRange}
             onChange={setDateRange}
+            aria-label={t('dateRangePlaceholder')}
             placeholder={t('dateRangePlaceholder')}
           />
 
@@ -562,13 +566,23 @@ function Analytics() {
               <p>{t('loadingData')}</p>
             </div>
           ) : !selectedAccount ? (
-            <div className="analytics-empty-state">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="analytics-empty-state"
+            >
+              <Users size={64} style={{ marginBottom: '16px', color: '#e2e8f0' }} />
               <p>{t('emptyStates.selectAccount')}</p>
-            </div>
+            </motion.div>
           ) : selectedObjective === "ALL" ? (
-            <div className="analytics-empty-state">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="analytics-empty-state"
+            >
+              <BarChart2 size={64} style={{ marginBottom: '16px', color: '#e2e8f0' }} />
               <p>{t('emptyStates.selectObjective')}</p>
-            </div>
+            </motion.div>
           ) : (
             <>
               {/* Data info bar */}
@@ -594,7 +608,10 @@ function Analytics() {
                     {filteredAds.length === 0 ? (
                       <tr>
                         <td colSpan={columns.length} className="analytics-empty-table">
-                          {t('emptyStates.noData')}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px' }}>
+                            <AlertCircle size={48} style={{ marginBottom: '12px', color: '#e2e8f0' }} />
+                            <span>{t('emptyStates.noData')}</span>
+                          </div>
                         </td>
                       </tr>
                     ) : (

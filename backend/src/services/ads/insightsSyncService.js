@@ -89,9 +89,9 @@ async function updateAdsModelWithInsights(insights) {
 async function syncAdSetsInsights(accessToken, accountExternalId) {
   try {
     const insightsData = await fetchLifetimeInsightsForAdsets(accessToken, accountExternalId);
-    
+
     if (insightsData.length === 0) return;
-    
+
     const bulkOps = insightsData
       .filter(item => item.adset_id)
       .map(item => ({
@@ -121,9 +121,9 @@ async function syncAdSetsInsights(accessToken, accountExternalId) {
 async function syncCampaignsInsights(accessToken, accountExternalId) {
   try {
     const insightsData = await fetchLifetimeInsightsForCampaigns(accessToken, accountExternalId);
-    
+
     if (insightsData.length === 0) return;
-    
+
     const bulkOps = insightsData
       .filter(item => item.campaign_id)
       .map(item => ({
@@ -153,7 +153,7 @@ async function syncCampaignsInsights(accessToken, accountExternalId) {
 async function saveLifetimeInsightsToAdPerformance(insightsData, account) {
   const today = normalizeToVietnamMidnight(new Date());
   const accountObjectId = account._id;
-  
+
   const rawAccountId = account.external_id;
   const withoutPrefix = rawAccountId.replace(/^act_/, '');
   const withPrefix = rawAccountId.startsWith('act_') ? rawAccountId : `act_${rawAccountId}`;
@@ -203,48 +203,48 @@ async function saveLifetimeInsightsToAdPerformance(insightsData, account) {
       external_adset_id: item.adset_id || null,
       external_campaign_id: item.campaign_id || null,
       date: today,
-      
+
       // Core metrics
       impressions: safeNumberOrZero(item.impressions),
       reach: safeNumberOrZero(item.reach),
       clicks: safeNumberOrZero(item.clicks),
       spend: safeNumberOrZero(item.spend),
       frequency: safeNumberOrZero(item.frequency),
-      
+
       // Calculated metrics
       cpc: safeNumber(item.cpc),
       cpm: safeNumber(item.cpm),
       ctr: safeNumber(item.ctr),
-      
+
       // Conversions & Results
       conversions: safeNumberOrZero(item.conversions),
       cost_per_conversion: safeNumber(item.cost_per_conversion),
       results: safeNumberOrZero(item.results),
       cost_per_result: safeNumber(item.cost_per_result),
-      
+
       // Metadata
       campaign_name: item.campaign_name || null,
       adset_name: item.adset_name || null,
       ad_name: item.ad_name || ad.name || null,
       objective: item.objective || null,
-      
+
       // Link metrics
       link_clicks: safeNumberOrZero(item.link_clicks),
       link_cpc: safeNumber(item.link_cpc),
       link_ctr: safeNumber(item.link_ctr),
-      
+
       // ROAS
       website_purchase_roas: safeNumber(item.website_purchase_roas),
-      
+
       // Additional metrics
       website_purchases: safeNumberOrZero(item.website_purchases),
       leads: safeNumberOrZero(item.leads),
       mobile_app_install: safeNumberOrZero(item.mobile_app_install),
       post_engagement: safeNumberOrZero(item.post_engagement),
-      
+
       // Quality
       quality_ranking: item.quality_ranking || null,
-      
+
       // Total spend
       total_amount_spent: safeNumberOrZero(item.spend),
     };
@@ -264,16 +264,16 @@ async function saveLifetimeInsightsToAdPerformance(insightsData, account) {
       let totalUpserted = 0;
       let totalModified = 0;
       let totalMatched = 0;
-      
+
       for (let i = 0; i < bulkOps.length; i += BATCH_SIZE) {
         const batch = bulkOps.slice(i, i + BATCH_SIZE);
         const batchResult = await AdPerformance.bulkWrite(batch, { ordered: false });
-        
+
         totalUpserted += batchResult.upsertedCount || 0;
         totalModified += batchResult.modifiedCount || 0;
         totalMatched += batchResult.matchedCount || 0;
       }
-      
+
       console.log(`✅ AdPerformance: ${totalUpserted} upserted, ${totalModified} modified, ${totalMatched} matched (${withInsights} with insights, ${withoutInsights} without)`);
     } catch (err) {
       console.error('❌ BulkWrite error:', err.message);
@@ -307,20 +307,33 @@ export async function syncInsightsForAccount(accountId) {
     }
   );
 
-  const withPrefix = account.external_id.startsWith('act_') 
-    ? account.external_id 
+  const withPrefix = account.external_id.startsWith('act_')
+    ? account.external_id
     : `act_${account.external_id}`;
 
   let hasError = null;
 
   try {
+    // 1. Sync Campaigns insights (tuần tự - ít records nhất)
+    console.log(`📊 [${account.external_id}] Syncing campaigns insights...`);
+    await syncCampaignsInsights(accessToken, account.external_id);
+    console.log(`✅ [${account.external_id}] Campaigns insights synced`);
+
+    // 2. Sync AdSets insights (tuần tự)
+    console.log(`📊 [${account.external_id}] Syncing adsets insights...`);
+    await syncAdSetsInsights(accessToken, account.external_id);
+    console.log(`✅ [${account.external_id}] Adsets insights synced`);
+
+    // 3. Sync Ads insights (tuần tự - nhiều records nhất)
+    console.log(`📊 [${account.external_id}] Syncing ads insights...`);
     const lifetimeInsights = await fetchLifetimeInsightsForAds(accessToken, account.external_id);
 
     await saveLifetimeInsightsToAdPerformance(lifetimeInsights, account);
-    
+
     if (lifetimeInsights.length > 0) {
       await updateAdsModelWithInsights(lifetimeInsights);
     }
+    console.log(`✅ [${account.external_id}] Ads insights synced (${lifetimeInsights.length} records)`);
 
     await AdsAccount.updateOne(
       { _id: account._id },
@@ -331,11 +344,11 @@ export async function syncInsightsForAccount(accountId) {
         },
       }
     );
-    
+
   } catch (err) {
     hasError = err;
     console.error(`❌ [syncInsightsForAccount] Error for ${account.external_id}:`, err.message);
-    
+
     await AdsAccount.updateOne(
       { _id: account._id },
       {

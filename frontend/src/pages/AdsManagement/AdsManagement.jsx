@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "framer-motion";
 import { ROUTES } from "../../constants/app.constants";
 import "./AdsManagement.css";
 import CreateAdsWizard from "../../components/feature/CreateAdsWizard/CreateAdsWizard";
@@ -925,6 +926,8 @@ function AdsManagement() {
 
   // Tab change handler
   const handleTabChange = (tab) => {
+    if (tab === activeTab) return;
+
     // Only show loading if there's an account selected (otherwise no data to load)
     if (selectedAccountId) {
       setSwitchingAccount(true);
@@ -935,7 +938,23 @@ function AdsManagement() {
 
   return (
     <div className="ads-management-layout">
-      <LoadingOverlay isLoading={switchingAccount} message="Đang tải..." />
+      <AnimatePresence>
+        {switchingAccount && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="account-switch-overlay"
+          >
+            <div className="account-switch-spinner">
+              <span className="spinner-icon">
+                <RefreshCw size={24} />
+              </span>
+              <span className="spinner-text">{t('loading.switching_account', 'Switching Account...')}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="ads-management-content">
         <div className="ads-management-center">
           <div className="ads-card">
@@ -988,36 +1007,51 @@ function AdsManagement() {
             />
 
             {initialSyncState.isInitialSync ? (
-              <div className="ads-initial-sync-state">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="ads-initial-sync-state"
+              >
                 <p>{initialSyncState.message}</p>
                 <button
                   type="button"
                   className="ads-refresh-button"
+                  aria-label={t("ads:buttons.refresh_entities", "Refresh Entities")}
                   onClick={() => handleRefresh()}
                   disabled={refreshing}
                 >
                   {t("ads:buttons.refresh_entities", "Refresh Entities")}
                 </button>
-              </div>
+              </motion.div>
             ) : (
-              <AdsTable
-                activeTab={activeTab}
-                rows={rows}
-                checkAll={checkAll}
-                onCheckAll={handleCheckAll}
-                onCheckItem={handleCheckItem}
-                onToggleRow={toggleRow}
-                togglingItems={togglingItems}
-                onUpdate={handleUpdate}
-                onArchive={handleArchive}
-                onDelete={handleDelete}
-                onCampaignClick={handleCampaignClick}
-                onAdsetClick={handleAdsetClick}
-                pagination={pagination}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                refreshing={refreshing}
-              />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab + (selectedCampaign?.id || "") + (selectedAdset?.id || "")}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <AdsTable
+                    activeTab={activeTab}
+                    rows={rows}
+                    checkAll={checkAll}
+                    onCheckAll={handleCheckAll}
+                    onCheckItem={handleCheckItem}
+                    onToggleRow={toggleRow}
+                    togglingItems={togglingItems}
+                    onUpdate={handleUpdate}
+                    onArchive={handleArchive}
+                    onDelete={handleDelete}
+                    onCampaignClick={handleCampaignClick}
+                    onAdsetClick={handleAdsetClick}
+                    pagination={pagination}
+                    onPageChange={handlePageChange}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    refreshing={refreshing}
+                  />
+                </motion.div>
+              </AnimatePresence>
             )}
           </div>
         </div>

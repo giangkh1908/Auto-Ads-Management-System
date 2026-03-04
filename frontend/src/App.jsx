@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import ErrorBoundary from "./components/common/ErrorBoundary/ErrorBoundary.jsx";
@@ -12,41 +12,55 @@ import AdminSidebar from "./components/admin/AdminSidebar/AdminSidebar.jsx";
 import AuthModal from "./components/feature/Auth/AuthModal.jsx";
 import Footer from "./components/layout/Footer/Footer.jsx";
 import Sidebar from "./components/layout/Sidebar/Sidebar.jsx";
-import Home from "./pages/Home/Home.jsx";
-import Guide from "./pages/Guide/Guide.jsx";
-import Dashboard from "./pages/Dashboard/Dashboard.jsx";
-import NotFound from "./pages/NotFound/NotFound.jsx";
-import AccountManagement from "./pages/AccountManagement/AccountManagement.jsx";
-import AdsManagement from "./pages/AdsManagement/AdsManagement.jsx";
-import ArchiveAds from "./pages/ArchiveAds/ArchiveAds.jsx";
-import Analytics from "./pages/Analytics/Analytics.jsx";
-import AutomationRule from "./pages/AutomationRule/AutomationRule.jsx";
-import ConnectPage from "./pages/ConnectPage/ConnectPage.jsx";
-// import ConnectAdAccount from "./pages/ConnectAdAccount/ConnectAdAccount.jsx"; // Removed: auto sync on login
-import ServicePackage from "./pages/ServicePackage/ServicePackage.jsx";
-import Order from "./pages/Order/Order.jsx";
-import CheckOut from "./pages/CheckOut/CheckOut.jsx";
-import Bank from "./pages/CheckOut/Bank/Bank.jsx";
-import VerifyEmail from "./pages/VerifyEmail/VerifyEmail.jsx";
-import ResetPassword from "./pages/ResetPassword/ResetPassword.jsx";
-import Profile from "./pages/Profile/Profile.jsx";
-import TransactionHistory from "./pages/TransactionHistory/TransactionHistory.jsx";
-import MyShop from "./pages/Shop/MyShop.jsx";
-import Employee from "./pages/Shop/Employee.jsx";
-import History from "./pages/Shop/History.jsx";
-import UserManagementPage from "./pages/AdminPage/SystemAdmin/UserManagement/CustomerPage/CustomerPage.jsx";
-import InternalPage from "./pages/AdminPage/SystemAdmin/UserManagement/InternalPage/InternalPage.jsx";
-import SystemLog from "./pages/AdminPage/SystemAdmin/SystemMonitoring/SystemLog/SystemLog.jsx";
-import CustomerLog from "./pages/AdminPage/SystemAdmin/SystemMonitoring/CustomerLog/CustomerLog.jsx";
-import PaymentManagement from "./pages/AdminPage/SystemAdmin/PaymentManagement/PaymentManagement.jsx";
-import LeadPage from "./pages/AdminPage/CsStaff/LeadPage/LeadPage.jsx";
-import ServicePackagePage from "./pages/AdminPage/CsStaff/ServicePackagePage/ServicePackagePage.jsx";
-import PaymentPage from "./pages/AdminPage/CsStaff/PaymentPage/PaymentPage.jsx";
-import TransactionsPage from "./pages/AdminPage/Accountant/TransactionsPage/TransactionsPage.jsx";
-import ReportPage from "./pages/AdminPage/Accountant/ReportPage/ReportPage.jsx";
-import ProtectedRouteForRole from "./components/common/ProtectedRoute/ProtectedRouteForRole.jsx";
 import ScrollToTop from "./utils/ui/ScrollToTop.jsx";
 import { ROUTES, HEADER_ROUTES, AUTH_MODES } from "./constants/app.constants";
+import ProtectedRouteForRole from "./components/common/ProtectedRoute/ProtectedRouteForRole.jsx";
+
+// Lazy loading pages
+const Home = lazy(() => import("./pages/Home/Home.jsx"));
+const Guide = lazy(() => import("./pages/Guide/Guide.jsx"));
+const Dashboard = lazy(() => import("./pages/Dashboard/Dashboard.jsx"));
+const NotFound = lazy(() => import("./pages/NotFound/NotFound.jsx"));
+const AccountManagement = lazy(() => import("./pages/AccountManagement/AccountManagement.jsx"));
+const AdsManagement = lazy(() => import("./pages/AdsManagement/AdsManagement.jsx"));
+const ArchiveAds = lazy(() => import("./pages/ArchiveAds/ArchiveAds.jsx"));
+const Analytics = lazy(() => import("./pages/Analytics/Analytics.jsx"));
+const AutomationRule = lazy(() => import("./pages/AutomationRule/AutomationRule.jsx"));
+const ConnectPage = lazy(() => import("./pages/ConnectPage/ConnectPage.jsx"));
+const ServicePackage = lazy(() => import("./pages/ServicePackage/ServicePackage.jsx"));
+const Order = lazy(() => import("./pages/Order/Order.jsx"));
+const CheckOut = lazy(() => import("./pages/CheckOut/CheckOut.jsx"));
+const Bank = lazy(() => import("./pages/CheckOut/Bank/Bank.jsx"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail/VerifyEmail.jsx"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword/ResetPassword.jsx"));
+const Profile = lazy(() => import("./pages/Profile/Profile.jsx"));
+const TransactionHistory = lazy(() => import("./pages/TransactionHistory/TransactionHistory.jsx"));
+const MyShop = lazy(() => import("./pages/Shop/MyShop.jsx"));
+const Employee = lazy(() => import("./pages/Shop/Employee.jsx"));
+const History = lazy(() => import("./pages/Shop/History.jsx"));
+const UserManagementPage = lazy(() => import("./pages/AdminPage/SystemAdmin/UserManagement/CustomerPage/CustomerPage.jsx"));
+const InternalPage = lazy(() => import("./pages/AdminPage/SystemAdmin/UserManagement/InternalPage/InternalPage.jsx"));
+const SystemLog = lazy(() => import("./pages/AdminPage/SystemAdmin/SystemMonitoring/SystemLog/SystemLog.jsx"));
+const CustomerLog = lazy(() => import("./pages/AdminPage/SystemAdmin/SystemMonitoring/CustomerLog/CustomerLog.jsx"));
+const PaymentManagement = lazy(() => import("./pages/AdminPage/SystemAdmin/PaymentManagement/PaymentManagement.jsx"));
+const LeadPage = lazy(() => import("./pages/AdminPage/CsStaff/LeadPage/LeadPage.jsx"));
+const ServicePackagePage = lazy(() => import("./pages/AdminPage/CsStaff/ServicePackagePage/ServicePackagePage.jsx"));
+const PaymentPage = lazy(() => import("./pages/AdminPage/CsStaff/PaymentPage/PaymentPage.jsx"));
+const TransactionsPage = lazy(() => import("./pages/AdminPage/Accountant/TransactionsPage/TransactionsPage.jsx"));
+const ReportPage = lazy(() => import("./pages/AdminPage/Accountant/ReportPage/ReportPage.jsx"));
+
+// Loading component
+const PageLoader = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    background: '#f8fafc'
+  }}>
+    <div className="loader">Đang tải...</div>
+  </div>
+);
 
 function AppContentInner() {
   const [authVisible, setAuthVisible] = useState(false);
@@ -106,417 +120,410 @@ function AppContentInner() {
       {/* Hiển thị AdminHeader khi ở route admin hoặc admin ở profile */}
       {shouldShowAdminHeader && <AdminHeader />}
       {shouldShowHeader && <Header onLoginClick={handleLoginClick} />}
-      <Routes>
-        {/* Route cho Home */}
-        <Route
-          path={ROUTES.HOME}
-          element={
-            <>
-              <main className="page-content">
-                <Home onLoginClick={handleLoginClick} />
-              </main>
-              <Footer />
-            </>
-          }
-        />
-
-        {/* Route cho Guide */}
-        <Route
-          path={ROUTES.GUIDE}
-          element={
-            <main className="page-content">
-              <Guide />
-            </main>
-          }
-        />
-
-        {/* Admin - System Admin: Payment Management */}
-        <Route
-          path="/admin/system-admin/payment-management"
-          element={
-            <ProtectedRouteForRole allowedRole="System Admin">
-              <main className="page-content">
-                <PaymentManagement />
-              </main>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - System Admin: User Management -> CustomerPage */}
-        <Route
-          path={ROUTES.ADMIN_SYSTEM_ADMIN_USER_MANAGEMENT}
-          element={
-            <ProtectedRouteForRole allowedRole="System Admin">
-              <>
-                <AdminSidebar />
-                <main className="page-with-admin-sidebar">
-                  <UserManagementPage />
-                </main>
-              </>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - System Admin: User Management -> Internal */}
-        <Route
-          path="/admin/system-admin/user-management/internal"
-          element={
-            <ProtectedRouteForRole allowedRole="System Admin">
-              <>
-                <AdminSidebar />
-                <main className="page-with-admin-sidebar">
-                  <InternalPage />
-                </main>
-              </>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - System Admin: System Monitoring -> SystemLog */}
-        <Route
-          path="/admin/system-admin/system-monitoring"
-          element={
-            <ProtectedRouteForRole allowedRole="System Admin">
-              <>
-                <AdminSidebar />
-                <main className="page-with-admin-sidebar">
-                  <SystemLog />
-                </main>
-              </>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - System Admin: System Monitoring -> CustomerLog */}
-        <Route
-          path="/admin/system-admin/system-monitoring/customer-log"
-          element={
-            <ProtectedRouteForRole allowedRole="System Admin">
-              <>
-                <AdminSidebar />
-                <main className="page-with-admin-sidebar">
-                  <CustomerLog />
-                </main>
-              </>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - CS Staff: Leads */}
-        <Route
-          path="/admin/cs-staff/leads"
-          element={
-            <ProtectedRouteForRole allowedRole="CS Staff">
-              <main className="page-content">
-                <LeadPage />
-              </main>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - CS Staff: Service Package */}
-        <Route
-          path="/admin/cs-staff/service-package"
-          element={
-            <ProtectedRouteForRole allowedRole="CS Staff">
-              <main className="page-content">
-                <ServicePackagePage />
-              </main>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - CS Staff: Payment */}
-        <Route
-          path="/admin/cs-staff/payment"
-          element={
-            <ProtectedRouteForRole allowedRole="CS Staff">
-              <main className="page-content">
-                <PaymentPage />
-              </main>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - Accountant: Transactions */}
-        <Route
-          path="/admin/accountant/transactions"
-          element={
-            <ProtectedRouteForRole allowedRole="Accountant">
-              <main className="page-content">
-                <TransactionsPage />
-              </main>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Admin - Accountant: Reports */}
-        <Route
-          path="/admin/accountant/reports"
-          element={
-            <ProtectedRouteForRole allowedRole="Accountant">
-              <main className="page-content">
-                <ReportPage />
-              </main>
-            </ProtectedRouteForRole>
-          }
-        />
-
-        {/* Route cho Dashboard */}
-        <Route
-          path={ROUTES.DASHBOARD}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <main className="page-content">
-                  <Dashboard />
-                </main>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-
-        {/* Route cho Account Management */}
-        <Route
-          path={ROUTES.ACCOUNT_MANAGEMENT}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <>
-                  <main className="page-with-sidebar">
-                    <AccountManagement />
-                  </main>
-                  <Sidebar />
-                </>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-
-        {/* Route cho Ads Management */}
-        <Route
-          path={ROUTES.ADS_MANAGEMENT}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <>
-                  <main className="page-with-sidebar">
-                    <AdsManagement />
-                  </main>
-                  <Sidebar />
-                </>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-
-        {/* Route cho Archive Ads */}
-        <Route
-          path={ROUTES.ARCHIVE_ADS}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <>
-                  <main className="page-with-sidebar">
-                    <ArchiveAds />
-                  </main>
-                  <Sidebar />
-                </>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-
-        {/* Route cho Analytics */}
-        <Route
-          path={ROUTES.ANALYTICS}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <main className="page-content">
-                  <Analytics />
-                </main>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-
-        {/* Route cho Automation Rule */}
-        <Route
-          path={ROUTES.AUTOMATION_RULE}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <main className="page-content">
-                  <AutomationRule />
-                </main>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-
-        {/* Route cho Profile */}
-        <Route
-          path={ROUTES.PROFILE}
-          element={
-            <ProtectedRoute>
-              <main className="page-content">
-                <Profile />
-              </main>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Route cho Transaction History */}
-        <Route
-          path={ROUTES.USER_TRANSACTION}
-          element={
-            <ProtectedRoute>
-              <main className="page-content">
-                <TransactionHistory />
-              </main>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Routes cho Shop */}
-        <Route
-          path={ROUTES.SHOP}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <main className="page-content">
-                  <MyShop />
-                </main>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-        <Route
-          path={ROUTES.SHOP_EMPLOYEE}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <main className="page-content">
-                  <Employee />
-                </main>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-        <Route
-          path={ROUTES.SHOP_HISTORY}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <main className="page-content">
-                  <History />
-                </main>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
-
-        {/* Route cho Service Package */}
-        <Route
-          path={ROUTES.SERVICE_PACKAGE}
-          element={
-            <AdminRouteGuard>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* ... all routes ... */}
+          {/* Route cho Home */}
+          <Route
+            path={ROUTES.HOME}
+            element={
               <>
                 <main className="page-content">
-                  <ServicePackage />
+                  <Home onLoginClick={handleLoginClick} />
                 </main>
                 <Footer />
               </>
-            </AdminRouteGuard>
-          }
-        />
+            }
+          />
 
-        {/* Route cho Order */}
-        <Route
-          path={ROUTES.ORDER}
-          element={
-            <AdminRouteGuard>
+          {/* Route cho Guide */}
+          <Route
+            path={ROUTES.GUIDE}
+            element={
+              <main className="page-content">
+                <Guide />
+              </main>
+            }
+          />
+
+          {/* Admin - System Admin: Payment Management */}
+          <Route
+            path="/admin/system-admin/payment-management"
+            element={
+              <ProtectedRouteForRole allowedRole="System Admin">
+                <main className="page-content">
+                  <PaymentManagement />
+                </main>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - System Admin: User Management -> CustomerPage */}
+          <Route
+            path={ROUTES.ADMIN_SYSTEM_ADMIN_USER_MANAGEMENT}
+            element={
+              <ProtectedRouteForRole allowedRole="System Admin">
+                <>
+                  <AdminSidebar />
+                  <main className="page-with-admin-sidebar">
+                    <UserManagementPage />
+                  </main>
+                </>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - System Admin: User Management -> Internal */}
+          <Route
+            path="/admin/system-admin/user-management/internal"
+            element={
+              <ProtectedRouteForRole allowedRole="System Admin">
+                <>
+                  <AdminSidebar />
+                  <main className="page-with-admin-sidebar">
+                    <InternalPage />
+                  </main>
+                </>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - System Admin: System Monitoring -> SystemLog */}
+          <Route
+            path="/admin/system-admin/system-monitoring"
+            element={
+              <ProtectedRouteForRole allowedRole="System Admin">
+                <>
+                  <AdminSidebar />
+                  <main className="page-with-admin-sidebar">
+                    <SystemLog />
+                  </main>
+                </>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - System Admin: System Monitoring -> CustomerLog */}
+          <Route
+            path="/admin/system-admin/system-monitoring/customer-log"
+            element={
+              <ProtectedRouteForRole allowedRole="System Admin">
+                <>
+                  <AdminSidebar />
+                  <main className="page-with-admin-sidebar">
+                    <CustomerLog />
+                  </main>
+                </>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - CS Staff: Leads */}
+          <Route
+            path="/admin/cs-staff/leads"
+            element={
+              <ProtectedRouteForRole allowedRole="CS Staff">
+                <main className="page-content">
+                  <LeadPage />
+                </main>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - CS Staff: Service Package */}
+          <Route
+            path="/admin/cs-staff/service-package"
+            element={
+              <ProtectedRouteForRole allowedRole="CS Staff">
+                <main className="page-content">
+                  <ServicePackagePage />
+                </main>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - CS Staff: Payment */}
+          <Route
+            path="/admin/cs-staff/payment"
+            element={
+              <ProtectedRouteForRole allowedRole="CS Staff">
+                <main className="page-content">
+                  <PaymentPage />
+                </main>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - Accountant: Transactions */}
+          <Route
+            path="/admin/accountant/transactions"
+            element={
+              <ProtectedRouteForRole allowedRole="Accountant">
+                <main className="page-content">
+                  <TransactionsPage />
+                </main>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Admin - Accountant: Reports */}
+          <Route
+            path="/admin/accountant/reports"
+            element={
+              <ProtectedRouteForRole allowedRole="Accountant">
+                <main className="page-content">
+                  <ReportPage />
+                </main>
+              </ProtectedRouteForRole>
+            }
+          />
+
+          {/* Route cho Dashboard */}
+          <Route
+            path={ROUTES.DASHBOARD}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <Dashboard />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
+
+          {/* Route cho Account Management */}
+          <Route
+            path={ROUTES.ACCOUNT_MANAGEMENT}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <>
+                    <main className="page-with-sidebar">
+                      <AccountManagement />
+                    </main>
+                    <Sidebar />
+                  </>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
+
+          {/* Route cho Ads Management */}
+          <Route
+            path={ROUTES.ADS_MANAGEMENT}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <>
+                    <main className="page-with-sidebar">
+                      <AdsManagement />
+                    </main>
+                    <Sidebar />
+                  </>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
+
+          {/* Route cho Archive Ads */}
+          <Route
+            path={ROUTES.ARCHIVE_ADS}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <>
+                    <main className="page-with-sidebar">
+                      <ArchiveAds />
+                    </main>
+                    <Sidebar />
+                  </>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
+
+          {/* Route cho Analytics */}
+          <Route
+            path={ROUTES.ANALYTICS}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <Analytics />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
+
+          {/* Route cho Automation Rule */}
+          <Route
+            path={ROUTES.AUTOMATION_RULE}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <AutomationRule />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
+
+          {/* Route cho Profile */}
+          <Route
+            path={ROUTES.PROFILE}
+            element={
               <ProtectedRoute>
                 <main className="page-content">
-                  <Order />
+                  <Profile />
                 </main>
               </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
+            }
+          />
 
-        {/* Route cho CheckOut */}
-        <Route
-          path={ROUTES.CHECKOUT}
-          element={
-            <AdminRouteGuard>
+          {/* Route cho Transaction History */}
+          <Route
+            path={ROUTES.USER_TRANSACTION}
+            element={
               <ProtectedRoute>
                 <main className="page-content">
-                  <CheckOut />
+                  <TransactionHistory />
                 </main>
               </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
+            }
+          />
 
-        {/* Route cho CheckOut Bank */}
-        <Route
-          path={ROUTES.CHECKOUT_BANK}
-          element={
-            <AdminRouteGuard>
-              <ProtectedRoute>
-                <main className="page-content">
-                  <Bank />
-                </main>
-              </ProtectedRoute>
-            </AdminRouteGuard>
-          }
-        />
+          {/* Routes cho Shop */}
+          <Route
+            path={ROUTES.SHOP}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <MyShop />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
+          <Route
+            path={ROUTES.SHOP_EMPLOYEE}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <Employee />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
+          <Route
+            path={ROUTES.SHOP_HISTORY}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <History />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
 
-        {/* Route cho Connect Page */}
-        <Route
-          path={ROUTES.CONNECT_PAGE}
-          element={
-            <AdminRouteGuard>
-              <ConnectPage />
-            </AdminRouteGuard>
-          }
-        />
+          {/* Route cho Service Package */}
+          <Route
+            path={ROUTES.SERVICE_PACKAGE}
+            element={
+              <AdminRouteGuard>
+                <>
+                  <main className="page-content">
+                    <ServicePackage />
+                  </main>
+                  <Footer />
+                </>
+              </AdminRouteGuard>
+            }
+          />
 
-        {/* Route cho Connect Ad Account - Removed: auto sync on login */}
-        {/* <Route
-          path={ROUTES.CONNECT_AD_ACCOUNT}
-          element={
-            <AdminRouteGuard>
-              <ConnectAdAccount />
-            </AdminRouteGuard>
-          }
-        /> */}
+          {/* Route cho Order */}
+          <Route
+            path={ROUTES.ORDER}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <Order />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
 
-        {/* Auth routes */}
-        <Route
-          path={ROUTES.VERIFY_EMAIL}
-          element={
-            <main className="auth-page">
-              <VerifyEmail />
-            </main>
-          }
-        />
+          {/* Route cho CheckOut */}
+          <Route
+            path={ROUTES.CHECKOUT}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <CheckOut />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
 
-        {/* Route cho Reset Password */}
-        <Route
-          path={ROUTES.RESET_PASSWORD}
-          element={
-            <main className="auth-page">
-              <ResetPassword />
-            </main>
-          }
-        />
+          {/* Route cho CheckOut Bank */}
+          <Route
+            path={ROUTES.CHECKOUT_BANK}
+            element={
+              <AdminRouteGuard>
+                <ProtectedRoute>
+                  <main className="page-content">
+                    <Bank />
+                  </main>
+                </ProtectedRoute>
+              </AdminRouteGuard>
+            }
+          />
 
-        {/* Route cho NotFound */}
-        <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
-      </Routes>
+          {/* Route cho Connect Page */}
+          <Route
+            path={ROUTES.CONNECT_PAGE}
+            element={
+              <AdminRouteGuard>
+                <ConnectPage />
+              </AdminRouteGuard>
+            }
+          />
+
+          {/* Auth routes */}
+          <Route
+            path={ROUTES.VERIFY_EMAIL}
+            element={
+              <main className="auth-page">
+                <VerifyEmail />
+              </main>
+            }
+          />
+
+          {/* Route cho Reset Password */}
+          <Route
+            path={ROUTES.RESET_PASSWORD}
+            element={
+              <main className="auth-page">
+                <ResetPassword />
+              </main>
+            }
+          />
+
+          {/* Route cho NotFound */}
+          <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
+        </Routes>
+      </Suspense>
 
       {authVisible && (
         <AuthModal

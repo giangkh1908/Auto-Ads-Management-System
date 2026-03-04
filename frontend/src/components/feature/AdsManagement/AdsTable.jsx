@@ -1,7 +1,9 @@
-import { Edit, Archive, Trash } from "lucide-react";
+import { useState, useRef } from "react";
+import { Edit, Archive, Trash, Files, LayoutGrid, Megaphone } from "lucide-react";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { translateStatus, getStatusClass } from "../../../utils/formatters/statusUtils";
-import { translateObjective, translateOptimizationGoal, formatTargetingVN } from "../../../utils/formatters/translationUtils";
+import { translateOptimizationGoal, formatTargetingVN } from "../../../utils/formatters/translationUtils";
 import Pagination from "../../common/Pagination/Pagination";
 
 /**
@@ -27,12 +29,74 @@ export default function AdsTable({
   refreshing,
 }) {
   const { t } = useTranslation(['ads']);
+  const [columnWidths, setColumnWidths] = useState({});
+  const resizingRef = useRef({ colIndex: null, startX: 0, startWidth: 0 });
+
+  const onMouseDown = (e, index) => {
+    const th = e.target.parentElement;
+    resizingRef.current = {
+      colIndex: index,
+      startX: e.pageX,
+      startWidth: th.offsetWidth,
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  const onMouseMove = (e) => {
+    const { colIndex, startX, startWidth } = resizingRef.current;
+    if (colIndex === null) return;
+
+    const newWidth = Math.max(50, startWidth + (e.pageX - startX));
+    setColumnWidths((prev) => ({
+      ...prev,
+      [colIndex]: newWidth,
+    }));
+  };
+
+  const onMouseUp = () => {
+    resizingRef.current.colIndex = null;
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+    document.body.style.cursor = "default";
+    document.body.style.userSelect = "auto";
+  };
 
   const getColSpan = () => {
-    if (activeTab === "adsets") return 17;
-    if (activeTab === "campaigns") return 16;
-    return 15;
+    if (activeTab === "adsets") return 12;
+    return 10;
   };
+
+  const getColStyle = (index) => {
+    // Checkbox column is fixed to 50px
+    if (index === 0) {
+      return { width: '50px', minWidth: '50px', maxWidth: '50px', textAlign: 'center' };
+    }
+    // Toggle On/Off column is fixed to 81px
+    if (index === 1) {
+      return { width: '81px', minWidth: '81px', maxWidth: '81px', textAlign: 'center' };
+    }
+    if (columnWidths[index]) {
+      return { width: `${columnWidths[index]}px`, minWidth: `${columnWidths[index]}px` };
+    }
+    return {};
+  };
+
+  const renderHeaderWithResizer = (label, index) => (
+    <th style={getColStyle(index)}>
+      <div className="th-content">{label}</div>
+      {/* Don't render resizer for fixed columns (Checkbox: 0, Toggle: 1) */}
+      {index !== 0 && index !== 1 && (
+        <div
+          className="resizer"
+          onMouseDown={(e) => onMouseDown(e, index)}
+        />
+      )}
+    </th>
+  );
 
   return (
     <>
@@ -40,49 +104,57 @@ export default function AdsTable({
         <table className="ads-table">
           <thead>
             <tr>
-              <th>
+              <th style={getColStyle(0)}>
                 <input
                   type="checkbox"
                   checked={checkAll}
                   onChange={onCheckAll}
                 />
               </th>
-              <th>{t('management.toggle_on_off')}</th>
-              <th>{t('management.name')}</th>
-              <th>{t('management.status')}</th>
-              <th>{t('management.budget')}</th>
-              {activeTab === "adsets" && <th>{t('management.runtime')}</th>}
-              {activeTab === "adsets" && <th>{t('management.targeting')}</th>}
-              {activeTab === "campaigns" && <th>{t('management.objective')}</th>}
-              <th>{t('management.impressions')}</th>
-              <th>{t('management.reach')}</th>
-              <th>{t('management.results')}</th>
-              <th>Spend</th>
-              <th>Clicks</th>
-              <th>CPC</th>
-              <th>CTR (%)</th>
-              <th>{t('management.creator')}</th>
-              <th>{t('management.actions')}</th>
+              {renderHeaderWithResizer(t('management.toggle_on_off'), 1)}
+              {renderHeaderWithResizer(t('management.name'), 2)}
+              {renderHeaderWithResizer(t('management.status'), 3)}
+              {renderHeaderWithResizer(t('management.budget'), 4)}
+              {activeTab === "adsets" && renderHeaderWithResizer(t('management.runtime'), 5)}
+              {activeTab === "adsets" && renderHeaderWithResizer(t('management.targeting'), 6)}
+              {renderHeaderWithResizer(t('management.impressions'), 7)}
+              {renderHeaderWithResizer(t('management.reach'), 8)}
+              {renderHeaderWithResizer(t('management.results'), 9)}
+              {renderHeaderWithResizer('Spend', 10)}
+              <th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>{t('management.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={getColSpan()} style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
-                  {t('management.no_data')}
+                <td colSpan={getColSpan()}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="ads-empty-state"
+                  >
+                    {activeTab === "campaigns" ? (
+                      <Megaphone size={48} />
+                    ) : activeTab === "adsets" ? (
+                      <LayoutGrid size={48} />
+                    ) : (
+                      <Files size={48} />
+                    )}
+                    <p>{t('management.no_data')}</p>
+                  </motion.div>
                 </td>
               </tr>
             )}
             {rows.map((row) => (
               <tr key={row.id}>
-                <td>
+                <td style={getColStyle(0)}>
                   <input
                     type="checkbox"
                     checked={row.isChecked}
                     onChange={() => onCheckItem(row.id)}
                   />
                 </td>
-                <td>
+                <td style={getColStyle(1)}>
                   <button
                     type="button"
                     className={`switch ${row.enabled ? "on" : "off"} ${togglingItems.has(row.id) ? "loading" : ""
@@ -92,7 +164,7 @@ export default function AdsTable({
                     disabled={togglingItems.has(row.id)}
                   />
                 </td>
-                <td>
+                <td style={getColStyle(2)}>
                   <span
                     className={`name-text ${activeTab === "ads"
                       ? "ad-name"
@@ -108,12 +180,12 @@ export default function AdsTable({
                     {row.name}
                   </span>
                 </td>
-                <td className={getStatusClass(row.status)}>
+                <td className={`${getStatusClass(row.status)} text-center`} style={getColStyle(3)}>
                   {translateStatus(row.status)}
                 </td>
-                <td className="text-center">{row.budget || "0"}</td>
+                <td className="text-center" style={getColStyle(4)}>{row.budget || "0"}</td>
                 {activeTab === "adsets" && (
-                  <td className="text-center">
+                  <td className="text-center" style={getColStyle(5)}>
                     {row.start_time && row.end_time ? (
                       <div style={{ fontSize: '12px' }}>
                         <div>{new Date(row.start_time).toLocaleDateString('vi-VN')}</div>
@@ -131,7 +203,7 @@ export default function AdsTable({
                   </td>
                 )}
                 {activeTab === "adsets" && (
-                  <td className="text-center">
+                  <td className="text-center" style={getColStyle(6)}>
                     <div style={{ fontSize: '12px', textAlign: 'left' }}>
                       {row.targeting && Object.keys(row.targeting).length > 0 ? (
                         formatTargetingVN(row.targeting).map((line, idx) => (
@@ -146,24 +218,11 @@ export default function AdsTable({
                     </div>
                   </td>
                 )}
-                {activeTab === "campaigns" && (
-                  <td className="text-center">
-                    <div style={{ fontSize: '12px' }}>
-                      {row.objective ? translateObjective(row.objective) : t('labels.not_set')}
-                    </div>
-                  </td>
-                )}
-                <td className="text-center">{row.impressions || "0"}</td>
-                <td className="text-center">{row.reach || "0"}</td>
-                <td className="text-center">{row.results || "0"}</td>
-                <td className="text-center">{row.spend ? new Intl.NumberFormat('vi-VN').format(row.spend) : "0"}</td>
-                <td className="text-center">{row.clicks || "0"}</td>
-                <td className="text-center">{row.cpc ? new Intl.NumberFormat('vi-VN').format(row.cpc) : "0"}</td>
-                <td className="text-center">{row.ctr ? Number(row.ctr).toFixed(2) : "0.00"}</td>
-                <td className="text-center">
-                  {row.created_by?.full_name || row.created_by?.email || t('labels.not_set')}
-                </td>
-                <td>
+                <td className="text-center" style={getColStyle(7)}>{row.impressions || "0"}</td>
+                <td className="text-center" style={getColStyle(8)}>{row.reach || "0"}</td>
+                <td className="text-center" style={getColStyle(9)}>{row.results || "0"}</td>
+                <td className="text-center" style={getColStyle(10)}>{row.spend ? new Intl.NumberFormat('vi-VN').format(row.spend) : "0"}</td>
+                <td style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>
                   <div className="action-buttons">
                     <button
                       className="ads-action-btn ads-update-btn"
