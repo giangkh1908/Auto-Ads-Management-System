@@ -61,6 +61,8 @@ const AiPopup = ({
         image_source: imageSource,
         uploaded_image_url: imageSource === 'upload' ? uploadedImageUrl : undefined,
         count,
+      }, {
+        timeout: 150000, // 150s — Manus AI có thể mất đến 2 phút
       });
 
       if (res.data?.success && res.data?.variants) {

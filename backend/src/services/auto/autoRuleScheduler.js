@@ -48,7 +48,7 @@ export function startAutoRuleScheduler() {
   }).catch(err => console.error('Error logging scheduler start:', err));
 
   // Chạy mỗi phút: "* * * * *"
-  schedulerTask = cron.schedule("* * * * *", async () => {
+  schedulerTask = cron.schedule("0 * * * *", async () => {
     try {
       await processScheduledRules();
     } catch (error) {

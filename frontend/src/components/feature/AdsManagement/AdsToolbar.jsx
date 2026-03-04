@@ -1,4 +1,4 @@
-import { Search, Settings, Plus, Crown } from "lucide-react";
+import { Search, Settings, Plus, Crown, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "../../../constants/app.constants";
 import DateRangePicker from "../../common/DateRangePicker/DateRangePicker";
@@ -16,6 +16,7 @@ export default function AdsToolbar({
   loadingAccounts,
   onAccountChange,
   onCreateCampaign,
+  onAiGenerate,
   searchTerm,
   onSearchChange,
   dateRange,
@@ -23,7 +24,7 @@ export default function AdsToolbar({
 }) {
   const { t } = useTranslation(['ads']);
   const navigate = useNavigate();
-  const { hasFeature, shopPkg, loading: pkgLoading } = useShopPackage();
+  const { hasFeature } = useShopPackage();
   const hasAdsAutoRun = hasFeature("ads_auto_run");
 
   return (
@@ -54,6 +55,15 @@ export default function AdsToolbar({
           disabled={!selectedAccountId}
         >
           <Plus size={13} /> {t('management.create_campaign')}
+        </button>
+
+        <button
+          className={`btn-ai-generate ${!selectedAccountId ? 'disabled' : ''}`}
+          onClick={() => onAiGenerate?.()}
+          disabled={!selectedAccountId}
+          title="Tạo chiến dịch quảng cáo bằng AI"
+        >
+          <Sparkles size={13} /> Tạo bằng AI
         </button>
         <button
           className={`btn-create-rule ${!selectedAccountId ? 'disabled' : ''} ${!hasAdsAutoRun ? 'premium-feature' : ''}`}
