@@ -633,6 +633,199 @@
   border-top-color: #ddd6fe !important;
 }
 
+/* ── Prompt Editor Section ── */
+.aipopup-prompt-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.aipopup-prompt-section:has(.aipopup-prompt-editor) {
+  border-color: #c7d2fe;
+}
+
+.aipopup-prompt-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.aipopup-prompt-toggle:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.aipopup-prompt-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aipopup-prompt-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #ede9fe;
+  color: #6366f1;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.aipopup-prompt-editor {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #fafbfc;
+  animation: aipopup-prompt-in 0.2s ease;
+}
+
+@keyframes aipopup-prompt-in {
+  from { opacity: 0; max-height: 0; }
+  to   { opacity: 1; max-height: 600px; }
+}
+
+.aipopup-prompt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aipopup-prompt-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.aipopup-prompt-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 72px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.aipopup-prompt-textarea--sm {
+  min-height: 48px;
+}
+
+.aipopup-prompt-textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.aipopup-prompt-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.aipopup-prompt-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.aipopup-prompt-row:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.aipopup-prompt-prefix {
+  padding: 8px 10px;
+  background: #f1f5f9;
+  color: #6366f1;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  white-space: nowrap;
+  border-right: 1px solid #e2e8f0;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.aipopup-prompt-input {
+  flex: 1;
+  padding: 8px 10px;
+  background: #ffffff;
+  border: none;
+  color: #1e293b;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  min-width: 0;
+}
+
+.aipopup-prompt-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.aipopup-prompt-input::placeholder {
+  color: #cbd5e1;
+}
+
+.aipopup-prompt-hint {
+  margin: 0;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.aipopup-prompt-hint code {
+  background: #f1f5f9;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #6366f1;
+}
+
+.aipopup-prompt-reset {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.aipopup-prompt-reset:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .aipopup-modal {

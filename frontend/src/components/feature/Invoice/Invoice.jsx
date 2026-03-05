@@ -4,7 +4,7 @@ import { X, Download } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import invoiceService from "../../../services/shop/invoiceService";
+import invoiceService from "../../../services/transaction/invoiceService";
 import "./Invoice.css";
 
 export default function Invoice({ isOpen, onClose, transactionId }) {

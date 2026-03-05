@@ -153,11 +153,6 @@ function Order() {
 
   // Handle upgrade button
   const handleUpgrade = async () => {
-    // if (!selectedShop) {
-    //   alert("Vui lòng chọn shop để nâng cấp");
-    //   return;
-    // }
-
     // Prepare order data
     const orderData = {
       packageType,
@@ -198,28 +193,7 @@ function Order() {
       <div className="or-container">
         {/* Header */}
         <div className="or-header">
-          {/* <h1 className="or-title">VUI LÒNG CHỌN SHOP ĐỂ NÂNG CẤP</h1> */}
-
-          {/* Shop Selector */}
-          {/* <select
-            className="or-shop-select"
-            value={selectedShop}
-            onChange={(e) => setSelectedShop(e.target.value)}
-          >
-            <option value="">-- Chọn Shop --</option>
-            {shops.map((shop) => (
-              <option key={shop._id} value={shop._id}>
-                {shop.shop_name}
-              </option>
-            ))}
-          </select> */}
           <br />
-          {/* Current Package Info */}
-          {/* <div className="or-current-package">
-            {t("order.currentPackage")} <strong>{currentPackage.name}</strong> |{" "}
-            {currentPackage.customers} {t("order.customers")} | {currentPackage.pages} {t("order.pages")} |
-            {t("order.duration")}: <strong>{currentPackage.duration}</strong>
-          </div> */}
         </div>
 
         {/* Order Form */}

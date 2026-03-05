@@ -4,10 +4,6 @@ import crypto from "crypto";
 import fetch from "node-fetch";
 import axios from "axios";
 import { generateTokens, verifyRefreshToken } from "../../utils/jwt.js";
-import Shop from "../../models/shops/shop.model.js";
-import ShopUser from "../../models/shops/shopUser.model.js";
-import UserRole from "../../models/user/userRole.model.js";
-import { RoleEnum } from "../../constants/enum.js";
 import { ErrorCode, getErrorMessage } from "../../constants/errorCode.js";
 import {
   queueVerificationEmail,
@@ -100,65 +96,6 @@ export const register = async (req, res) => {
       emailVerified: false,
       status: "pending",
     });
-
-    // Tạo shop mặc định cho user mới
-    const shop = await Shop.create({
-      shop_name: full_name,
-      owner_id: user._id,
-      status: "active",
-      settings: {
-        currency: "VND",
-        timezone: "Asia/Ho_Chi_Minh",
-        language: "vi",
-      },
-      created_by: user._id,
-      updated_by: user._id,
-    });
-    console.log("Shop created:", shop._id);
-
-    // Tạo ShopUser với status "active" để được tính vào employee count
-    let shopUser;
-    try {
-      shopUser = await ShopUser.create({
-        user_id: user._id,
-        shop_id: shop._id,
-        is_manager: true,
-        status: "active", // Đảm bảo status là "active" để được tính vào employee count
-      });
-      console.log("ShopUser created:", shopUser._id);
-    } catch (shopUserError) {
-      console.error("Error creating ShopUser:", shopUserError);
-      console.error("ShopUser error details:", {
-        message: shopUserError.message,
-        code: shopUserError.code,
-        keyPattern: shopUserError.keyPattern,
-        keyValue: shopUserError.keyValue,
-      });
-      throw shopUserError;
-    }
-
-    // Tạo UserRole với role Shop Owner
-    try {
-      await UserRole.create({
-        user_id: user._id,
-        role_id: RoleEnum.SHOP_OWNER,
-        shop_id: shop._id,
-        shop_user_id: shopUser._id,
-        is_current: true,
-        source: "system", // Đánh dấu là được tạo tự động từ hệ thống
-      });
-      console.log("UserRole created successfully");
-    } catch (userRoleError) {
-      console.error("Error creating UserRole:", userRoleError);
-      console.error("UserRole error details:", {
-        message: userRoleError.message,
-        code: userRoleError.code,
-        name: userRoleError.name,
-        keyPattern: userRoleError.keyPattern,
-        keyValue: userRoleError.keyValue,
-      });
-      throw userRoleError;
-    }
 
     // Tạo token xác minh email
     const token = crypto.randomBytes(32).toString("hex");
@@ -478,40 +415,6 @@ export const facebookLogin = async (req, res) => {
         status: "active",
       });
 
-      // Tạo shop mặc định cho user Facebook lần đầu
-      const shop = await Shop.create({
-        shop_name: fbData.name,
-        owner_id: user._id,
-        status: "active",
-        settings: {
-          currency: "VND",
-          timezone: "Asia/Ho_Chi_Minh",
-          language: "vi",
-        },
-        created_by: user._id,
-        updated_by: user._id,
-      });
-
-      // Tạo ShopUser với status "active" để được tính vào employee count
-      const shopUser = await ShopUser.create({
-        user_id: user._id,
-        shop_id: shop._id,
-        is_manager: true,
-        status: "active", // Đảm bảo status là "active" để được tính vào employee count
-      });
-      console.log("✅ ShopUser created for Facebook user:", shopUser._id);
-
-      // Tạo UserRole với role Shop Owner
-      await UserRole.create({
-        user_id: user._id,
-        role_id: RoleEnum.SHOP_OWNER,
-        shop_id: shop._id,
-        shop_user_id: shopUser._id,
-        is_current: true,
-        source: "system", // Đánh dấu là được tạo tự động từ hệ thống
-      });
-      console.log("✅ UserRole created for Facebook user");
-
       // Log Facebook registration (new user created)
       await saveSystemLog({
         category: 'auth',
@@ -596,79 +499,6 @@ export const facebookLogin = async (req, res) => {
       await user.save();
       console.log("Đăng nhập thành công");
 
-      // Kiểm tra xem user có ShopUser và UserRole hay chưa
-      const existingShopUser = await ShopUser.findOne({
-        user_id: user._id,
-        removed_at: null,
-      });
-
-      const existingUserRole = await UserRole.findOne({
-        user_id: user._id,
-        revoked_at: null,
-      });
-
-      // Nếu chưa có ShopUser hoặc UserRole, tạo mới
-      if (!existingShopUser || !existingUserRole) {
-        console.log("⚠️ User thiếu ShopUser hoặc UserRole, đang tạo mới...");
-
-        // Tìm shop hiện có (nếu có) hoặc tạo mới
-        let shop = await Shop.findOne({
-          owner_id: user._id,
-          deleted_at: null,
-        });
-
-        if (!shop) {
-          // Tạo shop mặc định
-          shop = await Shop.create({
-            shop_name: user.full_name || fbData.name,
-            owner_id: user._id,
-            status: "active",
-            settings: {
-              currency: "VND",
-              timezone: "Asia/Ho_Chi_Minh",
-              language: "vi",
-            },
-            created_by: user._id,
-            updated_by: user._id,
-          });
-          console.log("✅ Shop created for existing Facebook user:", shop._id);
-        }
-
-        // Tạo ShopUser nếu chưa có
-        if (!existingShopUser) {
-          const shopUser = await ShopUser.create({
-            user_id: user._id,
-            shop_id: shop._id,
-            is_manager: true,
-            status: "active", // Đảm bảo status là "active" để được tính vào employee count
-          });
-          console.log("✅ ShopUser created for existing Facebook user:", shopUser._id);
-
-          // Tạo UserRole nếu chưa có
-          if (!existingUserRole) {
-            await UserRole.create({
-              user_id: user._id,
-              role_id: RoleEnum.SHOP_OWNER,
-              shop_id: shop._id,
-              shop_user_id: shopUser._id,
-              is_current: true,
-              source: "system", // Đánh dấu là được tạo tự động từ hệ thống
-            });
-            console.log("✅ UserRole created for existing Facebook user");
-          }
-        } else if (!existingUserRole) {
-          // Chỉ thiếu UserRole
-          await UserRole.create({
-            user_id: user._id,
-            role_id: RoleEnum.SHOP_OWNER,
-            shop_id: existingShopUser.shop_id,
-            shop_user_id: existingShopUser._id,
-            is_current: true,
-            source: "system", // Đánh dấu là được tạo tự động từ hệ thống
-          });
-          console.log("✅ UserRole created for existing Facebook user");
-        }
-      }
     }
 
     console.log("Fetching user's Facebook Pages...");
@@ -867,62 +697,11 @@ export const resetPassword = async (req, res) => {
 export const getCurrentUser = async (req, res) => {
   try {
     const user = req.user;
-    let shop = null;
-    let shopId = null;
-    let shopUser = null;
-
-    // Ưu tiên 1: Lấy shop_id từ UserRole với is_current = true (shop đang active)
-    const currentUserRole = await UserRole.findOne({
-      user_id: user._id,
-      is_current: true,
-      shop_id: { $ne: null },
-      revoked_at: null,
-    }).lean();
-
-    if (currentUserRole?.shop_id) {
-      // Nếu có UserRole với is_current = true, lấy shop từ shop_id đó
-      shopId = currentUserRole.shop_id;
-      shop = await Shop.findOne({
-        _id: shopId,
-        deleted_at: null,
-      }).lean();
-    } else {
-      // Fallback: Tìm shop mà user là owner (theo đề xuất)
-      shop = await Shop.findOne({
-        owner_id: user._id,
-        deleted_at: null,
-      }).lean();
-
-      if (shop) {
-        shopId = shop._id;
-      }
-    }
-
-    if (shopId) {
-      shopUser = await ShopUser.findOne({
-        user_id: user._id,
-        shop_id: shopId,
-        status: "active",
-      }).lean();
-      
-      // ✅ Đảm bảo shop được populate với facebook_pages
-      if (!shop) {
-        shop = await Shop.findById(shopId).lean();
-      }
-    }
-
-    // Thêm shop_id vào user object để frontend dùng
-    const userWithShop = {
-      ...user.toObject(),
-      shop_id: shopId,
-    };
-
+    
     return res.status(200).json({
       success: true,
       data: {
-        user: userWithShop,
-        shop, // ✅ Shop model có facebook_pages (nguồn chính)
-        shopUser,
+        user: typeof user.toObject === 'function' ? user.toObject() : user,
       },
     });
   } catch (error) {

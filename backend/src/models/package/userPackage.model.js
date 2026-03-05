@@ -25,12 +25,6 @@ const userPackageSchema = new mongoose.Schema(
       default: 3,
     },
 
-    shops: {
-      type: Number,
-      default: 20,
-    },
-
-
     // Thời gian hiệu lực
     from_date: { type: Date },
     to_date: { type: Date },

@@ -2,9 +2,6 @@ import User from "../../models/user/user.model.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { queueStaffCredentialsEmail } from "../../services/email/emailService.js";
-import UserRole from "../../models/user/userRole.model.js";
-import Shop from "../../models/shops/shop.model.js";
-import Role from "../../models/admin/role.model.js";
 import { saveSystemLog, getClientIp, getUserAgent } from "../../utils/systemLog.js";
 
 // 📋 Lấy danh sách user
@@ -221,70 +218,6 @@ export const getUserById = async (req, res) => {
   }
 };
 
-// Lấy danh sách shop và role của user
-export const getUserShops = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Kiểm tra user có tồn tại không
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Không tìm thấy user." });
-    }
-
-    // Lấy tất cả UserRole của user (chỉ lấy những role chưa bị revoke)
-    const userRoles = await UserRole.find({
-      user_id: id,
-      revoked_at: null,
-      shop_id: { $ne: null }, // Chỉ lấy role có shop_id (bỏ qua global roles)
-    })
-      .populate("shop_id", "shop_name status")
-      .populate("role_id", "role_name")
-      .lean();
-
-    // Format data: shop và role tương ứng
-    const shopsWithRoles = userRoles.map((ur) => ({
-      shop: ur.shop_id?.shop_name || "N/A",
-      role: ur.role_id?.role_name || "N/A",
-      shop_id: ur.shop_id?._id || null,
-      role_id: ur.role_id?._id || null,
-      is_current: ur.is_current || false,
-    }));
-
-    // Nếu user là owner của shop nhưng chưa có UserRole, thêm vào
-    const shopsOwned = await Shop.find({
-      owner_id: id,
-      deleted_at: null,
-    }).lean();
-
-    for (const shop of shopsOwned) {
-      // Kiểm tra xem shop này đã có trong danh sách chưa
-      const exists = shopsWithRoles.some(
-        (swr) => swr.shop_id && swr.shop_id.toString() === shop._id.toString()
-      );
-
-      if (!exists) {
-        // Tìm role "Shop Owner"
-        const shopOwnerRole = await Role.findOne({ role_name: "Shop Owner" }).lean();
-        shopsWithRoles.push({
-          shop: shop.shop_name,
-          role: shopOwnerRole?.role_name || "Shop Owner",
-          shop_id: shop._id,
-          role_id: shopOwnerRole?._id || null,
-          is_current: false,
-        });
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      data: shopsWithRoles,
-    });
-  } catch (error) {
-    console.error("❌ Get user shops error:", error);
-    res.status(500).json({ success: false, message: "Lỗi hệ thống." });
-  }
-};
 
 // 🧾 Tạo user (admin thêm mới)
 export const createUser = async (req, res) => {
@@ -325,17 +258,11 @@ export const updateUser = async (req, res) => {
     // Kiểm tra quyền: System Admin hoặc user có quyền update
     const isSystemAdmin = req.user.internal_role === "System Admin";
 
-    if (!isSystemAdmin) {
-      // Nếu không phải System Admin, kiểm tra quyền qua UserRole
-      const shopId = req.headers['x-shop-id'] || req.query.shop_id || null;
-      const hasPermission = await UserRole.hasPermission(req.user._id, shopId, "user", "update");
-
-      if (!hasPermission) {
+    if (!isSystemAdmin && req.user._id.toString() !== req.params.id) {
         return res.status(403).json({
           success: false,
           message: "Bạn không có quyền update trên module user.",
         });
-      }
     }
 
     const { id } = req.params;

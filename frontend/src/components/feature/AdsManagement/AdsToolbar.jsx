@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "../../../constants/app.constants";
 import DateRangePicker from "../../common/DateRangePicker/DateRangePicker";
 import { useTranslation } from "react-i18next";
-import { useShopPackage } from "../../../hooks/shop/useShopPackage";
+import { useMyPackage } from "../../../hooks/package/useMyPackage.js";
 import { toast } from "sonner";
+// eslint-disable-next-line no-unused-vars
+import { motion } from "framer-motion";
 
 /**
  * Toolbar component for Ads Management
@@ -24,12 +26,15 @@ export default function AdsToolbar({
 }) {
   const { t } = useTranslation(['ads']);
   const navigate = useNavigate();
-  const { hasFeature } = useShopPackage();
+  const { myPkg } = useMyPackage();
+  const hasFeature = (featureCode) => {
+    return myPkg?.package?.features?.includes(featureCode) || false;
+  };
   const hasAdsAutoRun = hasFeature("ads_auto_run");
 
   return (
-    <div className="ads-toolbar">
-      <div className="account-select">
+    <motion.div layout className="ads-toolbar">
+      <motion.div layout className="account-select">
         <select
           value={selectedAccountId}
           onChange={(e) => onAccountChange(e.target.value)}
@@ -86,9 +91,9 @@ export default function AdsToolbar({
             </span>
           )}
         </button>
-      </div>
+      </motion.div>
 
-      <div>
+      <motion.div layout className="ads-toolbar-right">
         <div className="search-input-wrapper">
           <Search className="search-icon" size={16} />
           <input
@@ -104,8 +109,8 @@ export default function AdsToolbar({
           onChange={onDateRangeChange}
           placeholder={t('management.dateRangePlaceholder')}
         />
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

@@ -7,13 +7,13 @@ import './ServicePackage.css';
 import axiosInstance from '../../utils/api/axios';
 import { toast } from 'sonner';
 import { getFeatureLabel } from '../../constants/app.constants';
-import { useShopPackage } from '../../hooks/shop/useShopPackage';
+import { useMyPackage } from '../../hooks/package/useMyPackage.js';
 
 function ServicePackage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { shopPkg } = useShopPackage();
+  const { myPkg } = useMyPackage();
   const [activeTab, setActiveTab] = useState('3months');
   const [packages, setPackages] = useState([]);
 
@@ -42,14 +42,14 @@ function ServicePackage() {
 
   // Check if a plan is the current shop owner's package
   const isCurrentPackage = (plan) => {
-    if (!shopPkg || !shopPkg.package) return false;
+    if (!myPkg || !myPkg.package) return false;
 
     // So sánh tên gói (case-insensitive)
-    const currentPackageName = shopPkg.package.name?.toLowerCase() || '';
+    const currentPackageName = myPkg.package.name?.toLowerCase() || '';
     const planName = plan.name?.toLowerCase() || '';
 
     // So sánh planType (chuẩn hóa: "12months" = "1year")
-    const currentPlanType = shopPkg.package.planType;
+    const currentPlanType = myPkg.package.planType;
     const planPlanType = plan.planType;
 
     // Chuẩn hóa planType để so sánh
@@ -103,9 +103,9 @@ function ServicePackage() {
           <p className="sp-hero-subtitle">
             {t("servicePackage.subtitle")}
           </p>
-          {shopPkg?.package ? (
+          {myPkg?.package ? (
             <p style={{ marginTop: '20px' }}>
-              Bạn đang sử dụng gói <strong>{shopPkg.package.name}</strong> | Thời hạn: <strong>{shopPkg.package.planType === '3months' ? '3 tháng' : shopPkg.package.planType === '12months' ? '1 năm' : 'N/A'}</strong>
+              Bạn đang sử dụng gói <strong>{myPkg.package.name}</strong> | Thời hạn: <strong>{myPkg.package.planType === '3months' ? '3 tháng' : myPkg.package.planType === '12months' ? '1 năm' : 'N/A'}</strong>
             </p>
           ) : (
             <p style={{ marginTop: '20px' }}>

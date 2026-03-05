@@ -15,7 +15,8 @@ import { adminActionLogger } from "../../middlewares/adminActionLogger.middlewar
 const router = express.Router();
 
 // Route user thường (không log)
-router.get("/me/package", authenticate, getMyPackage);
+router.get("/my-package", authenticate, getMyPackage);
+router.get("/me/package", authenticate, getMyPackage); // Giữ cả 2 cho an toàn
 router.post("/order", authenticate, createOrder);
 
 // Routes admin (có log)

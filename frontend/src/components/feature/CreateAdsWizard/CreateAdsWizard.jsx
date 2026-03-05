@@ -20,7 +20,7 @@ import { useEditMode } from "../../../hooks/ads/useEditMode.js";
 import { useFlexibleWizardPublish } from "../../../hooks/wizard/useWizardPublish.js";
 import { useProgressState } from "../../../hooks/common/useProgressState.js";
 import { useToast } from "../../../hooks/common/useToast.js";
-import { useMyPackage } from "../../../hooks/shop/useMyPackage.js";
+import { useMyPackage } from "../../../hooks/package/useMyPackage.js";
 import { getInitialWizardStep } from "../../../utils/business-logic/wizardUtils.js";
 import {
   WIZARD_STEPS,
@@ -43,6 +43,7 @@ function CreateAdsWizard({
   selectedAccountId = null,
   selectedCampaign: _selectedCampaign = null, // eslint-disable-line no-unused-vars
   setDatasets: _setDatasets = null, // eslint-disable-line no-unused-vars
+  aiDraftData = null, // Thêm prop này từ màn hình AI
 }) {
   const { t } = useTranslation('wizard');
 
@@ -160,6 +161,69 @@ function CreateAdsWizard({
       setWizardStep(initialStep);
     }
   }, [mode, editingItem, setWizardStep]);
+
+  // Set initial wizard step based on aiDraftData (AI Flow)
+  useEffect(() => {
+    if (aiDraftData && mode === "create") {
+      // Mapping AI data to the wizard's expected format
+      const { campaign: aiCampaign, adset: aiAdset, ad: aiAd } = aiDraftData;
+
+      const newCampaignId = `temp_campaign_${Date.now()}`;
+      const newAdsetId = `temp_adset_${Date.now()}`;
+      const newAdId = `temp_ad_${Date.now()}`;
+
+      const mappedCampaignList = [
+        {
+          ...INITIAL_DATA.campaign,
+          _id: newCampaignId,
+          name: aiCampaign.name || t('main.default_campaign_name'),
+          objective: aiCampaign.objective,
+          adsets: [
+            {
+              ...INITIAL_DATA.adset,
+              _id: newAdsetId,
+              name: aiAdset.name || t('main.default_adset_name'),
+              optimization_goal: aiAdset.optimization_goal,
+              start_time: aiAdset.start_time,
+              end_time: aiAdset.end_time || null,
+              targeting: {
+                ...INITIAL_DATA.adset.targeting,
+                ageMin: aiAdset.age_min,
+                ageMax: aiAdset.age_max,
+              },
+              ads: [
+                {
+                  ...INITIAL_DATA.ad,
+                  _id: newAdId,
+                  adset_id: newAdsetId,
+                  name: aiAd.name || t('main.default_ad_name'),
+                  headline: aiAd.headline,
+                  primaryText: aiAd.body,
+                  description: aiAd.description,
+                  callToAction: aiAd.call_to_action_type,
+                  media: aiAd.image_url ? 'image' : '',
+                  mediaUrl: aiAd.image_url,
+                  call_to_action_type: aiAd.call_to_action_type,
+                }
+              ]
+            }
+          ]
+        }
+      ];
+
+      setCampaignsList(mappedCampaignList);
+      setCampaign(mappedCampaignList[0]);
+      setAdset(mappedCampaignList[0].adsets[0]);
+      setAd(mappedCampaignList[0].adsets[0].ads[0]);
+
+      setSelectedCampaignIndex(0);
+      setSelectedAdsetIndex(0);
+      setSelectedAdIndex(0);
+
+      // Chuyển thẳng tới màn hình chi tiết Ad
+      setWizardStep(WIZARD_STEPS.AD);
+    }
+  }, [aiDraftData, mode, setCampaignsList, setCampaign, setAdset, setAd, setSelectedCampaignIndex, setSelectedAdsetIndex, setSelectedAdIndex, setWizardStep, t]);
 
   // ==============================
   // SYNC: Load từ campaignsList khi click item khác

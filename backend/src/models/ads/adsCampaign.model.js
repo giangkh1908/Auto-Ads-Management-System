@@ -2,14 +2,6 @@ import mongoose from "mongoose";
 
 const adsCampaignSchema = new mongoose.Schema(
   {
-    // Liên kết với cửa hàng
-    shop_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Shop",
-      required: false,
-      default: null,
-    },
-
     // Liên kết với tài khoản quảng cáo (luôn bắt buộc)
     account_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -128,7 +120,6 @@ adsCampaignSchema.index(
 );
 
 // Các index bổ trợ tìm kiếm
-adsCampaignSchema.index({ shop_id: 1 });
 adsCampaignSchema.index({ account_id: 1 });
 adsCampaignSchema.index({ status: 1 });
 adsCampaignSchema.index({ page_id: 1 });

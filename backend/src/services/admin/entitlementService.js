@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import UserPackage from "../../models/package/userPackage.model.js";
-import Shop from "../../models/shops/shop.model.js";
-import ShopUser from "../../models/shops/shopUser.model.js";
+import User from "../../models/user/user.model.js";
 
 export const FEATURE_KEYS = {
   ANALYTICS_CHAT_AI: "analytics_chat_ai",
@@ -100,40 +99,19 @@ const isPackageActive = (userPackageDoc) => {
 const countUsage = async (userId) => {
   if (!userId) {
     return {
-      shops: 0,
       employees: 0,
       pages: 0,
     };
   }
 
-  const shops = await Shop.find({
-    owner_id: new mongoose.Types.ObjectId(userId),
-    deleted_at: null,
-  })
-    .select("_id facebook_pages")
-    .lean();
+  const user = await User.findById(userId).select("facebook_pages").lean();
 
-  const shopIds = shops.map((shop) => shop._id);
-
-  const [employeeCount] = await Promise.all([
-    ShopUser.countDocuments({
-      shop_id: { $in: shopIds },
-      status: "active",
-      user_id: { $ne: new mongoose.Types.ObjectId(userId) },
-    }),
-  ]);
-
-  const pageCount = shops.reduce((total, shop) => {
-    if (!Array.isArray(shop.facebook_pages)) return total;
-    const connected = shop.facebook_pages.filter(
-      (page) => page.connected_status === "connected"
-    );
-    return total + connected.length;
-  }, 0);
+  const pageCount = (user?.facebook_pages || []).filter(
+    (page) => page?.connected_status === "connected"
+  ).length || 0;
 
   return {
-    shops: shops.length,
-    employees: employeeCount,
+    employees: 0,
     pages: pageCount,
   };
 };
@@ -171,7 +149,6 @@ export const getUserEntitlements = async (
     limits: {
       pages: userPackage.pages || pkgTemplate.pages || 0,
       employees: userPackage.employees || pkgTemplate.employees || 0,
-      shops: userPackage.shops || pkgTemplate.shops || 0,
     },
     usage,
     period: {

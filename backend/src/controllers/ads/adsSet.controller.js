@@ -3,14 +3,7 @@ import AdsSet from "../../models/ads/adsSet.model.js";
 import { fetchAdsetsFromFacebook, updateAdsetStatus, deleteEntity, fetchInsightsForAdsetIds } from "../../services/ads/fbAdsService.js";
 import User from "../../models/user/user.model.js";
 import Ads from "../../models/ads/ads.model.js";
-import UserRole from "../../models/user/userRole.model.js";
-import { saveLog } from "../../utils/log.js";
-
-// Helper: Get current shop_id from user's active UserRole
-async function getCurrentShopId(userId) {
-  const currentRole = await UserRole.findOne({ user_id: userId, is_current: true }).lean();
-  return currentRole?.shop_id || null;
-}// Helper function để extract string ID từ ObjectId format
+import { saveLog } from "../../utils/log.js";// Helper function để extract string ID từ ObjectId format
 function extractObjectId(value) {
   if (!value) return null;
   if (typeof value === 'string') {
@@ -358,11 +351,9 @@ export async function deleteAdsetCascadeCtrl(req, res) {
     ]);
 
     // Log xóa adset thành công
-    const currentShopId = await getCurrentShopId(req.user._id);
     await saveLog({
       user_id: req.user._id,
       user_name: req.user?.full_name,
-      shop_id: adset.campaign_id?.shop_id || currentShopId,
       action: "DELETE_ADSET",
       target_type: "AdSet",
       target_id: adset._id.toString(),
@@ -439,11 +430,9 @@ export async function archiveAdsetCascadeCtrl(req, res) {
     ]);
 
     // Log lưu trữ adset thành công
-    const currentShopId = await getCurrentShopId(req.user._id);
     await saveLog({
       user_id: req.user._id,
       user_name: req.user?.full_name,
-      shop_id: adset.campaign_id?.shop_id || currentShopId,
       action: "ARCHIVE_ADSET",
       target_type: "AdSet",
       target_id: adset._id.toString(),

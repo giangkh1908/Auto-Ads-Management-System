@@ -2,13 +2,7 @@ import mongoose from "mongoose";
 
 const automationRuleSchema = new mongoose.Schema(
   {
-    // 🔗 Liên kết với cửa hàng và tài khoản
-    shop_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Shop",
-      required: false,
-      default: null,
-    },
+    // 🔗 Liên kết với tài khoản
     account_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AdsAccount",
@@ -221,7 +215,6 @@ const automationRuleSchema = new mongoose.Schema(
 );
 
 // 📈 Indexes
-automationRuleSchema.index({ shop_id: 1 });
 automationRuleSchema.index({ account_id: 1 });
 automationRuleSchema.index({ created_by: 1 });
 automationRuleSchema.index({ subscriber_id: 1 });

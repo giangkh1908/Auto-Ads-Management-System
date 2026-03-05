@@ -17,9 +17,6 @@ const adsAccountSchema = new mongoose.Schema(
       default: [],
       index: true
     },
-    
-    shop_user_id: { type: mongoose.Schema.Types.ObjectId, ref: "ShopUser" },
-    shop_id: { type: mongoose.Schema.Types.ObjectId, ref: "Shop" }, // Optional
 
     external_id: { type: String, trim: true, required: true },
     name: { type: String, trim: true },

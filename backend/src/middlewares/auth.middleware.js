@@ -1,10 +1,6 @@
 import { verifyAccessToken } from '../utils/jwt.js';
 import User from '../models/user/user.model.js';
-import UserRole from '../models/user/userRole.model.js';
-import Role from '../models/admin/role.model.js';
-import Shop from '../models/shops/shop.model.js';
 import UserPackage from "../models/package/userPackage.model.js"
-import ShopUser from "../models/shops/shopUser.model.js"
 /**
  * 🧩 Middleware xác thực Access Token
  */
@@ -121,24 +117,9 @@ export const requireEmailVerification = (req, res, next) => {
 export const authorize = (moduleName, action) => {
   return async (req, res, next) => {
     try {
-      // System Admin có quyền truy cập tất cả
-      if (req.user.internal_role === "System Admin") {
-        return next();
-      }
-
-      const userId = req.user._id;
-      const shopId = req.headers['x-shop-id'] || req.query.shop_id || null;
-
-      const hasPermission = await UserRole.hasPermission(userId, shopId, moduleName, action);
-
-      if (!hasPermission) {
-        return res.status(403).json({
-          success: false,
-          message: `Bạn không có quyền ${action} trên module ${moduleName}.`,
-        });
-      }
-
-      next();
+      // System Admin hoặc User đều cho phép pass qua, vì cơ chế phân quyền Role/Shop đã bị gỡ.
+      // Dữ liệu sẽ được isolate dựa trên user_id ở controller.
+      return next();
     } catch (error) {
       console.error('Authorization error:', error);
       return res.status(500).json({
@@ -157,75 +138,7 @@ export const authorize = (moduleName, action) => {
 export const authorizeInShop = (module, action) => {
   return async (req, res, next) => {
     try {
-      const shopId = req.params.id || req.body.shop_id;
-      const userId = req.user._id;
-
-      if (!shopId) {
-        return res.status(400).json({ 
-          success: false,
-          message: "Shop ID is required for this action." 
-        });
-      }
-
-      // 1. Kiểm tra user có UserRole trong shop không
-      let userRole = await UserRole.findOne({
-        user_id: userId,
-        shop_id: shopId,
-      }).populate("role_id");
-
-      // 2. Nếu không có UserRole, kiểm tra user có phải là owner không
-      if (!userRole) {
-        const shop = await Shop.findById(shopId);
-        
-        if (!shop) {
-          return res.status(404).json({ 
-            success: false,
-            message: "Shop not found." 
-          });
-        }
-
-        // Nếu user là owner, lấy role "Shop Owner" để kiểm tra permission
-        if (shop.owner_id && shop.owner_id.toString() === userId.toString()) {
-          const ownerRole = await Role.findOne({ role_name: "Shop Owner" });
-          
-          if (ownerRole) {
-            // Tạo object giả để kiểm tra permission
-            userRole = {
-              role_id: ownerRole,
-              shop_id: shopId,
-            };
-          } else {
-            // Nếu không tìm thấy role "Shop Owner", cho phép owner luôn (bypass)
-            req.shopId = shopId;
-            return next();
-          }
-        } else {
-          // User không phải owner và không có UserRole
-          return res.status(403).json({ 
-            success: false,
-            message: "You are not part of this shop. ShopId: " + shopId + " UserId: " + userId 
-          });
-        }
-      }
-
-      // 3. Kiểm tra quyền
-      const role = userRole.role_id;
-      if (role && role.permissions) {
-        const hasPermission = role.permissions.some(
-          (perm) => perm.module === module && perm.actions.includes(action)
-        );
-
-        if (!hasPermission) {
-          return res.status(403).json({
-            success: false,
-            message: `Permission denied: You need '${module}.${action}' for this shop.`,
-          });
-        }
-      }
-
-      // Lưu shopId vào request để controller sử dụng
-      req.shopId = shopId;
-      
+      // Bỏ qua kiểm tra Role / Shop (vì Shop đã bị gỡ), luôn cho phép next()
       next();
     } catch (error) {
       console.error("Authorization error:", error);
@@ -241,21 +154,21 @@ export const authorizeInShop = (module, action) => {
 export const checkFeature = (feature) => {
   return async (req, res, next) => {
     try {
-      const subscription = await Subscription.findOne({
+      const userPackage = await UserPackage.findOne({
         user_id: req.user._id,
         status: "active"
       }).populate("package_id");
 
-      if (!subscription) {
+      if (!userPackage) {
         return res.status(403).json({ message: "Không có gói dịch vụ" });
       }
 
-      const hasFeature = subscription.package_id.features.includes(feature);
+      const hasFeature = userPackage.package_id.features.includes(feature);
       if (!hasFeature) {
         return res.status(403).json({ message: "Tính năng không khả dụng trong gói của bạn" });
       }
 
-      req.subscription = subscription; // truyền tiếp
+      req.subscription = userPackage; // truyền tiếp (giữ nguyên tên property cho đỡ ảnh hưởng chỗ khác)
       next();
     } catch (err) {
       res.status(500).json({ message: "Lỗi server" });
@@ -279,14 +192,9 @@ export const checkPackageLimit = (resource) => {
       let used = 0;
 
       if (resource === "shops") {
-        used = await Shop.countDocuments({ owner_id: req.user._id, deleted_at: null });
+        used = 0; // Tính năng module shop đã bị gỡ
       } else if (resource === "employees") {
-        const shopIds = await Shop.find({ owner_id: req.user._id }).distinct("_id");
-        used = await ShopUser.countDocuments({
-          shop_id: { $in: shopIds },
-          user_id: { $ne: req.user._id },
-          status: "active",
-        });
+        used = 0; // Tính năng employee đã bị gỡ
       }
 
       if (used >= limit) {

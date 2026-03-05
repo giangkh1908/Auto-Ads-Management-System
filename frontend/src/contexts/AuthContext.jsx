@@ -5,7 +5,6 @@ import authService from '../services/auth/authService'
 import { STORAGE_KEYS, ROUTES } from '../constants/app.constants'
 import { AuthContext } from './AuthContext.js'
 import { getDefaultAdminRoute } from '../constants/adminConstants'
-import { clearShopCache, clearAdsCache } from '../utils/cache/shopCache'
 // import axiosInstance from '../utils/axios'
 
 export const AuthProvider = ({ children }) => {
@@ -48,8 +47,7 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.removeItem(key);
       }
     });
-    clearShopCache()
-    clearAdsCache() // Xóa cache tài khoản quảng cáo khi logout
+
     setUser(null)
     setIsAuthenticated(false)
     setFbPages([])
@@ -92,12 +90,12 @@ export const AuthProvider = ({ children }) => {
               })
               logout(false) // Đăng xuất im lặng trong quá trình xác thực token
             }
-          } catch (error) {
+          } catch {
             // console.log('Token validation failed:', error)
             logout(false) // Đăng xuất im lặng trong quá trình xác thực token
           }
         }
-      } catch (error) {
+      } catch {
         // console.log('Error checking auth:', error)
         logout(false) // Đăng xuất im lặng trong quá trình xác thực token
       } finally {
@@ -118,7 +116,7 @@ export const AuthProvider = ({ children }) => {
         setUser(userWithShop)
         return userWithShop
       }
-    } catch (error) {
+    } catch {
       // console.log('Error refreshing user with shop_id:', error)
     }
     return null
@@ -278,7 +276,7 @@ export const AuthProvider = ({ children }) => {
         // Cập nhật lại user với shop_id khi có kết quả
         setUser(userWithShop)
       }
-    }).catch((error) => {
+    }).catch(() => {
       // console.log('Error refreshing user with shop_id (non-blocking):', error)
     })
 

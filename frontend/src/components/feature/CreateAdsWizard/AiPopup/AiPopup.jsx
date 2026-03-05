@@ -1,7 +1,15 @@
 import { useState, useRef } from 'react';
-import { Sparkles, Upload, Wand2, X, Loader2, Check, RefreshCw } from 'lucide-react';
+import { Sparkles, Upload, Wand2, X, Loader2, Check, RefreshCw, Settings, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import axiosInstance from '../../../../utils/api/axios';
 import { useToast } from '../../../../hooks/common/useToast';
+import {
+  DEFAULT_AI_ROLE,
+  DEFAULT_HEADLINE_SPEC,
+  DEFAULT_BODY_SPEC,
+  DEFAULT_DESCRIPTION_SPEC,
+  DEFAULT_CREATIVE_REQUIREMENTS,
+  buildAdPrompt,
+} from '../../../../constants/adPromptTemplate';
 import './AiPopup.css';
 
 /**
@@ -25,6 +33,29 @@ const AiPopup = ({
   const [selectedVariantId, setSelectedVariantId] = useState(null);
   const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState(null);
+
+  // Prompt editor states
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+  const [aiRole, setAiRole] = useState(DEFAULT_AI_ROLE);
+  const [headlineSpec, setHeadlineSpec] = useState(DEFAULT_HEADLINE_SPEC);
+  const [bodySpec, setBodySpec] = useState(DEFAULT_BODY_SPEC);
+  const [descriptionSpec, setDescriptionSpec] = useState(DEFAULT_DESCRIPTION_SPEC);
+  const [creativeReqs, setCreativeReqs] = useState(DEFAULT_CREATIVE_REQUIREMENTS);
+
+  const isPromptModified =
+    aiRole !== DEFAULT_AI_ROLE ||
+    headlineSpec !== DEFAULT_HEADLINE_SPEC ||
+    bodySpec !== DEFAULT_BODY_SPEC ||
+    descriptionSpec !== DEFAULT_DESCRIPTION_SPEC ||
+    creativeReqs !== DEFAULT_CREATIVE_REQUIREMENTS;
+
+  const handleResetPrompt = () => {
+    setAiRole(DEFAULT_AI_ROLE);
+    setHeadlineSpec(DEFAULT_HEADLINE_SPEC);
+    setBodySpec(DEFAULT_BODY_SPEC);
+    setDescriptionSpec(DEFAULT_DESCRIPTION_SPEC);
+    setCreativeReqs(DEFAULT_CREATIVE_REQUIREMENTS);
+  };
 
   if (!isOpen) return null;
 
@@ -55,12 +86,25 @@ const AiPopup = ({
     setVariants([]);
     setSelectedVariantId(null);
 
+    // Build prompt hoàn chỉnh từ template (editable) + locked parts
+    const finalPrompt = buildAdPrompt({
+      aiRole,
+      headlineSpec,
+      bodySpec,
+      descriptionSpec,
+      creativeReqs,
+      count,
+      description: description.trim(),
+      imageSource,
+    });
+
     try {
       const res = await axiosInstance.post('/api/ai/generate-ad', {
         description: description.trim(),
         image_source: imageSource,
         uploaded_image_url: imageSource === 'upload' ? uploadedImageUrl : undefined,
         count,
+        prompt: finalPrompt,
       }, {
         timeout: 150000, // 150s — Manus AI có thể mất đến 2 phút
       });
@@ -211,6 +255,105 @@ const AiPopup = ({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* ── Prompt Editor (collapsible) ── */}
+              <div className="aipopup-prompt-section">
+                <button
+                  className="aipopup-prompt-toggle"
+                  onClick={() => setShowPromptEditor((prev) => !prev)}
+                  type="button"
+                >
+                  <div className="aipopup-prompt-toggle-left">
+                    <Settings size={15} />
+                    <span>Tùy chỉnh prompt AI</span>
+                    {isPromptModified && (
+                      <span className="aipopup-prompt-badge">Đã tùy chỉnh</span>
+                    )}
+                  </div>
+                  {showPromptEditor ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+
+                {showPromptEditor && (
+                  <div className="aipopup-prompt-editor">
+
+                    {/* Vai trò AI */}
+                    <div className="aipopup-prompt-field">
+                      <label className="aipopup-prompt-label">Vai trò AI</label>
+                      <textarea
+                        className="aipopup-prompt-textarea aipopup-prompt-textarea--sm"
+                        value={aiRole}
+                        onChange={(e) => setAiRole(e.target.value)}
+                        rows={2}
+                        disabled={isGenerating}
+                        placeholder="VD: Bạn là chuyên gia marketing Facebook Ads."
+                      />
+                    </div>
+
+                    {/* Cấu trúc quảng cáo — 3 field riêng, tên field khóa cứng */}
+                    <div className="aipopup-prompt-field">
+                      <label className="aipopup-prompt-label">Cấu trúc mỗi bản quảng cáo</label>
+
+                      <div className="aipopup-prompt-row">
+                        <span className="aipopup-prompt-prefix">headline:</span>
+                        <input
+                          className="aipopup-prompt-input"
+                          value={headlineSpec}
+                          onChange={(e) => setHeadlineSpec(e.target.value)}
+                          disabled={isGenerating}
+                          placeholder="Tiêu đề hấp dẫn, tối đa 50 ký tự"
+                        />
+                      </div>
+
+                      <div className="aipopup-prompt-row">
+                        <span className="aipopup-prompt-prefix">body:</span>
+                        <input
+                          className="aipopup-prompt-input"
+                          value={bodySpec}
+                          onChange={(e) => setBodySpec(e.target.value)}
+                          disabled={isGenerating}
+                          placeholder="Nội dung chính thuyết phục, tối đa 200 ký tự"
+                        />
+                      </div>
+
+                      <div className="aipopup-prompt-row">
+                        <span className="aipopup-prompt-prefix">description:</span>
+                        <input
+                          className="aipopup-prompt-input"
+                          value={descriptionSpec}
+                          onChange={(e) => setDescriptionSpec(e.target.value)}
+                          disabled={isGenerating}
+                          placeholder="Mô tả ngắn, tối đa 40 ký tự"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Yêu cầu sáng tạo */}
+                    <div className="aipopup-prompt-field">
+                      <label className="aipopup-prompt-label">Yêu cầu sáng tạo</label>
+                      <textarea
+                        className="aipopup-prompt-textarea"
+                        value={creativeReqs}
+                        onChange={(e) => setCreativeReqs(e.target.value)}
+                        rows={4}
+                        disabled={isGenerating}
+                        placeholder="VD: - Tuân thủ chính sách quảng cáo Facebook..."
+                      />
+                    </div>
+
+                    {/* Nút khôi phục mặc định */}
+                    {isPromptModified && (
+                      <button
+                        className="aipopup-prompt-reset"
+                        onClick={handleResetPrompt}
+                        type="button"
+                      >
+                        <RotateCcw size={13} />
+                        Khôi phục mặc định
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* CTA */}

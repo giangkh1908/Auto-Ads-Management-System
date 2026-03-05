@@ -56,8 +56,7 @@ function ConnectAdAccount() {
     }
 
     return (fbAdAccounts || []).map(acc => {
-      const isConnectedToCurrentShop = acc.connected_shop?.is_current_shop || false
-      const isConnectedToOtherShop = acc.connected_shop && !acc.connected_shop.is_current_shop
+      const isConnected = acc.isConnected || false;
 
       return {
         id: acc.external_id || acc._id,
@@ -66,11 +65,8 @@ function ConnectAdAccount() {
         currency: acc.currency || 'USD',
         timezone: acc.timezone_name || 'UTC',
         status: getStatusLabel(acc.account_status),
-        isConnected: isConnectedToCurrentShop || isConnectedToOtherShop,
-        isConnectedToCurrentShop,
-        isConnectedToOtherShop,
-        canConnect: acc.can_connect !== false, // Mặc định true nếu không có thông tin
-        connectedBy: acc.connected_shop?.shop_name || null,
+        isConnected,
+        canConnect: acc.can_connect !== false,
         isSelected: false,
         avatar: user?.avatar || `https://graph.facebook.com/${acc.external_id}/picture?type=square`,
       }
@@ -78,7 +74,7 @@ function ConnectAdAccount() {
   }, [fbAdAccounts, t, user])
 
   //Đếm số tài khoản đã kết nối và còn lại
-  const connectedCount = adAccounts.filter(acc => acc.isConnectedToCurrentShop).length
+  const connectedCount = adAccounts.filter(acc => acc.isConnected).length
   const remainingCount = adAccounts.length - connectedCount
 
   // Loại bỏ các tài khoản đã kết nối (với shop hiện tại hoặc shop khác) hoặc không thể kết nối khỏi selectedAccounts
@@ -86,7 +82,7 @@ function ConnectAdAccount() {
     setSelectedAccounts(prev =>
       prev.filter(accountId => {
         const account = adAccounts.find(acc => acc.id === accountId)
-        return account && !account.isConnectedToCurrentShop && !account.isConnectedToOtherShop && account.canConnect
+        return account && !account.isConnected && account.canConnect
       })
     )
   }, [adAccounts])
@@ -99,8 +95,7 @@ function ConnectAdAccount() {
     // - Đã kết nối với shop khác (không phải current shop)
     // - Không thể kết nối (canConnect = false)
     if (account && (
-      account.isConnectedToCurrentShop ||
-      account.isConnectedToOtherShop ||
+      account.isConnected ||
       !account.canConnect
     )) {
       return
@@ -116,7 +111,7 @@ function ConnectAdAccount() {
   //Xử lý chọn tất cả
   const handleSelectAll = () => {
     const selectableAccounts = filteredAccounts.filter(
-      acc => !acc.isConnectedToCurrentShop && !acc.isConnectedToOtherShop && acc.canConnect
+      acc => !acc.isConnected && acc.canConnect
     )
 
     if (selectAll) {
@@ -218,10 +213,10 @@ function ConnectAdAccount() {
 
       if (linkResponse.data.success) {
         const { user: updatedUser } = linkResponse.data.data
-        
+
         // Cập nhật user trong context
         updateUser(updatedUser)
-        
+
         // Reload danh sách ad accounts
         const fbRes = await axiosInstance.get('/api/ads-accounts/facebook')
         const fbAccounts = fbRes.data?.items || []
@@ -229,7 +224,7 @@ function ConnectAdAccount() {
         toast.success("Kết nối Facebook thành công!")
       } else {
         const errorCode = linkResponse.data?.error?.code
-        
+
         if (errorCode === "FACEBOOK_ALREADY_BOUND") {
           toast.error("Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.")
         } else {
@@ -239,7 +234,7 @@ function ConnectAdAccount() {
     } catch (error) {
       console.error("Facebook link error:", error)
       const errorCode = error.response?.data?.error?.code
-      
+
       if (errorCode === "FACEBOOK_ALREADY_BOUND") {
         toast.error("Tài khoản Facebook này đã được liên kết với tài khoản khác. Vui lòng sử dụng tài khoản Facebook khác.")
       } else {
@@ -263,14 +258,14 @@ function ConnectAdAccount() {
       })
     }
 
-    ;(function (d, s, id) {
-      var js, fjs = d.getElementsByTagName(s)[0]
-      if (d.getElementById(id)) return
-      js = d.createElement(s)
-      js.id = id
-      js.src = "https://connect.facebook.net/en_US/sdk.js"
-      fjs.parentNode.insertBefore(js, fjs)
-    })(document, "script", "facebook-jssdk")
+      ; (function (d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0]
+        if (d.getElementById(id)) return
+        js = d.createElement(s)
+        js.id = id
+        js.src = "https://connect.facebook.net/en_US/sdk.js"
+        fjs.parentNode.insertBefore(js, fjs)
+      })(document, "script", "facebook-jssdk")
   }, [])
 
   //Xử lý quay lại danh sách tài khoản Quảng cáo
@@ -282,17 +277,17 @@ function ConnectAdAccount() {
   const filteredAccounts = adAccounts.filter(account => {
     const matchesSearch = account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       account.externalId.toLowerCase().includes(searchTerm.toLowerCase())
-    const isConnectedToCurrent = account.isConnectedToCurrentShop
+    const isConnected = account.isConnected
     const matchesStatus = statusFilter === 'status' ||
-      (statusFilter === 'connected' && isConnectedToCurrent) ||
-      (statusFilter === 'not-connected' && !isConnectedToCurrent && !account.isConnectedToOtherShop)
+      (statusFilter === 'connected' && isConnected) ||
+      (statusFilter === 'not-connected' && !isConnected)
     return matchesSearch && matchesStatus
   })
 
   // Cập nhật trạng thái selectAll khi selectedAccounts thay đổi
   useEffect(() => {
     const selectableAccounts = filteredAccounts.filter(
-      account => !account.isConnectedToCurrentShop && !account.isConnectedToOtherShop && account.canConnect
+      account => !account.isConnected && account.canConnect
     )
     setSelectAll(selectableAccounts.length > 0 && selectedAccounts.length === selectableAccounts.length)
   }, [selectedAccounts, filteredAccounts])
@@ -365,7 +360,7 @@ function ConnectAdAccount() {
                       disabled={
                         // Disable khi không còn tài khoản nào có thể chọn (chưa kết nối và có thể connect)
                         filteredAccounts.filter(
-                          account => !account.isConnectedToCurrentShop && !account.isConnectedToOtherShop && account.canConnect
+                          account => !account.isConnected && account.canConnect
                         ).length === 0
                       }
                     />
@@ -398,15 +393,10 @@ function ConnectAdAccount() {
                     <div className="col-status">
                       <div className="status-info">
                         <div className="status-text">
-                          {account.isConnectedToCurrentShop
+                          {account.isConnected
                             ? t('connect_ad_account.connected')
-                            : account.isConnectedToOtherShop
-                              ? `Đã kết nối với shop "${account.connectedBy}"`
-                              : t('connect_ad_account.not_connected')}
+                            : t('connect_ad_account.not_connected')}
                         </div>
-                        {account.connectedBy && (
-                          <div className="connected-by">{account.connectedBy}</div>
-                        )}
                       </div>
                     </div>
 
@@ -416,7 +406,7 @@ function ConnectAdAccount() {
                         checked={selectedAccounts.includes(account.id)}
                         onChange={() => handleAccountSelect(account.id)}
                         className="page-checkbox"
-                        disabled={account.isConnectedToCurrentShop || account.isConnectedToOtherShop || !account.canConnect}
+                        disabled={account.isConnected || !account.canConnect}
                       />
                     </div>
                   </div>

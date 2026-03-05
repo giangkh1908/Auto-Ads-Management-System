@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import "./ConnectPage.css";
 import { useToast } from "../../hooks/common/useToast";
 import { useAuth } from "../../hooks/auth/useAuth";
-import shopService from "../../services/shop/shopService";
-import { getShopCache } from "../../utils/cache/shopCache";
+import facebookService from "../../services/facebook/facebookService";
 import axiosInstance from "../../utils/api/axios.js";
 import logo from "../../assets/Logo_Fchat.png";
 import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
@@ -15,7 +14,6 @@ function ConnectPage() {
   const toast = useToast();
   const { t } = useTranslation();
   const { user, updateUser } = useAuth();
-  const [shopId, setShopId] = useState(null);
   const [fbPages, setFbPages] = useState([]);
   const [selectedPages, setSelectedPages] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,35 +29,12 @@ function ConnectPage() {
     const load = async () => {
       setLoading(true);
       try {
-        // 1. Thử lấy shopId từ cache trước (nhanh nhất)
-        const cachedShop = getShopCache();
-        if (cachedShop?.id) {
-          setShopId(cachedShop.id);
-        } else {
-          // 2. Nếu không có cache, lấy từ API
-          try {
-            const res = await axiosInstance.get("/api/shops/owner");
-            const data = res.data;
-            if (data.success && Array.isArray(data.data)) {
-              const currentShop = data.data.find((s) => s.is_current);
-              if (currentShop?._id) {
-                setShopId(currentShop._id);
-              } else if (data.data.length > 0) {
-                // Nếu không có current shop, lấy shop đầu tiên
-                setShopId(data.data[0]._id);
-              }
-            }
-          } catch (apiError) {
-            //console.error("Error fetching shops:", apiError);
-          }
-        }
-
-        // Lấy danh sách pages từ API (đã có thông tin connected_shop và can_connect)
-        const pagesRes = await shopService.fetchFacebookPages();
-        const realPages = pagesRes?.data?.pages || [];
+        // Lấy danh sách pages từ API 
+        const pagesRes = await facebookService.fetchFacebookPages();
+        console.log("[ConnectPage] fetchFacebookPages response:", pagesRes);
+        const realPages = pagesRes?.data?.data?.pages || [];
         setFbPages(realPages);
-      } catch (e) {
-        //console.error("Load facebook pages error:", e);
+      } catch {
         toast.error(t('connect_page.toast_load_error'));
       } finally {
         setLoading(false);
@@ -84,10 +59,7 @@ function ConnectPage() {
       return "PAGE";
     };
     return (fbPages || []).map((p) => {
-      // Page đã được connect với shop nào đó (không phân biệt shop nào)
-      const isConnected = p.connected_shop !== null && p.connected_shop !== undefined;
-      const isConnectedToCurrentShop = p.connected_shop?.is_current_shop || false;
-      const isConnectedToOtherShop = isConnected && !isConnectedToCurrentShop;
+      const isConnected = p.connected_shop?.is_current_shop || false;
 
       return {
         id: p.id,
@@ -96,15 +68,10 @@ function ConnectPage() {
           p.picture || `https://graph.facebook.com/${p.id}/picture?type=square`,
         link: `https://www.facebook.com/${p.id}`,
         role: deriveRole(p.tasks),
-        status: isConnectedToCurrentShop
+        status: isConnected
           ? t('connect_page.status_connected')
-          : isConnectedToOtherShop
-            ? `Đã kết nối với shop "${p.connected_shop?.shop_name || 'Unknown'}"`
-            : t('connect_page.status_not_connected'),
-        connectedBy: p.connected_shop?.shop_name || null,
-        isConnectedToCurrentShop,
-        isConnectedToOtherShop,
-        // Chỉ cho phép connect nếu page chưa được connect với shop nào (can_connect = true)
+          : t('connect_page.status_not_connected'),
+        isConnected,
         canConnect: p.can_connect === true && !isConnected,
         isSelected: false,
         pageAccessToken: p.pageAccessToken,
@@ -112,9 +79,9 @@ function ConnectPage() {
     });
   }, [fbPages, t]);
 
-  //Đếm số page đã kết nối với shop nào đó và còn lại
+  //Đếm số page đã kết nối và còn lại
   const connectedCount = pages.filter(
-    (page) => page.isConnectedToCurrentShop || page.isConnectedToOtherShop
+    (page) => page.isConnected
   ).length;
   const remainingCount = pages.length - connectedCount;
 
@@ -123,8 +90,7 @@ function ConnectPage() {
     setSelectedPages((prev) =>
       prev.filter((pageId) => {
         const page = pages.find((p) => p.id === pageId);
-        // Chỉ giữ lại page chưa được connect với shop nào và có thể connect
-        return page && page.canConnect && !page.isConnectedToCurrentShop && !page.isConnectedToOtherShop;
+        return page && page.canConnect && !page.isConnected;
       })
     );
   }, [pages]);
@@ -137,8 +103,7 @@ function ConnectPage() {
     // - Không có quyền ADMIN
     // - Không thể kết nối (canConnect = false)
     if (page && (
-      page.isConnectedToCurrentShop ||
-      page.isConnectedToOtherShop ||
+      page.isConnected ||
       page.role !== "ADMIN" ||
       !page.canConnect
     )) {
@@ -156,7 +121,7 @@ function ConnectPage() {
   const handleSelectAll = () => {
     // Chỉ chọn các page chưa được connect với shop nào và có quyền ADMIN
     const selectablePages = filteredPages.filter(
-      (page) => !page.isConnectedToCurrentShop && !page.isConnectedToOtherShop && page.role === "ADMIN" && page.canConnect
+      (page) => !page.isConnected && page.role === "ADMIN" && page.canConnect
     );
 
     if (selectAll) {
@@ -168,32 +133,26 @@ function ConnectPage() {
     }
   };
 
-  //Xử lý kết nối các page đã chọn
   const handleConnectSelected = async () => {
     const selected = pages.filter((p) => selectedPages.includes(p.id));
     if (selected.length === 0) return;
-    if (!shopId) {
-      toast.error(t('connect_page.toast_no_shop'));
-      return;
-    }
     try {
       // Kết nối lần lượt nhiều page
       for (const page of selected) {
-        await shopService.connectFacebookPage({
-          shopId,
+        await facebookService.connectFacebookPage({
           pageId: page.id,
           pageAccessToken: page.pageAccessToken,
         });
       }
 
       // Reload pages để cập nhật trạng thái
-      const pagesRes = await shopService.fetchFacebookPages();
-      const realPages = pagesRes?.data?.pages || [];
+      const pagesRes = await facebookService.fetchFacebookPages();
+      const realPages = pagesRes?.data?.data?.pages || [];
       setFbPages(realPages);
 
       toast.success(t('connect_page.toast_connect_success', { count: selected.length }));
       navigate("/dashboard");
-    } catch (e) {
+    } catch {
       //console.error("Connect page error:", e);
       toast.error(t('connect_page.toast_connect_error'));
     }
@@ -209,11 +168,11 @@ function ConnectPage() {
 
     // Nếu đã có Facebook → refresh token như bình thường
     try {
-      const response = await shopService.refreshFacebookToken();
-      if (response.success) {
+      const response = await facebookService.refreshFacebookToken();
+      if (response.data?.success) {
         toast.success(t('connect_page.toast_refresh_success'));
-        const pagesRes = await shopService.fetchFacebookPages();
-        const realPages = pagesRes?.data?.pages || [];
+        const pagesRes = await facebookService.fetchFacebookPages();
+        const realPages = pagesRes?.data?.data?.pages || [];
         setFbPages(realPages);
       } else {
         toast.error(response.message || t('connect_page.toast_refresh_error'));
@@ -263,14 +222,14 @@ function ConnectPage() {
       );
 
       if (linkResponse.data.success) {
-        const { user: updatedUser, pages } = linkResponse.data.data;
+        const { user: updatedUser } = linkResponse.data.data;
 
         // Cập nhật user trong context (không cần đăng nhập lại)
         updateUser(updatedUser);
 
         // Reload danh sách pages
-        const pagesRes = await shopService.fetchFacebookPages();
-        const realPages = pagesRes?.data?.pages || [];
+        const pagesRes = await facebookService.fetchFacebookPages();
+        const realPages = pagesRes?.data?.data?.pages || [];
         setFbPages(realPages);
         toast.success("Kết nối Facebook thành công!");
       } else {
@@ -328,7 +287,7 @@ function ConnectPage() {
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     // Check page đã được connect với shop nào (current hoặc other)
-    const isConnected = page.isConnectedToCurrentShop || page.isConnectedToOtherShop;
+    const isConnected = page.isConnected;
     const matchesStatus =
       statusFilter === "status" ||
       (statusFilter === "connected" && isConnected) ||
@@ -338,9 +297,9 @@ function ConnectPage() {
 
   // Cập nhật trạng thái selectAll khi selectedPages thay đổi
   useEffect(() => {
-    // Chỉ đếm các page chưa được connect với shop nào và có thể connect
+    // Chỉ đếm các page chưa được connect
     const selectablePages = filteredPages.filter(
-      (page) => !page.isConnectedToCurrentShop && !page.isConnectedToOtherShop && page.role === "ADMIN" && page.canConnect
+      (page) => !page.isConnected && page.role === "ADMIN" && page.canConnect
     );
     setSelectAll(
       selectablePages.length > 0 &&
@@ -454,10 +413,11 @@ function ConnectPage() {
                     </div>
                     <div className="col-status">
                       <div className="status-info">
-                        <div className="status-text">{page.status}</div>
-                        {page.connectedBy && (
-                          <div className="connected-by">{page.connectedBy}</div>
-                        )}
+                        <div className="status-text">
+                          {page.isConnected
+                            ? t('connect_page.status_connected')
+                            : t('connect_page.status_not_connected')}
+                        </div>
                       </div>
                     </div>
 
@@ -467,7 +427,11 @@ function ConnectPage() {
                         checked={selectedPages.includes(page.id)}
                         onChange={() => handlePageSelect(page.id)}
                         className="page-checkbox"
-                        disabled={page.isConnectedToCurrentShop || page.isConnectedToOtherShop || page.role !== "ADMIN" || !page.canConnect}
+                        disabled={
+                          page.isConnected ||
+                          page.role !== "ADMIN" ||
+                          !page.canConnect
+                        }
                       />
                     </div>
                   </div>

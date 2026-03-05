@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import ChatAIWidget from "../../components/feature/ChatAI/ChatAIWidget";
 import axiosInstance from "../../utils/api/axios";
 import "./Analytics.css";
-import { useMyPackage } from "../../hooks/shop/useMyPackage";
+import { useMyPackage } from "../../hooks/package/useMyPackage";
 import { toast } from "sonner";
 import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
 import Pagination from "../../components/common/Pagination/Pagination";

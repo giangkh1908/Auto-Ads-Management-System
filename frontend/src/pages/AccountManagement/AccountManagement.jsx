@@ -7,7 +7,6 @@ import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import "./AccountManagement.css";
 import { CheckCircle, XCircle, Archive, Trash2, Play, Pause, RefreshCw } from "lucide-react";
 import ConfirmationPopup from "../../components/common/ConfirmationPopup/ConfirmationPopup";
-import { onShopChange } from "../../utils/cache/shopCache";
 import { useAuth } from "../../hooks/auth/useAuth";
 // import { useShopPackage } from "../../hooks/useShopPackage";
 
@@ -81,17 +80,6 @@ function AccountManagement() {
   useEffect(() => {
     fetchAccounts({ q: searchQuery, page, limit });
   }, [fetchAccounts, page, limit, searchQuery]);
-
-  /** Lắng nghe sự kiện thay đổi shop và reload accounts */
-  useEffect(() => {
-    const unsubscribe = onShopChange(() => {
-      // Khi shop thay đổi, reload danh sách accounts
-      setPage(1);
-      fetchAccounts({ q: searchText.trim(), page: 1, limit });
-    });
-
-    return unsubscribe;
-  }, [fetchAccounts, limit, searchText]);
 
   /** Đồng bộ tài khoản quảng cáo từ Facebook vào DB và làm mới dữ liệu */
   const handleSyncAccounts = async () => {

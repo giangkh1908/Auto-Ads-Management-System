@@ -10,14 +10,6 @@ const logSchema = new mongoose.Schema({
     index: true, // Tăng tốc query theo user
   },
 
-  // Cửa hàng liên quan
-  shop_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Shop',
-    required: true,
-    index: true, // Bắt buộc có shop_id + index để query nhanh
-  },
-
   // Hành động (ví dụ: ADD_EMPLOYEE, ASSIGN_PAGES, CONNECT_FACEBOOK_PAGE...)
   action: {
     type: String,
@@ -51,12 +43,6 @@ const logSchema = new mongoose.Schema({
     trim: true,
   },
   
-  // Tên cửa hàng (cache để hiển thị ngay)
-  shop_name: {
-    type: String,
-    trim: true,
-  },
-
   // MÔ TẢ CHI TIẾT – SIÊU QUAN TRỌNG CHO FRONTEND
   description: {
     type: String,
@@ -134,7 +120,6 @@ const logSchema = new mongoose.Schema({
 });
 
 // === TỰ ĐỘNG TẠO COMPOUND INDEX SIÊU NHANH ===
-logSchema.index({ shop_id: 1, created_at: -1 }); // Query log theo shop + mới nhất trước
 logSchema.index({ user_id: 1, created_at: -1 });
 logSchema.index({ action: 1, created_at: -1 });
 
@@ -149,26 +134,13 @@ logSchema.virtual('user', {
   justOne: true,
 });
 
-logSchema.virtual('shop', {
-  ref: 'Shop',
-  localField: 'shop_id',
-  foreignField: '_id',
-  justOne: true,
-});
-
-// === TỰ ĐỘNG SET user_name, shop_name TRƯỚC KHI SAVE ===
+// === TỰ ĐỘNG SET user_name TRƯỚC KHI SAVE ===
 logSchema.pre('save', async function(next) {
   try {
     if (this.isModified('user_id') || !this.user_name) {
       if (this.user_id) {
         const user = await mongoose.model('User').findById(this.user_id).lean();
         this.user_name = user?.full_name || user?.email || 'Hệ thống';
-      }
-    }
-    if (this.isModified('shop_id') || !this.shop_name) {
-      if (this.shop_id) {
-        const shop = await mongoose.model('Shop').findById(this.shop_id).lean();
-        this.shop_name = shop?.shop_name || 'Shop không xác định';
       }
     }
   } catch (err) {

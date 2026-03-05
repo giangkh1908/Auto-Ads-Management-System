@@ -1154,17 +1154,23 @@ body {
   right: 0;
   background: white;
   border: 1px solid #d1d5db;
-  border-radius: 6;
-  margin-top: 4;
+  border-radius: 6px;
+  margin-top: 4px;
   z-index: 9999;
 }
 
 .dropdown-item-campaign {
+  display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
   cursor: pointer;
   background: #fff;
+  transition: background 0.2s ease;
+}
+
+.dropdown-item-campaign:hover {
+  background: #f3f4f6;
 }
 
 /* Datetime overlay styles moved to AdsetStep/AdsetStep.css */

@@ -1,23 +1,24 @@
 import { useTranslation } from 'react-i18next'
+import { MapPin, Phone, PhoneCall, Mail, Clock, Facebook, Youtube, ExternalLink } from 'lucide-react'
 import './Footer.css'
 import logo_1 from "../../../assets/Logo_Fchat.png";
 
 function Footer() {
     const { t } = useTranslation()
-    
+
     return (
         <footer className="app-footer">
             <div className="footer-inner">
                 <div className="footer-col brand-col">
                     <div className="brand">
-                        <img src={logo_1} alt="Logo" className="brand-logo-image" />
+                        <img src={logo_1} alt="Fchat Logo" className="brand-logo-image" />
                     </div>
                     <ul className="contact-list">
-                        <li><span className="icon">📍</span> {t('footer.address')}</li>
-                        <li><span className="icon">📞</span> {t('footer.support')}</li>
-                        <li><span className="icon">☎</span> {t('footer.complaint')}</li>
-                        <li><span className="icon">✉</span> {t('footer.email')}</li>
-                        <li><span className="icon">⏰</span> {t('footer.working_hours')}</li>
+                        <li><MapPin size={15} className="contact-icon" /> {t('footer.address')}</li>
+                        <li><Phone size={15} className="contact-icon" /> {t('footer.support')}</li>
+                        <li><PhoneCall size={15} className="contact-icon" /> {t('footer.complaint')}</li>
+                        <li><Mail size={15} className="contact-icon" /> {t('footer.email')}</li>
+                        <li><Clock size={15} className="contact-icon" /> {t('footer.working_hours')}</li>
                     </ul>
                 </div>
 
@@ -26,22 +27,22 @@ function Footer() {
                     <ul>
                         <li><a href="service-package">{t('footer.pricing')}</a></li>
                         <li><a href="guide">{t('footer.guide')}</a></li>
-                        {/* <li><a href="#faq">{t('footer.faq')}</a></li>
-                        <li><a href="#activate">{t('footer.activate')}</a></li>
-                        <li><a href="#agency">{t('footer.agency')}</a></li>
-                        <li><a href="#affiliate">{t('footer.affiliate')}</a></li> */}
                     </ul>
                 </div>
 
                 <div className="footer-col links-col">
                     <h4>{t('footer.policy')}</h4>
                     <ul>
-                        <li><a href="https://www.facebook.com/groups/fchat.vn" target="_blank" rel="noopener noreferrer">{t('footer.support_group')}</a></li>
-                        {/* <li><a href="#terms">{t('footer.terms')}</a></li>
-                        <li><a href="#privacy">{t('footer.privacy')}</a></li>
-                        <li><a href="#payment">{t('footer.payment')}</a></li>
-                        <li><a href="#tools">{t('footer.facebook_tools')}</a></li> */}
-                        <li><a href="https://fchat.vn/blog" target="_blank" rel="noopener noreferrer">{t('footer.blog')}</a></li>
+                        <li>
+                            <a href="https://www.facebook.com/groups/fchat.vn" target="_blank" rel="noopener noreferrer">
+                                {t('footer.support_group')} <ExternalLink size={12} className="external-icon" />
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://fchat.vn/blog" target="_blank" rel="noopener noreferrer">
+                                {t('footer.blog')} <ExternalLink size={12} className="external-icon" />
+                            </a>
+                        </li>
                     </ul>
                 </div>
 
@@ -53,10 +54,18 @@ function Footer() {
                     </div>
                     <h4>{t('footer.connect_fchat')}</h4>
                     <div className="socials">
-                        <a className="social fb" href="https://www.facebook.com/fchat.chatbot" aria-label="Facebook" target="_blank" rel="noopener noreferrer">f</a>
-                        <a className="social yt" href="https://www.youtube.com/channel/UCjzpv6N7pKvw1oSOmgAsNig" aria-label="YouTube" target="_blank" rel="noopener noreferrer">▶</a>
+                        <a className="social fb" href="https://www.facebook.com/fchat.chatbot" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+                            <Facebook size={18} />
+                        </a>
+                        <a className="social yt" href="https://www.youtube.com/channel/UCjzpv6N7pKvw1oSOmgAsNig" aria-label="YouTube" target="_blank" rel="noopener noreferrer">
+                            <Youtube size={18} />
+                        </a>
                     </div>
                 </div>
+            </div>
+
+            <div className="footer-bottom">
+                <p>© {new Date().getFullYear()} Fchat. All rights reserved.</p>
             </div>
         </footer>
     )

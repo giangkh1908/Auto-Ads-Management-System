@@ -4,14 +4,7 @@ import AdsCampaign from "../../models/ads/adsCampaign.model.js";
 import AdsSet from "../../models/ads/adsSet.model.js";
 import Ads from "../../models/ads/ads.model.js";
 import AdsAccount from "../../models/ads/adsAccount.model.js";
-import UserRole from "../../models/user/userRole.model.js";
 import { saveLog } from "../../utils/log.js";
-
-// Helper: Get current shop_id from user's active UserRole
-async function getCurrentShopId(userId) {
-  const currentRole = await UserRole.findOne({ user_id: userId, is_current: true }).lean();
-  return currentRole?.shop_id || null;
-}
 
 // Helper function để extract string ID từ ObjectId format
 function extractObjectId(value) {
@@ -371,11 +364,9 @@ export async function deleteCampaignCascadeCtrl(req, res) {
     ]);
 
     // Log xóa campaign thành công
-    const currentShopId = await getCurrentShopId(req.user._id);
     await saveLog({
       user_id: req.user._id,
       user_name: req.user?.full_name,
-      shop_id: campaign.shop_id || currentShopId,
       action: "DELETE_CAMPAIGN",
       target_type: "Campaign",
       target_id: campaign._id.toString(),
@@ -472,11 +463,9 @@ export async function archiveCampaignCascadeCtrl(req, res) {
     ]);
 
     // Log lưu trữ campaign thành công
-    const currentShopId = await getCurrentShopId(req.user._id);
     await saveLog({
       user_id: req.user._id,
       user_name: req.user?.full_name,
-      shop_id: campaign.shop_id || currentShopId,
       action: "ARCHIVE_CAMPAIGN",
       target_type: "Campaign",
       target_id: campaign._id.toString(),

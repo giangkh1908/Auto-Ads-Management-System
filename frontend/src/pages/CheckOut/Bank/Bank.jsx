@@ -6,7 +6,7 @@ import { useAuth } from "../../../hooks/auth/useAuth";
 import "./Bank.css";
 import axiosInstance from "../../../utils/api/axios.js";
 import { toast } from "sonner";
-import paymentTransactionService from "../../../services/shop/paymentTransactionService";
+import paymentTransactionService from "../../../services/transaction/paymentTransactionService";
 // import { STORAGE_KEYS } from "../../constants/app.constants";
 
 function Bank() {

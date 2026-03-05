@@ -5,10 +5,10 @@ import facebook_icon from "../../assets/facebook.png";
 import { ROUTES, STORAGE_KEYS } from "../../constants/app.constants";
 import { Edit3, Pause, PlugZap, RefreshCcw, Repeat, Bell, Users, MessageCircle, Bot, Play, Calendar, Key, Store, Search as SearchIcon, Plus, Link2, CheckCircle, XCircle } from "lucide-react";
 import profileService from "../../services/auth/profileService";
-import shopService from "../../services/shop/shopService";
+import { useMyPackage } from "../../hooks/package/useMyPackage.js";
+import facebookService from "../../services/facebook/facebookService";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { useShopPackage } from "../../hooks/shop/useShopPackage.js";
 import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay.jsx";
 
 function Dashboard() {
@@ -21,43 +21,16 @@ function Dashboard() {
   const [connectedPages, setConnectedPages] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { t } = useTranslation();
-  const { shopPkg, loading: pkgLoading } = useShopPackage();
-
-  // Lấy package từ shopPkg
-  const pkg = shopPkg?.package ? {
-    package: shopPkg.package,
-    limits: {
-      pages: shopPkg.package.pages || 0,
-      employees: shopPkg.package.employees || 0,
-      shops: shopPkg.package.shops || 0,
-    },
-    usage: {
-      pages: connectedPages.length, // Số page đã kết nối
-      employees: 0,
-      shops: 0,
-    },
-  } : null;
-
-  // Kiểm tra có thể kết nối page mới không (dựa trên shop package)
-  const canConnectPage = pkg && (connectedPages.length < (pkg.limits?.pages || 0));
+  const { myPkg: pkg, loading: pkgLoading } = useMyPackage();
+  const limitsPages = pkg?.package?.pages || 0;
+  const canConnectPage = (pkg && connectedPages.length < limitsPages);
 
   // Tách logic load thành function riêng để tái sử dụng
   const loadPages = useCallback(async () => {
     try {
       const me = await profileService.getCurrentProfile();
-      // Lấy từ Shop model (nguồn chính) thay vì ShopUser
-      const shop = me?.data?.shop || me?.shop;
-      const shopUser = me?.data?.shopUser || me?.shopUser;
-
-      if (!shop) {
-        toast.warning("No shop found in profile");
-        setConnectedPages([]);
-        return false;
-      }
-
-      // Lấy danh sách page mà user hiện tại có quyền truy cập
-      const shopUserPages = Array.isArray(shopUser?.facebook_pages)
-        ? shopUser.facebook_pages
+      const shopUserPages = Array.isArray(me?.data?.user?.facebook_pages)
+        ? me.data.user.facebook_pages
         : [];
       const userAccessiblePageIds = new Set(
         shopUserPages
@@ -69,22 +42,21 @@ function Dashboard() {
           .map((p) => p.page_id)
       );
 
-      // Lấy pages từ Shop.facebook_pages (nguồn chính trong DB)
-      const pages = Array.isArray(shop?.facebook_pages)
-        ? shop.facebook_pages
+      // Lấy pages từ User.facebook_pages
+      const pages = Array.isArray(me?.data?.user?.facebook_pages)
+        ? me.data.user.facebook_pages
         : [];
 
       const normalized = pages
-        .filter((p) => p.connected_status === "connected")
+        // .filter((p) => p.connected_status === "connected")
         .map((p) => ({
           id: p.page_id,
           // Shop model dùng page_info.name
-          name: p.page_info?.name || p.page_name || "Facebook Page",
+          name: p.page_info?.name || "Facebook Page",
           pageId: p.page_id,
-          link: p.page_info?.link || `https://www.facebook.com/${p.page_id}`,
+          link: `https://www.facebook.com/${p.page_id}`,
           avatar:
             p.page_info?.picture_url ||
-            p.picture_url ||
             `https://graph.facebook.com/${p.page_id}/picture?type=square`,
           status: p.page_status || "active",
           followerCount: 0,
@@ -112,7 +84,7 @@ function Dashboard() {
 
     setIsRefreshing(true);
     try {
-      await shopService.refreshUserPages();
+      await facebookService.refreshFacebookToken();
     } catch (error) {
       //console.error("Refresh user pages error:", error);
       toast.error(
@@ -167,10 +139,7 @@ function Dashboard() {
     }
     if (itemId === "pause") {
       try {
-        const res = await shopService.updatePageStatus({
-          pageId,
-          pageStatus: "pause",
-        });
+        const res = await facebookService.updatePageStatus(pageId, "pause");
         if (res?.success) {
           setConnectedPages((prev) =>
             prev.map((p) =>
@@ -189,10 +158,7 @@ function Dashboard() {
     }
     if (itemId === "resume") {
       try {
-        const res = await shopService.updatePageStatus({
-          pageId,
-          pageStatus: "active",
-        });
+        const res = await facebookService.updatePageStatus(pageId, "active");
         if (res?.success) {
           setConnectedPages((prev) =>
             prev.map((p) =>
@@ -211,13 +177,7 @@ function Dashboard() {
     }
     if (itemId === "disconnect") {
       try {
-        const me = await profileService.getCurrentProfile();
-        const shop = me?.data?.shopUser || me?.shopUser;
-        if (!shop?.shop_id) return;
-        const res = await shopService.disconnectFacebookPage({
-          shopId: shop.shop_id,
-          pageId,
-        });
+        const res = await facebookService.disconnectFacebookPage(pageId);
         // Kiểm tra phản hồi
         if (res?.success) {
           setConnectedPages((prev) => prev.filter((p) => p.id !== pageId));
@@ -345,8 +305,8 @@ function Dashboard() {
                   canConnectPage
                     ? t("dashboard.connect_new_page")
                     : pkg
-                      ? `Đã đạt giới hạn: ${connectedPages.length}/${pkg.limits?.pages || 0}`
-                      : "Shop owner cần gói dịch vụ để kết nối Page"
+                      ? `Đã đạt giới hạn: ${connectedPages.length}/${limitsPages}`
+                      : "Người dùng cần gói dịch vụ để kết nối Page"
                 }
               >
                 <div className="add-page-content">
@@ -358,7 +318,7 @@ function Dashboard() {
                     {pkgLoading
                       ? "..."
                       : pkg
-                        ? `${connectedPages.length}/${pkg.limits?.pages || 0}`
+                        ? `${connectedPages.length}/${limitsPages}`
                         : `${connectedPages.length}/?`}
                     )
                   </div>

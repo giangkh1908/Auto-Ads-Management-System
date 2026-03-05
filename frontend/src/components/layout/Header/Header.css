@@ -48,17 +48,17 @@
   color: #337ab7;
 }
 
-/* Button styles for logo */
-button {
+/* Button styles for header only — scoped to avoid global side effects */
+.app-header button {
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: all 0.3s ease;
+  transition: opacity 0.2s ease;
 }
 
-button:hover {
-  transform: scale(1.05);
+.app-header button:hover {
+  opacity: 0.85;
 }
 
 /* Header Actions */
@@ -194,48 +194,65 @@ button:hover {
   width: 114.14px;
 }
 
-a {
+/* Link styles scoped to header */
+.app-header a {
   text-decoration: none;
 }
 
 .app-nav {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  z-index: 1010;
+}
+
+.app-nav > div,
+.app-nav {
   display: flex;
   align-items: center;
-  gap: 8px; /* Tighter gap for segmented feel */
-  z-index: 1010;
-  background: rgba(100, 116, 139, 0.08);
-  padding: 6px;
-  border-radius: 14px;
-  border: 1px solid rgba(226, 232, 240, 0.4);
-  flex: 1;
-  justify-content: center;
+}
+
+.app-nav {
+  background: #f8f9fa;
+  border-radius: 32px;
+  padding: 4px;
+  height: 48px;
+  width: 100%;
+  max-width: 800px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .nav-btn {
-  background: transparent;
-  border: none;
-  font-weight: 600;
-  font-size: 14px;
-  border-radius: 10px;
-  padding: 8px 16px;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
   color: #64748b;
+  cursor: pointer;
+  border-radius: 24px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  transform: scale(1);
 }
 
 .nav-btn:hover {
-  background: rgba(255, 255, 255, 0.5);
-  color: #1e293b;
+  background: rgba(255, 255, 255, 0.6);
+  color: #334155;
+  transform: scale(0.98);
 }
 
 .nav-btn.active {
-  background: #ffffff;
-  color: #2563eb;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  background: #e0edff;
+  color: #0b5edd;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(11, 94, 221, 0.12);
+  transform: scale(1);
 }
 
 .app-nav-2 {
@@ -255,18 +272,21 @@ a {
   padding: 8px 16px;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   gap: 8px;
+  transform: scale(1);
 }
 
 .nav-btn-2:hover {
   background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.97);
 }
 
 .nav-btn-2.active {
   background: rgba(255, 255, 255, 0.2);
+  transform: scale(1);
 }
 
 .app-header.scrolled .nav-btn-2 {
@@ -309,16 +329,15 @@ a {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
-.app-header.scrolled .nav-btn-2 {
-  color: #055df2;
+.app-header.scrolled .nav-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+  color: #334155;
 }
 
-.app-header.scrolled .nav-btn:hover,
-.app-header.scrolled .nav-btn-2:hover,
-.app-header.scrolled .nav-btn.active,
-.app-header.scrolled .nav-btn-2.active {
-  border-bottom: 2px solid #055df2;
-  color: #055df2;
+.app-header.scrolled .nav-btn.active {
+  background: #e0edff;
+  color: #0b5edd;
+  box-shadow: 0 1px 3px rgba(11, 94, 221, 0.12);
 }
 
 .user-name-header {
@@ -442,6 +461,18 @@ a {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.shop-item-name-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shop-switching-text {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #64748b;
 }
 
 .shop-item-name span {

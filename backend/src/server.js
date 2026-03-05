@@ -12,11 +12,8 @@ import { startUserPackageExpiryCron } from "./jobs/userPackageExpiry.job.js";
 
 //Import Routes
 import userRoutes from './routes/user/userRoutes.js';
-import roleRoutes from './routes/admin/roleRoutes.js';
-import userRoleRoutes from './routes/user/userRoleRoutes.js';
-import shopRoutes from './routes/shops/shopRoutes.js';
-import shopUserRoutes from './routes/shops/shopUserRoutes.js';
 import authRoutes from './routes/user/authRoutes.js';
+import facebookRoutes from './routes/user/facebookRoutes.js';
 import adsAccountRoutes from "./routes/ads/adsAccountRoutes.js";
 import adsWizardRoutes from "./routes/ads/adsWizardRoutes.js";
 import adsCampaignRoutes from "./routes/ads/adsCampaignRoutes.js";
@@ -71,10 +68,7 @@ app.use(express.urlencoded({ extended: true }));
 
 //Routes
 app.use("/api/users", userRoutes);
-app.use("/api/roles", roleRoutes);
-app.use("/api/user-roles", userRoleRoutes);
-app.use("/api/shops", shopRoutes);
-app.use("/api/shop-users", shopUserRoutes);
+app.use("/api/users/facebook", facebookRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/ads-accounts", adsAccountRoutes);
 app.use("/api/campaigns", adsCampaignRoutes);

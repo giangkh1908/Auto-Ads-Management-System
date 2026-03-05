@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import "./CustomerPage.css";
 import { Play, Pause, Ban, Undo, ChevronDown, Search, Eye } from "lucide-react";
 import ConfirmationPopup from "../../../../../components/common/ConfirmationPopup/ConfirmationPopup";
-import ViewDetails from "./ViewShop";
 import CustomerUpdate from "./CustomerUpdate";
 import axiosInstance from "../../../../../utils/api/axios";
 import { API_ENDPOINTS } from "../../../../../config/api.config";
@@ -111,11 +110,6 @@ export default function CustomerPage() {
     message: "",
     onConfirm: null,
     isLoading: false,
-  });
-  const [viewDetailsPopup, setViewDetailsPopup] = useState({
-    isOpen: false,
-    userId: null,
-    userName: "",
   });
   const [updatePopup, setUpdatePopup] = useState({
     isOpen: false,
@@ -390,7 +384,6 @@ export default function CustomerPage() {
           <div className="amu-col amu-col-name">{t("customerPage.columns.name")}</div>
           {/* <div className="amu-col amu-col-phone">{t("customerPage.columns.phone")}</div>
           <div className="amu-col amu-col-email">{t("customerPage.columns.email")}</div> */}
-          <div className="amu-col amu-col-shop">{t("customerPage.columns.shop")}</div>
           <div className="amu-col amu-col-created">{t("customerPage.columns.createdAt")}</div>
           {/* <div className="amu-col amu-col-lastlogin">{t("customerPage.columns.lastLogin")}</div> */}
           <div className="amu-col amu-col-status">{t("customerPage.columns.status")}</div>
@@ -411,20 +404,6 @@ export default function CustomerPage() {
               <div className="amu-col amu-col-name">{row.name}</div>
               {/* <div className="amu-col amu-col-phone">{row.phone}</div>
               <div className="amu-col amu-col-email">{row.email}</div> */}
-              <div className="amu-col amu-col-shop">
-                <button
-                  className="amu-view-details"
-                  onClick={() =>
-                    setViewDetailsPopup({
-                      isOpen: true,
-                      userId: row.id,
-                      userName: row.name,
-                    })
-                  }
-                >
-                  {t("customerPage.actions.viewDetails")}
-                </button>
-              </div>
               <div className="amu-col amu-col-created">
                 <div>{row.createdAt.split(" ")[0]}</div>
                 <div className="amu-sub">{row.createdAt.split(" ")[1]}</div>
@@ -536,19 +515,7 @@ export default function CustomerPage() {
         isLoading={confirmationPopup.isLoading}
       />
 
-      {/* View Details Popup */}
-      <ViewDetails
-        isOpen={viewDetailsPopup.isOpen}
-        onClose={() =>
-          setViewDetailsPopup({
-            isOpen: false,
-            userId: null,
-            userName: "",
-          })
-        }
-        userId={viewDetailsPopup.userId}
-        userName={viewDetailsPopup.userName}
-      />
+
 
       {/* Customer Update Modal */}
       <CustomerUpdate

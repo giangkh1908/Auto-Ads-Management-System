@@ -8,11 +8,11 @@
 .ads-management-content {
   /* Reduced padding to maximize utilization */
   padding: 4px 6px;
-  margin-left: 240px; /* expanded width sync with sidebar */
-  transition: margin-left 0.25s ease;
+  margin-left: 225px; /* expanded width sync with sidebar */
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sidebar-collapsed .ads-management-content {
-  margin-left: 84px;
+  margin-left: 70px;
 }
 
 /* center content area within remaining space */
@@ -31,8 +31,10 @@
 
 .ads-toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   padding: 12px 14px; /* Slightly reduced padding */
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(12px);
@@ -43,10 +45,11 @@
   z-index: 50;
 }
 
-.ads-main-tool {
+.account-select {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .account-select select {
@@ -131,7 +134,6 @@
   padding: 10px 18px;
   border-radius: 10px;
   cursor: pointer;
-  margin-left: 16px;
   font-weight: 600;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.1), 0 2px 4px -1px rgba(16, 185, 129, 0.06);
@@ -150,7 +152,6 @@
   padding: 10px 18px;
   border-radius: 10px;
   cursor: pointer;
-  margin-left: 16px;
   font-weight: 600;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1), 0 2px 4px -1px rgba(37, 99, 235, 0.06);
@@ -180,7 +181,6 @@
   padding: 10px 18px;
   border-radius: 10px;
   cursor: pointer;
-  margin-left: 16px;
   font-weight: 600;
   font-size: 13px;
   display: inline-flex;
@@ -248,6 +248,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.ads-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .search-input-wrapper {
@@ -444,16 +452,34 @@
 }
 
 .ads-table-wrapper {
-  padding: 4px 6px; /* Greatly reduced to utilize space */
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Styling scrollbar for nice appearance */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.ads-table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.ads-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ads-table-wrapper::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
 }
 
 .ads-table {
   width: 100%;
+  min-width: 1200px;
   border-collapse: separate;
   border-spacing: 0;
   background: #ffffff;
   border-radius: 8px; /* Slightly smaller radius for edge-to-edge feel */
-  overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   table-layout: fixed; /* Column resizing works reliably with fixed layout */
 }
@@ -993,7 +1019,7 @@
 /* Tablet (768px - 1024px) */
 @media (max-width: 1024px) {
   .ads-management-content {
-    margin-left: 84px;
+    margin-left: 70px;
     padding: 12px 16px;
   }
 
@@ -1082,6 +1108,14 @@
     align-items: stretch;
     gap: 10px;
     padding: 8px;
+  }
+
+  .ads-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .ads-main-tool {

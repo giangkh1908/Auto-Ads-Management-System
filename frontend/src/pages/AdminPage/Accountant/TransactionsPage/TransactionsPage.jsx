@@ -6,10 +6,10 @@ import Pagination from "../../../../components/common/Pagination/Pagination";
 import DateRangePicker from "../../../../components/common/DateRangePicker/DateRangePicker";
 import NoteEditor from "../../../../components/common/NoteEditor/NoteEditor";
 import { fetchLatestNotesBatch } from "../../../../utils/business-logic/noteUtils";
-import paymentTransactionService from "../../../../services/shop/paymentTransactionService";
+import paymentTransactionService from "../../../../services/transaction/paymentTransactionService";
 import { toast } from "sonner";
 import Invoice from "../../../../components/feature/Invoice/Invoice";
-import invoiceService from "../../../../services/shop/invoiceService";
+import invoiceService from "../../../../services/transaction/invoiceService";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 

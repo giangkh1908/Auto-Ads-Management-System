@@ -8,6 +8,6 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 createRoot(document.getElementById('root')).render(
   // Tạm thời tắt StrictMode để tránh toast hiển thị 2 lần trong development
   // <StrictMode>
-    <App />
+  <App />
   // </StrictMode>,
 )

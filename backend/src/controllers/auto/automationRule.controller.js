@@ -1,7 +1,5 @@
 import AutomationRule from "../../models/auto/autoRule.model.js";
 import AdsAccount from "../../models/ads/adsAccount.model.js";
-import UserRole from "../../models/user/userRole.model.js";
-import Shop from "../../models/shops/shop.model.js";
 import mongoose from "mongoose";
 import { calculateNextRunAt } from "../../services/auto/autoRuleService.js";
 
@@ -11,7 +9,7 @@ import { calculateNextRunAt } from "../../services/auto/autoRuleService.js";
  */
 export const getAutomationRules = async (req, res) => {
   try {
-    const { account_id, shop_id, page = 1, limit = 10, fetch_all = false } = req.query;
+    const { account_id, page = 1, limit = 10, fetch_all = false } = req.query;
     const userId = req.user?._id;
 
     // Build filter
@@ -29,36 +27,6 @@ export const getAutomationRules = async (req, res) => {
       };
     }
 
-    // Filter theo shop_id (ưu tiên shop_id từ query, nếu không có thì lấy từ user)
-    let shopIdToFilter = shop_id;
-    if (!shopIdToFilter && userId) {
-      // Ưu tiên 1: Lấy shop_id từ UserRole với is_current = true (shop đang active)
-      const currentUserRole = await UserRole.findOne({
-        user_id: userId,
-        is_current: true,
-        shop_id: { $ne: null },
-        revoked_at: null,
-      }).lean();
-
-      if (currentUserRole?.shop_id) {
-        shopIdToFilter = currentUserRole.shop_id.toString();
-      } else {
-        // Fallback: Tìm shop mà user là owner
-        const shop = await Shop.findOne({
-          owner_id: userId,
-          deleted_at: null,
-        }).lean();
-        
-        if (shop) {
-          shopIdToFilter = shop._id.toString();
-        }
-      }
-    }
-
-    // Thêm filter shop_id nếu có
-    if (shopIdToFilter) {
-      filter.shop_id = new mongoose.Types.ObjectId(shopIdToFilter);
-    }
 
     // Filter theo user (chỉ lấy rules của user hiện tại)
     if (userId) {
@@ -184,7 +152,6 @@ export const createAutomationRule = async (req, res) => {
     const {
       name,
       account_id,
-      shop_id,
       apply_to,
       apply_to_ids,
       action,
@@ -295,9 +262,6 @@ export const createAutomationRule = async (req, res) => {
       name: name.trim(),
       account_id: new mongoose.Types.ObjectId(account_id),
       external_account_id: account.external_id, // Sẽ được set tự động bởi pre-save hook, nhưng set sẵn để đảm bảo
-      shop_id: shop_id
-        ? new mongoose.Types.ObjectId(shop_id)
-        : null,
       apply_to: apply_to || "",
       apply_to_ids: {
         campaign_ids: validatedCampaignIds,
@@ -346,7 +310,6 @@ export const updateAutomationRule = async (req, res) => {
     const {
       name,
       account_id,
-      shop_id,
       apply_to,
       apply_to_ids,
       action,
@@ -468,10 +431,6 @@ export const updateAutomationRule = async (req, res) => {
       updateData.account_id = new mongoose.Types.ObjectId(account_id);
       updateData.external_account_id = external_account_id;
     }
-    if (shop_id !== undefined)
-      updateData.shop_id = shop_id
-        ? new mongoose.Types.ObjectId(shop_id)
-        : null;
     if (apply_to !== undefined) updateData.apply_to = apply_to;
     if (apply_to_ids !== undefined) updateData.apply_to_ids = apply_to_ids;
     if (action !== undefined) updateData.action = action;

@@ -1,276 +1,212 @@
-/* Fixed, modern sidebar with hover animation */
+/* ══════════════════════════════════════════════
+   Sidebar — Click Toggle UI (Facebook Ads Style)
+   ══════════════════════════════════════════════ */
+
 .app-sidebar {
     position: fixed;
-    top: 60px; /* under fixed header */
+    top: 60px; /* Dưới Header App */
     left: 0;
     height: calc(100vh - 60px);
-    width: 70px; /* Default collapsed width */
-    background: #ffffff;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-    padding: 12px 10px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 225px; /* Giữ w-225px thay vì w-64 giữ nguyên padding 2 page */
+    background-color: #ffffff;
+    border-right: 1px solid #e5e7eb; /* border-gray-200 */
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 900;
-    overflow: hidden;
-    cursor: pointer;
+    overflow-x: hidden;
 }
 
-/* Expanded state on hover */
-.app-sidebar:not(.collapsed) {
-    width: 225px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-}
-
-/* Collapsed state (default) */
+/* Collapsed state (w-16 tương đương ~70px để layout cũ không vỡ) */
 .app-sidebar.collapsed {
-    width: 90px;
+    width: 70px;
 }
 
-/* Removed sidebar-toggle styles - no longer needed */
-
-.sidebar-nav ul {
-    list-style: none;
-    margin-right: 5px;
-    padding: 6px;
-}
-.sidebar-section-title {
-    font-size: 10px;
-    letter-spacing: 0.05em;
-    color: #94a3b8;
-    /* margin: 12px 10px 8px; */
-    opacity: 0.8;
-}
-.sidebar-item {
+/* Sidebar Header */
+.sidebar-header {
+    height: 56px; /* h-14 */
     display: flex;
     align-items: center;
-    /* gap: 15px; */
-    padding: 15px 15px;
-    border-radius: 8px;
-    color: #000000;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    border: none;
-    border-bottom: 3px solid #0b0b0b14;
-    margin: 6px 0px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sidebar-header.justify-center {
+    justify-content: center;
+}
+
+.sidebar-header.justify-between {
+    justify-content: space-between;
+}
+
+.px-4 {
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+.sidebar-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
     white-space: nowrap;
-    overflow: hidden;
-    background-color: #fffefe;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-}
-.sidebar-item:hover { 
-    box-shadow: 0 0 10px rgba(116, 131, 131, 0.5);
-    background: rgba(0, 123, 255, 0.1);
-    transform: translateX(1px);
-}
-
-/* Active state for current page */
-.sidebar-item.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    transform: translateX(4px);
-}
-
-.sidebar-item.active .sidebar-icon {
-    transform: scale(1.2);
-    filter: brightness(1.2);
-}
-
-.sidebar-item.active .sidebar-label {
-    font-weight: 600;
     opacity: 1;
+    transition: opacity 0.2s ease-in-out;
 }
-/* .sidebar-divider {
-    height: 1px;
-    background: rgba(255,255,255,0.08);
-    margin: 14px 6px;
-} */
-.sidebar-icon {
-    width: 25px;
-    height: 25px;
-    display: inline-flex;
+
+.app-sidebar.collapsed .sidebar-title {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar-toggle-btn {
+    display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.3s ease;
+    padding: 6px; /* p-1.5 */
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #4b5563; /* text-gray-600 */
+    cursor: pointer;
+    transition: background-color 0.2s;
+    outline: none;
     flex-shrink: 0;
 }
 
-/* Icon animation on hover */
-.app-sidebar:not(.collapsed) .sidebar-icon {
-    transform: scale(1.1);
+.sidebar-toggle-btn:hover {
+    background-color: #f3f4f6; /* hover:bg-gray-100 */
 }
 
-.sidebar-label { 
-    white-space: nowrap; 
-    opacity: 0;
-    font-size: 15px;
-    font-weight: 500px;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    transform: translateX(-10px);
-    margin-right: 5px;
-    margin-top: 3px;
+/* Sidebar Nav */
+.sidebar-nav {
+    padding: 12px; /* p-3 */
+    flex: 1;
+    overflow-y: auto;
 }
 
-/* Show labels when sidebar is expanded */
-.app-sidebar:not(.collapsed) .sidebar-label {
-    opacity: 0.85;
+.sidebar-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* gap-1 */
+}
+
+/* Menu Item */
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px; /* py-2 */
+    border-radius: 8px; /* rounded-lg */
+    font-size: 14px; /* text-sm */
+    font-weight: 500; /* font-medium */
+    transition: background-color 0.2s, color 0.2s;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    background-color: transparent;
+    color: #374151; /* text-gray-700 */
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-item.justify-center {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.sidebar-item.gap-3 {
+    gap: 12px;
+}
+
+.sidebar-item.px-3 {
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.sidebar-item:hover {
+    background-color: #f3f4f6; /* hover:bg-gray-100 */
+}
+
+/* Active State */
+.sidebar-item.active {
+    background-color: #EBF5FF; /* bg-[#EBF5FF] */
+    color: #0866FF; /* text-[#0866FF] */
+}
+
+/* Icon */
+.sidebar-icon {
+    min-width: 20px; /* min-w-[20px] */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Label */
+.sidebar-label {
+    white-space: nowrap;
+    opacity: 1;
     transform: translateX(0);
+    transition: opacity 0.2s ease-in-out, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Hide labels when sidebar is collapsed */
 .app-sidebar.collapsed .sidebar-label {
     opacity: 0;
     transform: translateX(-10px);
+    pointer-events: none;
 }
 
 /* ============================================
-   RESPONSIVE DESIGN
+   RESPONSIVE DESIGN (Bảo toàn từ cũ)
    ============================================ */
 
 /* Tablet (768px - 1024px) */
 @media (max-width: 1024px) {
-  .app-sidebar {
-    width: 70px;
-  }
-
-  .app-sidebar:not(.collapsed) {
-    width: 200px;
-  }
-
-  .app-sidebar.collapsed {
-    width: 70px;
-  }
-
-  .sidebar-item {
-    padding: 12px 12px;
-  }
-
-  .sidebar-icon {
-    width: 22px;
-    height: 22px;
-  }
-
-  .sidebar-label {
-    font-size: 14px;
-  }
+    .app-sidebar {
+        width: 70px;
+    }
+    .app-sidebar:not(.collapsed) {
+        width: 225px;
+    }
 }
 
 /* Mobile lớn (481px - 767px) */
 @media (max-width: 768px) {
-  .app-sidebar {
-    top: 56px;
-    height: calc(100vh - 56px);
-    width: 0;
-    transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease;
-    z-index: 800;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-  }
+    .app-sidebar {
+        top: 56px;
+        height: calc(100vh - 56px);
+        width: 0;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease;
+        z-index: 800;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    }
 
-  /* Sidebar mở trên mobile */
-  .app-sidebar:not(.collapsed),
-  .app-sidebar.mobile-open {
-    width: 250px;
-    transform: translateX(0);
-  }
+    .app-sidebar:not(.collapsed),
+    .app-sidebar.mobile-open {
+        width: 250px;
+        transform: translateX(0);
+    }
 
-  .app-sidebar.collapsed {
-    width: 0;
-    transform: translateX(-100%);
-  }
+    .app-sidebar.collapsed {
+        width: 0;
+        transform: translateX(-100%);
+    }
 
-  /* Overlay khi sidebar mở trên mobile */
-  .sidebar-overlay {
-    position: fixed;
-    top: 56px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 799;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-  }
-
-  .sidebar-overlay.active {
-    opacity: 1;
-    visibility: visible;
-  }
-
-  .sidebar-nav ul {
-    padding: 8px;
-  }
-
-  .sidebar-item {
-    padding: 14px 16px;
-    margin: 4px 0;
-    border-bottom: 2px solid #0b0b0b14;
-  }
-
-  .sidebar-icon {
-    width: 24px;
-    height: 24px;
-  }
-
-  .sidebar-label {
-    font-size: 15px;
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  /* Hiển thị labels trên mobile khi sidebar mở */
-  .app-sidebar:not(.collapsed) .sidebar-label,
-  .app-sidebar.mobile-open .sidebar-label {
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  .sidebar-section-title {
-    font-size: 11px;
-    margin: 8px 0 4px 0;
-    padding: 0 16px;
-  }
+    .sidebar-header {
+        display: none; /* Ẩn toggle header trên mobile nếu không cần */
+    }
 }
 
 /* Mobile nhỏ (320px - 480px) */
 @media (max-width: 480px) {
-  .app-sidebar {
-    top: 52px;
-    height: calc(100vh - 52px);
-  }
+    .app-sidebar {
+        top: 52px;
+        height: calc(100vh - 52px);
+    }
 
-  .app-sidebar:not(.collapsed),
-  .app-sidebar.mobile-open {
-    width: 220px;
-  }
-
-  .sidebar-overlay {
-    top: 52px;
-  }
-
-  .sidebar-nav ul {
-    padding: 6px;
-  }
-
-  .sidebar-item {
-    padding: 12px 14px;
-    margin: 3px 0;
-  }
-
-  .sidebar-icon {
-    width: 22px;
-    height: 22px;
-  }
-
-  .sidebar-label {
-    font-size: 14px;
-  }
-
-  .sidebar-section-title {
-    font-size: 10px;
-    padding: 0 14px;
-  }
+    .app-sidebar:not(.collapsed),
+    .app-sidebar.mobile-open {
+        width: 220px;
+    }
 }

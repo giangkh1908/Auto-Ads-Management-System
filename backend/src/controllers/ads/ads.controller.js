@@ -5,14 +5,7 @@ import AdsAccount from "../../models/ads/adsAccount.model.js";
 import { fetchAdsFromFacebook, updateAdStatus, deleteEntity, fetchInsightsForAdIds } from "../../services/ads/fbAdsService.js";
 import User from "../../models/user/user.model.js";
 import { syncEntitiesForAccount } from "../../services/ads/entitySyncService.js";
-import UserRole from "../../models/user/userRole.model.js";
-import { saveLog } from "../../utils/log.js";
-
-// Helper: Get current shop_id from user's active UserRole
-async function getCurrentShopId(userId) {
-  const currentRole = await UserRole.findOne({ user_id: userId, is_current: true }).lean();
-  return currentRole?.shop_id || null;
-}// Helper function để extract string ID từ ObjectId format
+import { saveLog } from "../../utils/log.js";// Helper function để extract string ID từ ObjectId format
 function extractObjectId(value) {
   if (!value) return null;
   if (typeof value === 'string') {
@@ -483,11 +476,9 @@ export async function deleteAdCtrl(req, res) {
     });
 
     // Log xóa ad thành công
-    const currentShopId = await getCurrentShopId(req.user._id);
     await saveLog({
       user_id: req.user._id,
       user_name: req.user?.full_name,
-      shop_id: ad.set_id?.campaign_id?.shop_id || currentShopId,
       action: "DELETE_AD",
       target_type: "Ad",
       target_id: ad._id.toString(),
@@ -558,11 +549,9 @@ export async function archiveAdCtrl(req, res) {
     });
 
     // Log lưu trữ ad thành công
-    const currentShopId = await getCurrentShopId(req.user._id);
     await saveLog({
       user_id: req.user._id,
       user_name: req.user?.full_name,
-      shop_id: ad.set_id?.campaign_id?.shop_id || currentShopId,
       action: "ARCHIVE_AD",
       target_type: "Ad",
       target_id: ad._id.toString(),

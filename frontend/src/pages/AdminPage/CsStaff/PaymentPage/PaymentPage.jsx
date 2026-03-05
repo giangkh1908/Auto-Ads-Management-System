@@ -4,7 +4,7 @@ import "./PaymentPage.css";
 import { Search, ChevronDown, UserPlus, UserCheck, Eye } from "lucide-react";
 import DateRangePicker from "../../../../components/common/DateRangePicker/DateRangePicker";
 import Pagination from "../../../../components/common/Pagination/Pagination";
-import paymentTransactionService from "../../../../services/shop/paymentTransactionService";
+import paymentTransactionService from "../../../../services/transaction/paymentTransactionService";
 import { toast } from "sonner";
 import NoteEditor from "../../../../components/common/NoteEditor/NoteEditor";
 import { fetchLatestNotesBatch } from "../../../../utils/business-logic/noteUtils";

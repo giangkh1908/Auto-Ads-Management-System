@@ -341,16 +341,7 @@ export const updateUserPackage = async (req, res) => {
             });
         }
 
-        // Nếu status được cập nhật thành active, đồng bộ shop packages
-        if (data.status === "active" || (updated.status === "active" && oldUserPackage.status !== "active")) {
-            try {
-                const { syncShopPackagesWithOwner } = await import("../../services/shopPackageSyncService.js");
-                await syncShopPackagesWithOwner(updated.user_id.toString());
-            } catch (syncError) {
-                console.error("⚠️ Lỗi khi sync shop packages:", syncError);
-                // Không throw error để không ảnh hưởng đến flow chính
-            }
-        }
+
 
         res.status(200).json({
             success: true,

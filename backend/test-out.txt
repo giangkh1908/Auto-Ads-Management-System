@@ -1,0 +1,14 @@
+[dotenv@17.2.3] injecting env (31) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+🔥 CRASH ERROR STACK:
+MongooseError: The `uri` parameter to `openUri()` must be a string, got "undefined". Make sure the first parameter to `mongoose.connect()` or `mongoose.createConnection()` is a string.
+    at NativeConnection.createClient (D:\AI Agent Auto Ads\backend\node_modules\mongoose\lib\drivers\node-mongodb-native\connection.js:237:11)
+    at NativeConnection.openUri (D:\AI Agent Auto Ads\backend\node_modules\mongoose\lib\connection.js:1071:34)
+    at Mongoose.connect (D:\AI Agent Auto Ads\backend\node_modules\mongoose\lib\mongoose.js:450:15)
+    at run (file:///D:/AI%20Agent%20Auto%20Ads/backend/test-entitlements.js:12:20)
+    at file:///D:/AI%20Agent%20Auto%20Ads/backend/test-entitlements.js:35:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+(node:7932) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7932) [MONGOOSE] Warning: Duplicate schema index on {"facebookId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.

@@ -9,13 +9,6 @@ const paymentTransactionSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Shop liên quan
-    // shop_id: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "Shop",
-    //   required: true,
-    // },
-
     // Gói dịch vụ liên quan (nếu có)
     package_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -86,7 +79,6 @@ const paymentTransactionSchema = new mongoose.Schema(
 
 // Indexes
 paymentTransactionSchema.index({ user_id: 1 });
-// paymentTransactionSchema.index({ shop_id: 1 });
 paymentTransactionSchema.index({ package_id: 1 });
 paymentTransactionSchema.index({ status: 1 });
 paymentTransactionSchema.index({ created_at: -1 });

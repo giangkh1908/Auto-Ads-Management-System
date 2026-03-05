@@ -1,8 +1,5 @@
 import Log from "../../models/admin/log.model.js";
 import User from "../../models/user/user.model.js";
-import UserRole from "../../models/user/userRole.model.js";
-import Role from "../../models/admin/role.model.js";
-import Shop from "../../models/shops/shop.model.js";
 import mongoose from "mongoose";
 
 // Get customer logs (logs related to customers/users without internal_role)
@@ -15,7 +12,7 @@ export const getCustomerLogs = async (req, res) => {
       // Filter by target_type first
       {
         $match: {
-          target_type: { $in: ["User", "Shop", "FacebookPage", "UserRole", "ShopUser", "Campaign"] }
+          target_type: { $in: ["User", "FacebookPage", "Campaign"] }
         }
       },
       // Lookup user info
@@ -42,21 +39,7 @@ export const getCustomerLogs = async (req, res) => {
           ]
         }
       },
-      // Lookup shop info
-      {
-        $lookup: {
-          from: "shops",
-          localField: "shop_id",
-          foreignField: "_id",
-          as: "shop_info"
-        }
-      },
-      {
-        $unwind: {
-          path: "$shop_info",
-          preserveNullAndEmptyArrays: true
-        }
-      }
+
     ];
 
     // Apply Search Filter
@@ -67,7 +50,6 @@ export const getCustomerLogs = async (req, res) => {
           $or: [
             { "user_info.full_name": searchRegex },
             { "user_info.email": searchRegex },
-            { "shop_info.shop_name": searchRegex },
             { description: searchRegex },
             { action: searchRegex }
           ]
@@ -113,64 +95,22 @@ export const getCustomerLogs = async (req, res) => {
 
     const logs = await Log.aggregate(pipeline);
 
-    // Post-process to get roles (UserRole lookup is complex in aggregation, doing it separately for the page is okay or lookup here)
-    // To keep it simple and performant, we can do a second lookup for roles for the fetched logs only
-
-    // Extract userIds and shopIds from the paginated result
-    const userIds = [...new Set(logs.map(log => log.user_id).filter(Boolean))];
-    const shopIds = [...new Set(logs.map(log => log.shop_id).filter(Boolean))];
-
-    // Fetch roles
-    const userRoles = await UserRole.find({
-      user_id: { $in: userIds },
-      shop_id: { $in: shopIds },
-      revoked_at: null,
-    }).populate("role_id", "role_name").lean();
-
-    const shops = await Shop.find({ _id: { $in: shopIds } }).select("_id owner_id").lean();
-
-    // Create maps
-    const userRoleMap = new Map();
-    userRoles.forEach((ur) => {
-      const key = `${ur.user_id}_${ur.shop_id}`;
-      userRoleMap.set(key, ur.role_id?.role_name || "N/A");
-    });
-
-    const shopOwnerMap = new Map();
-    shops.forEach((shop) => {
-      if (shop.owner_id) {
-        shopOwnerMap.set(shop._id.toString(), shop.owner_id.toString());
-      }
-    });
-
     // Format logs
     const formattedLogs = logs.map((log) => {
-      let roleName = "N/A";
+      let roleName = "User";
       let userStatus = "Active";
 
       if (log.user_info) {
         userStatus = log.user_info.status === "active" ? "Active" :
           log.user_info.status === "banned" ? "Banned" : "Inactive";
-
-        if (log.shop_id && log.user_id) {
-          const key = `${log.user_id}_${log.shop_id}`;
-          roleName = userRoleMap.get(key) || "N/A";
-
-          if (roleName === "N/A") {
-            const ownerId = shopOwnerMap.get(log.shop_id.toString());
-            if (ownerId && ownerId === log.user_id.toString()) {
-              roleName = "Shop Owner";
-            }
-          }
-        }
       }
 
       return {
         _id: log._id,
         user: log.user_name || log.user_info?.full_name || "N/A",
         userId: log.user_id || "N/A",
-        shopName: log.shop_name || log.shop_info?.shop_name || "N/A",
-        shopId: log.shop_id || "N/A",
+        shopName: "N/A",
+        shopId: "N/A",
         time: log.created_at,
         role: roleName,
         userStatus: userStatus,

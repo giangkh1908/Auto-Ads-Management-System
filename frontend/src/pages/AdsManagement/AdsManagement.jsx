@@ -31,6 +31,7 @@ import AdsTabs from "../../components/feature/AdsManagement/AdsTabs";
 import AdsTable from "../../components/feature/AdsManagement/AdsTable";
 import AdsBreadcrumb from "../../components/feature/AdsManagement/AdsBreadcrumb";
 import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverlay";
+import AiCampaignModal from "../../components/feature/AdsManagement/AiCampaignModal/AiCampaignModal";
 import { RefreshCw } from "lucide-react";
 
 function AdsManagement() {
@@ -42,8 +43,10 @@ function AdsManagement() {
   // Wizard state
   const [activeTab, setActiveTab] = useState("campaigns");
   const [showWizard, setShowWizard] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
   const [wizardMode, setWizardMode] = useState("create");
   const [editingItem, setEditingItem] = useState(null);
+  const [aiDraftData, setAiDraftData] = useState(null);
 
   // Account management
   const {
@@ -970,10 +973,9 @@ function AdsManagement() {
                 resetSelection();
                 setShowWizard(true);
               }}
-              onCreateRule={() => {
-                if (selectedAccountId) {
-                  navigate(ROUTES.AUTOMATION_RULE);
-                }
+              onAiGenerate={() => {
+                if (!selectedAccountId) return;
+                setShowAiModal(true);
               }}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -1063,6 +1065,7 @@ function AdsManagement() {
             setShowWizard(false);
             setEditingItem(null);
             setWizardMode("create");
+            setAiDraftData(null); // Clear ai data when close
           }}
           onSuccess={() => {
             handleFetchOnly();
@@ -1080,6 +1083,22 @@ function AdsManagement() {
           datasets={datasets}
           setDatasets={setDatasets}
           selectedAccountId={selectedAccountId}
+          aiDraftData={aiDraftData} // Truyền dữ liệu preview từ luồng AI
+        />
+      )}
+
+      {showAiModal && (
+        <AiCampaignModal
+          isOpen={showAiModal}
+          onClose={() => setShowAiModal(false)}
+          adAccountId={selectedAccountId}
+          adPages={[]}
+          onSuccess={(aiData) => {
+            setShowAiModal(false);
+            setAiDraftData(aiData);
+            setWizardMode("create");
+            setShowWizard(true);
+          }}
         />
       )}
 

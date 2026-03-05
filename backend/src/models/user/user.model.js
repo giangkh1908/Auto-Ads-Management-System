@@ -69,6 +69,7 @@ const userSchema = new mongoose.Schema(
     country: { type: String, default: "Viet Nam" },
     language: { type: String, default: "vi" },
     timezone: { type: String, default: "Asia/Ho_Chi_Minh" },
+    currency: { type: String, default: "VND" },
 
     // 📊 Trạng thái tài khoản
     status: {
@@ -89,6 +90,30 @@ const userSchema = new mongoose.Schema(
     facebookAccessToken: { type: String, select: false },
     facebookRefreshToken: { type: String, select: false },
     facebookTokenExpires: { type: Date },
+    facebook_pages: [
+      {
+        page_id: { type: String, trim: true, required: true },
+        page_token: { type: String, select: false },
+        page_info: {
+          name: String,
+          category: String,
+          link: String,
+          picture_url: String,
+        },
+        connected_status: {
+          type: String,
+          enum: ["connected", "disconnected", "error"],
+          default: "connected",
+        },
+        page_status: {
+          type: String,
+          enum: ["active", "pause"],
+          default: "active",
+        },
+        connected_at: { type: Date, default: Date.now },
+        last_synced_at: { type: Date, default: null },
+      },
+    ],
 
 
     // 🔑 Email verification

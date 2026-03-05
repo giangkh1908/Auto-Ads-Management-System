@@ -35,9 +35,6 @@ const VerifyEmail = lazy(() => import("./pages/VerifyEmail/VerifyEmail.jsx"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword/ResetPassword.jsx"));
 const Profile = lazy(() => import("./pages/Profile/Profile.jsx"));
 const TransactionHistory = lazy(() => import("./pages/TransactionHistory/TransactionHistory.jsx"));
-const MyShop = lazy(() => import("./pages/Shop/MyShop.jsx"));
-const Employee = lazy(() => import("./pages/Shop/Employee.jsx"));
-const History = lazy(() => import("./pages/Shop/History.jsx"));
 const UserManagementPage = lazy(() => import("./pages/AdminPage/SystemAdmin/UserManagement/CustomerPage/CustomerPage.jsx"));
 const InternalPage = lazy(() => import("./pages/AdminPage/SystemAdmin/UserManagement/InternalPage/InternalPage.jsx"));
 const SystemLog = lazy(() => import("./pages/AdminPage/SystemAdmin/SystemMonitoring/SystemLog/SystemLog.jsx"));
@@ -96,13 +93,6 @@ function AppContentInner() {
     if (pathname === "/" && user?.internal_role) return false;
     // Exact match
     if (HEADER_ROUTES.includes(pathname)) {
-      return true;
-    }
-    // Match shop employee và history routes (có shopId param)
-    if (
-      pathname.startsWith("/shop/employee/") ||
-      pathname.startsWith("/shop/history/")
-    ) {
       return true;
     }
     // Match các pattern routes khác
@@ -395,43 +385,7 @@ function AppContentInner() {
             }
           />
 
-          {/* Routes cho Shop */}
-          <Route
-            path={ROUTES.SHOP}
-            element={
-              <AdminRouteGuard>
-                <ProtectedRoute>
-                  <main className="page-content">
-                    <MyShop />
-                  </main>
-                </ProtectedRoute>
-              </AdminRouteGuard>
-            }
-          />
-          <Route
-            path={ROUTES.SHOP_EMPLOYEE}
-            element={
-              <AdminRouteGuard>
-                <ProtectedRoute>
-                  <main className="page-content">
-                    <Employee />
-                  </main>
-                </ProtectedRoute>
-              </AdminRouteGuard>
-            }
-          />
-          <Route
-            path={ROUTES.SHOP_HISTORY}
-            element={
-              <AdminRouteGuard>
-                <ProtectedRoute>
-                  <main className="page-content">
-                    <History />
-                  </main>
-                </ProtectedRoute>
-              </AdminRouteGuard>
-            }
-          />
+
 
           {/* Route cho Service Package */}
           <Route

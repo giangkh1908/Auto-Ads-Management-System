@@ -430,14 +430,6 @@ export const updatePaymentTransaction = async (req, res) => {
                 console.log(`✅ Đã disable ${oldActivePackages.length} package cũ của user ${currentTransaction.user_id}`);
               }
 
-              // Đồng bộ package cho tất cả shop của owner
-              try {
-                const { syncShopPackagesWithOwner } = await import("../../services/shopPackageSyncService.js");
-                await syncShopPackagesWithOwner(currentTransaction.user_id);
-              } catch (syncError) {
-                console.error("⚠️ Lỗi khi sync shop packages:", syncError);
-                // Không throw error để không ảnh hưởng đến flow chính
-              }
 
               // Gửi email thông báo khi package được approve (fire-and-forget)
               try {
@@ -454,7 +446,6 @@ export const updatePaymentTransaction = async (req, res) => {
                     toDate: updatedUserPackage.to_date || userPackageUpdateData.to_date,
                     pages: updatedUserPackage.pages || userPackage.pages || packageInfo.pages,
                     employees: updatedUserPackage.employees || userPackage.employees || packageInfo.employees,
-                    shops: updatedUserPackage.shops || userPackage.shops || packageInfo.shops,
                     features: packageInfo.features || [],
                   };
 

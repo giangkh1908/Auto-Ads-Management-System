@@ -6,13 +6,13 @@
 /* Content area */
 .archive-ads-content {
   padding: 4px 6px; /* Optimized edge-to-edge */
-  margin-left: 240px; /* expanded width sync with sidebar */
-  transition: margin-left 0.25s ease;
+  margin-left: 225px; /* expanded width sync with sidebar */
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
 }
 
 .sidebar-collapsed .archive-ads-content {
-  margin-left: 84px;
+  margin-left: 70px;
 }
 
 /* center content area within remaining space */
@@ -547,7 +547,7 @@
 /* Tablet (768px - 1024px) */
 @media (max-width: 1024px) {
   .archive-ads-content {
-    margin-left: 84px;
+    margin-left: 70px;
     padding: 12px 16px;
   }
 

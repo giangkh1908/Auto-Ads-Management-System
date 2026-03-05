@@ -591,6 +591,7 @@ export async function generateAd(req, res) {
       image_source = 'none',
       uploaded_image_url = null,
       count = 3,
+      prompt: customPrompt = null,
     } = req.body;
 
     if (!description || description.trim().length < 10) {
@@ -608,39 +609,9 @@ export async function generateAd(req, res) {
     }
 
     const adCount = Math.min(Math.max(Number(count) || 3, 1), 5);
-    const wantAiImage = image_source === 'ai';
 
-    // Xây dựng prompt gửi Manus
-    const imageInstruction = wantAiImage
-      ? `Với mỗi bản quảng cáo, hãy tạo thêm một hình ảnh minh họa phù hợp và trả về URL ảnh trong trường "image_url".`
-      : `Đặt "image_url": null cho tất cả các bản.`;
-
-    const prompt = `Bạn là chuyên gia marketing Facebook Ads. Tạo ${adCount} bản quảng cáo Facebook cho sản phẩm/dịch vụ sau:
-
-"${description.trim()}"
-
-Mỗi bản quảng cáo phải bao gồm:
-- headline: Tiêu đề hấp dẫn, tối đa 50 ký tự
-- body: Nội dung chính thuyết phục, tối đa 200 ký tự
-- description: Mô tả ngắn, tối đa 40 ký tự
-- image_url: URL hình ảnh minh họa (hoặc null)
-
-${imageInstruction}
-
-Yêu cầu bắt buộc:
-- Tuân thủ chính sách quảng cáo Facebook (không gán thuộc tính cá nhân, không cam kết kết quả tuyệt đối, không ngôn ngữ phân biệt)
-- Mỗi bản phải khác nhau về góc độ tiếp cận (cảm xúc, lợi ích, tính năng, social proof...)
-- Ngôn ngữ tự nhiên, thuyết phục, phù hợp với người Việt
-
-Trả về CHÍNH XÁC định dạng JSON array (không có text nào khác ngoài JSON):
-[
-  {
-    "headline": "...",
-    "body": "...",
-    "description": "...",
-    "image_url": null
-  }
-]`;
+    // Ưu tiên prompt từ frontend (user đã tùy chỉnh), fallback về default
+    const prompt = customPrompt || buildDefaultAdPrompt(adCount, description.trim(), image_source);
 
     console.log(`[generateAd] Gửi task đến Manus AI, count=${adCount}, image_source=${image_source}`);
 
@@ -714,3 +685,39 @@ Trả về CHÍNH XÁC định dạng JSON array (không có text nào khác ngo
   }
 }
 
+/**
+ * Build prompt mặc định cho generate-ad (fallback khi frontend không gửi custom prompt)
+ */
+function buildDefaultAdPrompt(adCount, description, imageSource) {
+  const imageInstruction =
+    imageSource === 'ai'
+      ? 'Với mỗi bản quảng cáo, hãy tạo thêm một hình ảnh minh họa phù hợp và trả về URL ảnh trong trường "image_url".'
+      : 'Đặt "image_url": null cho tất cả các bản.';
+
+  return `Bạn là chuyên gia marketing Facebook Ads. Tạo ${adCount} bản quảng cáo Facebook cho sản phẩm/dịch vụ sau:
+
+"${description}"
+
+Mỗi bản quảng cáo phải bao gồm:
+- headline: Tiêu đề hấp dẫn, tối đa 50 ký tự
+- body: Nội dung chính thuyết phục, tối đa 200 ký tự
+- description: Mô tả ngắn, tối đa 40 ký tự
+- image_url: URL hình ảnh minh họa (hoặc null)
+
+${imageInstruction}
+
+Yêu cầu bắt buộc:
+- Tuân thủ chính sách quảng cáo Facebook (không gán thuộc tính cá nhân, không cam kết kết quả tuyệt đối, không ngôn ngữ phân biệt)
+- Mỗi bản phải khác nhau về góc độ tiếp cận (cảm xúc, lợi ích, tính năng, social proof...)
+- Ngôn ngữ tự nhiên, thuyết phục, phù hợp với người Việt
+
+Trả về CHÍNH XÁC định dạng JSON array (không có text nào khác ngoài JSON):
+[
+  {
+    "headline": "...",
+    "body": "...",
+    "description": "...",
+    "image_url": null
+  }
+]`;
+}

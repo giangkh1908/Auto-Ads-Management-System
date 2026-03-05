@@ -1,0 +1,8 @@
+[dotenv@17.2.3] injecting env (31) from .env -- tip: â™ï¸  suppress all logs with { quiet: true }
+(node:10216) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10216) [MONGOOSE] Warning: Duplicate schema index on {"facebookId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+Connected to MongoDB
+User Email: giangkhhe172074@fpt.edu.vn
+facebookId: 122165123762791594
+facebookAccessToken exists: false

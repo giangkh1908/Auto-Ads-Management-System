@@ -50,9 +50,9 @@ const packageSchema = new mongoose.Schema(
       default: 3,
     },
 
-    shops: {
-      type: Number,
-      default: 20,
+    theme_class: {
+      type: String,
+      default: "theme-default",
     },
 
     conversations: {

@@ -7,7 +7,6 @@ import {
   deleteUser,
   createInternalStaff,
   getCustomers,
-  getUserShops,
   getInternalStaff,
   getInternalRoles,
 } from "../../controllers/user/userControllers.js";
@@ -25,7 +24,6 @@ router.get("/", authorize("user", "view"), getUsers);
 router.get("/customers", getCustomers); // Lấy danh sách customers (users không có internal_role)
 router.get("/internal-staff", getInternalStaff); // Lấy danh sách internal staff (users có internal_role)
 router.get("/internal-roles", getInternalRoles); // Lấy danh sách giá trị internal_role từ users
-router.get("/:id/shops", getUserShops); // Lấy danh sách shop và role của user
 router.get("/:id", authorize("user", "view"), getUserById);
 router.post("/", authorize("user", "create"), createUser);
 router.put("/:id", updateUser); // Kiểm tra quyền trong controller (cho phép System Admin bypass)
