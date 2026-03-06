@@ -67,7 +67,6 @@ export default function CustomerPage() {
       name: customer.full_name || "N/A",
       phone: customer.phone || "-",
       email: customer.email || "-",
-      shop: "View", // Sẽ cần lấy shop info từ shop_id nếu có
       createdAt: customer.created_at
         ? new Date(customer.created_at)
           .toLocaleString("vi-VN", {

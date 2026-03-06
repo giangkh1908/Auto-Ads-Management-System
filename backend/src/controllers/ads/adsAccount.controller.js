@@ -44,8 +44,7 @@ export async function syncAdsAccounts(req, res) {
     // Get user_id
     const docs = await upsertAdAccountsFromFacebook(accessToken, { 
       shopUserId, 
-      adminUserId, 
-      shopId: null 
+      adminUserId
     });
 
     return res.status(200).json({
@@ -384,8 +383,7 @@ export async function connectAdAccountCtrl(req, res) {
       },
       { 
         shopUserId, 
-        adminUserId, 
-        shopId: null 
+        adminUserId
       }
     );
 

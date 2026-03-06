@@ -370,7 +370,7 @@ function AdsManagement() {
 
     const newStatus = !row.enabled;
     const facebookStatus = newStatus ? "ACTIVE" : "PAUSED";
-    const displayStatus = newStatus ? "Hoạt động" : "Tạm dừng";
+    const displayStatus = newStatus ? "ACTIVE" : "PAUSED";
 
     setTogglingItems((prev) => new Set(prev).add(id));
 
@@ -406,7 +406,7 @@ function AdsManagement() {
       if (entityType === "campaign" && !newStatus && childAdsets.length > 0) {
         updated.adsets = prev.adsets.map((adset) => {
           if (childAdsets.some((ca) => ca.id === adset.id)) {
-            return { ...adset, enabled: false, status: "Tạm dừng" };
+            return { ...adset, enabled: false, status: "PAUSED" };
           }
           return adset;
         });
@@ -415,7 +415,7 @@ function AdsManagement() {
       if ((entityType === "campaign" || entityType === "adset") && !newStatus && childAds.length > 0) {
         updated.ads = prev.ads.map((ad) => {
           if (childAds.some((ca) => ca.id === ad.id)) {
-            return { ...ad, enabled: false, status: "Tạm dừng" };
+            return { ...ad, enabled: false, status: "PAUSED" };
           }
           return ad;
         });
@@ -482,7 +482,7 @@ function AdsManagement() {
       setDatasets((prev) => {
         const updated = { ...prev };
         updated[key] = prev[key].map((r) =>
-          r.id !== id ? r : { ...r, enabled: !newStatus, status: !newStatus ? "Hoạt động" : "Tạm dừng" }
+          r.id !== id ? r : { ...r, enabled: !newStatus, status: !newStatus ? "ACTIVE" : "PAUSED" }
         );
 
         if (entityType === "campaign" && !newStatus && childAdsets.length > 0) {

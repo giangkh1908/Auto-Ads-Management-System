@@ -225,7 +225,6 @@ export async function getCampaignsLiveCtrl(req, res) {
     if (adsAccount && data.length > 0) {
       const bulkOps = data.map((c) => {
         const campaignData = {
-          shop_id: adsAccount.shop_id || null,
           account_id: adsAccount._id,
           name: c.name,
           status: c.status,
@@ -287,6 +286,13 @@ export async function toggleCampaignStatusCtrl(req, res) {
 
     const fbId = id.startsWith("act_") ? id : id; // campaign id không có act_
     await updateCampaignStatus(fbId, accessToken, status);
+
+    // ✅ Cập nhật status vào DB local sau khi gọi FB thành công
+    await AdsCampaign.findOneAndUpdate(
+      { external_id: fbId },
+      { status: status, updated_at: new Date() }
+    );
+
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Toggle campaign status error:", err.response?.data || err.message);
@@ -504,7 +510,6 @@ export async function copyCampaignCascadeCtrl(req, res) {
       objective: source.objective,
       status: "IN_PROCESS",
       account_id: source.account_id,
-      shop_id: source.shop_id,
       page_id: source.page_id,
       page_name: source.page_name,
       daily_budget: source.daily_budget,

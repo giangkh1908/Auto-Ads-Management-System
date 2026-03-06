@@ -26,6 +26,13 @@ export async function toggleAdsetStatusCtrl(req, res) {
     if (!accessToken) return res.status(401).json({ message: "Thiếu access token Facebook" });
 
     await updateAdsetStatus(id, accessToken, status);
+
+    // ✅ Cập nhật status vào DB local sau khi gọi FB thành công
+    await AdsSet.findOneAndUpdate(
+      { external_id: id },
+      { status: status, updated_at: new Date() }
+    );
+
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Toggle adset status error:", err.response?.data || err.message);
@@ -308,7 +315,7 @@ export async function getAdSetsLiveCtrl(req, res) {
 export async function deleteAdsetCascadeCtrl(req, res) {
   try {
     const { id } = req.params;
-    const adset = await AdsSet.findById(id).populate('campaign_id', 'shop_id');
+    const adset = await AdsSet.findById(id).populate('campaign_id');
     if (!adset) return res.status(404).json({ message: "Không tìm thấy nhóm quảng cáo." });
 
     // ✅ Lấy access_token từ user hoặc query
@@ -383,7 +390,7 @@ export async function deleteAdsetCascadeCtrl(req, res) {
 export async function archiveAdsetCascadeCtrl(req, res) {
   try {
     const { id } = req.params;
-    const adset = await AdsSet.findById(id).populate('campaign_id', 'shop_id');
+    const adset = await AdsSet.findById(id).populate('campaign_id');
     if (!adset) return res.status(404).json({ message: "Không tìm thấy nhóm quảng cáo." });
 
     // ✅ Lấy access_token từ user hoặc query

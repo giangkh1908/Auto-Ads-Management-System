@@ -90,7 +90,6 @@ function AutomationRule() {
         setLoading(true);
         const response = await automationRuleService.getRules({
           account_id: selectedAccountId,
-          shop_id: user?.shop_id, // Thêm shop_id để filter rules theo shop
           fetch_all: true,
         });
 
@@ -139,7 +138,7 @@ function AutomationRule() {
 
     fetchRules();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccountId, user?.shop_id, i18n.language]);
+  }, [selectedAccountId, i18n.language]);
 
   // Helper functions để format rule data
   const formatActionCondition = (rule) => {
@@ -347,7 +346,6 @@ function AutomationRule() {
       const ruleDataWithAccount = {
         ...ruleData,
         account_id: account._id, // ObjectId từ AdsAccount
-        shop_id: user?.shop_id || null,
         subscriber_id: user?._id,
         created_by: user?._id,
       };
@@ -370,7 +368,6 @@ function AutomationRule() {
         // Refresh rules list
         const rulesResponse = await automationRuleService.getRules({
           account_id: selectedAccountId,
-          shop_id: user?.shop_id, // Thêm shop_id để filter rules theo shop
           fetch_all: true,
         });
         if (rulesResponse.success && rulesResponse.items) {

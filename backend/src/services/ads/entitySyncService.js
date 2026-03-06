@@ -84,7 +84,6 @@ async function syncCampaignsWithPagination(adsAccount, accessToken) {
 
     for (const c of page) {
       const data = {
-        shop_id: adsAccount.shop_id || null,
         account_id: adsAccount._id,
         name: c.name,
         status: c.status,

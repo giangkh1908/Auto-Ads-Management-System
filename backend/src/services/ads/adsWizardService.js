@@ -149,7 +149,6 @@ async function updateOrCreateCampaign({
         ...campaign, // Override với data mới từ payload
         _id: existingCampaign._id,
         account_id: existingCampaign.account_id || campaign.account_id,
-        shop_id: existingCampaign.shop_id || campaign.shop_id,
         created_by: existingCampaign.created_by || campaign.created_by,
       },
       campaignDraftId: existingCampaign._id,
@@ -170,7 +169,6 @@ async function updateOrCreateCampaign({
       external_id: existingCampaign.external_id,
       external_account_id: existingCampaign.external_account_id,
       account_id: existingCampaign.account_id || campaign.account_id,
-      shop_id: existingCampaign.shop_id || campaign.shop_id,
       created_by: existingCampaign.created_by || campaign.created_by,
     };
 
@@ -639,7 +637,6 @@ export async function publishWizard({
         objective: campaign?.objective,
         status: "DRAFT",
         account_id: campaign?.account_id,
-        shop_id: campaign?.shop_id,
         page_id: campaign?.page_id,
         page_name: campaign?.page_name,
         daily_budget: campaign?.daily_budget,

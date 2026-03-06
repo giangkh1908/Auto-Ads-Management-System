@@ -425,6 +425,13 @@ export async function toggleAdStatusCtrl(req, res) {
     if (!accessToken) return res.status(401).json({ message: "Thiếu access token Facebook" });
 
     await updateAdStatus(id, accessToken, status);
+
+    // ✅ Cập nhật status vào DB local sau khi gọi FB thành công
+    await Ads.findOneAndUpdate(
+      { external_id: id },
+      { status: status, updated_at: new Date() }
+    );
+
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Toggle ad status error:", err.response?.data || err.message);
@@ -438,7 +445,7 @@ export async function deleteAdCtrl(req, res) {
     const ad = await Ads.findById(id).populate({
       path: 'set_id',
       select: 'campaign_id',
-      populate: { path: 'campaign_id', select: 'shop_id' }
+      populate: { path: 'campaign_id' }
     });
     if (!ad)
       return res.status(404).json({ message: "Không tìm thấy quảng cáo." });
@@ -511,7 +518,7 @@ export async function archiveAdCtrl(req, res) {
     const ad = await Ads.findById(id).populate({
       path: 'set_id',
       select: 'campaign_id',
-      populate: { path: 'campaign_id', select: 'shop_id' }
+      populate: { path: 'campaign_id' }
     });
     if (!ad)
       return res.status(404).json({ message: "Không tìm thấy quảng cáo." });

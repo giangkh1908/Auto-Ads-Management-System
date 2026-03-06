@@ -109,7 +109,6 @@ export async function publishAdsWizard(req, res) {
       campaign: {
         ...campaign,
         account_id: account._id,
-        shop_id: account.shop_id || req.user.shop_id, // fallback to user.shop_id
         created_by: req.user._id,
         page_id: campaign.page_id,
         page_name: campaign.page_name,
@@ -208,7 +207,6 @@ export async function updateAdsWizard(req, res) {
       const enrichedCampaign = {
         ...campaign,
         account_id: account._id,
-        shop_id: account.shop_id || req.user.shop_id,
         // DO NOT override created_by when updating
         adsets: campaign.adsets.map(adset => ({
           ...adset,
@@ -339,7 +337,6 @@ export async function publishCampaignController(req, res) {
       campaign: {
         ...campaign,
         account_id: account._id,
-        shop_id: account.shop_id || req.user.shop_id,
         created_by: req.user._id,
         page_id: campaign.page_id,
         page_name: campaign.page_name,
@@ -352,7 +349,6 @@ export async function publishCampaignController(req, res) {
     await saveLog({
       user_id: req.user._id,
       user_name: user.full_name,
-      shop_id: account.shop_id || req.user.shop_id,
       action: "CREATE_CAMPAIGN",
       target_type: "Campaign",
       target_id: result.campaign?._id?.toString() || result.campaign?.external_id,
@@ -453,7 +449,6 @@ export async function publishAdsetController(req, res) {
     await saveLog({
       user_id: req.user._id,
       user_name: user.full_name,
-      shop_id: account.shop_id || req.user.shop_id,
       action: "CREATE_ADSET",
       target_type: "AdSet",
       target_id: result.adset?._id?.toString() || result.adset?.external_id,
@@ -566,7 +561,6 @@ export async function publishAdController(req, res) {
     await saveLog({
       user_id: req.user._id,
       user_name: user.full_name,
-      shop_id: account.shop_id || req.user.shop_id,
       action: "CREATE_AD",
       target_type: "Ad",
       target_id: result.ad?._id?.toString() || result.ad?.external_id,
@@ -669,7 +663,6 @@ export async function publishFlexibleController(req, res) {
     const enrichedCampaignsList = campaignsList.map(campaign => ({
       ...campaign,
       account_id: account._id,
-      shop_id: account.shop_id || req.user.shop_id,
       created_by: req.user._id,
       adsets: campaign.adsets.map(adset => ({
         ...adset,
@@ -699,7 +692,6 @@ export async function publishFlexibleController(req, res) {
         await saveLog({
           user_id: req.user._id,
           user_name: user.full_name,
-          shop_id: account.shop_id || req.user.shop_id,
           action: "CREATE_CAMPAIGN",
           target_type: "Campaign",
           target_id: result.data?.campaigns?.[campaignsList.indexOf(campaign)]?._id?.toString() || campaign.name,
@@ -789,7 +781,6 @@ export async function updateFlexibleController(req, res) {
     const enrichedCampaignsList = campaignsList.map(campaign => ({
       ...campaign,
       account_id: account._id,
-      shop_id: account.shop_id || req.user.shop_id,
       // NOT override created_by when updating - only set when creating in service
       adsets: (campaign.adsets || []).map(adset => ({
         ...adset,

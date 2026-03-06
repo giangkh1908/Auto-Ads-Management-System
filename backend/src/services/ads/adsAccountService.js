@@ -28,7 +28,7 @@ export async function fbFetchAdAccounts(accessToken, afterCursor = null, limit =
 }
 
 /** Upsert 1 tài khoản - Xử lý nhiều users có cùng account */
-export async function upsertOneAdAccount(fbAcc, { shopUserId, adminUserId, shopId = null }) {
+export async function upsertOneAdAccount(fbAcc, { shopUserId, adminUserId }) {
   const accountData = {
     external_id: fbAcc.id,
     name: fbAcc.name,
@@ -58,10 +58,7 @@ export async function upsertOneAdAccount(fbAcc, { shopUserId, adminUserId, shopI
       existingAccount.account_status = accountData.account_status;
       existingAccount.last_updated_at = accountData.last_updated_at;
       
-      // Nếu shop_id chưa có, có thể cập nhật (tùy logic business)
-      if (shopId && !existingAccount.shop_id) {
-        existingAccount.shop_id = shopId;
-      }
+
       
       await existingAccount.save();
       return existingAccount;
@@ -83,7 +80,6 @@ export async function upsertOneAdAccount(fbAcc, { shopUserId, adminUserId, shopI
       accountData.user_ids.push(shopUserId);
     }
     accountData.shop_user_id = shopUserId || undefined;
-    accountData.shop_id = shopId || undefined;
 
     const newAccount = await AdsAccount.create(accountData);
     return newAccount;
@@ -91,13 +87,13 @@ export async function upsertOneAdAccount(fbAcc, { shopUserId, adminUserId, shopI
 }
 
 /** Upsert danh sách tài khoản */
-export async function upsertAdAccountsFromFacebook(accessToken, { shopUserId, adminUserId, shopId = null }) {
+export async function upsertAdAccountsFromFacebook(accessToken, { shopUserId, adminUserId }) {
   let after = null;
   const results = [];
   do {
     const { data, nextAfter } = await fbFetchAdAccounts(accessToken, after);
     for (const fbAcc of data) {
-      const doc = await upsertOneAdAccount(fbAcc, { shopUserId, adminUserId, shopId  });
+      const doc = await upsertOneAdAccount(fbAcc, { shopUserId, adminUserId  });
       results.push(doc);
     }
     after = nextAfter;

@@ -49,8 +49,6 @@ export default function CustomerLog() {
       id: log._id || log.id,
       user: log.user || "N/A",
       userId: log.userId || "N/A",
-      shopName: log.shopName || "N/A",
-      shopId: log.shopId || "N/A",
       time: log.time
         ? new Date(log.time).toLocaleString("vi-VN", {
           day: "2-digit",
@@ -175,8 +173,6 @@ export default function CustomerLog() {
         <div className="customer-log-row customer-log-header">
           <div className="customer-log-col customer-log-col-user">{t("customerLog.columns.user")}</div>
           <div className="customer-log-col customer-log-col-userid">{t("customerLog.columns.userId")}</div>
-          <div className="customer-log-col customer-log-col-shopname">{t("customerLog.columns.shopName")}</div>
-          <div className="customer-log-col customer-log-col-shopid">{t("customerLog.columns.shopId")}</div>
           <div className="customer-log-col customer-log-col-time">{t("customerLog.columns.time")}</div>
           <div className="customer-log-col customer-log-col-role">{t("customerLog.columns.role")}</div>
           <div className="customer-log-col customer-log-col-status">{t("customerLog.columns.userStatus")}</div>
@@ -192,8 +188,6 @@ export default function CustomerLog() {
             <div className="customer-log-row" key={log.id}>
               <div className="customer-log-col customer-log-col-user">{log.user}</div>
               <div className="customer-log-col customer-log-col-userid">{log.userId}</div>
-              <div className="customer-log-col customer-log-col-shopname">{log.shopName}</div>
-              <div className="customer-log-col customer-log-col-shopid">{log.shopId}</div>
               <div className="customer-log-col customer-log-col-time">{log.time}</div>
               <div className="customer-log-col customer-log-col-role">{log.role}</div>
               <div className="customer-log-col customer-log-col-status"><span className={`customer-log-badge customer-log-badge-${log.userStatusKey || "active"}`}>{log.userStatus}</span></div>

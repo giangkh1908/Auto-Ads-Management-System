@@ -106,21 +106,7 @@ export const AuthProvider = ({ children }) => {
     checkAuth()
   }, [toast, logout])
 
-  // Helper function để refresh user với shop_id từ getCurrentUser
-  const refreshUserWithShopId = useCallback(async () => {
-    try {
-      const currentUserResponse = await authService.getCurrentUser()
-      if (currentUserResponse.success && currentUserResponse.data?.user) {
-        const userWithShop = currentUserResponse.data.user
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userWithShop))
-        setUser(userWithShop)
-        return userWithShop
-      }
-    } catch {
-      // console.log('Error refreshing user with shop_id:', error)
-    }
-    return null
-  }, [])
+
 
   // Đăng nhập
   const login = async (credentials, redirectTo = null) => {
@@ -159,14 +145,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem(STORAGE_KEYS.FB_PAGES)
         setFbPages([])
 
-        // Nếu user có internal_role, không cần lấy shop_id (vì không liên quan đến shop)
         let finalUser = user
-        if (!user.internal_role) {
-          // Chỉ gọi getCurrentUser để lấy shop_id nếu user không có internal_role
-          const userWithShop = await refreshUserWithShopId()
-          finalUser = userWithShop || user
-        }
-
         setUser(finalUser)
         setIsAuthenticated(true)
 
@@ -268,17 +247,6 @@ export const AuthProvider = ({ children }) => {
     setFbAdAccounts(adAccounts)
 
     toast.success('Đăng nhập thành công!')
-
-    // Gọi getCurrentUser để lấy user với shop_id đầy đủ (chạy trong background)
-    // Không await để popup có thể đóng ngay
-    refreshUserWithShopId().then((userWithShop) => {
-      if (userWithShop) {
-        // Cập nhật lại user với shop_id khi có kết quả
-        setUser(userWithShop)
-      }
-    }).catch(() => {
-      // console.log('Error refreshing user with shop_id (non-blocking):', error)
-    })
 
     // Điều hướng giống login thường: kiểm tra internal_role để redirect
     setTimeout(() => {
@@ -409,9 +377,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken)
           localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user))
 
-          // Gọi getCurrentUser để lấy user với shop_id đầy đủ
-          const userWithShop = await refreshUserWithShopId()
-          setUser(userWithShop || user)
+          // Gọi getCurrentUser để lấy user đầy đủ
+          setUser(user)
           setIsAuthenticated(true)
 
         }
