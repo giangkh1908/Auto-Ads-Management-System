@@ -688,5 +688,10 @@
       "downloadSuccess": "Downloaded successfully!",
       "downloadError": "Error downloading"
     }
+  },
+  "tiers": {
+    "basic": "Normal",
+    "pro": "Gold",
+    "elite": "Supreme"
   }
 }

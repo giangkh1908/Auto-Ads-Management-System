@@ -163,6 +163,13 @@
   flex-direction: column; /* xếp dọc */
 }
 
+.dropdown-user-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
 .dropdown-infor-avatar b {
   font-size: 17px;
 }

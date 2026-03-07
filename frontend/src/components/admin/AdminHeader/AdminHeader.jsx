@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../hooks/auth/useAuth";
 import { useAdminRole } from "../../../hooks/auth/useAdminRole";
+import TierBadge from "../../common/TierBadge/TierBadge";
 import "./AdminHeader.css";
 import avatar from "../../../assets/no-avatar.jpg";
 import logo_1 from "../../../assets/Logo_Fchat.png";
@@ -12,7 +13,7 @@ function AdminHeader() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { t, i18n } = useTranslation("admin");
-  const { user, logout } = useAuth();
+  const { user, logout, myPackage } = useAuth();
   const { internalRole, tabs } = useAdminRole();
   const [openMenu, setOpenMenu] = useState(null); // "avatar", "language" || null
 
@@ -134,7 +135,16 @@ function AdminHeader() {
             <div className="admin-user-menu">
               {internalRole && (
                 <div className="admin-user-info">
-                  <strong className="admin-user-name">{user.full_name}</strong>
+                  <div className="admin-user-name-wrapper">
+                    <strong className="admin-user-name">{user.full_name}</strong>
+                    {myPackage?.package?.planType && (
+                      <TierBadge
+                        tier={myPackage.package.planType}
+                        size="small"
+                        showLabel={true}
+                      />
+                    )}
+                  </div>
                   <span className="admin-user-role-badge">{internalRole}</span>
                 </div>
               )}

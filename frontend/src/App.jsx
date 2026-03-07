@@ -12,6 +12,7 @@ import AdminSidebar from "./components/admin/AdminSidebar/AdminSidebar.jsx";
 import AuthModal from "./components/feature/Auth/AuthModal.jsx";
 import Footer from "./components/layout/Footer/Footer.jsx";
 import Sidebar from "./components/layout/Sidebar/Sidebar.jsx";
+import MascotAssistant from "./components/common/MascotAssistant/MascotAssistant.jsx";
 import ScrollToTop from "./utils/ui/ScrollToTop.jsx";
 import { ROUTES, HEADER_ROUTES, AUTH_MODES } from "./constants/app.constants";
 import ProtectedRouteForRole from "./components/common/ProtectedRoute/ProtectedRouteForRole.jsx";
@@ -487,6 +488,7 @@ function AppContentInner() {
           onChangeMode={setAuthMode}
         />
       )}
+      <MascotAssistant />
     </>
   );
 }

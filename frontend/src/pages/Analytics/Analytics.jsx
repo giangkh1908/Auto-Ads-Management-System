@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, RefreshCw, Settings, Users, BarChart2, AlertCircle } from "lucide-react";
-import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import ChatAIWidget from "../../components/feature/ChatAI/ChatAIWidget";
 import axiosInstance from "../../utils/api/axios";
 import "./Analytics.css";
 import { useMyPackage } from "../../hooks/package/useMyPackage";
@@ -11,6 +9,8 @@ import LoadingOverlay from "../../components/common/LoadingOverlay/LoadingOverla
 import Pagination from "../../components/common/Pagination/Pagination";
 import { useDebounce } from "../../hooks/common/useDebounce";
 import DateRangePicker from "../../components/common/DateRangePicker/DateRangePicker";
+import { motion } from "framer-motion";
+import MascotAssistant from "../../components/common/MascotAssistant/MascotAssistant";
 
 
 // Breakdown options (always available)
@@ -165,12 +165,9 @@ function Analytics() {
     }
   }, [selectedObjective, getDefaultDataColumns]);
 
-  // Chat AI Logic
-  const { hasFeature, loading: entitlementsLoading } = useMyPackage();
-  const canUseAnalyticsChatAI = hasFeature("analytics_chat_ai");
-
-  // Get selected account info
-  const selectedAccountInfo = adAccounts.find(acc => acc.external_id === selectedAccount);
+  // Features Logic
+  const { loading: entitlementsLoading, hasFeature } = useMyPackage();
+  const canUseAnalyticsChatAI = hasFeature('analytics_chat_ai');
 
   // Fetch ad accounts on mount
   useEffect(() => {
@@ -209,7 +206,6 @@ function Analytics() {
         if (existingAccount) {
           setSelectedAccount(savedAccountId);
         }
-        // Nếu không có cache hoặc account không hợp lệ -> không chọn gì
       }
     } catch (error) {
       console.error("Error fetching ad accounts:", error);
@@ -509,7 +505,6 @@ function Analytics() {
               </option>
             ))}
           </select>
-
           {/* Objective Filter */}
           <select
             className="analytics-select"
@@ -713,15 +708,8 @@ function Analytics() {
             )}
           </div>
         </div>
+        <MascotAssistant />
       </div>
-
-      {/* Chat AI Widget */}
-      {canUseAnalyticsChatAI && (
-        <ChatAIWidget
-          accountId={selectedAccount}
-          accountName={selectedAccountInfo?.name}
-        />
-      )}
     </div>
   );
 }

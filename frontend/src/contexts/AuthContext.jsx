@@ -5,7 +5,7 @@ import authService from '../services/auth/authService'
 import { STORAGE_KEYS, ROUTES } from '../constants/app.constants'
 import { AuthContext } from './AuthContext.js'
 import { getDefaultAdminRoute } from '../constants/adminConstants'
-// import axiosInstance from '../utils/axios'
+import axiosInstance from '../utils/api/axios'
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -24,7 +24,6 @@ export const AuthProvider = ({ children }) => {
     }
   })
 
-  //Lưu data Ad Account lấy được từ API FB vào local 
   const [fbAdAccounts, setFbAdAccounts] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.FB_AD_ACCOUNTS)
@@ -33,6 +32,25 @@ export const AuthProvider = ({ children }) => {
       return []
     }
   })
+
+  // 📦 Thông tin gói dịch vụ của người dùng
+  const [myPackage, setMyPackage] = useState(null)
+  const [isPackageLoading, setIsPackageLoading] = useState(false)
+
+  // Hàm fetch thông tin gói
+  const fetchMyPackage = useCallback(async () => {
+    try {
+      setIsPackageLoading(true)
+      const response = await axiosInstance.get('/api/user-package/my-package')
+      if (response.data && response.data.success) {
+        setMyPackage(response.data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching user package:', error)
+    } finally {
+      setIsPackageLoading(false)
+    }
+  }, [])
 
   // Đăng xuất
   const logout = useCallback((showToast = true) => {
@@ -51,6 +69,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null)
     setIsAuthenticated(false)
     setFbPages([])
+    setMyPackage(null)
 
     if (showToast) {
       toast.success('Đăng xuất thành công!')
@@ -105,6 +124,13 @@ export const AuthProvider = ({ children }) => {
 
     checkAuth()
   }, [toast, logout])
+
+  // Fetch package when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !myPackage && !isPackageLoading) {
+      fetchMyPackage()
+    }
+  }, [isAuthenticated, myPackage, isPackageLoading, fetchMyPackage])
 
 
 
@@ -405,6 +431,9 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     fbPages,
     fbAdAccounts,
+    myPackage,
+    isPackageLoading,
+    fetchMyPackage,
     login,
     completeExternalLogin,
     register,

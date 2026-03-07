@@ -12,6 +12,8 @@
     "test:run": "vitest --run"
   },
   "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@turf/turf": "^6.5.0",
     "@types/uuid": "^10.0.0",
     "axios": "^1.12.2",
@@ -34,6 +36,7 @@
     "react-toastify": "^11.0.5",
     "recharts": "^3.4.1",
     "sonner": "^2.0.7",
+    "three": "^0.183.2",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

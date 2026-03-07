@@ -22,7 +22,7 @@
     "register_title": "Đăng ký",
     "reset_title": "Quên mật khẩu",
     "email_verification_title": "Xác nhận email của bạn",
-    "login_with_facebook": "Đăng nhập với Facebook",
+    "login_with_facebook": "Đăng nhập with Facebook",
     "processing": "Đang xử lý...",
     "sending": "Đang gửi...",
     "or": "Hoặc",
@@ -687,5 +687,10 @@
       "downloadSuccess": "Tải xuống thành công!",
       "downloadError": "Lỗi khi tải xuống"
     }
+  },
+  "tiers": {
+    "basic": "Normal",
+    "pro": "Hoàng Kim",
+    "elite": "Chí tôn"
   }
 }

@@ -102,6 +102,12 @@
   gap: 4px;
 }
 
+.admin-user-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .admin-user-name {
   font-weight: 600;
   font-size: 14px;

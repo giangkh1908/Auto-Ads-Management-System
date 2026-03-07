@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../hooks/auth/useAuth";
 import { STORAGE_KEYS, ROUTES } from "../../../constants/app.constants";
+import TierBadge from "../../common/TierBadge/TierBadge";
 import "./Header.css";
 import avatar from "../../../assets/no-avatar.jpg";
 import {
@@ -26,7 +27,7 @@ function Header({ onLoginClick }) {
   const { pathname } = useLocation();
   const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, myPackage } = useAuth();
   const [openMenu, setOpenMenu] = useState(null); //"avatar", "user" || null
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -331,7 +332,15 @@ function Header({ onLoginClick }) {
                 {openMenu === "avatar" && (
                   <div className="dropdown-avatar">
                     <div className="dropdown-infor-avatar">
-                      <b>{user?.full_name}</b>
+                      <div className="dropdown-user-name-wrapper">
+                        <b>{user?.full_name}</b>
+                        {myPackage?.package?.planType && (
+                          <TierBadge
+                            tier={myPackage.package.planType}
+                            size="small"
+                          />
+                        )}
+                      </div>
                       <small>
                         FB ID: {user?.facebookId}
                         <br />
