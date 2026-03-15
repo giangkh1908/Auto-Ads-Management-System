@@ -12,6 +12,7 @@ import Invoice from "../../../../components/feature/Invoice/Invoice";
 import invoiceService from "../../../../services/transaction/invoiceService";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { escapeHtml } from "../../../../utils/security/sanitizeHtml";
 
 // Helper functions - tách ra ngoài để tránh trùng lặp
 const formatDate = (date) => {
@@ -164,6 +165,7 @@ export default function TransactionsPage() {
       }
 
       const invoice = response.data;
+      const safeText = (value) => escapeHtml(value);
 
       // Tạo một div ẩn để render invoice
       const tempContainer = document.createElement("div");
@@ -193,99 +195,99 @@ export default function TransactionsPage() {
       tempContainer.innerHTML = `
         <div style="padding: 40px; font-family: Arial, sans-serif; color: #333;">
           <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: bold; text-transform: uppercase;">${t("invoice.headerTitle")}</h1>
+            <h1 style="margin: 0; font-size: 32px; font-weight: bold; text-transform: uppercase;">${safeText(t("invoice.headerTitle"))}</h1>
           </div>
 
           <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${t("invoice.sellerInfo.title")}</h3>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${safeText(t("invoice.sellerInfo.title"))}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.sellerInfo.companyName")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.seller_info?.company_name || "AAMS Platform Co., Ltd"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.sellerInfo.companyName"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.seller_info?.company_name || "AAMS Platform Co., Ltd")}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.sellerInfo.address")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.seller_info?.address || "Hoa Lac, Hanoi"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.sellerInfo.address"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.seller_info?.address || "Hoa Lac, Hanoi")}</p>
               </div>
             </div>
           </div>
 
           <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${t("invoice.buyerInfo.title")}</h3>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${safeText(t("invoice.buyerInfo.title"))}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.buyerInfo.name")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.buyer_info?.name || "-"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.buyerInfo.name"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.buyer_info?.name || "-")}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.buyerInfo.email")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.buyer_info?.email || "-"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.buyerInfo.email"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.buyer_info?.email || "-")}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.buyerInfo.phone")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.buyer_info?.phone || "-"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.buyerInfo.phone"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.buyer_info?.phone || "-")}</p>
               </div>
             </div>
           </div>
 
           <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${t("invoice.invoiceDetails.title")}</h3>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${safeText(t("invoice.invoiceDetails.title"))}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.invoiceDetails.invoiceNo")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.invoice_number || "-"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.invoiceDetails.invoiceNo"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.invoice_number || "-")}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.invoiceDetails.invoiceDate")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${formatDate(invoice.invoice_details?.invoice_date)}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.invoiceDetails.invoiceDate"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(formatDate(invoice.invoice_details?.invoice_date))}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.invoiceDetails.transactionId")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.transaction_id?.provider_ref || `TXN-${invoice.transaction_id?._id || "-"}`}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.invoiceDetails.transactionId"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.transaction_id?.provider_ref || `TXN-${invoice.transaction_id?._id || "-"}`)}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.invoiceDetails.paymentMethod")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.invoice_details?.payment_method || "-"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.invoiceDetails.paymentMethod"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.invoice_details?.payment_method || "-")}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.invoiceDetails.paymentTime")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${formatDateTime(invoice.invoice_details?.payment_time)}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.invoiceDetails.paymentTime"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(formatDateTime(invoice.invoice_details?.payment_time))}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.invoiceDetails.status")}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.invoice_details?.status === "PAID" ? t("invoice.status.paid") : invoice.invoice_details?.status}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.invoiceDetails.status"))}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.invoice_details?.status === "PAID" ? t("invoice.status.paid") : invoice.invoice_details?.status)}</p>
               </div>
             </div>
           </div>
 
           <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${t("invoice.serviceDetails.title")}</h3>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${safeText(t("invoice.serviceDetails.title"))}</h3>
             <table style="width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px;">
               <thead style="background-color: #f5f5f5;">
                 <tr>
-                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${t("invoice.serviceDetails.package")}</th>
-                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${t("invoice.serviceDetails.pages")}</th>
-                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${t("invoice.serviceDetails.employees")}</th>
-                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${t("invoice.serviceDetails.unitPrice")}</th>
-                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${t("invoice.serviceDetails.duration")}</th>
-                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${t("invoice.serviceDetails.subtotal")}</th>
+                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${safeText(t("invoice.serviceDetails.package"))}</th>
+                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${safeText(t("invoice.serviceDetails.pages"))}</th>
+                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${safeText(t("invoice.serviceDetails.employees"))}</th>
+                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${safeText(t("invoice.serviceDetails.unitPrice"))}</th>
+                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${safeText(t("invoice.serviceDetails.duration"))}</th>
+                  <th style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; font-weight: 600; color: #333;">${safeText(t("invoice.serviceDetails.subtotal"))}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${invoice.service_details?.package_name || "-"}</td>
-                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${invoice.service_details?.pages || 0}</td>
-                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${invoice.service_details?.employees || 0}</td>
-                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${formatCurrency(invoice.service_details?.unit_price || 0)} VND</td>
-                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${formatDuration(invoice.service_details?.duration)}</td>
-                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${formatCurrency(invoice.service_details?.subtotal || 0)} VND</td>
+                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${safeText(invoice.service_details?.package_name || "-")}</td>
+                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${safeText(invoice.service_details?.pages || 0)}</td>
+                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${safeText(invoice.service_details?.employees || 0)}</td>
+                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${safeText(formatCurrency(invoice.service_details?.unit_price || 0))} VND</td>
+                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${safeText(formatDuration(invoice.service_details?.duration))}</td>
+                  <td style="padding: 12px; text-align: left; border: 1px solid #e0e0e0; background-color: #fff;">${safeText(formatCurrency(invoice.service_details?.subtotal || 0))} VND</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <div style="margin-top: 30px; padding: 15px; background-color: #f9f9f9; border-radius: 4px; font-size: 12px; color: #666; text-align: center; border-left: 4px solid #4caf50;">
-            <p style="margin: 0;">${t("invoice.disclaimer")}</p>
+            <p style="margin: 0;">${safeText(t("invoice.disclaimer"))}</p>
           </div>
         </div>
       `;

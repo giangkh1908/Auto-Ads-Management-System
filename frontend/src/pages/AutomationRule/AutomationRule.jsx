@@ -9,6 +9,7 @@ import { useAuth } from "../../hooks/auth/useAuth";
 import axiosInstance from "../../utils/api/axios";
 import automationRuleService from "../../services/auto/automationRuleService";
 import { useToast } from "../../hooks/common/useToast";
+import { escapeHtml, sanitizeHtml } from "../../utils/security/sanitizeHtml";
 import {
   ACTION_BE_TO_VI,
   METRIC_BE_TO_VI,
@@ -156,14 +157,15 @@ function AutomationRule() {
   // Format action condition với HTML để in đậm
   const formatActionConditionHTML = (rule) => {
     const actionKey = ACTION_BE_TO_VI[rule.action] || rule.action;
-    const action = t(`actions.${actionKey}`);
+    const action = escapeHtml(t(`actions.${actionKey}`));
     const conditions = rule.conditions
       ?.map((c) => {
         const metricKey = METRIC_BE_TO_VI[c.metric] || c.metric;
-        const metric = t(`metrics.${metricKey}`);
+        const metric = escapeHtml(t(`metrics.${metricKey}`));
         const operatorKey = OPERATOR_BE_TO_VI[c.operator] || c.operator;
-        const operator = t(`operators.${operatorKey}`);
-        return `<strong>${metric}</strong> ${operator} <strong>${c.value}</strong>`;
+        const operator = escapeHtml(t(`operators.${operatorKey}`));
+        const value = escapeHtml(c.value);
+        return `<strong>${metric}</strong> ${operator} <strong>${value}</strong>`;
       })
       .join("\n");
     return `<strong>${action}</strong>. Nếu:\n${conditions || ""}`;
@@ -525,7 +527,7 @@ function AutomationRule() {
                     <td>{rule.appliedTo}</td>
                     <td
                       className="action-condition-cell"
-                      dangerouslySetInnerHTML={{ __html: rule.actionConditionHTML }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(rule.actionConditionHTML) }}
                     />
                     <td className="rule-result-cell">{rule.result}</td>
                     <td>{rule.frequency}</td>

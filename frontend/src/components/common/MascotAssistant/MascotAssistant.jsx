@@ -5,6 +5,7 @@ import { useAuth } from '../../../hooks/auth/useAuth';
 import { useChat } from '../../../hooks/chat/useChat';
 import { MessageCircle, X, Send, Minimize2, Sparkles, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { sanitizeHtml } from '../../../utils/security/sanitizeHtml';
 import './MascotAssistant.css';
 
 // Component để render mô hình 3D (Tạm thời dùng Stork animated cực kỳ ổn định của Three.js)
@@ -274,7 +275,7 @@ const MascotAssistant = () => {
                                                 initial={{ y: 10, opacity: 0 }}
                                                 animate={{ y: 0, opacity: 1 }}
                                             >
-                                                <div className="content" dangerouslySetInnerHTML={{ __html: m.content }} />
+                                                <div className="content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.content) }} />
                                             </motion.div>
                                         ))}
                                         {isLoading && (

@@ -11,6 +11,7 @@ import { useAuth } from "../../hooks/auth/useAuth";
 import Invoice from "../../components/feature/Invoice/Invoice";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { escapeHtml } from "../../utils/security/sanitizeHtml";
 
 export default function TransactionHistory() {
   const { t, i18n } = useTranslation();
@@ -176,6 +177,7 @@ export default function TransactionHistory() {
       }
 
       const invoice = response.data;
+      const safeText = (value) => escapeHtml(value);
 
       const tempContainer = document.createElement("div");
       tempContainer.style.position = "absolute";
@@ -189,31 +191,31 @@ export default function TransactionHistory() {
       tempContainer.innerHTML = `
         <div style="padding: 40px; font-family: Arial, sans-serif; color: #333;">
           <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: bold; text-transform: uppercase;">${t("invoice.headerTitle") || "HÓA ĐƠN"}</h1>
+            <h1 style="margin: 0; font-size: 32px; font-weight: bold; text-transform: uppercase;">${safeText(t("invoice.headerTitle") || "HÓA ĐƠN")}</h1>
           </div>
           <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${t("invoice.buyerInfo.title") || "Thông tin người mua"}</h3>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${safeText(t("invoice.buyerInfo.title") || "Thông tin người mua")}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.buyerInfo.name") || "Tên"}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.buyer_info?.name || "-"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.buyerInfo.name") || "Tên")}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.buyer_info?.name || "-")}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.buyerInfo.email") || "Email"}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.buyer_info?.email || "-"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.buyerInfo.email") || "Email")}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.buyer_info?.email || "-")}</p>
               </div>
             </div>
           </div>
           <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${t("invoice.invoiceDetails.title") || "Chi tiết hóa đơn"}</h3>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">${safeText(t("invoice.invoiceDetails.title") || "Chi tiết hóa đơn")}</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.invoiceDetails.invoiceNo") || "Số hóa đơn"}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.invoice_number || "-"}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.invoiceDetails.invoiceNo") || "Số hóa đơn")}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.invoice_number || "-")}</p>
               </div>
               <div>
-                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${t("invoice.invoiceDetails.transactionId") || "Mã giao dịch"}</label>
-                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${invoice.transaction_id?.provider_ref || `TXN-${invoice.transaction_id?._id || "-"}`}</p>
+                <label style="font-weight: 600; margin-bottom: 5px; color: #666; font-size: 14px; display: block;">${safeText(t("invoice.invoiceDetails.transactionId") || "Mã giao dịch")}</label>
+                <p style="margin: 0; padding: 8px; background-color: #f9f9f9; border-radius: 4px; min-height: 20px;">${safeText(invoice.transaction_id?.provider_ref || `TXN-${invoice.transaction_id?._id || "-"}`)}</p>
               </div>
             </div>
           </div>
